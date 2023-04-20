@@ -1,0 +1,13 @@
+version: '3.4'
+
+services:
+  builder:
+    image: tardis-io/ibm-5170-pcat
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: "1000:1000"
+    restart: never
+    volumes:
+      - ./src:/usr/local/builder/src
+      - ./build:/usr/local/builder/build

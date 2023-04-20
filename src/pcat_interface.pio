@@ -1,0 +1,83 @@
+.program pcat_interface
+
+; Pins: 0 = data, 1 = clock
+ 
+check:
+    ; Wait for incoming data, but jump to bitLoopOut if the Output Shift Register isn't empty
+    jmp !OSRE, bitLoopOut
+    jmp pin, check
+
+    ; Set x to 10 (to read in 11 bits)
+    set x, 10
+
+bitLoopIn:
+    ; Wait for clock signal to go low
+    wait 0 pin 1
+    ; Read data pin and store in pins register
+    in pins, 1
+    ; Wait for clock signal to go high
+    wait 1 pin 1
+    ; Decrement x and jump back to bitLoopIn if it's not zero
+    jmp x--, bitLoopIn
+    ; Clear interrupt status and jump to check
+    irq set 0
+    jmp check
+
+bitLoopOut:
+    ; Set data pin low and configure pins
+    set pins, 0
+    set pindirs 2 [14]   ; Set data pin to output mode
+    set pindirs 1  [1]   ; Set clock pin to input mode
+    ; Set x to 8 (to write out 9 bits)
+    set x, 8
+
+bitLoopOutLoop:
+    ; Wait for clock signal to go low and start sending bit
+    wait 0 pin 1 [1]
+    out pins, 1
+    ; Wait for clock signal to go high
+    wait 1 pin 1
+    ; Decrement x and jump back to bitLoopOutLoop if it's not zero
+    jmp x--, bitLoopOutLoop
+
+    ; Send stop bit
+    wait 0 pin 1 [1]
+    set pins, 1
+    wait 1 pin 0
+
+    ; Wait for the device to release the data line (ACK)
+    wait 0 pin 0
+    set pindirs, 0        ; Set data pin to input mode
+    wait 1 pin 0 [5]
+
+% c-sdk {
+static inline void pcat_interface_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {
+  pio_sm_set_consecutive_pindirs(pio, sm, pin, 2, false);
+
+  pio_gpio_init(pio, pin);
+  pio_gpio_init(pio, pin + 1);
+
+  gpio_pull_up(pin);
+  gpio_pull_up(pin + 1);
+
+  pio_sm_config c = pcat_interface_program_get_default_config(offset);
+
+  sm_config_set_set_pins(&c, pin, 2);
+
+  sm_config_set_jmp_pin(&c, pin);
+
+  sm_config_set_in_pins(&c, pin); // for WAIT
+  sm_config_set_in_shift(&c, true, true, 11);
+
+  sm_config_set_out_pins(&c, pin, 2);
+  sm_config_set_out_shift(&c, true, true, 9);
+
+  sm_config_set_clkdiv(&c, div);
+
+  pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
+
+  pio_sm_init(pio, sm, offset, &c);
+
+  pio_sm_set_enabled(pio, sm, true);
+}
+%}
