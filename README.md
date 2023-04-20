@@ -18,7 +18,7 @@ All code and builds are currently being tested using the following hardware setu
 
 ## Licence
 
-The project is licensed under **GPLv3** or later. Pico-SDK and TinyUSB stack have their own license respectively.
+The project is licensed under **GPLv3** or later. Pico-SDK and TinyUSB stack have their own license respectively, and as such remain intact in any included portions of code from those shared resources.
 
 ## Building
 
