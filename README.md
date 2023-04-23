@@ -18,7 +18,7 @@ All code and builds are currently being tested using the following hardware setu
 
 ## Licence
 
-The project is licensed under **GPLv3** or later. Pico-SDK and TinyUSB stack have their own license respectively, and as such remain intact in any included portions of code from those shared resources.
+The project is licensed under **GPLv3** or later. [Pico-SDK](https://github.com/raspberrypi/pico-sdk) and [TinyUSB](https://github.com/hathach/tinyusb) stack have their own license respectively, and as such remain intact in any included portions of code from those shared resources.
 
 Ringbuffer implementation is from the official [TMK](https://github.com/tmk/tmk_keyboard) repository.
 
