@@ -13,8 +13,9 @@ I am also deep-diving into learning about the RP2040, pico-sdk and tinyusb imple
 All code and builds are currently being tested using the following hardware setup:
 - [WaveShare RP2040-Zero](https://www.waveshare.com/RP2040-Zero.htm)
 - [4-channel I2C-safe Bi-directional Logic Level Converter - BSS138](https://www.adafruit.com/product/757)
-  
-[TO-DO] Add breadboard schematic.
+
+This is connected as follows:
+![alt text](doc/breadboard-schematic.png)
 
 ## Licence
 
