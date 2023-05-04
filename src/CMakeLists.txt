@@ -30,8 +30,10 @@ target_sources(${PROJECT_NAME} PUBLIC
 ${CMAKE_CURRENT_LIST_DIR}/lock_leds.c
 ${CMAKE_CURRENT_LIST_DIR}/pcat_interface.c
 ${CMAKE_CURRENT_LIST_DIR}/pcat_interface.pio
+${CMAKE_CURRENT_LIST_DIR}/keymap.c
 ${CMAKE_CURRENT_LIST_DIR}/usb_descriptors.c
 ${CMAKE_CURRENT_LIST_DIR}/hid_interface.c
+${CMAKE_CURRENT_LIST_DIR}/hid_keymaps.c
 ${CMAKE_CURRENT_LIST_DIR}/main.c
 )
 
