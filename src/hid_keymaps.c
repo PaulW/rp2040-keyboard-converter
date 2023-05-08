@@ -57,7 +57,7 @@
  */
 
 /* Define Keyboard Layers */
-const uint16_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
+const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
   KEYMAP( \
     /* Base Layer (NumLock On)
      * MacOS maps keys oddly, GRAVE and NUBS are swapped over when coupled with British-PC Layout.
@@ -80,14 +80,14 @@ const uint16_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
 };
 
 /* Define Action Layers */
-const uint16_t pcat_fkey[][KEYMAP_ROWS][KEYMAP_COLS] = {
+const uint8_t pcat_fkey[][KEYMAP_ROWS][KEYMAP_COLS] = {
   KEYMAP( \
     /* Function Key Pressed */
     F9,    F10,       TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS, \
-    F11,   F12,       TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS, \
-    VOLU,  VOLD,      TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS, \
-    TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,      TRNS,  TRNS,  TRNS,  TRNS, \
-    TRNS,  TRNS,      TRNS,         TRNS,                              TRNS,                              TRNS,         TRNS,      TRNS,  TRNS,  TRNS,  TRNS \
+    F11,   F12,       TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      NFLP,  NFLP,  NFLP,  TRNS, \
+    VOLD,  VOLU,      TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      NFLP,  NFLP,  NFLP,  TRNS, \
+    BRTD,  BRTI,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,      NFLP,  NFLP,  NFLP,  TRNS, \
+    TRNS,  TRNS,      TRNS,         TRNS,                              TRNS,                              TRNS,         TRNS,      NFLP,  NFLP,  NFLP,  TRNS \
   ),
 };
 

@@ -26,10 +26,10 @@
 #define KEYMAP_ROWS 9
 #define KEYMAP_COLS 16
 
-uint16_t keymap_get_key_val(int layer, uint8_t pos);
+uint8_t keymap_get_key_val(int layer, uint8_t pos);
 
-extern const uint16_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS];
-extern const uint16_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS];
+extern const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS];
+extern const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS];
 
 /*
  * IBM Model F AT UK 84-key (UK Standard Layout):

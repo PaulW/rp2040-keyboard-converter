@@ -23,6 +23,7 @@
 #include <stdio.h>
 
 #include "bsp/board.h"
+#include "hid_keycodes.h"
 #include "keymap.h"
 #include "lock_leds.h"
 #include "tusb.h"
@@ -47,7 +48,7 @@ static void hid_print_report(void) {
 
 // Add a new keycode to the HID report upon keypress.
 static bool hid_keyboard_add_key(uint8_t key) {
-  if (key >= 0xE0 && key <= 0xE8) {
+  if (IS_MOD(key)) {
     if ((keyboard_report.modifier & (uint8_t)(1 << (key & 0x7))) == 0) {
       keyboard_report.modifier |= (uint8_t)(1 << (key & 0x7));
       return true;
@@ -69,7 +70,7 @@ static bool hid_keyboard_add_key(uint8_t key) {
 
 // Remove keycode from HID report when key is released.
 static bool hid_keyboard_del_key(uint8_t key) {
-  if (key >= 0xE0 && key <= 0xE8) {
+  if (IS_MOD(key)) {
     if ((keyboard_report.modifier & (uint8_t)(1 << (key & 0x7))) != 0) {
       keyboard_report.modifier &= (uint8_t) ~(1 << (key & 0x7));
       return true;
@@ -91,41 +92,38 @@ static bool hid_keyboard_del_key(uint8_t key) {
 // PS2 Keyboards send typematic key presses repetatively, yet with HID devices, we
 // only want to send a report for each Key Press/Release Event.  The host will handle
 // all typematic events itself.
-static void handle_keyboard_report(uint16_t code, bool make) {
-  uint8_t key = (uint8_t)(code & 0xFF);
-  bool report_modified = false;
-  if (make) {
-    report_modified = hid_keyboard_add_key(key);
-  } else {
-    report_modified = hid_keyboard_del_key(key);
-  }
-
-  if (report_modified) {
-    bool res = tud_hid_n_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &keyboard_report, sizeof(keyboard_report));
-    if (!res) {
-      printf("[ERR] KEYBOARD HID REPORT FAIL\n");
-      hid_print_report();
+static void handle_keyboard_report(uint8_t code, bool make) {
+  // uint8_t key = (uint8_t)(code & 0xFF);
+  if (IS_KEY(code) || IS_MOD(code)) {
+    bool report_modified = false;
+    if (make) {
+      report_modified = hid_keyboard_add_key(code);
+    } else {
+      report_modified = hid_keyboard_del_key(code);
     }
-  }
-}
 
-// Function to handle input reports.
-// Currently we only support/utilise keyboard reports, but we may was consumer/system reports in future.
-static void handle_input_report(uint16_t code, bool make) {
-  // Get the usage page from the input code
-  uint8_t page = (uint8_t)((code & 0xf000) >> 12);
-
-  // Call the appropriate function based on the usage page
-  switch (page) {
-    case USAGE_PAGE_KEYBOARD:
-    case USAGE_PAGE_KEYBOARD + 7:  // keyboard page
-      handle_keyboard_report(code, make);
-      break;
-    case USAGE_PAGE_CONSUMER:  // consumer page
-      // Not yet implemented
-      break;
-    default:
-      break;
+    if (report_modified) {
+      bool res = tud_hid_n_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &keyboard_report, sizeof(keyboard_report));
+      if (!res) {
+        printf("[ERR] KEYBOARD HID REPORT FAIL\n");
+        hid_print_report();
+      }
+    }
+  } else if (IS_CONSUMER(code)) {
+    uint16_t usage;
+    if (make) {
+      usage = CODE_TO_CONSUMER(code);
+    } else {
+      usage = 0;
+    }
+    bool res = tud_hid_n_report(ITF_NUM_CONSUMER_CONTROL, REPORT_ID_CONSUMER_CONTROL, &usage, sizeof(usage));
+    if (!res) {
+      printf("[ERR] Consumer Report Failed: 0x%04X\n", usage);
+    } else {
+      printf("[DBG] Consumer Report Sent: 0x%04X\n", usage);
+    }
+  } else {
+    printf("[ERR] Unsupported KeyCode presented: 0x%02X\n", code);
   }
 }
 
@@ -148,7 +146,7 @@ int8_t keyboard_process_key(uint8_t code) {
         case 0x00 ... 0x7F:
         case 0x83:  // F7
         case 0x84:  // SysReq
-          handle_input_report(keymap_get_key_val(0, code), true);
+          handle_keyboard_report(keymap_get_key_val(0, code), true);
           break;
         case 0xAA:  // Self-test passed
         default:    // unknown codes
@@ -162,7 +160,7 @@ int8_t keyboard_process_key(uint8_t code) {
         case 0x83:  // F7
         case 0x84:  // SysReq
           state = WAITING_FOR_INPUT;
-          handle_input_report(keymap_get_key_val(0, code), false);
+          handle_keyboard_report(keymap_get_key_val(0, code), false);
           break;
         default:
           state = WAITING_FOR_INPUT;

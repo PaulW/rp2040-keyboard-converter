@@ -62,12 +62,12 @@ static enum {
 } pcat_state = UNINITIALISED;
 
 // Command Handler function to issue commands to the attached IBM PC/AT Keyboard.
-static void pcat_command_handler(uint8_t data_byte) {
+static void __time_critical_func(pcat_command_handler)(uint8_t data_byte) {
   uint16_t data_with_parity = (uint16_t)(data_byte + (pcat_parity_table[data_byte] << 8));
   pio_sm_put_blocking(pio1, pcat_sm, data_with_parity);
 }
 
-static void pcat_event_processor(uint8_t data_byte) {
+static void __time_critical_func(pcat_event_processor)(uint8_t data_byte) {
   switch (pcat_state) {
     case UNINITIALISED:
       printf("[DBG] Asking Keyboard to Reset\n");
@@ -125,7 +125,7 @@ static void pcat_event_processor(uint8_t data_byte) {
 
 // IRQ Event Handler used to read keycode data from the IBM PC/AT Keyboard
 // and ensure relevant code is valid when checking against relevant check bits.
-static void pcat_input_event_handler() {
+static void __time_critical_func(pcat_input_event_handler)() {
   pio_interrupt_clear(pcat_pio, pcat_sm);
   if (pio_sm_is_rx_fifo_empty(pcat_pio, pcat_sm)) return;  // no new codes in the fifo
 

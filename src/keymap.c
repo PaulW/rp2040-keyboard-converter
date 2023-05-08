@@ -20,7 +20,7 @@
 
 #include "keymap.h"
 
-uint16_t keymap_get_key_val(int layer, uint8_t pos) {
+uint8_t keymap_get_key_val(int layer, uint8_t pos) {
   uint8_t row = (pos >> 4) & 0x0F;
   uint8_t col = pos & 0x0F;
   return keymap_map[layer][row][col];
