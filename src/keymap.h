@@ -21,12 +21,13 @@
 #ifndef KEYMAP_H
 #define KEYMAP_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #define KEYMAP_ROWS 9
 #define KEYMAP_COLS 16
 
-uint8_t keymap_get_key_val(int layer, uint8_t pos);
+uint8_t keymap_get_key_val(uint8_t pos, bool make);
 
 extern const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS];
 extern const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS];

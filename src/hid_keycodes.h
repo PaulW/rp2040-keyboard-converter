@@ -199,6 +199,9 @@
 /* Numpad Flip */
 #define KC_NUMPAD_FLIP 2
 #define KC_NFLP KC_NUMPAD_FLIP
+/* Function Key */
+#define KC_FUNCTION_KEY 3
+#define KC_FN KC_FUNCTION_KEY
 
 /* USB HID Keyboard/Keypad Usage(0x07) */
 enum hid_keyboard_keypad_usage {
@@ -470,5 +473,30 @@ enum internal_special_keycodes {
     (key == KC_APPCONTROL_BOOKMARKS     ?  APPCONTROL_BOOKMARKS : \
     (key == KC_BRIGHTNESS_INC           ?  BRIGHTNESS_INCREMENT : \
     (key == KC_BRIGHTNESS_DEC           ?  BRIGHTNESS_DECREMENT : 0)))))))))))))))))))))))))))))))))
+
+/* Flip values of NumPad when Function/Action key is pressed. */
+#define NUMPAD_FLIP_CODE(key) \
+    (key == KC_P0    ? KC_INS : \
+    (key == KC_P1    ? KC_END : \
+    (key == KC_P2    ? KC_DOWN : \
+    (key == KC_P3    ? KC_PGDN : \
+    (key == KC_P4    ? KC_LEFT : \
+    (key == KC_P5    ? KC_NO : \
+    (key == KC_P6    ? KC_RIGHT : \
+    (key == KC_P7    ? KC_HOME : \
+    (key == KC_P8    ? KC_UP : \
+    (key == KC_P9    ? KC_PGUP : \
+    (key == KC_PDOT  ? KC_DEL : \
+    (key == KC_END   ? KC_P1 : \
+    (key == KC_INS   ? KC_P0 : \
+    (key == KC_DOWN  ? KC_P2 : \
+    (key == KC_PGDN  ? KC_P3 : \
+    (key == KC_LEFT  ? KC_P4 : \
+    (key == KC_NO    ? KC_P5 : \
+    (key == KC_RIGHT ? KC_P6 : \
+    (key == KC_HOME  ? KC_P7 : \
+    (key == KC_UP    ? KC_P8 : \
+    (key == KC_PGUP  ? KC_P9 : \
+    (key == KC_DEL   ? KC_PDOT : 0))))))))))))))))))))))
 // clang-format on
 #endif /* HID_KEYCODES_H */

@@ -67,27 +67,27 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     F3,    F4,        TAB,          Q,     W,     E,     R,     T,     Y,     U,     I,     O,     P,     LBRC,  RBRC,  NO,        P7,    P8,    P9,    PAST, \
     F5,    F6,        LCTL,         A,     S,     D,     F,     G,     H,     J,     K,     L,     SCLN,  QUOT,  NO,    ENT,       P4,    P5,    P6,    PMNS, \
     F7,    F8,        LSFT,  NO,    Z,     X,     C,     V,     B,     N,     M,     COMM,  DOT,   SLSH,  NO,           RSFT,      P1,    P2,    P3,    PPLS, \
-    F9,    LGUI,      LALT,         NO,                                SPC,                               NO,           CAPS,      NO,    P0,    PDOT,  NO    \
+    FN,    LGUI,      LALT,         NO,                                SPC,                               NO,           CAPS,      NO,    P0,    PDOT,  NO    \
   ),
   KEYMAP( \
     /* Numlock Off (MacOS Compatibility Layer) */
     TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS, \
     TRNS,  TRNS,      TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      HOME,  UP,    PGUP,  TRNS, \
-    TRNS,  TRNS,      TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      LEFT,  NO,    RIGHT, TRNS, \
+    TRNS,  TRNS,      TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      LEFT,  TRNS,  RIGHT, TRNS, \
     TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,      END,   DOWN,  PGDN,  TRNS, \
-    TRNS,  TRNS,      TRNS,         TRNS,                              TRNS,                              TRNS,         TRNS,      NO,    INS,   DEL,   TRNS  \
+    TRNS,  TRNS,      TRNS,         TRNS,                              TRNS,                              TRNS,         TRNS,      TRNS,  INS,   DEL,   TRNS  \
   ),
 };
 
 /* Define Action Layers */
-const uint8_t pcat_fkey[][KEYMAP_ROWS][KEYMAP_COLS] = {
+const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS] = {
   KEYMAP( \
     /* Function Key Pressed */
     F9,    F10,       TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS, \
-    F11,   F12,       TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      NFLP,  NFLP,  NFLP,  TRNS, \
-    VOLD,  VOLU,      TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      NFLP,  NFLP,  NFLP,  TRNS, \
+    F11,   F12,       TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      NFLP,  NFLP,  NFLP,  PSCR, \
+    VOLD,  VOLU,      TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      NFLP,  TRNS,  NFLP,  TRNS, \
     BRTD,  BRTI,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,      NFLP,  NFLP,  NFLP,  TRNS, \
-    TRNS,  TRNS,      TRNS,         TRNS,                              TRNS,                              TRNS,         TRNS,      NFLP,  NFLP,  NFLP,  TRNS \
+    TRNS,  TRNS,      TRNS,         TRNS,                              TRNS,                              TRNS,         TRNS,      TRNS,  NFLP,  NFLP,  TRNS \
   ),
 };
 

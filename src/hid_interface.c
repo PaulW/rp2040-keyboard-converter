@@ -119,11 +119,7 @@ static void handle_keyboard_report(uint8_t code, bool make) {
     bool res = tud_hid_n_report(ITF_NUM_CONSUMER_CONTROL, REPORT_ID_CONSUMER_CONTROL, &usage, sizeof(usage));
     if (!res) {
       printf("[ERR] Consumer Report Failed: 0x%04X\n", usage);
-    } else {
-      printf("[DBG] Consumer Report Sent: 0x%04X\n", usage);
     }
-  } else {
-    printf("[ERR] Unsupported KeyCode presented: 0x%02X\n", code);
   }
 }
 
@@ -146,7 +142,7 @@ int8_t keyboard_process_key(uint8_t code) {
         case 0x00 ... 0x7F:
         case 0x83:  // F7
         case 0x84:  // SysReq
-          handle_keyboard_report(keymap_get_key_val(0, code), true);
+          handle_keyboard_report(keymap_get_key_val(code, true), true);
           break;
         case 0xAA:  // Self-test passed
         default:    // unknown codes
@@ -160,7 +156,7 @@ int8_t keyboard_process_key(uint8_t code) {
         case 0x83:  // F7
         case 0x84:  // SysReq
           state = WAITING_FOR_INPUT;
-          handle_keyboard_report(keymap_get_key_val(0, code), false);
+          handle_keyboard_report(keymap_get_key_val(code, false), false);
           break;
         default:
           state = WAITING_FOR_INPUT;
