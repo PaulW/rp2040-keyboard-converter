@@ -1,29 +1,52 @@
 .program pcat_interface
+.wrap_target
 
 ; Pins: 0 = data, 1 = clock
  
 check:
     ; Wait for incoming data, but jump to bitLoopOut if the Output Shift Register isn't empty
     jmp !OSRE, bitLoopOut
-    jmp pin, check
+    jmp pin, check ; Loop back to check if pin high
 
-    ; Set x to 10 (to read in 11 bits)
-    set x, 10
+    ; Receiving Data
+    ;    IBM AT:
+    ;        ____ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _ A _ B _____
+    ;    CLK     \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
+    ;        ___     ___ ___ ___ ___ ___ ___ ___ ___ ___ ________
+    ;    DAT    \___/___X___X___X___X___X___X___X___X___/
+    ;             S   0   1   2   3   4   5   6   7   P   s
+
+    ; Read Start bit
+    in pins, 1
+    ; Wait for Clock to go High
+    wait 1 pin 1
+
+    ; Set x to 9 (to read in 8 x Data bits, 1 x Parity and 1 x Stop bit)
+    set x, 9
 
 bitLoopIn:
     ; Wait for clock signal to go low
-    wait 0 pin 1
+    wait 0 pin 1 [1]
     ; Read data pin and store in pins register
     in pins, 1
     ; Wait for clock signal to go high
     wait 1 pin 1
     ; Decrement x and jump back to bitLoopIn if it's not zero
     jmp x--, bitLoopIn
+
     ; Clear interrupt status and jump to check
     irq set 0
     jmp check
 
 bitLoopOut:
+    ; Sending Data
+    ;    IBM AT:
+    ;        __      _ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _ A __ B ____
+    ;    CLK   \____/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/  \_/
+    ;        ______     ___ ___ ___ ___ ___ ___ ___ ___ ______     ____
+    ;    DAT       \___/___X___X___X___X___X___X___X___X___/  \___/
+    ;           H    R   0   1   2   3   4   5   6   7   P   s ACK
+
     ; Set data pin low and configure pins
     set pins, 0
     set pindirs 2 [14]   ; Set data pin to output mode
@@ -43,12 +66,14 @@ bitLoopOutLoop:
     ; Send stop bit
     wait 0 pin 1 [1]
     set pins, 1
-    wait 1 pin 0
+    wait 1 pin 1
 
-    ; Wait for the device to release the data line (ACK)
-    wait 0 pin 0
-    set pindirs, 0        ; Set data pin to input mode
-    wait 1 pin 0 [5]
+    ; Wait for device to respond with ACK.
+    wait 0 pin 0   ; Wait for Data to go Low
+    wait 0 pin 1   ; Wait for Clock to go Low
+    wait 1 pin 1   ; Wait for Clock to go High
+    wait 1 pin 0   ; Wait for Data to go High
+    set pindirs, 0 ; Set data pin to input mode
 
 % c-sdk {
 static inline void pcat_interface_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {
@@ -64,7 +89,7 @@ static inline void pcat_interface_program_init(PIO pio, uint sm, uint offset, ui
 
   sm_config_set_set_pins(&c, pin, 2);
 
-  sm_config_set_jmp_pin(&c, pin);
+  sm_config_set_jmp_pin(&c, pin + 1);
 
   sm_config_set_in_pins(&c, pin); // for WAIT
   sm_config_set_in_shift(&c, true, true, 11);
