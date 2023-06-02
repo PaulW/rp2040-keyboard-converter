@@ -23,6 +23,46 @@ The project is licensed under **GPLv3** or later. [Pico-SDK](https://github.com/
 
 Ringbuffer implementation is from the official [TMK](https://github.com/tmk/tmk_keyboard) repository.
 
+## Key Mapping
+
+The current build has the following keys available when using the keyboard:
+![Available Keys](doc/mapped-keys.png)
+(Key Test performed using [QMK Configurator](https://config.qmk.fm/#/test))
+
+The keys can be re-assigned by updating the [hid_keymaps.c](src/hid_keymaps.c) file.  Please refer to [hid_keycodes.h](src/hid_keycodes.h) to list available key codes which can be mapped.  The Layers are defined and laid out in a way which matches the default key layout of the IBM 5170 Keyboard.  I do intend on slightly updating the layout, and this will be made clear when I commit that change.
+
+Please note, that some keys require the use of the Fn Modifier Key to be pressed (by default, this is mapped to F9).  Keys mapped with dual values also represent pressing Shift Modifier.
+
+| Key on Keyboard | Modifier Mapping |
+|---|---|
+| Pipe / Back Slash | Grave / Negation * |
+| Numpad 0 | Insert |
+| Numpad Dot | Del |
+| Numpad 1 | End |
+| Numpad 2 | Down Arrow |
+| Numpad 3 | Page Down |
+| Numpad 4 | Left Arrow |
+| Numpad 6 | Right Arrow |
+| Numpad 7 | Home |
+| Numpad 8 | Up Arrow |
+| Numpad 9 | Page Up |
+| F1 | F9 |
+| F2 | F10 |
+| F3 | F11 ** |
+| F4 | F12 |
+| F5 | Vol Down |
+| F6 | Vol Up |
+| F7 | Brightness Down |
+| F8 | Brightness Up |
+
+_* Mapping may differ on Windows PC, I've not tested this_
+
+_** F11 Does work, it just doesn't show when pressed in Chrome on the QMK Congigurator Test Page_
+
+All Layouts are set as if the keyboard is set to British PC (as per my Mac)
+
+![Layout Toggle](doc/layout-mac.png)
+
 ## Building
 
 Docker is used to perform the build tasks for this project, so to ensure a consistent build environment each time.
