@@ -18,7 +18,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "keymap.h"
+#include "keymaps.h"
 
 #include <stdint.h>
 #include <stdio.h>

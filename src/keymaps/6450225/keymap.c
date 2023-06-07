@@ -19,13 +19,13 @@
  */
 
 #include "hid_keycodes.h"
-#include "keymap.h"
+#include "keymaps.h"
 #include "pico/stdlib.h"
 
 // clang-format off
 
 /*
- * IBM Model F AT UK 84-key (UK Standard Layout):
+ * IBM Model F AT UK 84-key (UK Standard Layout - 6450225):
  * ,-------. ,-----------------------------------------------------------. ,---------------.
  * | F1| F2| |  \|  1|  2|  3|  4|  5|  6|  7|  8|  9|  0|  -|  =|  #| BS| |Esc|NmL|ScL|SyR|
  * |-------| |-----------------------------------------------------------| |---------------|
@@ -37,27 +37,11 @@
  * |-------| |-----------------------------------------------------------| |-----------|  +|
  * | F9|F10| |Alt |    |                  Space                |    |CapL| |      0|  .|   |
  * `-------' `----'    `---------------------------------------'    `----' `---------------'
- * 
- * Keyboard uses a subset of Scancode Set 3 from the F122, but is not contiguous as is missing
- * extended function keys and block between main keyboard and numberpad.
- * ,-------. ,-----------------------------------------------------------. ,---------------.
- * | 05| 06| | 0E| 16| 1E| 26| 25| 2E| 36| 3D| 3E| 46| 45| 4E| 55| 5D| 66| | 76| 77| 7E| 84|
- * |-------| |-----------------------------------------------------------| |---------------|
- * | 04| 0C| | 0D  | 15| 1D| 24| 2D| 2C| 35| 3C| 43| 44| 4D| 54| 5B| -5C | | 6C| 75| 7D| 7C|
- * |-------| |-----------------------------------------------------------| |---------------|
- * | 03| 0B| | 14   | 1C| 1B| 23| 2B| 34| 33| 3B| 42| 4B| 4C| 52|-53| 5A | | 6B| 73| 74| 7B|
- * |-------| |-----------------------------------------------------------| |---------------|
- * | 83| 0A| | 12 |-13| 1A| 22| 21| 2A| 32| 31| 3A| 41| 49| 4A|-51|   59 | | 69| 72| 7A| 79|
- * |-------| |-----------------------------------------------------------| |-----------|---|
- * | 01| 09| | 11  |   | -19 |             29            | -39 |   |  58 | |-68| 70| 71|-78|
- * `-------' `-----'   `---------------------------------------'   `-----' `---------------'
- * 
- *  -: Hidden Keys (not used in standard UK Layout)
  */
 
 /* Define Keyboard Layers */
 const uint8_t __not_in_flash("keymap_map") keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
-  KEYMAP( \
+  KEYMAP_5170( \
     /* Base Layer (NumLock On)
      * MacOS maps keys oddly, GRAVE and NUBS are swapped over when coupled with British-PC Layout.
      * Likewise, NUHS and BSLS appear to match. TODO: Have these as a config option to swap.
@@ -68,7 +52,7 @@ const uint8_t __not_in_flash("keymap_map") keymap_map[][KEYMAP_ROWS][KEYMAP_COLS
     F7,    F8,        LSFT,  NO,    Z,     X,     C,     V,     B,     N,     M,     COMM,  DOT,   SLSH,  NO,           RSFT,      P1,    P2,    P3,    PPLS, \
     FN,    LGUI,      LALT,         NO,                                SPC,                               NO,           CAPS,      NO,    P0,    PDOT,  NO    \
   ),
-  KEYMAP( \
+  KEYMAP_5170( \
     /* Numlock Off (MacOS Compatibility Layer) */
     TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS, \
     TRNS,  TRNS,      TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      HOME,  UP,    PGUP,  TRNS, \
@@ -80,7 +64,7 @@ const uint8_t __not_in_flash("keymap_map") keymap_map[][KEYMAP_ROWS][KEYMAP_COLS
 
 /* Define Action Layers */
 const uint8_t __not_in_flash("keymap_actions") keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS] = {
-  KEYMAP( \
+  KEYMAP_5170( \
     /* Function Key Pressed */
     F9,    F10,       NUBS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS, \
     F11,   F12,       TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      NFLP,  NFLP,  NFLP,  PSCR, \

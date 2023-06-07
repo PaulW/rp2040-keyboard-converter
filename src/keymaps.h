@@ -18,8 +18,8 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef KEYMAP_H
-#define KEYMAP_H
+#ifndef KEYMAPS_H
+#define KEYMAPS_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -33,19 +33,6 @@ extern const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS];
 extern const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS];
 
 /*
- * IBM Model F AT UK 84-key (UK Standard Layout):
- * ,-------. ,-----------------------------------------------------------. ,---------------.
- * | F1| F2| |  \|  1|  2|  3|  4|  5|  6|  7|  8|  9|  0|  -|  =|  #| BS| |Esc|NmL|ScL|SyR|
- * |-------| |-----------------------------------------------------------| |---------------|
- * | F3| F4| |Tab  |  Q|  W|  E|  R|  T|  Y|  U|  I|  O|  P|  [|  ]|     | |  7|  8|  9|  *|
- * |-------| |-----------------------------------------------------|     | |-----------|---|
- * | F5| F6| |Ctrl  |  A|  S|  D|  F|  G|  H|  J|  K|  L|  ;|  '|     Ret| |  4|  5|  6|  -|
- * |-------| |-----------------------------------------------------------| |---------------|
- * | F7| F8| |Shift   |  Z|  X|  C|  V|  B|  N|  M|  ,|  ,|  /|     Shift| |  1|  2|  3|   |
- * |-------| |-----------------------------------------------------------| |-----------|  +|
- * | F9|F10| |Alt |    |                  Space                |    |CapL| |      0|  .|   |
- * `-------' `----'    `---------------------------------------'    `----' `---------------'
- * 
  * Keyboard uses a subset of Scancode Set 3 from the F122, but is not contiguous as is missing
  * extended function keys and block between main keyboard and numberpad.
  * ,-------. ,-----------------------------------------------------------. ,---------------.
@@ -64,7 +51,7 @@ extern const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS];
  */
 
 // clang-format off
-#define KEYMAP( \
+#define KEYMAP_5170( \
     F00,F01,  K00,K01,K02,K03,K04,K05,K06,K07,K08,K09,K0A,K0B,K0C,K0D,K0E,  N00,N01,N02,N03, \
     F02,F03,  K0F,    K10,K11,K12,K13,K14,K15,K16,K17,K18,K19,K1A,K1B,K1C,  N04,N05,N06,N07, \
     F04,F05,  K1D,    K1E,K1F,K20,K21,K22,K23,K24,K25,K26,K27,K28,K29,K2A,  N08,N09,N0A,N0B, \
@@ -92,4 +79,4 @@ extern const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS];
 }
 // clang-format on
 
-#endif /* KEYMAP_H */
+#endif /* KEYMAPS_H */

@@ -24,7 +24,7 @@
 
 #include "bsp/board.h"
 #include "hid_keycodes.h"
-#include "keymap.h"
+#include "keymaps.h"
 #include "lock_leds.h"
 #include "tusb.h"
 #include "usb_descriptors.h"
