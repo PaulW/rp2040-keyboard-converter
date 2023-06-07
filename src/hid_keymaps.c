@@ -18,10 +18,9 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <stdint.h>
-
 #include "hid_keycodes.h"
 #include "keymap.h"
+#include "pico/stdlib.h"
 
 // clang-format off
 
@@ -57,7 +56,7 @@
  */
 
 /* Define Keyboard Layers */
-const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
+const uint8_t __not_in_flash("keymap_map") keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
   KEYMAP( \
     /* Base Layer (NumLock On)
      * MacOS maps keys oddly, GRAVE and NUBS are swapped over when coupled with British-PC Layout.
@@ -80,7 +79,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
 };
 
 /* Define Action Layers */
-const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS] = {
+const uint8_t __not_in_flash("keymap_actions") keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS] = {
   KEYMAP( \
     /* Function Key Pressed */
     F9,    F10,       NUBS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS, \

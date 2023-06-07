@@ -30,7 +30,7 @@
 uint pcat_sm = 0;
 PIO pcat_pio = pio1;
 
-static const uint8_t pcat_parity_table[256] = {
+static const uint8_t __not_in_flash("pcat_parity_table") pcat_parity_table[256] = {
     /* Mapping of HEX to Parity Bit for input from IBM PC/AT Keyboard
     0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F */
     1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,  // 0
@@ -125,7 +125,7 @@ static void __time_critical_func(pcat_event_processor)(uint8_t data_byte) {
 
 // IRQ Event Handler used to read keycode data from the IBM PC/AT Keyboard
 // and ensure relevant code is valid when checking against relevant check bits.
-static void __time_critical_func(pcat_input_event_handler)() {
+static void __isr __time_critical_func(pcat_input_event_handler)() {
   pio_interrupt_clear(pcat_pio, pcat_sm);
   if (pio_sm_is_rx_fifo_empty(pcat_pio, pcat_sm)) return;  // no new codes in the fifo
 

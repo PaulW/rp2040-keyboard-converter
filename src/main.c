@@ -30,8 +30,8 @@
 #define DATA_PIN 6   // We assume that DATA and CLOCK are positioned next to each other, as such Clock will be DATA_PIN + 1
 #define BUF_SIZE 16  // Define size for Ring Buffer
 
-static uint8_t buf[BUF_SIZE];
-static ringbuf_t rbuf = {
+static uint8_t __not_in_flash("buf") buf[BUF_SIZE];
+static ringbuf_t __not_in_flash("rbuf") rbuf = {
     .buffer = buf,
     .head = 0,
     .tail = 0,
