@@ -26,6 +26,7 @@
 #include "hid_keycodes.h"
 #include "keymaps.h"
 #include "lock_leds.h"
+#include "pico/bootrom.h"
 #include "tusb.h"
 #include "usb_descriptors.h"
 
@@ -100,6 +101,20 @@ static void handle_keyboard_report(uint8_t code, bool make) {
       report_modified = hid_keyboard_add_key(code);
     } else {
       report_modified = hid_keyboard_del_key(code);
+    }
+
+    // Check for any Macro Combinations here
+    if (keymap_is_action_key_pressed()) {
+      if (SUPER_MACRO_INIT(keyboard_report.modifier)) {
+        printf("Macro Modifiers HOLD\n");
+        uint8_t macro_key = MACRO_KEY_CODE(code);
+        if (macro_key == KC_BOOT) {
+          // Initiate Bootloader
+          printf("[INFO] Initiate Bootloader\n");
+          // Reboot into Bootloader
+          reset_usb_boot(0, 0);
+        }
+      }
     }
 
     if (report_modified) {
@@ -202,7 +217,7 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
 }
 
 // Public function which sets up the tinyusb stack
-void hid_device_setup() {
+void hid_device_setup(void) {
   board_init();
   tusb_init();
 }

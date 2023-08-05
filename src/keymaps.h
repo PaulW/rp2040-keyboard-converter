@@ -28,6 +28,7 @@
 #define KEYMAP_COLS 16
 
 uint8_t keymap_get_key_val(uint8_t pos, bool make);
+bool keymap_is_action_key_pressed(void);
 
 extern const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS];
 extern const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS];

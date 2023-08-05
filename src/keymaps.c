@@ -26,6 +26,7 @@
 #include "hid_keycodes.h"
 
 static int keymap_layer = 0; /* TO-DO Add full Layer Switching Support */
+static bool action_key_pressed = false;
 
 static uint8_t keymap_search_layers(uint8_t row, uint8_t col) {
   uint8_t key_code = keymap_map[keymap_layer][row][col];
@@ -49,7 +50,6 @@ static uint8_t keymap_search_layers(uint8_t row, uint8_t col) {
 }
 
 uint8_t keymap_get_key_val(uint8_t pos, bool make) {
-  static bool action_key_pressed = false;
   const uint8_t row = (pos >> 4) & 0x0F;
   const uint8_t col = pos & 0x0F;
   uint8_t key_code = keymap_search_layers(row, col);
@@ -74,3 +74,5 @@ uint8_t keymap_get_key_val(uint8_t pos, bool make) {
     return key_code;
   }
 }
+
+bool keymap_is_action_key_pressed(void) { return action_key_pressed; }

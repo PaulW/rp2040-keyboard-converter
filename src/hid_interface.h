@@ -24,6 +24,6 @@
 #include "pico/stdlib.h"
 
 int8_t keyboard_process_key(uint8_t code);
-void hid_device_setup();
+void hid_device_setup(void);
 
 #endif /* HID_INTERFACE_H */

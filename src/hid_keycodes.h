@@ -21,12 +21,16 @@
 #ifndef HID_KEYCODES_H
 #define HID_KEYCODES_H
 
+/* Define specific Key Types */
 #define IS_KEY(code) (KC_A <= (code) && (code) <= KC_EXSEL)
 #define IS_MOD(code) (KC_LCTRL <= (code) && (code) <= KC_RGUI)
 
 #define IS_SPECIAL(code) ((0xA5 <= (code) && (code) <= 0xDF) || (0xE8 <= (code) && (code) <= 0xFF))
 #define IS_SYSTEM(code) (KC_PWR <= (code) && (code) <= KC_WAKE)
 #define IS_CONSUMER(code) (KC_MPLY <= (code) && (code) <= KC_BRTD)
+
+/* Define Super Macro Toggle */
+#define SUPER_MACRO_INIT(code) (((code) & ((1 << (KC_LSHIFT & 0x7)) | (1 << (KC_RSHIFT & 0x7)))) == ((1 << (KC_LSHIFT & 0x7)) | (1 << (KC_RSHIFT & 0x7))))
 
 /* Raw Hid Code Definitions */
 /* Generic Desktop Page(0x01) */
@@ -194,14 +198,17 @@
 /* Jump to bootloader */
 #define KC_BTLD KC_BOOTLOADER
 /* Transparent */
-#define KC_TRANSPARENT 1
+#define KC_TRANSPARENT 0xD1
 #define KC_TRNS KC_TRANSPARENT
 /* Numpad Flip */
-#define KC_NUMPAD_FLIP 2
+#define KC_NUMPAD_FLIP 0xD2
 #define KC_NFLP KC_NUMPAD_FLIP
 /* Function Key */
-#define KC_FUNCTION_KEY 3
+#define KC_FUNCTION_KEY 0xD3
 #define KC_FN KC_FUNCTION_KEY
+/* Special Macro Keys */
+#define KC_SPECIAL_BOOT 0xD4
+#define KC_BOOT KC_SPECIAL_BOOT
 
 /* USB HID Keyboard/Keypad Usage(0x07) */
 enum hid_keyboard_keypad_usage {
@@ -498,5 +505,10 @@ enum internal_special_keycodes {
     (key == KC_UP    ? KC_P8 : \
     (key == KC_PGUP  ? KC_P9 : \
     (key == KC_DEL   ? KC_PDOT : 0))))))))))))))))))))))
+
+
+#define MACRO_KEY_CODE(key) \
+  (key == KC_B ? KC_BOOT : 0)
+
 // clang-format on
 #endif /* HID_KEYCODES_H */

@@ -27,7 +27,7 @@
 #include "ringbuf.h"
 #include "tusb.h"
 
-#define DATA_PIN 6   // We assume that DATA and CLOCK are positioned next to each other, as such Clock will be DATA_PIN + 1
+#define DATA_PIN 16  // We assume that DATA and CLOCK are positioned next to each other, as such Clock will be DATA_PIN + 1
 #define BUF_SIZE 16  // Define size for Ring Buffer
 
 static uint8_t __not_in_flash("buf") buf[BUF_SIZE];
@@ -42,7 +42,7 @@ void pcat_input_event_processor(unsigned char data_byte) {
 }
 
 // Check and process any characters which may exist in the ringbuffer.
-void keyboard_process_buffer() {
+void keyboard_process_buffer(void) {
   if (!ringbuf_is_empty(&rbuf)) {
     if (tud_suspended()) {
       // Wake up host if we are in suspend mode
@@ -59,7 +59,7 @@ void keyboard_process_buffer() {
   }
 }
 
-int main() {
+int main(void) {
   ringbuf_reset(&rbuf);
   hid_device_setup();
   pcat_device_setup(DATA_PIN);
