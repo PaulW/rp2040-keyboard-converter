@@ -60,6 +60,7 @@ ${CMAKE_CURRENT_LIST_DIR}/keymaps.c
 ${CMAKE_CURRENT_LIST_DIR}/usb_descriptors.c
 ${CMAKE_CURRENT_LIST_DIR}/hid_interface.c
 ${CMAKE_CURRENT_LIST_DIR}/keymaps/${KEYBOARD_LAYOUT}/keymap.c
+${CMAKE_CURRENT_LIST_DIR}/buzzer.c
 ${CMAKE_CURRENT_LIST_DIR}/main.c
 )
 
@@ -70,6 +71,7 @@ pico_generate_pio_header(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME} PUBLIC
   hardware_pio
   pico_stdlib
+  hardware_pwm
   tinyusb_device
   tinyusb_board
 )

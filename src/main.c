@@ -22,13 +22,15 @@
 #include <stdlib.h>
 
 #include "bsp/board.h"
+#include "buzzer.h"
 #include "hid_interface.h"
 #include "pcat_interface.h"
 #include "ringbuf.h"
 #include "tusb.h"
 
-#define DATA_PIN 16  // We assume that DATA and CLOCK are positioned next to each other, as such Clock will be DATA_PIN + 1
-#define BUF_SIZE 16  // Define size for Ring Buffer
+#define DATA_PIN 16   // We assume that DATA and CLOCK are positioned next to each other, as such Clock will be DATA_PIN + 1
+#define PIEZO_PIN 11  // Piezo Buzzer GPIO Pin
+#define BUF_SIZE 16   // Define size for Ring Buffer
 
 static uint8_t __not_in_flash("buf") buf[BUF_SIZE];
 static ringbuf_t __not_in_flash("rbuf") rbuf = {
@@ -63,6 +65,7 @@ int main(void) {
   ringbuf_reset(&rbuf);
   hid_device_setup();
   pcat_device_setup(DATA_PIN);
+  buzzer_init(PIEZO_PIN);
 
   while (1) {
     keyboard_process_buffer();

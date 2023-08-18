@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 
+#include "buzzer.h"
 #include "hardware/clocks.h"
 #include "hardware/pio.h"
 #include "lock_leds.h"
@@ -89,6 +90,7 @@ static void __time_critical_func(pcat_event_processor)(uint8_t data_byte) {
       switch (data_byte) {
         case 0xAA:
           printf("[DBG] Keyboard Initialised!\n");
+          buzzer_play_sound_sequence_non_blocking(READY_SEQUENCE);
           pcat_lock_leds = 0;
           pcat_state = INITIALISED;
           break;
@@ -109,6 +111,7 @@ static void __time_critical_func(pcat_event_processor)(uint8_t data_byte) {
             pcat_command_handler(ps2_lock_values);
           } else {
             printf("[DBG] LED Val Toggled\n");
+            buzzer_play_sound_sequence_non_blocking(LOCK_LED);
             pcat_state = INITIALISED;
           }
           break;
