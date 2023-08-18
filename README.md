@@ -17,7 +17,8 @@ Initially, code and builds were being tested using the following hardware setup:
 This is connected as follows:
 ![alt text](doc/breadboard-schematic.png)
 
-I have since designed and a custom hardware solution which fits inline in the Model F PC/AT Keyboard (Specifically model number 6450225, however this should be compatible with other IBM PC/AT 5170 Keyboards).  To simplify the documentation, I've kept the specific images [Here](doc/custom_pcb.md)
+I have since designed a custom hardware solution which fits inside the Model F PC/AT Keyboard.  To simplify the documentation, I've kept the specific hardware details [Here](doc/custom_pcb.md)
+
 ## Licence
 
 The project is licensed under **GPLv3** or later. [Pico-SDK](https://github.com/raspberrypi/pico-sdk) and [TinyUSB](https://github.com/hathach/tinyusb) stack have their own license respectively, and as such remain intact in any included portions of code from those shared resources.
@@ -82,11 +83,15 @@ Next, we tell docker to run the container we have just built:
 
 This will build `ibm-5170-pcat.uf2` firmware file which you can then flash to your RP2040.  This file is located in the `./build` folder within your locally cloned repository.
 
-### Flashing the Firmware
+### Flashing / Updating Firmware
 
 Please refer to the relevant documentation for your Raspberry Pi Pico device.  However, as is commonly performed across multiple RP2040 controllers, the following steps should apply:
 1. Put the RP2040 into Bootloader mode by holding BOOT and pressing RESET.  This should now mount the RP2040 as a volume named `RPI-RP2`.
 2. Copy `build/ibm-5170-pcat.uf2`to the newly mounted volume.  Once copied, the volume will automatically unmount and the RP2040 will reboot.
+
+The Firmware (once flashed) has the ability to put itself into Bootloader Mode by using a Macro Combination:
+
+Press (and hold in order) - **Fn** + **LShift** + **RShift** + **B**
 
 ### Validating/Testing
 
