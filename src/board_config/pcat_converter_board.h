@@ -24,13 +24,39 @@
 // For board detection
 #define PCAT_CONVERTER_BOARD
 
-/* Fix for incorrect PICO_FLASH_SPI_CLKDIV for WaveShare RP2040 - Zero
-   Max Clock frequency for Read Data instruction (03h) is 50 MHz.
-   PICO_FLASH_SPI_CLKDIV of 2 sets the clock to around 60 MHz exceeding the spec.
+// --- UART ---
+#ifndef PICO_DEFAULT_UART
+#define PICO_DEFAULT_UART 0
+#endif
+#ifndef PICO_DEFAULT_UART_TX_PIN
+#define PICO_DEFAULT_UART_TX_PIN 0
+#endif
+#ifndef PICO_DEFAULT_UART_RX_PIN
+#define PICO_DEFAULT_UART_RX_PIN 1
+#endif
+
+// --- SPI/I2C ---
+/* We don't use either capability, so there is no need to define these here. */
+
+// --- FLASH ---
+#define PICO_BOOT_STAGE2_CHOOSE_W25Q080 1
+
+/* When using W25Q16JVUXIQ Flash Chip, max clock frequency for Read Data instruction (03h) is 50 MHz.
+   Default value of PICO_FLASH_SPI_CLKDIV of 2 sets the clock to around 60 MHz exceeding the spec.
 */
 #define PICO_FLASH_SPI_CLKDIV 4
 
-// Pick up the rest of the default config for the board.
-#include "boards/waveshare_rp2040_zero.h"
+#ifndef PICO_FLASH_SIZE_BYTES
+#define PICO_FLASH_SIZE_BYTES (2 * 1024 * 1024)
+#endif
+
+// All (current) Custom Boards have B2 RP2040
+#ifndef PICO_RP2040_B0_SUPPORTED
+#define PICO_RP2040_B0_SUPPORTED 0
+#endif
+
+#ifndef PICO_RP2040_B1_SUPPORTED
+#define PICO_RP2040_B1_SUPPORTED 0
+#endif
 
 #endif /* _BOARDS_PCAT_CONVERTER_BOARD_H */
