@@ -25,6 +25,7 @@
 
 #include "usb_descriptors.h"
 
+#include "pico/unique_id.h"
 #include "tusb.h"
 
 /* A combination of interfaces must have a unique product id, since PC will save device driver after the first plug.
@@ -135,7 +136,7 @@ char const* string_desc_arr[] = {
     (const char[]){0x09, 0x04},  // 0: is supported language is English (0x0409)
     "IBM",                       // 1: Manufacturer
     "Model F (PC/AT) Keyboard",  // 2: Product
-    "030323",                    // 3: Serials, should use chip ID
+    "",                          // 3: Serials, should use chip ID
 };
 
 static uint16_t _desc_str[32];
@@ -146,6 +147,14 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
   (void)langid;
 
   uint8_t chr_count;
+
+  // Ensure we set the USB device serial number to the Pico's unique ID
+  // This is read from the FLASH Chip, and is unique to each one.
+  // The RP2040 itself does not have a unique ID.
+  // https://cec-code-lab.aps.edu/robotics/resources/pico-c-api/group__pico__unique__id.html
+  char pico_unique_id[32];
+  pico_get_unique_board_id_string(pico_unique_id, sizeof(pico_unique_id));
+  string_desc_arr[3] = pico_unique_id;
 
   if (index == 0) {
     memcpy(&_desc_str[1], string_desc_arr[0], 2);
