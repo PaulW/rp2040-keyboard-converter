@@ -18,8 +18,9 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "hid_keycodes.h"
-#include "keymaps.h"
+#include "keymap.h"
+
+#include "../../hid_keycodes.h"
 #include "pico/stdlib.h"
 
 // clang-format off
@@ -46,7 +47,7 @@ const uint8_t __not_in_flash("keymap_map") keymap_map[][KEYMAP_ROWS][KEYMAP_COLS
      * MacOS maps keys oddly, GRAVE and NUBS are swapped over when coupled with British-PC Layout.
      * Likewise, NUHS and BSLS appear to match. TODO: Have these as a config option to swap.
      */
-    F1,    F2,        GRAVE, 1,     2,     3,     4,     5,     6,     7,     8,     9,     0,     MINS,  EQL,   NUHS,  BSPC,      ESC,   NLCK,  SLCK,  SYSREQ, \
+    F1,    F2,        GRAVE, 1,     2,     3,     4,     5,     6,     7,     8,     9,     0,     MINS,  EQL,   NUHS,  BSPC,      ESC,   NLCK,  SLCK,  PAUS, \
     F3,    F4,        TAB,          Q,     W,     E,     R,     T,     Y,     U,     I,     O,     P,     LBRC,  RBRC,  NO,        P7,    P8,    P9,    PAST, \
     F5,    F6,        LCTL,         A,     S,     D,     F,     G,     H,     J,     K,     L,     SCLN,  QUOT,  NO,    ENT,       P4,    P5,    P6,    PMNS, \
     F7,    F8,        LSFT,  NO,    Z,     X,     C,     V,     B,     N,     M,     COMM,  DOT,   SLSH,  NO,           RSFT,      P1,    P2,    P3,    PPLS, \
@@ -55,7 +56,7 @@ const uint8_t __not_in_flash("keymap_map") keymap_map[][KEYMAP_ROWS][KEYMAP_COLS
   KEYMAP_5170( \
     /* Numlock Off (MacOS Compatibility Layer) */
     TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS, \
-    TRNS,  TRNS,      TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      HOME,  UP,    PGUP,  TRNS, \
+    TRNS,  TRNS,      TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      HOME,  UP,    PGUP,  PSCR, \
     TRNS,  TRNS,      TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      LEFT,  NO,    RIGHT, TRNS, \
     TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,      END,   DOWN,  PGDN,  TRNS, \
     TRNS,  TRNS,      TRNS,         TRNS,                              TRNS,                              TRNS,         TRNS,      TRNS,  INS,   DEL,   TRNS  \
@@ -67,11 +68,10 @@ const uint8_t __not_in_flash("keymap_actions") keymap_actions[][KEYMAP_ROWS][KEY
   KEYMAP_5170( \
     /* Function Key Pressed */
     F9,    F10,       NUBS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS, \
-    F11,   F12,       TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      NFLP,  NFLP,  NFLP,  PSCR, \
+    F11,   F12,       TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      NFLP,  NFLP,  NFLP,  NFLP, \
     VOLD,  VOLU,      TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      NFLP,  TRNS,  NFLP,  TRNS, \
     BRTD,  BRTI,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,      NFLP,  NFLP,  NFLP,  TRNS, \
-    TRNS,  TRNS,      TRNS,         TRNS,                              TRNS,                              TRNS,         TRNS,      TRNS,  NFLP,  NFLP,  TRNS \
+    TRNS,  TRNS,      TRNS,         TRNS,                              TRNS,                              TRNS,         APP,       TRNS,  NFLP,  NFLP,  TRNS \
   ),
 };
-
 // clang-format on

@@ -494,8 +494,9 @@ enum internal_special_keycodes {
     (key == KC_P8    ? KC_UP : \
     (key == KC_P9    ? KC_PGUP : \
     (key == KC_PDOT  ? KC_DEL : \
-    (key == KC_END   ? KC_P1 : \
+    (key == KC_PAST  ? KC_PSCR : \
     (key == KC_INS   ? KC_P0 : \
+    (key == KC_END   ? KC_P1 : \
     (key == KC_DOWN  ? KC_P2 : \
     (key == KC_PGDN  ? KC_P3 : \
     (key == KC_LEFT  ? KC_P4 : \
@@ -504,7 +505,8 @@ enum internal_special_keycodes {
     (key == KC_HOME  ? KC_P7 : \
     (key == KC_UP    ? KC_P8 : \
     (key == KC_PGUP  ? KC_P9 : \
-    (key == KC_DEL   ? KC_PDOT : 0))))))))))))))))))))))
+    (key == KC_DEL   ? KC_PDOT : \
+    (key == KC_PSCR  ? KC_PAST : 0))))))))))))))))))))))))
 
 
 #define MACRO_KEY_CODE(key) \

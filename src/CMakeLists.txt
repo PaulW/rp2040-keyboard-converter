@@ -19,7 +19,7 @@
 # Default Build Options
 # These set default options for when we build/compile so to avoide having to modify source files directly.
 
-set(KEYBOARD_LAYOUT "6450225") # Defines the Keyboard Layout which we will be using (see keymaps folder for options)
+set(KEYBOARD_LAYOUT "modelf/6450225") # Defines the Keyboard Layout which we will be using (see keymaps folder for options)
 
 # End of Default Build Options
 
