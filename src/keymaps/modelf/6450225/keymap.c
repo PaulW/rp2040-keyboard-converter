@@ -42,8 +42,13 @@
 
 /* Define Keyboard Layers */
 const uint8_t __not_in_flash("keymap_map") keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
+  /* We define 2 initial maps for the Base layer, these in turn define layers 0 and 1.
+   * Layer 0 is the default base layer with all associated mappings.  This also encompasses the NumLock On state.
+   * Layer 1 is the NumLock Off state, and only changes the state of keys assicated with this state.  Exisiting keys
+   * are not remapped, and are instead left as TRNS.
+   */
   KEYMAP_5170( \
-    /* Base Layer (NumLock On)
+    /* Base Layer 0 (+NumLock On)
      * MacOS maps keys oddly, GRAVE and NUBS are swapped over when coupled with British-PC Layout.
      * Likewise, NUHS and BSLS appear to match. TODO: Have these as a config option to swap.
      */
@@ -54,9 +59,11 @@ const uint8_t __not_in_flash("keymap_map") keymap_map[][KEYMAP_ROWS][KEYMAP_COLS
     FN,    LGUI,      LALT,         NO,                                SPC,                               NO,           CAPS,      NO,    P0,    PDOT,  NO    \
   ),
   KEYMAP_5170( \
-    /* Numlock Off (MacOS Compatibility Layer) */
+    /* Base Layer 1 (+Numlock Off)
+     * Any keys which state does not change are mapped to TRNS, which in turn causes Layer 0 to be referenced for that specific key value.
+     */
     TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS, \
-    TRNS,  TRNS,      TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      HOME,  UP,    PGUP,  PSCR, \
+    TRNS,  TRNS,      TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      HOME,  UP,    PGUP,  TRNS, \
     TRNS,  TRNS,      TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      LEFT,  NO,    RIGHT, TRNS, \
     TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,      END,   DOWN,  PGDN,  TRNS, \
     TRNS,  TRNS,      TRNS,         TRNS,                              TRNS,                              TRNS,         TRNS,      TRNS,  INS,   DEL,   TRNS  \
