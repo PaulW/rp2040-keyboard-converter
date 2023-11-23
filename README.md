@@ -56,6 +56,7 @@ Please note, that some keys require the use of the Fn Modifier Key to be pressed
 | F6 | Vol Up |
 | F7 | Brightness Down |
 | F8 | Brightness Up |
+| CapsLock | Menu |
 
 _* Mapping may differ on Windows PC, I've not tested this_
 
