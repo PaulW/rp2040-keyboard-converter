@@ -65,7 +65,7 @@ static enum {
 // Command Handler function to issue commands to the attached IBM PC/AT Keyboard.
 static void __time_critical_func(pcat_command_handler)(uint8_t data_byte) {
   uint16_t data_with_parity = (uint16_t)(data_byte + (pcat_parity_table[data_byte] << 8));
-  pio_sm_put_blocking(pio1, pcat_sm, data_with_parity);
+  pio_sm_put(pio1, pcat_sm, data_with_parity);
 }
 
 static void __time_critical_func(pcat_event_processor)(uint8_t data_byte) {
@@ -104,13 +104,10 @@ static void __time_critical_func(pcat_event_processor)(uint8_t data_byte) {
       // We likely need to check for a F0 event (key-up) but I think we should be OK?
       switch (data_byte) {
         case 0xFA:
-          printf("[DBG] SET_LOCK_LED ACK\n");
           if (ps2_lock_values != pcat_lock_leds) {
-            printf("[DBG] Toggle LED State (From %i to %i)\n", pcat_lock_leds, ps2_lock_values);
             pcat_lock_leds = ps2_lock_values;
             pcat_command_handler(ps2_lock_values);
           } else {
-            printf("[DBG] LED Val Toggled\n");
             buzzer_play_sound_sequence_non_blocking(LOCK_LED);
             pcat_state = INITIALISED;
           }
