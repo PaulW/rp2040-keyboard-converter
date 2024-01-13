@@ -20,9 +20,12 @@
 
 #include "pcat_interface.h"
 
+#include <hardware/gpio.h>
 #include <stdio.h>
 
+#include "bsp/board.h"
 #include "buzzer.h"
+#include "config.h"
 #include "hardware/clocks.h"
 #include "hardware/pio.h"
 #include "lock_leds.h"
@@ -71,9 +74,20 @@ static void __time_critical_func(pcat_command_handler)(uint8_t data_byte) {
 static void __time_critical_func(pcat_event_processor)(uint8_t data_byte) {
   switch (pcat_state) {
     case UNINITIALISED:
-      printf("[DBG] Asking Keyboard to Reset\n");
-      pcat_state = INIT_AWAIT_ACK;
-      pcat_command_handler(0xFF);
+      switch (data_byte) {
+        case 0xAA:
+          // Likely we are powering on for the first time and initialising. Keyboard sends 0xAA on power on following successful BAT
+          printf("[DBG] Keyboard Initialised!\n");
+          buzzer_play_sound_sequence_non_blocking(READY_SEQUENCE);
+          pcat_lock_leds = 0;
+          pcat_state = INITIALISED;
+          break;
+        default:
+          // This event is reached if we receieve any other event before intiiialisation.  This may be an unsuccesful BAT or just weird power-on state.
+          printf("[DBG] Asking Keyboard to Reset\n");
+          pcat_state = INIT_AWAIT_ACK;
+          pcat_command_handler(0xFF);
+      }
       break;
     case INIT_AWAIT_ACK:
       switch (data_byte) {
@@ -147,6 +161,7 @@ static void __isr __time_critical_func(pcat_input_event_handler)() {
         // Likely we are powering on, or initialising. Keyboard sends 0xAA on power on following successful BAT
         // however, it also drops clock & data low briefly during initial power on, and as such, causes an extra
         // bit to be read so shifts data in fifo to change from 0xAA to 0x54 with invalid parity.
+        // This has been fixed, but left here for reference (or if it breaks again!)
         printf("[DBG] Likely Keyboard Connect Event detected.\n");
         pcat_state = INIT_AWAIT_SELFTEST;
       }
@@ -158,8 +173,34 @@ static void __isr __time_critical_func(pcat_input_event_handler)() {
   pcat_event_processor(data_byte);
 }
 
-void pcat_lock_leds_handler() {
-  if (pcat_state == INITIALISED) {
+void pcat_task() {
+  // This function helps with Keyboard Initialisation, as well as handling Lock LED changes.
+
+  static uint32_t detect_ms = 0;
+  static uint8_t detect_init_count = 0;
+
+  if (pcat_state < SET_LOCK_LEDS) {
+    // This portion helps with initialisation of the keyboard.
+    if (board_millis() - detect_ms > 1000) {
+      detect_ms = board_millis();
+      // int pin_state = gpio_get(DATA_PIN + 1);
+      if (gpio_get(DATA_PIN + 1) == 1) {
+        if (detect_init_count < 3) {
+          detect_init_count++;
+          printf("[DBG] Keyboard Detected, waiting for ACK (%i/3)\n", detect_init_count);
+        } else {
+          printf("[DBG] Keyboard Detected but we had no ACK!\n");
+          printf("[DBG] Asking Keyboard to Reset\n");
+          pcat_state = INIT_AWAIT_ACK;
+          detect_init_count = 0;
+          pcat_command_handler(0xFF);
+        }
+      } else {
+        printf("[DBG] Waiting for Keyboard Clock HIGH\n");
+      }
+    }
+  } else if (pcat_state == INITIALISED) {
+    // This portion helps with Lock LED changes.  We only get here once the keyboard has initialised.
     if (ps2_lock_values != pcat_lock_leds) {
       pcat_state = SET_LOCK_LEDS;
       pcat_command_handler(0xED);
@@ -180,8 +221,4 @@ void pcat_device_setup(uint data_pin) {
 
   irq_set_exclusive_handler(pio_irq, &pcat_input_event_handler);
   irq_set_enabled(pio_irq, true);
-
-  // Sleep and then call pcat_event_processor(0x00) to start initialisation loop.
-  sleep_ms(100);
-  pcat_event_processor(0x00);
 }

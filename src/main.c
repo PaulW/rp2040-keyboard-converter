@@ -59,15 +59,15 @@ void keyboard_process_buffer(void) {
 }
 
 int main(void) {
-  ringbuf_reset(&rbuf);
   hid_device_setup();
+  ringbuf_reset(&rbuf);
   pcat_device_setup(DATA_PIN);
   buzzer_init(PIEZO_PIN);
 
   while (1) {
     keyboard_process_buffer();
     tud_task();
-    pcat_lock_leds_handler();
+    pcat_task();
   }
 
   return 0;

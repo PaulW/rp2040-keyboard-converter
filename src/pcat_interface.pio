@@ -2,7 +2,11 @@
 .wrap_target
 
 ; Pins: 0 = data, 1 = clock
- 
+
+init:
+    ; Wait until CLK goes high before we continue.  As the Keyboard initialises, this is pulled LOW.
+    wait 1 pin 1
+
 check:
     ; Wait for incoming data, but jump to bitLoopOut if the Output Shift Register isn't empty
     jmp !OSRE, bitLoopOut
@@ -82,8 +86,9 @@ static inline void pcat_interface_program_init(PIO pio, uint sm, uint offset, ui
   pio_gpio_init(pio, pin);
   pio_gpio_init(pio, pin + 1);
 
+  // Initialise pins in expected state for power up (CLK LOW, DATA HIGH)
   gpio_pull_up(pin);
-  gpio_pull_up(pin + 1);
+  gpio_pull_down(pin + 1);
 
   pio_sm_config c = pcat_interface_program_get_default_config(offset);
 

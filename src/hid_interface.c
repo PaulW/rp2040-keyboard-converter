@@ -161,7 +161,7 @@ int8_t keyboard_process_key(uint8_t code) {
           break;
         case 0xAA:  // Self-test passed
         default:    // unknown codes
-          printf("!WAITING_FOR_INPUT!\n");
+          printf("[DBG] !WAITING_FOR_INPUT!\n");
           return -1;
       }
       break;
@@ -175,7 +175,7 @@ int8_t keyboard_process_key(uint8_t code) {
           break;
         default:
           state = WAITING_FOR_INPUT;
-          printf("!RECEIVED_F0! %02X\n", code);
+          printf("[DBG] !RECEIVED_F0! %02X\n", code);
           return -1;
       }
       break;

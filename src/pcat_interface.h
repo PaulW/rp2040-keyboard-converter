@@ -24,7 +24,7 @@
 #include "pico/stdlib.h"
 
 void pcat_device_setup(uint data_pin);
-void pcat_lock_leds_handler();
+void pcat_task();
 void __attribute__((weak)) pcat_input_event_processor(unsigned char data_byte);
 
 #endif /* PCAT_INTERFACE_H */
