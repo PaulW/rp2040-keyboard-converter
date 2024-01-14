@@ -1,15 +1,15 @@
 # Model-F 5170 Converter for Raspberry Pi PICO RP2040
 
 - [Custom Hardware Design](#custom-hardware-design)
-  - [PCB Trace Design (Top)](#pcb-trace-design-top)
-  - [PCB Trace Design (Bottom)](#pcb-trace-design-bottom)
-  - [2D PCB Render (Top)](#2d-pcb-render-top)
-  - [2D PCB Render (Bottom)](#2d-pcb-render-bottom)
-  - [3D PCB Render (Top)](#3d-pcb-render-top)
-  - [3D PCB Render (Bottom)](#3d-pcb-render-bottom)
-  - [Manufacturerd PCBs](#manufacturerd-pcbs)
-  - [Installed Converter](#installed-converter)
-  - [Fully Assembled](#fully-assembled)
+    - [PCB Trace Design (Top)](#pcb-trace-design-top)
+    - [PCB Trace Design (Bottom)](#pcb-trace-design-bottom)
+    - [2D PCB Render (Top)](#2d-pcb-render-top)
+    - [2D PCB Render (Bottom)](#2d-pcb-render-bottom)
+    - [3D PCB Render (Top)](#3d-pcb-render-top)
+    - [3D PCB Render (Bottom)](#3d-pcb-render-bottom)
+    - [Manufacturerd PCBs](#manufacturerd-pcbs)
+    - [Installed Converter](#installed-converter)
+    - [Fully Assembled](#fully-assembled)
 - [QMK Compatibility (Experimental)](#qmk-compatibility-experimental)
 
 
@@ -22,6 +22,8 @@ There have so far been 2 revisions of the design, Rev 1 was more of a test-fit P
 This was designed entirely in EasyEDA (Standard Edition) and manufacturerd by JLCPCB using their SMT Assembly support.
 
 Here you can find the [PCB Schematic](Schematic.pdf) for which the PCB Design is based off.
+
+All Fabrication files (BOM, PickAndPlace and Gerber files) can be found [Here](fabrication).
 
 #### PCB Trace Design (Top)
 ![PCB-Diag-Top](PCB-Diag-Top.png)
