@@ -111,11 +111,11 @@ uint8_t const desc_configuration[] = {
     // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
     TUD_HID_DESCRIPTOR(ITF_NUM_KEYBOARD, 0, HID_ITF_PROTOCOL_KEYBOARD,
                        sizeof(desc_hid_report_keyboard), EPNUM_KEYBOARD,
-                       KEYBOARD_EP_BUFSIZE, 10),
+                       KEYBOARD_EP_BUFSIZE, 8),
 
     TUD_HID_DESCRIPTOR(ITF_NUM_CONSUMER_CONTROL, 0, HID_ITF_PROTOCOL_NONE,
                        sizeof(desc_hid_report_consumer), EPNUM_CONSUMER_CONTROL,
-                       CONSUMER_EP_BUFSIZE, 10)};
+                       CONSUMER_EP_BUFSIZE, 8)};
 
 // Invoked when received GET CONFIGURATION DESCRIPTOR
 // Application return pointer to descriptor
