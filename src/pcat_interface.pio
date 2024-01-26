@@ -55,7 +55,7 @@ bitLoopOut:
     set pins, 0
     set pindirs 2 [14]   ; Set data pin to output mode
     set pindirs 1  [1]   ; Set clock pin to input mode
-    ; Set x to 8 (to write out 9 bits)
+    ; Set x to 8 (to write out 8 Data Bits and 1 Parity Bit)
     set x, 8
 
 bitLoopOutLoop:
@@ -72,12 +72,11 @@ bitLoopOutLoop:
     set pins, 1
     wait 1 pin 1
 
-    ; Wait for device to respond with ACK.
-    wait 0 pin 0   ; Wait for Data to go Low
-    wait 0 pin 1   ; Wait for Clock to go Low
-    wait 1 pin 1   ; Wait for Clock to go High
-    wait 1 pin 0   ; Wait for Data to go High
-    set pindirs, 0 ; Set data pin to input mode
+    ; Wait for ACK to acknowledge
+    set pindirs, 0  ; Set data pin to input mode so we can read ACK
+
+    wait 0 pin 0 [1]
+    wait 1 pin 0 [5]
 
 % c-sdk {
 static inline void pcat_interface_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {
@@ -86,7 +85,10 @@ static inline void pcat_interface_program_init(PIO pio, uint sm, uint offset, ui
   pio_gpio_init(pio, pin);
   pio_gpio_init(pio, pin + 1);
 
-  // Initialise pins in expected state for power up (CLK LOW, DATA HIGH)
+  // Initialise pins in expected state for power up (CLK HIGH, DATA HIGH)
+  // As part of initialisation on newer PS2 keyboards which support PS2>USB Dongles,
+  // as-per USB spec, both DATA and CLK are low and await device to bring high.
+  // AT/PS2 Specification will keep both floating HIGH when power on/connected.
   gpio_pull_up(pin);
   gpio_pull_down(pin + 1);
 

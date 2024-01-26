@@ -19,7 +19,9 @@
 # Default Build Options
 # These set default options for when we build/compile so to avoide having to modify source files directly.
 
-set(KEYBOARD_LAYOUT "modelf/6450225") # Defines the Keyboard Layout which we will be using (see keymaps folder for options)
+# Define which Keyboard Layout we intend to use.  So far we have 2 layouts we can use.
+# set(KEYBOARD_LAYOUT "modelf/6450225") # Defines the Keyboard Layout which we will be using (see keymaps folder for options)
+set(KEYBOARD_LAYOUT "modelm_101key/1390131") # Defines the Keyboard Layout which we will be using (see keymaps folder for options)
 
 # End of Default Build Options
 
@@ -56,7 +58,7 @@ target_sources(${PROJECT_NAME} PUBLIC
 ${CMAKE_CURRENT_LIST_DIR}/lock_leds.c
 ${CMAKE_CURRENT_LIST_DIR}/pcat_interface.c
 ${CMAKE_CURRENT_LIST_DIR}/pcat_interface.pio
-${CMAKE_CURRENT_LIST_DIR}/keymaps.c
+${CMAKE_CURRENT_LIST_DIR}/keymaps/keymaps.c
 ${CMAKE_CURRENT_LIST_DIR}/usb_descriptors.c
 ${CMAKE_CURRENT_LIST_DIR}/hid_interface.c
 ${CMAKE_CURRENT_LIST_DIR}/keymaps/${KEYBOARD_LAYOUT}/keymap.c

@@ -32,6 +32,7 @@
 #include "pcat_interface.pio.h"
 
 uint pcat_sm = 0;
+uint offset = 0;
 PIO pcat_pio = pio1;
 
 static const uint8_t __not_in_flash("pcat_parity_table") pcat_parity_table[256] = {
@@ -137,6 +138,16 @@ static void __time_critical_func(pcat_event_processor)(uint8_t data_byte) {
   }
 }
 
+void pcat_pio_restart() {
+  // Restart the PC/AT PIO State Machine
+  printf("[DBG] Resetting State Machine and Keyboard (Offset: 0x%02X)\n", offset);
+  pio_sm_drain_tx_fifo(pcat_pio, pcat_sm);
+  pio_sm_clear_fifos(pcat_pio, pcat_sm);
+  pio_sm_restart(pcat_pio, pcat_sm);
+  // pio_sm_clkdiv_restart(pcat_pio, pcat_sm);
+  pio_sm_exec(pcat_pio, pcat_sm, pio_encode_jmp(offset));
+}
+
 // IRQ Event Handler used to read keycode data from the IBM PC/AT Keyboard
 // and ensure relevant code is valid when checking against relevant check bits.
 static void __isr __time_critical_func(pcat_input_event_handler)() {
@@ -155,6 +166,7 @@ static void __isr __time_critical_func(pcat_input_event_handler)() {
 
   if (start_bit != 0 || parity_bit != parity_bit_check || stop_bit != 1) {
     if (start_bit != 0) printf("[ERR] Start Bit Validation Failed: start_bit=%i\n", start_bit);
+    if (stop_bit != 1) printf("[ERR] Stop Bit Validation Failed: stop_bit=%i\n", stop_bit);
     if (parity_bit != parity_bit_check) {
       printf("[ERR] Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check, parity_bit);
       if (data_byte == 0x54 && parity_bit == 1) {
@@ -163,12 +175,15 @@ static void __isr __time_critical_func(pcat_input_event_handler)() {
         // bit to be read so shifts data in fifo to change from 0xAA to 0x54 with invalid parity.
         // This has been fixed, but left here for reference (or if it breaks again!)
         printf("[DBG] Likely Keyboard Connect Event detected.\n");
-        pcat_state = INIT_AWAIT_SELFTEST;
+        pcat_pio_restart();
+        pcat_state = UNINITIALISED;
       }
       pcat_command_handler(0xFE);
+      return;  // We don't want to process this event any further.
     }
-    if (stop_bit != 1) printf("[ERR] Stop Bit Validation Failed: stop_bit=%i\n", stop_bit);
-    return;
+    // We should reset/restart the State Machine
+    pcat_pio_restart();
+    pcat_state = UNINITIALISED;
   }
   pcat_event_processor(data_byte);
 }
@@ -211,11 +226,18 @@ void pcat_task() {
 // Public function to initialise the PC/AT PIO interface.
 void pcat_device_setup(uint data_pin) {
   pcat_sm = (uint)pio_claim_unused_sm(pcat_pio, true);
-  uint offset = pio_add_program(pcat_pio, &pcat_interface_program);
+  offset = pio_add_program(pcat_pio, &pcat_interface_program);
   uint pio_irq = PIO1_IRQ_0;
 
-  float div = (float)clock_get_hz(clk_sys) / (8 * 16000);
-  printf("[INFO] pcat_interface program loaded at %d with clock divider of %f\n", offset, div);
+  uint desired_clock_khz = 16;
+  float rp_clock_hz = (float)clock_get_hz(clk_sys);
+  float div = rp_clock_hz / ((2 * desired_clock_khz) * 10000);
+  printf("[INFO] RP2040 Clock Speed: %.0fHz\n", rp_clock_hz);
+  printf("[INFO] RP2040 Clock Speed: %.2fMHz\n", rp_clock_hz / 1000000);
+  printf("[INFO] Target Interface Clock Speed: %dKHz\n", desired_clock_khz);
+  printf("[INFO] Clock Divider: %.2f\n", div);
+  printf("[INFO] Expected Clock Speed: %.2fkHz\n", (float)(rp_clock_hz / 10000) / div / 2);
+  printf("[INFO] pcxt_interface program loaded at %d with clock divider of %.2f\n", offset, div);
 
   pcat_interface_program_init(pcat_pio, pcat_sm, offset, data_pin, div);
 

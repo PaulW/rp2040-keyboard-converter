@@ -24,7 +24,9 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define DATA_PIN 16   // We assume that DATA and CLOCK are positioned next to each other, as such Clock will be DATA_PIN + 1
+// Ensure you specify the correct DATA Pin for the connector.  Also, ensure CLK is connected to DATA+1
+// #define DATA_PIN 16   // We assume that DATA and CLOCK are positioned next to each other, as such Clock will be DATA_PIN + 1
+#define DATA_PIN 6    // We assume that DATA and CLOCK are positioned next to each other, as such Clock will be DATA_PIN + 1
 #define PIEZO_PIN 11  // Piezo Buzzer GPIO Pin
 #define BUF_SIZE 16   // Define size for Ring Buffer
 

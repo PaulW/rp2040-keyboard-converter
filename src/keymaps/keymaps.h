@@ -24,7 +24,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define KEYMAP_ROWS 9
+#define KEYMAP_ROWS 16
 #define KEYMAP_COLS 16
 
 uint8_t keymap_get_key_val(uint8_t pos, bool make);

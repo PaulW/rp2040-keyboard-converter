@@ -36,12 +36,12 @@ static ringbuf_t __not_in_flash("rbuf") rbuf = {
     .tail = 0,
     .size_mask = BUF_SIZE - 1};
 
-void pcat_input_event_processor(unsigned char data_byte) {
+void __time_critical_func(pcat_input_event_processor)(unsigned char data_byte) {
   if (!ringbuf_is_full(&rbuf)) ringbuf_put(&rbuf, data_byte);
 }
 
 // Check and process any characters which may exist in the ringbuffer.
-void keyboard_process_buffer(void) {
+void __time_critical_func(keyboard_process_buffer)(void) {
   if (!ringbuf_is_empty(&rbuf)) {
     if (tud_suspended()) {
       // Wake up host if we are in suspend mode
