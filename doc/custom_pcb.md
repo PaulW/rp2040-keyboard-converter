@@ -1,4 +1,4 @@
-# Model-F 5170 Converter for Raspberry Pi PICO RP2040
+# RP2040 Keyboard Converter for Raspberry Pi PICO RP2040
 
 - [Custom Hardware Design](#custom-hardware-design)
     - [PCB Trace Design (Top)](#pcb-trace-design-top)

@@ -2,12 +2,14 @@ version: '3.4'
 
 services:
   builder:
-    image: tardis-io/ibm-5170-pcat
+    image: tardis-io/rp2040-kbd-converter
     build:
       context: .
       dockerfile: Dockerfile
     user: "1000:1000"
     restart: never
+    environment:
+      - KEYBOARD
     volumes:
       - ./src:/usr/local/builder/src
       - ./build:/usr/local/builder/build

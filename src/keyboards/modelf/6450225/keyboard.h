@@ -1,27 +1,27 @@
 /*
- * This file is part of Model-F 5170 Converter.
+ * This file is part of RP2040 Keyboard Converter.
  *
  * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
  *
- * Model-F 5170 Converter is free software: you can redistribute it
+ * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
  * the License, or (at your option) any later version.
  *
- * Model-F 5170 Converter is distributed in the hope that it will be
+ * RP2040 Keyboard Converter is distributed in the hope that it will be
  * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
  * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with Model-F 5170 Converter.
+ * along with RP2040 Keyboard Converter.
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KEYMAP_H
 #define KEYMAP_H
 
-#include "../../keymaps.h"
+#include "keymaps.h"
 
 /* IBM 5170 (Model F-AT)
  * Keyboard uses a subset of Scancode Set 3 from the F122, but is not contiguous as is missing
@@ -55,7 +55,7 @@
       KC_NO,    KC_NO,    KC_##K1A, KC_##K1B, KC_##K1C, KC_##K1D, KC_##K1E, KC_NO },  /* 18-1F */ \
     { KC_NO,    KC_##K21, KC_##K22, KC_##K23, KC_##K24, KC_##K25, KC_##K26, KC_NO,    /* 20-27 */ \
       KC_NO,    KC_##K29, KC_##K2A, KC_##K2B, KC_##K2C, KC_##K2D, KC_##K2E, KC_NO },  /* 28-2F */ \
-    { KC_NO,    KC_##K31, KC_##K32, KC_##K33, KC_##K34, KC_NO,    KC_##K36, KC_NO,    /* 30-37 */ \
+    { KC_NO,    KC_##K31, KC_##K32, KC_##K33, KC_##K34, KC_##K35, KC_##K36, KC_NO,    /* 30-37 */ \
       KC_NO,    KC_NO,    KC_##K3A, KC_##K3B, KC_##K3C, KC_##K3D, KC_##K3E, KC_NO },  /* 38-3F */ \
     { KC_NO,    KC_##K41, KC_##K42, KC_##K43, KC_##K44, KC_##K45, KC_##K46, KC_NO,    /* 40-47 */ \
       KC_NO,    KC_##K49, KC_##K4A, KC_##K4B, KC_##K4C, KC_##K4D, KC_##K4E, KC_NO },  /* 48-4F */ \

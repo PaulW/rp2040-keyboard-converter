@@ -9,3 +9,4 @@ src/generated/
 src/pcat_interface.pio.h
 src/pico-sdk/
 src/pioasm/
+src/protocols/*/*.pio.h

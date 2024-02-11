@@ -1,38 +1,118 @@
-# This file is part of Model-F 5170 Converter.
+# This file is part of RP2040 Keyboard Converter.
 #
 # Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
 #
-# Model-F 5170 Converter is free software: you can redistribute it
+# RP2040 Keyboard Converter is free software: you can redistribute it
 # and/or modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation, either version 3 of
 # the License, or (at your option) any later version.
 #
-# Model-F 5170 Converter is distributed in the hope that it will be
+# RP2040 Keyboard Converter is distributed in the hope that it will be
 # useful, but WITHOUT ANY WARRANTY; without even the implied warranty
 # of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Model-F 5170 Converter.
+# along with RP2040 Keyboard Converter.
 # If not, see <https://www.gnu.org/licenses/>.
-
-# Default Build Options
-# These set default options for when we build/compile so to avoide having to modify source files directly.
-
-# Define which Keyboard Layout we intend to use.  So far we have 2 layouts we can use.
-# set(KEYBOARD_LAYOUT "modelf/6450225") # Defines the Keyboard Layout which we will be using (see keymaps folder for options)
-set(KEYBOARD_LAYOUT "modelm_101key/1390131") # Defines the Keyboard Layout which we will be using (see keymaps folder for options)
-
-# End of Default Build Options
 
 # Do not modify below this line unless you know what you are doing.
 cmake_minimum_required(VERSION 3.18)
+
+# Set the build time as a string so we can use it in the code
+string(TIMESTAMP BUILD_TIME "%Y-%m-%d %H:%M")
+add_definitions(-D_BUILD_TIME="${BUILD_TIME}")
+message("Build Time: ${BUILD_TIME}")
+
+# Ensure we set the required Keyboard which we want to build with
+# Access the environment variable and ensure it's valid
+if (DEFINED ENV{KEYBOARD})
+  set(KEYBOARD $ENV{KEYBOARD})
+endif()
+
+if(NOT KEYBOARD)
+  message(FATAL_ERROR
+  "When building, you need to ensure you set the required Keyboard that will\n"
+  "be used for the build.  You do this by passing the required Keyboard to\n"
+  "the build command in docker-compose, for example:\n"
+  "  docker-compose run -e KEYBOARD=\"modelf/6450225\" builder")
+endif()
+
+set(REQUIRED_KEYBOARD_FILES
+  "${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/keyboard.h"
+  "${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/keyboard.c"
+  "${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/keyboard.config"
+)
+
+foreach(file IN LISTS REQUIRED_KEYBOARD_FILES)
+  if(NOT EXISTS "${file}")
+    message(FATAL_ERROR "File '${file}' does not exist!")
+  endif()
+endforeach()
+
+# Read in Keyboard Config to ensure we include the correct build-time files
+file(READ "${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/keyboard.config" KEYBOARD_CONFIG)
+
+if(NOT KEYBOARD_CONFIG)
+  message(WARNING "WARNING: Keyboard config file '${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/keyboard.config' is empty or doesn't exist.")
+endif()
+
+# Now parse KEYBOARD_CONFIG into a list of key/val pairs and set them.
+# We only want to MATCHALL against actual key/val pairs, not comments or empty lines.
+string(REGEX MATCHALL "[^\n\r][A-Z]+=[a-zA-Z0-9_/()-. ]+" KEYBOARD_CONFIG "${KEYBOARD_CONFIG}")
+
+foreach(line ${KEYBOARD_CONFIG})
+  # Find the index of the '=' character in the line
+  string(FIND "${line}" "=" EQL_IDX)
+
+  # Extract the part before '=' (left side of the equation) as the key name
+  string(SUBSTRING "${line}" 0 ${EQL_IDX} KEY_NAME)
+
+  # Calculate the index of the character after '='
+  math(EXPR VAL_IDX "${EQL_IDX} + 1")
+
+  # Extract the part after '=' as the key value
+  string(SUBSTRING "${line}" ${VAL_IDX} -1 KEY_VAL)
+
+  # Set the variable with the extracted key name to the extracted key value
+  set(${KEY_NAME} "${KEY_VAL}")
+endforeach()
+
+set(REQUIRED_VARIABLES MAKE DESCRIPTION MODEL PROTOCOL)
+
+set(MISSING_CONFIG_OPTIONS "")
+foreach(variable ${REQUIRED_VARIABLES})
+  if (NOT DEFINED ${variable})
+    list(APPEND MISSING_CONFIG_OPTIONS "'${variable}'")
+  endif()
+endforeach()
+
+if (MISSING_CONFIG_OPTIONS)
+  message(FATAL_ERROR "Keyboard config file '${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/keyboard.config' is missing the following key(s): ${MISSING_CONFIG_OPTIONS}")
+endif()
+
+# Pass the required variables to the compiler
+add_definitions(-D_KEYBOARD_MAKE="${MAKE}")
+add_definitions(-D_KEYBOARD_DESCRIPTION="${DESCRIPTION}")
+add_definitions(-D_KEYBOARD_MODEL="${MODEL}")
+add_definitions(-D_KEYBOARD_PROTOCOL="${PROTOCOL}")
+
+set(REQUIRED_PROTOCOL_FILES
+  "${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/interface.h"
+  "${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/interface.c"
+)
+
+foreach(file IN LISTS REQUIRED_PROTOCOL_FILES)
+  if(NOT EXISTS "${file}")
+    message(FATAL_ERROR "File '${file}' does not exist!")
+  endif()
+endforeach()
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 # Set the project name
-project(ibm-5170-pcat C CXX ASM)
+project(rp2040-kbd-converter C CXX ASM)
 
 # Initialize the Raspberry Pi Pico SDK
 pico_sdk_init()
@@ -51,23 +131,57 @@ set_target_properties(${PROJECT_NAME}
 pico_add_uf2_output(${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME} PUBLIC
-  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/
+  ${CMAKE_SOURCE_DIR}/common/lib/
+  ${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/
+  ${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/
 )
 
+# Define list of common source files within project root
+file(GLOB SRC_ROOT CMAKE_CONFIGURE_DEPENDS
+  ${CMAKE_SOURCE_DIR}/*.c
+)
+
+# Define list of source files for common libraries
+file(GLOB_RECURSE SRC_COMMON CONFIGURE_DEPENDS
+  ${CMAKE_SOURCE_DIR}/common/*.c
+)
+
+file(GLOB SRC_KEYBOARD CONFIGURE_DEPENDS
+  ${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/*.c
+)
+
+file(GLOB SRC_PROTOCOL CMAKE_CONFIGURE_DEPENDS
+  ${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/*.c
+)
+
+# Define list of State Machine PIO files for compilation
+file(GLOB PROTOCOL_PIO_FILES CONFIGURE_DEPENDS
+  ${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/*.pio
+)
+
+# Loop through each PIO file and generate header.
+foreach(PIO_FILE IN LISTS PROTOCOL_PIO_FILES)
+  # Extract directory and filename without extension
+  get_filename_component(PIO_DIR ${PIO_FILE} DIRECTORY)
+  get_filename_component(PIO_NAME ${PIO_FILE} NAME_WE)
+
+  # Generate header filename and path
+  set(PIO_HEADER ${PIO_DIR}/${PIO_NAME}.h)
+
+  # Call pico_generate_pio_header with individual file and output path
+  pico_generate_pio_header(${PROJECT_NAME}
+    ${PIO_FILE}
+    OUTPUT_DIR ${PIO_DIR}
+  )
+endforeach()
+
+# Build all globs
 target_sources(${PROJECT_NAME} PUBLIC
-${CMAKE_CURRENT_LIST_DIR}/lock_leds.c
-${CMAKE_CURRENT_LIST_DIR}/pcat_interface.c
-${CMAKE_CURRENT_LIST_DIR}/pcat_interface.pio
-${CMAKE_CURRENT_LIST_DIR}/keymaps/keymaps.c
-${CMAKE_CURRENT_LIST_DIR}/usb_descriptors.c
-${CMAKE_CURRENT_LIST_DIR}/hid_interface.c
-${CMAKE_CURRENT_LIST_DIR}/keymaps/${KEYBOARD_LAYOUT}/keymap.c
-${CMAKE_CURRENT_LIST_DIR}/buzzer.c
-${CMAKE_CURRENT_LIST_DIR}/main.c
-)
-
-pico_generate_pio_header(${PROJECT_NAME}
-  ${CMAKE_CURRENT_LIST_DIR}/pcat_interface.pio
+  ${SRC_ROOT}
+  ${SRC_COMMON}
+  ${SRC_KEYBOARD}
+  ${SRC_PROTOCOL}
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC

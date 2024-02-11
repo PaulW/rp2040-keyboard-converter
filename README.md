@@ -1,4 +1,4 @@
-# Model-F 5170 Converter for Raspberry Pi PICO RP2040
+# RP2040 Keyboard Converter for Raspberry Pi PICO RP2040
 
 This project is part of a refurbish/overhaul of an IBM Model F 5170 PC/AT Keyboard, specifically model 6450225. The goal of this is to allow me to use the Model F Keyboard on modern hardware via USB, but to have specific customisations where required.
 
@@ -19,52 +19,21 @@ This is connected as follows:
 
 I have since designed a custom hardware solution which fits inside the Model F PC/AT Keyboard.  To simplify the documentation, I've kept the specific hardware details [Here](doc/custom_pcb.md)
 
+I am also working on an inline connector design now, to allow support for multiple keyboards & protocols.
+
 ## Licence
 
 The project is licensed under **GPLv3** or later. [Pico-SDK](https://github.com/raspberrypi/pico-sdk) and [TinyUSB](https://github.com/hathach/tinyusb) stack have their own license respectively, and as such remain intact in any included portions of code from those shared resources.
 
 Ringbuffer implementation is from the official [TMK](https://github.com/tmk/tmk_keyboard) repository.
 
-## Key Mapping
+## Supported Keyboards
 
-The current build has the following keys available when using the keyboard:
-![Available Keys](doc/mapped-keys.png)
-(Key Test performed using [QMK Configurator](https://config.qmk.fm/#/test))
+Please refer to the [Keyboards Folder](src/keyboards/) to see what current Keyboards are available and supported.  I plan on adding more as/when I get them to develop with, but please feel free to add your own.
 
-The keys can be re-assigned by updating the [hid_keymaps.c](src/hid_keymaps.c) file.  Please refer to [hid_keycodes.h](src/hid_keycodes.h) to list available key codes which can be mapped.  The Layers are defined and laid out in a way which matches the default key layout of the IBM 5170 Keyboard.  I do intend on slightly updating the layout, and this will be made clear when I commit that change.
+## Supported Protocols
 
-Please note, that some keys require the use of the Fn Modifier Key to be pressed (by default, this is mapped to F9).  Keys mapped with dual values also represent pressing Shift Modifier.
-
-| Key on Keyboard | Modifier Mapping |
-|---|---|
-| Pipe / Back Slash | Grave / Negation * |
-| Numpad 0 | Insert |
-| Numpad Dot | Del |
-| Numpad 1 | End |
-| Numpad 2 | Down Arrow |
-| Numpad 3 | Page Down |
-| Numpad 4 | Left Arrow |
-| Numpad 6 | Right Arrow |
-| Numpad 7 | Home |
-| Numpad 8 | Up Arrow |
-| Numpad 9 | Page Up |
-| F1 | F9 |
-| F2 | F10 |
-| F3 | F11 ** |
-| F4 | F12 |
-| F5 | Vol Down |
-| F6 | Vol Up |
-| F7 | Brightness Down |
-| F8 | Brightness Up |
-| CapsLock | Menu |
-
-_* Mapping may differ on Windows PC, I've not tested this_
-
-_** F11 Does work, it just doesn't show when pressed in Chrome on the QMK Congigurator Test Page_
-
-All Layouts are set as if the keyboard is set to British PC (as per my Mac)
-
-![Layout Toggle](doc/layout-mac.png)
+Currently, only the AT Protocol is supported, but as I add support for more, they will be found within the [Protocols](src/protocols/) subfolder.
 
 ## Building
 
@@ -78,17 +47,19 @@ To set up the Build Environment, we need to tell Docker to build a local contain
 
 ### Building the Firmware
 
-Next, we tell docker to run the container we have just built:
+Next, we tell docker to run the container we have just built, and ensure that in the command line, we specify the specific Keyboard we wish to compile:
 
-`docker-compose run builder`
+`docker-compose run -e KEYBOARD="modelf/6450225" builder`
 
-This will build `ibm-5170-pcat.uf2` firmware file which you can then flash to your RP2040.  This file is located in the `./build` folder within your locally cloned repository.
+In this example, we are specifying `-e KEYBOARD="modelf/6450225"` to build the Firmware with support for the IBM Model F Keyboard.  As new Keyboards are added (at time of writing there are 2), you simply specify the path from within the `keyboards` subfolder within `src`.
+
+This will then build `rp2040-kbd-converter.uf2` firmware file which you can then flash to your RP2040.  This file is located in the `./build` folder within your locally cloned repository.
 
 ### Flashing / Updating Firmware
 
 Please refer to the relevant documentation for your Raspberry Pi Pico device.  However, as is commonly performed across multiple RP2040 controllers, the following steps should apply:
 1. Put the RP2040 into Bootloader mode by holding BOOT and pressing RESET.  This should now mount the RP2040 as a volume named `RPI-RP2`.
-2. Copy `build/ibm-5170-pcat.uf2`to the newly mounted volume.  Once copied, the volume will automatically unmount and the RP2040 will reboot.
+2. Copy `build/rp2040-kbd-converter.uf2`to the newly mounted volume.  Once copied, the volume will automatically unmount and the RP2040 will reboot.
 
 The Firmware (once flashed) has the ability to put itself into Bootloader Mode by using a Macro Combination:
 
@@ -100,21 +71,21 @@ The RP2040 should now perform an init task against the connected PC/AT Keyboard,
 
 ```
 $ lsusb -v
-Bus 002 Device 002: ID 7e57:4008
+Bus 002 Device 002: ID 5515:4008
 Device Descriptor:
   bLength                18
   bDescriptorType         1
-  bcdUSB               2.00
+  bcdUSB               1.10
   bDeviceClass            0 (Defined at Interface level)
   bDeviceSubClass         0
   bDeviceProtocol         0
   bMaxPacketSize0        64
-  idVendor           0x7e57
+  idVendor           0x5515
   idProduct          0x4008
   bcdDevice            1.00
-  iManufacturer           1 IBM
-  iProduct                2 Model F (PC/AT) Keyboard
-  iSerial                 3 030323
+  iManufacturer           1 paulbramhall.uk
+  iProduct                2 RP2040 Keyboard Converter
+  iSerial                 3 E66160F423782037
   bNumConfigurations      1
   Configuration Descriptor:
     bLength                 9
@@ -156,7 +127,7 @@ Device Descriptor:
           Synch Type               None
           Usage Type               Data
         wMaxPacketSize     0x0008  1x 8 bytes
-        bInterval              10
+        bInterval               8
     Interface Descriptor:
       bLength                 9
       bDescriptorType         4
@@ -186,7 +157,7 @@ Device Descriptor:
           Synch Type               None
           Usage Type               Data
         wMaxPacketSize     0x0010  1x 16 bytes
-        bInterval              10
+        bInterval               8
 Device Status:     0x0002
   (Bus Powered)
   Remote Wakeup Enabled

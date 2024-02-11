@@ -1,4 +1,4 @@
-.program pcat_interface
+.program keyboard_interface
 .wrap_target
 
 ; Pins: 0 = data, 1 = clock
@@ -79,7 +79,7 @@ bitLoopOutLoop:
     wait 1 pin 0 [5]
 
 % c-sdk {
-static inline void pcat_interface_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {
+static inline void keyboard_interface_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {
   pio_sm_set_consecutive_pindirs(pio, sm, pin, 2, false);
 
   pio_gpio_init(pio, pin);
@@ -92,7 +92,7 @@ static inline void pcat_interface_program_init(PIO pio, uint sm, uint offset, ui
   gpio_pull_up(pin);
   gpio_pull_down(pin + 1);
 
-  pio_sm_config c = pcat_interface_program_get_default_config(offset);
+  pio_sm_config c = keyboard_interface_program_get_default_config(offset);
 
   sm_config_set_set_pins(&c, pin, 2);
 
