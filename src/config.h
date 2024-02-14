@@ -35,7 +35,6 @@
 // #define DATA_PIN 16   // We assume that DATA and CLOCK are positioned next to each other, as such Clock will be DATA_PIN + 1
 #define DATA_PIN 6    // We assume that DATA and CLOCK are positioned next to each other, as such Clock will be DATA_PIN + 1
 #define PIEZO_PIN 11  // Piezo Buzzer GPIO Pin
-#define BUF_SIZE 16   // Define size for Ring Buffer
 
 #define APPLE_EMULATED_NUMLOCK 1       // Apple Devices don't natively support Numlock, so we must emulate the functionality.
 #define APPLE_INITIAL_NUMLOCK_STATE 1  // Define NumLock State when emulating Apple devices (default ON)

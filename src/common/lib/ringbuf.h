@@ -1,73 +1,33 @@
+/*
+ * This file is part of RP2040 Keyboard Converter.
+ *
+ * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ *
+ * RP2040 Keyboard Converter is free software: you can redistribute it
+ * and/or modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version.
+ *
+ * RP2040 Keyboard Converter is distributed in the hope that it will be
+ * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with RP2040 Keyboard Converter.
+ * If not, see <https://www.gnu.org/licenses/>.
+ */
+
 #ifndef RINGBUF_H
 #define RINGBUF_H
 
 #include <stdbool.h>
 #include <stdint.h>
 
-// NOTE: buffer size must be 2^n and up to 255. size_mask should be 2^n - 1 due to using &(AND) instead of %(modulo)
-typedef struct {
-  uint8_t *buffer;
-  uint8_t head;
-  uint8_t tail;
-  uint8_t size_mask;
-} ringbuf_t;
+int16_t ringbuf_get();
+bool ringbuf_put(uint8_t data);
+bool ringbuf_is_empty();
+bool ringbuf_is_full();
+void ringbuf_reset();
 
-static inline void ringbuf_init(ringbuf_t *buf, uint8_t *array, uint8_t size);
-static inline int16_t ringbuf_get(ringbuf_t *buf);
-static inline bool ringbuf_put(ringbuf_t *buf, uint8_t data);
-static inline void ringbuf_write(ringbuf_t *buf, uint8_t data);
-static inline bool ringbuf_is_empty(ringbuf_t *buf);
-static inline bool ringbuf_is_full(ringbuf_t *buf);
-static inline void ringbuf_reset(ringbuf_t *buf);
-static inline void ringbuf_push(ringbuf_t *buf, uint8_t data);
-
-static inline void ringbuf_init(ringbuf_t *buf, uint8_t *array, uint8_t size) {
-  buf->buffer = array;
-  buf->head = 0;
-  buf->tail = 0;
-  buf->size_mask = (uint8_t)(size - 1);
-}
-
-static inline int16_t ringbuf_get(ringbuf_t *buf) {
-  if (ringbuf_is_empty(buf)) return -1;
-  uint8_t data = buf->buffer[buf->tail];
-  buf->tail++;
-  buf->tail &= buf->size_mask;
-  return data;
-}
-static inline bool ringbuf_put(ringbuf_t *buf, uint8_t data) {
-  if (ringbuf_is_full(buf)) {
-    return false;
-  }
-  buf->buffer[buf->head] = data;
-  buf->head++;
-  buf->head &= buf->size_mask;
-  return true;
-}
-// this overrides data in buffer when it is full
-static inline void ringbuf_write(ringbuf_t *buf, uint8_t data) {
-  buf->buffer[buf->head] = data;
-  buf->head++;
-  buf->head &= buf->size_mask;
-  // eat tail: override data yet to be consumed
-  if (buf->head == buf->tail) {
-    buf->tail++;
-    buf->tail &= buf->size_mask;
-  }
-}
-static inline bool ringbuf_is_empty(ringbuf_t *buf) {
-  return (buf->head == buf->tail);
-}
-static inline bool ringbuf_is_full(ringbuf_t *buf) {
-  return (((buf->head + 1) & buf->size_mask) == buf->tail);
-}
-static inline void ringbuf_reset(ringbuf_t *buf) {
-  buf->head = 0;
-  buf->tail = 0;
-}
-static inline void ringbuf_push(ringbuf_t *buf, uint8_t data) {
-  buf->buffer[buf->head] = data;
-  buf->head++;
-  buf->head &= buf->size_mask;
-}
-#endif
+#endif /* RINGBUF_H */

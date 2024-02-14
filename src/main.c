@@ -31,20 +31,13 @@
 #include "ringbuf.h"
 #include "tusb.h"
 
-static uint8_t __not_in_flash("buf") buf[BUF_SIZE];
-static ringbuf_t __not_in_flash("rbuf") rbuf = {
-    .buffer = buf,
-    .head = 0,
-    .tail = 0,
-    .size_mask = BUF_SIZE - 1};
-
 void __time_critical_func(kbd_input_event_processor)(unsigned char data_byte) {
-  if (!ringbuf_is_full(&rbuf)) ringbuf_put(&rbuf, data_byte);
+  if (!ringbuf_is_full()) ringbuf_put(data_byte);
 }
 
 // Check and process any characters which may exist in the ringbuffer.
 void __time_critical_func(keyboard_process_buffer)(void) {
-  if (!ringbuf_is_empty(&rbuf)) {
+  if (!ringbuf_is_empty()) {
     if (tud_suspended()) {
       // Wake up host if we are in suspend mode
       // and REMOTE_WAKEUP feature is enabled by host
@@ -52,7 +45,7 @@ void __time_critical_func(keyboard_process_buffer)(void) {
     } else {
       if (tud_hid_ready()) {
         uint32_t status = save_and_disable_interrupts();  // disable IRQ
-        int c = ringbuf_get(&rbuf);                       // critical_section
+        int c = ringbuf_get();                            // critical_section
         restore_interrupts(status);
         if (c != -1) keyboard_process_key((uint8_t)c);
       }
@@ -74,14 +67,16 @@ int main(void) {
   printf("[INFO] Keyboard Protocol: %s\n", KEYBOARD_PROTOCOL);
   printf("[INFO] RP2040 Serial ID: %s\n", pico_unique_id);
   printf("--------------------------------\n");
-  ringbuf_reset(&rbuf);
-  keyboard_interface_setup(DATA_PIN);
-  buzzer_init(PIEZO_PIN);
+
+  // Initialise aspects of the program.
+  ringbuf_reset();                     // Even though Ringbuf is statically initialised, we reset it here to be sure it's empty.
+  keyboard_interface_setup(DATA_PIN);  // Setup the keyboard interface.
+  buzzer_init(PIEZO_PIN);              // Setup the buzzer.
   printf("--------------------------------\n");
   while (1) {
-    keyboard_process_buffer();
-    tud_task();
-    keyboard_interface_task();
+    keyboard_process_buffer();  // Process any characters in the ringbuffer.
+    tud_task();                 // TinyUSB device task.
+    keyboard_interface_task();  // Keyboard interface task.
   }
 
   return 0;
