@@ -25,6 +25,5 @@
 
 void keyboard_interface_setup(uint data_pin);
 void keyboard_interface_task();
-void __attribute__((weak)) kbd_input_event_processor(unsigned char data_byte);
 
 #endif /* INTERFACE_H */

@@ -31,10 +31,6 @@
 #include "ringbuf.h"
 #include "tusb.h"
 
-void __time_critical_func(kbd_input_event_processor)(unsigned char data_byte) {
-  if (!ringbuf_is_full()) ringbuf_put(data_byte);
-}
-
 // Check and process any characters which may exist in the ringbuffer.
 void __time_critical_func(keyboard_process_buffer)(void) {
   if (!ringbuf_is_empty()) {

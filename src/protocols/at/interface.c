@@ -30,6 +30,7 @@
 #include "hardware/pio.h"
 #include "interface.pio.h"
 #include "lock_leds.h"
+#include "ringbuf.h"
 
 uint keyboard_sm = 0;
 uint offset = 0;
@@ -134,7 +135,7 @@ static void __time_critical_func(keyboard_event_processor)(uint8_t data_byte) {
       }
       break;
     case INITIALISED:
-      kbd_input_event_processor(data_byte);
+      if (!ringbuf_is_full()) ringbuf_put(data_byte);
   }
 }
 
