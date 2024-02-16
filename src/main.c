@@ -18,6 +18,10 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+#if !PICO_NO_FLASH && !PICO_COPY_TO_RAM
+#error "This example must be built to run from SRAM!"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -32,7 +36,7 @@
 #include "tusb.h"
 
 // Check and process any characters which may exist in the ringbuffer.
-void __time_critical_func(keyboard_process_buffer)(void) {
+void keyboard_process_buffer(void) {
   if (!ringbuf_is_empty()) {
     if (tud_suspended()) {
       // Wake up host if we are in suspend mode

@@ -36,7 +36,7 @@ uint keyboard_sm = 0;
 uint offset = 0;
 PIO keyboard_pio = pio1;
 
-static const uint8_t __not_in_flash("keyboard_parity_table") keyboard_parity_table[256] = {
+static const uint8_t keyboard_parity_table[256] = {
     /* Mapping of HEX to Parity Bit for input from IBM PC/AT Keyboard
     0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F */
     1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,  // 0
@@ -68,12 +68,12 @@ static enum {
 } keyboard_state = UNINITIALISED;
 
 // Command Handler function to issue commands to the attached IBM PC/AT Keyboard.
-static void __time_critical_func(keyboard_command_handler)(uint8_t data_byte) {
+static void keyboard_command_handler(uint8_t data_byte) {
   uint16_t data_with_parity = (uint16_t)(data_byte + (keyboard_parity_table[data_byte] << 8));
   pio_sm_put(pio1, keyboard_sm, data_with_parity);
 }
 
-static void __time_critical_func(keyboard_event_processor)(uint8_t data_byte) {
+static void keyboard_event_processor(uint8_t data_byte) {
   switch (keyboard_state) {
     case UNINITIALISED:
       switch (data_byte) {
@@ -151,7 +151,7 @@ void keyboard_pio_restart() {
 
 // IRQ Event Handler used to read keycode data from the IBM PC/AT Keyboard
 // and ensure relevant code is valid when checking against relevant check bits.
-static void __isr __time_critical_func(keyboard_input_event_handler)() {
+static void __isr keyboard_input_event_handler() {
   pio_interrupt_clear(keyboard_pio, keyboard_sm);
   if (pio_sm_is_rx_fifo_empty(keyboard_pio, keyboard_sm)) return;  // no new codes in the fifo
 

@@ -119,6 +119,10 @@ pico_sdk_init()
 
 add_executable(${PROJECT_NAME})
 
+# Ensure program executes from RAM for faster performance
+# This way we don't need to set any function or variable declarators.
+pico_set_binary_type(${PROJECT_NAME} copy_to_ram)
+
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ../build)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ../build)
 

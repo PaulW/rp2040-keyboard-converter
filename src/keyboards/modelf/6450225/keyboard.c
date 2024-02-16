@@ -41,7 +41,7 @@
  */
 
 /* Define Keyboard Layers */
-const uint8_t __not_in_flash("keymap_map") keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
+const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
   /* We define 2 initial maps for the Base layer, these in turn define layers 0 and 1.
    * Layer 0 is the default base layer with all associated mappings.  This also encompasses the NumLock On state.
    * Layer 1 is the NumLock Off state, and only changes the state of keys assicated with this state.  Exisiting keys
@@ -71,7 +71,7 @@ const uint8_t __not_in_flash("keymap_map") keymap_map[][KEYMAP_ROWS][KEYMAP_COLS
 };
 
 /* Define Action Layers */
-const uint8_t __not_in_flash("keymap_actions") keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS] = {
+const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS] = {
   KEYMAP_5170( \
     /* Function Key Pressed */
     F9,    F10,       NUBS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS, \

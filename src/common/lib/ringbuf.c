@@ -31,15 +31,15 @@ typedef struct {
   uint8_t size_mask;
 } ringbuf_t;
 
-static uint8_t __not_in_flash("buf") buf[BUF_SIZE];
+static uint8_t buf[BUF_SIZE];
 
-static ringbuf_t __not_in_flash("rbuf") rbuf = {
+static ringbuf_t rbuf = {
     .buffer = buf,  // Cast to array of chars for initialization
     .head = 0,
     .tail = 0,
     .size_mask = BUF_SIZE - 1};
 
-int16_t __time_critical_func(ringbuf_get)() {
+int16_t ringbuf_get() {
   if (ringbuf_is_empty()) return -1;
   uint8_t data = rbuf.buffer[rbuf.tail];
   rbuf.tail++;
@@ -47,7 +47,7 @@ int16_t __time_critical_func(ringbuf_get)() {
   return data;
 }
 
-bool __time_critical_func(ringbuf_put)(uint8_t data) {
+bool ringbuf_put(uint8_t data) {
   if (ringbuf_is_full()) {
     return false;
   }
@@ -57,11 +57,11 @@ bool __time_critical_func(ringbuf_put)(uint8_t data) {
   return true;
 }
 
-bool __time_critical_func(ringbuf_is_empty)() {
+bool ringbuf_is_empty() {
   return (rbuf.head == rbuf.tail);
 }
 
-bool __time_critical_func(ringbuf_is_full)() {
+bool ringbuf_is_full() {
   return (((rbuf.head + 1) & rbuf.size_mask) == rbuf.tail);
 }
 
