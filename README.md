@@ -1,4 +1,5 @@
 # RP2040 Keyboard Converter for Raspberry Pi PICO RP2040
+[![Test Building of Converter Firmware](https://github.com/PaulW/rp2040-keyboard-converter/actions/workflows/docker-image.yml/badge.svg)](https://github.com/PaulW/rp2040-keyboard-converter/actions/workflows/docker-image.yml)
 
 This project is part of a refurbish/overhaul of an IBM Model F 5170 PC/AT Keyboard, specifically model 6450225. The goal of this is to allow me to use the Model F Keyboard on modern hardware via USB, but to have specific customisations where required.
 
