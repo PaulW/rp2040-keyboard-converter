@@ -13,5 +13,9 @@ jobs:
     - uses: actions/checkout@v3
     - name: Build Container
       run: docker compose build
-    - name: Run Test Build against Model F 6450225
+    - name: Run Build against Model F 6450225
       run: docker compose run -e KEYBOARD="modelf/6450225" builder
+    - name: Run Build against Model M 1390131
+      run: docker compose run -e KEYBOARD="modelm/1390131" builder
+    - name: Run Build against Cherry G80-1104H
+      run: docker compose run -e KEYBOARD="Cherry/G80-1104H" builder
