@@ -18,4 +18,4 @@ jobs:
     - name: Run Build against Model M 1390131
       run: docker compose run -e KEYBOARD="modelm/1390131" builder
     - name: Run Build against Cherry G80-1104H
-      run: docker compose run -e KEYBOARD="Cherry/G80-1104H" builder
+      run: docker compose run -e KEYBOARD="cherry/G80-1104H" builder
