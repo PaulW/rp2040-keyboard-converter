@@ -1,6 +1,6 @@
 # IBM Model F (PC/AT) Keyboard, Model 6450225
 
-This is the Keyboard Mapping & Configuration for the IBM Model F Keyboard, model 6450225.  This model has a UK ISO Layout.
+This is the Keyboard Mapping & Configuration for the IBM Model F Keyboard, model 6450225.  This model has a UK Layout and pre-dates the standard ISO and ANSI layout designs.  It operates using the AT Protocol, and uses Set 2 Scancodes.
 
 ## Key Mapping
 

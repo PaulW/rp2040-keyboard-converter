@@ -1,6 +1,6 @@
-# IBM Model M (101-key) Keyboard, Model 1390131
+# Cherry G80-1104H Keyboard
 
-This is the Keyboard Mapping & Configuration for the IBM Model M Keyboard, model 1390131.  This model has a US ANSI Layout.  It operates using the AT Protocol, and uses Set 2 Scancodes.
+This is the Keyboard Mapping & Configuration for the Cherry G80-1104H.  This model has a variant of the UK ISO Layout, and customised for use on the BT Merlin Cheetah Terminal system.  The Keyboard uses the XT Protocol for communication, and uses Set 1 Scancodes.
 
 ## Key Mapping
 

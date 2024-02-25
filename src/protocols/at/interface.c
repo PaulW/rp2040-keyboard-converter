@@ -20,8 +20,7 @@
 
 #include "interface.h"
 
-#include <hardware/gpio.h>
-#include <stdio.h>
+#include <math.h>
 
 #include "bsp/board.h"
 #include "buzzer.h"
@@ -31,6 +30,7 @@
 #include "interface.pio.h"
 #include "lock_leds.h"
 #include "ringbuf.h"
+#include "scancode.h"
 
 uint keyboard_sm = 0;
 uint offset = 0;
@@ -145,7 +145,6 @@ void keyboard_pio_restart() {
   pio_sm_drain_tx_fifo(keyboard_pio, keyboard_sm);
   pio_sm_clear_fifos(keyboard_pio, keyboard_sm);
   pio_sm_restart(keyboard_pio, keyboard_sm);
-  // pio_sm_clkdiv_restart(keyboard_pio, keyboard_sm);
   pio_sm_exec(keyboard_pio, keyboard_sm, pio_encode_jmp(offset));
 }
 
@@ -190,13 +189,15 @@ static void __isr keyboard_input_event_handler() {
 }
 
 void keyboard_interface_task() {
-  // This function helps with Keyboard Initialisation, as well as handling Lock LED changes.
+  // This function is called from the main loop and is used to handle the keyboard interface.
+  // It is responsible for initialising the keyboard, setting the lock LEDs, and processing
+  // any keycodes that are sent from the keyboard.
 
-  static uint32_t detect_ms = 0;
   static uint8_t detect_init_count = 0;
 
   if (keyboard_state < SET_LOCK_LEDS) {
     // This portion helps with initialisation of the keyboard.
+    static uint32_t detect_ms = 0;
     if (board_millis() - detect_ms > 1000) {
       detect_ms = board_millis();
       // int pin_state = gpio_get(DATA_PIN + 1);
@@ -220,6 +221,23 @@ void keyboard_interface_task() {
     if (ps2_lock_values != keyboard_lock_leds) {
       keyboard_state = SET_LOCK_LEDS;
       keyboard_command_handler(0xED);
+    } else {
+      if (!ringbuf_is_empty()) {
+        if (tud_suspended()) {
+          // Wake up host if we are in suspend mode
+          // and REMOTE_WAKEUP feature is enabled by host
+          tud_remote_wakeup();
+        } else {
+          if (tud_hid_ready()) {
+            uint32_t status = save_and_disable_interrupts();  // disable IRQ
+            int c = ringbuf_get();                            // critical_section
+            restore_interrupts(status);
+            if (c != -1) {
+              process_scancode((uint8_t)c);
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -230,17 +248,32 @@ void keyboard_interface_setup(uint data_pin) {
   offset = pio_add_program(keyboard_pio, &keyboard_interface_program);
   uint pio_irq = PIO1_IRQ_0;
 
-  uint desired_clock_khz = 16;
-  float rp_clock_hz = (float)clock_get_hz(clk_sys);
-  float div = rp_clock_hz / ((2 * desired_clock_khz) * 10000);
-  printf("[INFO] RP2040 Clock Speed: %.0fHz\n", rp_clock_hz);
-  printf("[INFO] RP2040 Clock Speed: %.2fMHz\n", rp_clock_hz / 1000000);
-  printf("[INFO] Target Interface Clock Speed: %dKHz\n", desired_clock_khz);
-  printf("[INFO] Clock Divider: %.2f\n", div);
-  printf("[INFO] Expected Clock Speed: %.2fkHz\n", (float)(rp_clock_hz / 10000) / div / 2);
-  printf("[INFO] PIO SM Interface program loaded at %d with clock divider of %.2f\n", offset, div);
+  // Define the Polling Inteval for the State Machine.
+  // The AT/PS2 Protocol runs at a clock speed range of 10-16.7KHz.
+  // At 16.7KHz, the maximum polling interval would be 60us, however, clock
+  // must be HIGH for 30us to 50us, and LOW for 30us to 50us.  As such, we
+  // will use a polling interval of 50us, which should equate to a clock of 20KHz.
+  // We also want to ensure we have 11 SM cycles per clock cycle, as there are
+  // approx 11 bits per byte, and we want to ensure we are reading the data correctly.
 
-  keyboard_interface_program_init(keyboard_pio, keyboard_sm, offset, data_pin, div);
+  int polling_interval_us = 50;
+  int cycles_per_clock = 11;
+
+  // Get base clock speed of RP2040.  This should always equal 125MHz, but we will check anyway.
+  float rp_clock_khz = 0.001 * clock_get_hz(clk_sys);
+
+  printf("[INFO] RP2040 Clock Speed: %.0fKHz\n", rp_clock_khz);
+  printf("[INFO] Interface Polling Interval: %dus\n", polling_interval_us);
+  float polling_interval_khz = 1000 / polling_interval_us;
+  printf("[INFO] Interface Polling Clock: %.0fkHz\n", polling_interval_khz);
+  // Always round clock_div to prevent jitter by having a fractional divider.
+  float clock_div = roundf((rp_clock_khz / polling_interval_khz) / cycles_per_clock);
+  printf("[INFO] Clock Divider based on %d SM Cycles per Keyboard Clock Cycle: %.2f\n", cycles_per_clock, clock_div);
+  printf("[INFO] Effective SM Clock Speed: %.2fkHz\n", (float)(rp_clock_khz / clock_div));
+
+  keyboard_interface_program_init(keyboard_pio, keyboard_sm, offset, data_pin, clock_div);
+
+  printf("[INFO] PIO SM Interface program loaded at %d with clock divider of %.2f\n", offset, clock_div);
 
   irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
   irq_set_enabled(pio_irq, true);

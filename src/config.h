@@ -30,6 +30,7 @@
 #define KEYBOARD_MODEL _KEYBOARD_MODEL
 #define KEYBOARD_DESCRIPTION _KEYBOARD_DESCRIPTION
 #define KEYBOARD_PROTOCOL _KEYBOARD_PROTOCOL
+#define KEYBOARD_CODESET _KEYBOARD_CODESET
 
 // Ensure you specify the correct DATA Pin for the connector.  Also, ensure CLK is connected to DATA+1
 // #define DATA_PIN 16   // We assume that DATA and CLOCK are positioned next to each other, as such Clock will be DATA_PIN + 1

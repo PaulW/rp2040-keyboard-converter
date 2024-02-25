@@ -26,7 +26,7 @@
 /* IBM Model M 101 Key
  * Keyboard uses a Scancode Set 2
  * ,---.   ,---------------. ,---------------. ,---------------. ,-----------.
- * | 76|   | 05| 06| 04| 0C| | 03| 0B| 83| 0A| | 01| 09| 78| 07| |+7C| 7E|+77|
+ * | 76|   | 05| 06| 04| 0C| | 03| 0B|~83| 0A| | 01| 09| 78| 07| |+7C| 7E|+77|
  * `---'   `---------------' `---------------' `---------------' `-----------'
  * ,-----------------------------------------------------------. ,-----------. ,---------------.
  * | 0E| 16| 1E| 26| 25| 2E| 36| 3D| 3E| 46| 45| 4E| 55| 6A| 66| |*70|*6C|*7D| | 77|*4A| 7C| 7B|
@@ -45,18 +45,19 @@
  * 51, 63, 68, 6A, 6D: Hidden keys in IBM model M [6]
  * 
  *  -: Hidden Keys (not used in standard UK Layout)
+ *  ~: Remaps to alternate code (83-03)
  */
 
 // clang-format off
-#define KEYMAP_IBM_101KEY( \
-    K76,    K05,K06,K04,K0C,  K03,K0B,K83,K0A,  K01,K09,K78,K07,  KFC,K7E,KF7, \
+#define KEYMAP_ANSI( \
+    K76,    K05,K06,K04,K0C,  K03,K0B,K02,K0A,  K01,K09,K78,K07,  KFC,K7E,KF7, \
     K0E,K16,K1E,K26,K25,K2E,K36,K3D,K3E,K46,K45,K4E,K55,    K66,  KF0,KEC,KFD,  K77,KCA,K7C,K7B, \
     K0D,    K15,K1D,K24,K2D,K2C,K35,K3C,K43,K44,K4D,K54,K5B,K5D,  KF1,KE9,KFA,  K6C,K75,K7D,K79, \
     K58,    K1C,K1B,K23,K2B,K34,K33,K3B,K42,K4B,K4C,K52,    K5A,                K6B,K73,K74,   \
     K12,    K1A,K22,K21,K2A,K32,K31,K3A,K41,K49,K4A,        K59,      KF5,      K69,K72,K7A,KDA, \
     K14,    K11,                K29,                K91,    K94,  KEB,KF2,KF4,      K70,K71 \
 ) { \
-    { KC_NO,    KC_##K01, KC_NO,    KC_##K03, KC_##K04, KC_##K05, KC_##K06, KC_##K07, /* 00-07 */ \
+    { KC_NO,    KC_##K01, KC_##K02, KC_##K03, KC_##K04, KC_##K05, KC_##K06, KC_##K07, /* 00-07 */ \
       KC_NO,    KC_##K09, KC_##K0A, KC_##K0B, KC_##K0C, KC_##K0D, KC_##K0E, KC_NO },  /* 08-0F */ \
     { KC_NO,    KC_##K11, KC_##K12, KC_NO,    KC_##K14, KC_##K15, KC_##K16, KC_NO,    /* 10-17 */ \
       KC_NO,    KC_NO,    KC_##K1A, KC_##K1B, KC_##K1C, KC_##K1D, KC_##K1E, KC_NO },  /* 18-1F */ \
@@ -72,7 +73,7 @@
       KC_NO,    KC_##K69, KC_NO,    KC_##K6B, KC_##K6C, KC_NO,    KC_NO,    KC_NO },  /* 68-6F */ \
     { KC_##K70, KC_##K71, KC_##K72, KC_##K73, KC_##K74, KC_##K75, KC_##K76, KC_##K77, /* 70-77 */ \
       KC_##K78, KC_##K79, KC_##K7A, KC_##K7B, KC_##K7C, KC_##K7D, KC_##K7E, KC_NO },  /* 78-7F */ \
-    { KC_NO,    KC_NO,    KC_NO,    KC_##K83, KC_NO,    KC_NO,    KC_NO,    KC_NO,    /* 80-87 */ \
+    { KC_NO,    KC_NO,    KC_NO,    KC_NO,    KC_NO,    KC_NO,    KC_NO,    KC_NO,    /* 80-87 */ \
       KC_NO,    KC_NO,    KC_NO,    KC_NO,    KC_NO,    KC_NO,    KC_NO,    KC_NO },  /* 88-8F */ \
     { KC_NO,    KC_##K91, KC_NO,    KC_NO,    KC_##K94, KC_NO,    KC_NO,    KC_NO,    /* 90-97 */ \
       KC_NO,    KC_NO,    KC_NO,    KC_NO,    KC_NO,    KC_NO,    KC_NO,    KC_NO },  /* 98-9F */ \

@@ -18,12 +18,11 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef HID_INTERFACE_H
-#define HID_INTERFACE_H
+#ifndef SCANCODES_H
+#define SCANCODES_H
 
-#include "pico/stdlib.h"
+#include <stdint.h>
 
-void handle_keyboard_report(uint8_t code, bool make);
-void hid_device_setup(void);
+void process_scancode(uint8_t code);
 
-#endif /* HID_INTERFACE_H */
+#endif /* SCANCODES_H */

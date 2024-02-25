@@ -21,7 +21,6 @@
 #include "keyboard.h"
 
 #include "hid_keycodes.h"
-#include "pico/stdlib.h"
 
 // clang-format off
 
@@ -47,7 +46,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
    * Layer 1 is the NumLock Off state, and only changes the state of keys assicated with this state.  Exisiting keys
    * are not remapped, and are instead left as TRNS.
    */
-  KEYMAP_5170( \
+  KEYMAP_PCAT( \
     /* Base Layer 0 (+NumLock On)
      * MacOS maps keys oddly, GRAVE and NUBS are swapped over when coupled with British-PC Layout.
      * Likewise, NUHS and BSLS appear to match. TODO: Have these as a config option to swap.
@@ -58,7 +57,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     F7,    F8,        LSFT,         Z,     X,     C,     V,     B,     N,     M,     COMM,  DOT,   SLSH,                RSFT,      P1,    P2,    P3,    PPLS, \
     FN,    LGUI,      LALT,                                            SPC,                                             CAPS,             P0,    PDOT         \
   ),
-  KEYMAP_5170( \
+  KEYMAP_PCAT( \
     /* Base Layer 1 (+Numlock Off)
      * Any keys which state does not change are mapped to TRNS, which in turn causes Layer 0 to be referenced for that specific key value.
      */
@@ -72,7 +71,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
 
 /* Define Action Layers */
 const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS] = {
-  KEYMAP_5170( \
+  KEYMAP_PCAT( \
     /* Function Key Pressed */
     F9,    F10,       NUBS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS, \
     F11,   F12,       TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,             NFLP,  NFLP,  NFLP,  NFLP, \

@@ -18,12 +18,12 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef HID_INTERFACE_H
-#define HID_INTERFACE_H
+#ifndef PCXT_INTERFACE_H
+#define PCXT_INTERFACE_H
 
 #include "pico/stdlib.h"
 
-void handle_keyboard_report(uint8_t code, bool make);
-void hid_device_setup(void);
+void keyboard_interface_setup(uint data_pin);
+void keyboard_interface_task();
 
-#endif /* HID_INTERFACE_H */
+#endif /* PCXT_INTERFACE_H */

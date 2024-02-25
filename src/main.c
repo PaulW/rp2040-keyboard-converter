@@ -19,7 +19,7 @@
  */
 
 #if !PICO_NO_FLASH && !PICO_COPY_TO_RAM
-#error "This example must be built to run from SRAM!"
+#error "This must be built to run from SRAM!"
 #endif
 
 #include <stdio.h>
@@ -35,24 +35,6 @@
 #include "ringbuf.h"
 #include "tusb.h"
 
-// Check and process any characters which may exist in the ringbuffer.
-void keyboard_process_buffer(void) {
-  if (!ringbuf_is_empty()) {
-    if (tud_suspended()) {
-      // Wake up host if we are in suspend mode
-      // and REMOTE_WAKEUP feature is enabled by host
-      tud_remote_wakeup();
-    } else {
-      if (tud_hid_ready()) {
-        uint32_t status = save_and_disable_interrupts();  // disable IRQ
-        int c = ringbuf_get();                            // critical_section
-        restore_interrupts(status);
-        if (c != -1) keyboard_process_key((uint8_t)c);
-      }
-    }
-  }
-}
-
 int main(void) {
   hid_device_setup();
   char pico_unique_id[32];
@@ -65,6 +47,7 @@ int main(void) {
   printf("[INFO] Keyboard Model: %s\n", KEYBOARD_MODEL);
   printf("[INFO] Keyboard Description: %s\n", KEYBOARD_DESCRIPTION);
   printf("[INFO] Keyboard Protocol: %s\n", KEYBOARD_PROTOCOL);
+  printf("[INFO] Keyboard Scancode Set: %s\n", KEYBOARD_CODESET);
   printf("[INFO] RP2040 Serial ID: %s\n", pico_unique_id);
   printf("--------------------------------\n");
 
@@ -74,9 +57,8 @@ int main(void) {
   buzzer_init(PIEZO_PIN);              // Setup the buzzer.
   printf("--------------------------------\n");
   while (1) {
-    keyboard_process_buffer();  // Process any characters in the ringbuffer.
-    tud_task();                 // TinyUSB device task.
     keyboard_interface_task();  // Keyboard interface task.
+    tud_task();                 // TinyUSB device task.
   }
 
   return 0;

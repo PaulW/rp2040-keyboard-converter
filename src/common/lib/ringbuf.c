@@ -20,8 +20,6 @@
 
 #include "ringbuf.h"
 
-#include "bsp/board.h"
-
 #define BUF_SIZE 16
 
 typedef struct {

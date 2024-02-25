@@ -25,7 +25,7 @@ I am also working on an inline connector design now, to allow support for multip
 
 The project is licensed under **GPLv3** or later. [Pico-SDK](https://github.com/raspberrypi/pico-sdk) and [TinyUSB](https://github.com/hathach/tinyusb) stack have their own license respectively, and as such remain intact in any included portions of code from those shared resources.
 
-Ringbuffer implementation is from the official [TMK](https://github.com/tmk/tmk_keyboard) repository.
+Ringbuffer implementation is on the one from the [TMK](https://github.com/tmk/tmk_keyboard) repository.
 
 ## Supported Keyboards
 
@@ -33,7 +33,11 @@ Please refer to the [Keyboards Folder](src/keyboards/) to see what current Keybo
 
 ## Supported Protocols
 
-Currently, only the AT Protocol is supported, but as I add support for more, they will be found within the [Protocols](src/protocols/) subfolder.
+Currently, only the AT and XT Protocols are supported. As extra keyboards are added, more protocols will be supported in future.  Please refer to the [Protocols](src/protocols/) subfolder for more information.
+
+## Supported Scancodes
+
+Scancodes are sent from the keyboard to the host system allowing the hose to interpret the code for the key being pressed.  Standard set Scancodes (such as Set 1 and Set 2) as used on AT and XT Keyboards are currently implemented.  Support for other Scancodes will be added as/when other keyboards are added to the supported list.  Please refer to the [Scancodes](src/scancodes/) subfolder for more information.
 
 ## Building
 

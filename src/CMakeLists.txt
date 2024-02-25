@@ -17,7 +17,7 @@
 # If not, see <https://www.gnu.org/licenses/>.
 
 # Do not modify below this line unless you know what you are doing.
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
 
 # Set the build time as a string so we can use it in the code
 string(TIMESTAMP BUILD_TIME "%Y-%m-%d %H:%M")
@@ -78,7 +78,7 @@ foreach(line ${KEYBOARD_CONFIG})
   set(${KEY_NAME} "${KEY_VAL}")
 endforeach()
 
-set(REQUIRED_VARIABLES MAKE DESCRIPTION MODEL PROTOCOL)
+set(REQUIRED_VARIABLES MAKE DESCRIPTION MODEL PROTOCOL CODESET)
 
 set(MISSING_CONFIG_OPTIONS "")
 foreach(variable ${REQUIRED_VARIABLES})
@@ -96,13 +96,25 @@ add_definitions(-D_KEYBOARD_MAKE="${MAKE}")
 add_definitions(-D_KEYBOARD_DESCRIPTION="${DESCRIPTION}")
 add_definitions(-D_KEYBOARD_MODEL="${MODEL}")
 add_definitions(-D_KEYBOARD_PROTOCOL="${PROTOCOL}")
+add_definitions(-D_KEYBOARD_CODESET="${CODESET}")
 
 set(REQUIRED_PROTOCOL_FILES
   "${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/interface.h"
   "${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/interface.c"
 )
 
+set(REQUIRED_SCANCODE_FILES
+  "${CMAKE_SOURCE_DIR}/scancodes/${CODESET}/scancode.h"
+  "${CMAKE_SOURCE_DIR}/scancodes/${CODESET}/scancode.h"
+)
+
 foreach(file IN LISTS REQUIRED_PROTOCOL_FILES)
+  if(NOT EXISTS "${file}")
+    message(FATAL_ERROR "File '${file}' does not exist!")
+  endif()
+endforeach()
+
+foreach(file IN LISTS REQUIRED_SCANCODE_FILES)
   if(NOT EXISTS "${file}")
     message(FATAL_ERROR "File '${file}' does not exist!")
   endif()
@@ -139,6 +151,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   ${CMAKE_SOURCE_DIR}/common/lib/
   ${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/
   ${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/
+  ${CMAKE_SOURCE_DIR}/scancodes/${CODESET}/
 )
 
 # Define list of common source files within project root
@@ -157,6 +170,10 @@ file(GLOB SRC_KEYBOARD CONFIGURE_DEPENDS
 
 file(GLOB SRC_PROTOCOL CMAKE_CONFIGURE_DEPENDS
   ${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/*.c
+)
+
+file(GLOB SRC_SCANCODE CMAKE_CONFIGURE_DEPENDS
+  ${CMAKE_SOURCE_DIR}/scancodes/${CODESET}/*.c
 )
 
 # Define list of State Machine PIO files for compilation
@@ -186,6 +203,7 @@ target_sources(${PROJECT_NAME} PUBLIC
   ${SRC_COMMON}
   ${SRC_KEYBOARD}
   ${SRC_PROTOCOL}
+  ${SRC_SCANCODE}
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
