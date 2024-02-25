@@ -10,7 +10,7 @@ ENV APP_DIR=/usr/local/builder
 
 WORKDIR $APP_DIR
 
-RUN useradd --uid 1000 builder && \
+RUN useradd --uid 1001 builder && \
   usermod -a -G builder builder && \
   chown -R builder:builder $APP_DIR
 
@@ -24,6 +24,6 @@ ENV PICO_PLATFORM=rp2040
 ENV PICO_COMPILER=pico_arm_gcc
 ENV PICO_BOARD_HEADER_DIRS=/usr/local/builder/src/board_config/
 ENV PICO_BOARD=keyboard_converter_board
-COPY --chown=1000:1000 entrypoint.sh .
+COPY --chown=1001:1001 entrypoint.sh .
 
 ENTRYPOINT ["./entrypoint.sh"]

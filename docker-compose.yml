@@ -6,7 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    user: "1000:1000"
+    user: "1001:1001"
     restart: never
     environment:
       - KEYBOARD
