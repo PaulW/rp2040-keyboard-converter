@@ -1,0 +1,17 @@
+name: Docker Image Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build Container
+      run: docker compose build
+    - name: Run Test Build against Model F 6450225
+      run: docker compose run -e KEYBOARD="modelf/6450225" builder
