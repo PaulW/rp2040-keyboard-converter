@@ -1,4 +1,4 @@
-name: Docker Image Test
+name: Test Building of Converter Firmwares
 
 on:
   push:
@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Build Container
+    - name: Create Build Container
       run: docker compose build
-    - name: Run Build against Model F 6450225
+    - name: Run Build for Model F 6450225
       run: docker compose run -e KEYBOARD="modelf/6450225" builder
-    - name: Run Build against Model M 1390131
+    - name: Run Build for Model M 1390131
       run: docker compose run -e KEYBOARD="modelm/1390131" builder
-    - name: Run Build against Cherry G80-1104H
+    - name: Run Build for Cherry G80-1104H
       run: docker compose run -e KEYBOARD="cherry/G80-1104H" builder
