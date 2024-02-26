@@ -1,5 +1,7 @@
 # Cherry G80-1104H Keyboard
 
+![G80-1104H](doc/G80-1104H.jpeg)
+
 This is the Keyboard Mapping & Configuration for the Cherry G80-1104H.  This model has a variant of the UK ISO Layout, and customised for use on the BT Merlin Cheetah Terminal system.  The Keyboard uses the XT Protocol for communication, and uses Set 1 Scancodes.
 
 ## Key Mapping
