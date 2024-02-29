@@ -17,7 +17,8 @@
 # If not, see <https://www.gnu.org/licenses/>.
 
 # Do not modify below this line unless you know what you are doing.
-cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+# This is set to the CMAKE Version in debian:stable-slim as of 29/02/2024
+cmake_minimum_required(VERSION 3.25.1 FATAL_ERROR)
 
 # Set the build time as a string so we can use it in the code
 string(TIMESTAMP BUILD_TIME "%Y-%m-%d %H:%M")
