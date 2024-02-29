@@ -40,7 +40,7 @@ static enum {
 } keyboard_state = UNINITIALISED;
 
 void keyboard_pio_restart() {
-  // Restart the PC/AT PIO State Machine
+  // Restart the XT PIO State Machine
   printf("[DBG] Resetting State Machine and Keyboard (Offset: 0x%02X)\n", offset);
   keyboard_state = UNINITIALISED;
   pio_sm_drain_tx_fifo(keyboard_pio, keyboard_sm);
@@ -67,12 +67,9 @@ static void keyboard_event_processor(uint8_t data_byte) {
   }
 }
 
-// IRQ Event Handler used to read keycode data from the IBM PC/AT Keyboard
+// IRQ Event Handler used to read keycode data from the XT Keyboard
 // and ensure relevant code is valid when checking against relevant check bits.
 static void __isr keyboard_input_event_handler() {
-  pio_interrupt_clear(keyboard_pio, keyboard_sm);
-  if (pio_sm_is_rx_fifo_empty(keyboard_pio, keyboard_sm)) return;  // no new codes in the fifo
-
   io_ro_32 data_cast = keyboard_pio->rxf[keyboard_sm] >> 23;
   uint16_t data = (uint16_t)data_cast;
 
@@ -137,7 +134,7 @@ void keyboard_interface_task() {
   }
 }
 
-// Public function to initialise the PC/AT PIO interface.
+// Public function to initialise the XT PIO interface.
 void keyboard_interface_setup(uint data_pin) {
   keyboard_sm = (uint)pio_claim_unused_sm(keyboard_pio, true);
   offset = pio_add_program(keyboard_pio, &keyboard_interface_program);

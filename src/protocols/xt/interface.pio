@@ -100,8 +100,7 @@ bitLoopIn:
     ; Decrement x and jump back to bitLoopIn if it's not zero
     jmp x--, bitLoopIn
 
-    ; Clear interrupt status and jump to check
-    irq set 0
+    ; Jump back to check now all data read
     jmp check
 
 % c-sdk {
@@ -131,7 +130,7 @@ static inline void keyboard_interface_program_init(PIO pio, uint sm, uint offset
 
   sm_config_set_clkdiv(&c, div);
 
-  pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
+  pio_set_irq0_source_enabled(pio, pis_sm0_rx_fifo_not_empty, true);
 
   pio_sm_init(pio, sm, offset, &c);
 

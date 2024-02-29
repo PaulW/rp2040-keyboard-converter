@@ -37,7 +37,7 @@ uint offset = 0;
 PIO keyboard_pio = pio1;
 
 static const uint8_t keyboard_parity_table[256] = {
-    /* Mapping of HEX to Parity Bit for input from IBM PC/AT Keyboard
+    /* Mapping of HEX to Parity Bit for input from AT Keyboard
     0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F */
     1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,  // 0
     0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,  // 1
@@ -67,7 +67,7 @@ static enum {
   INITIALISED,
 } keyboard_state = UNINITIALISED;
 
-// Command Handler function to issue commands to the attached IBM PC/AT Keyboard.
+// Command Handler function to issue commands to the attached AT Keyboard.
 static void keyboard_command_handler(uint8_t data_byte) {
   uint16_t data_with_parity = (uint16_t)(data_byte + (keyboard_parity_table[data_byte] << 8));
   pio_sm_put(pio1, keyboard_sm, data_with_parity);
@@ -140,7 +140,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
 }
 
 void keyboard_pio_restart() {
-  // Restart the PC/AT PIO State Machine
+  // Restart the AT PIO State Machine
   printf("[DBG] Resetting State Machine and Keyboard (Offset: 0x%02X)\n", offset);
   pio_sm_drain_tx_fifo(keyboard_pio, keyboard_sm);
   pio_sm_clear_fifos(keyboard_pio, keyboard_sm);
@@ -148,12 +148,9 @@ void keyboard_pio_restart() {
   pio_sm_exec(keyboard_pio, keyboard_sm, pio_encode_jmp(offset));
 }
 
-// IRQ Event Handler used to read keycode data from the IBM PC/AT Keyboard
+// IRQ Event Handler used to read keycode data from the AT Keyboard
 // and ensure relevant code is valid when checking against relevant check bits.
 static void __isr keyboard_input_event_handler() {
-  pio_interrupt_clear(keyboard_pio, keyboard_sm);
-  if (pio_sm_is_rx_fifo_empty(keyboard_pio, keyboard_sm)) return;  // no new codes in the fifo
-
   io_ro_32 data_cast = keyboard_pio->rxf[keyboard_sm] >> 21;
   uint16_t data = (uint16_t)data_cast;
 
@@ -242,7 +239,7 @@ void keyboard_interface_task() {
   }
 }
 
-// Public function to initialise the PC/AT PIO interface.
+// Public function to initialise the AT PIO interface.
 void keyboard_interface_setup(uint data_pin) {
   keyboard_sm = (uint)pio_claim_unused_sm(keyboard_pio, true);
   offset = pio_add_program(keyboard_pio, &keyboard_interface_program);
