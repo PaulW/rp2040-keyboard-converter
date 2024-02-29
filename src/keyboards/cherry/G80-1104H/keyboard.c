@@ -27,6 +27,7 @@
 /* Cherry G80 (ISO Layout - 1104H):
  * This Keyboard was used on the BT Cheetah Plus.
  * Key legends are unique, however for the most part the keycodes are the same as the IBM 101 Key.
+ * Keyboard is also similar to UK ISO spec, but missing the extra key between left shift and Z.
  * ,---.   ,---------------. ,---------------. ,---------------. ,-----------.
  * |Esc|   |F1 |F2 |F3 |F4 | |F5 |F6 |F7 |F8 | |F9 |F10|F11|F12| |PrS|ScL|Pau|
  * `---'   `---------------' `---------------' `---------------' `-----------'

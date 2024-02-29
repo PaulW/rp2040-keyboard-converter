@@ -24,8 +24,7 @@
 #include "keymaps.h"
 
 /* IBM 5170 (Model F-AT)
- * Keyboard uses a subset of Scancode Set 3 from the F122, but is not contiguous as is missing
- * extended function keys and block between main keyboard and numberpad.
+ * Keyboard uses Scancode Set 2.
  * ,-------. ,-----------------------------------------------------------. ,---------------.
  * | 05| 06| | 0E| 16| 1E| 26| 25| 2E| 36| 3D| 3E| 46| 45| 4E| 55| 5D| 66| | 76| 77| 7E|~84|
  * |-------| |-----------------------------------------------------------| |---------------|
