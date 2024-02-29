@@ -1,13 +1,4 @@
 .DS_Store
 .vscode
+.build-cache
 build/
-src/CMakeCache.txt
-src/CMakeFiles/
-src/Makefile
-src/cmake_install.cmake
-src/elf2uf2/
-src/generated/
-src/pcat_interface.pio.h
-src/pico-sdk/
-src/pioasm/
-src/protocols/*/*.pio.h

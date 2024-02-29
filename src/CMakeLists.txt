@@ -193,7 +193,6 @@ foreach(PIO_FILE IN LISTS PROTOCOL_PIO_FILES)
   # Call pico_generate_pio_header with individual file and output path
   pico_generate_pio_header(${PROJECT_NAME}
     ${PIO_FILE}
-    OUTPUT_DIR ${PIO_DIR}
   )
 endforeach()
 
