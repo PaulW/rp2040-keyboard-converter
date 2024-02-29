@@ -21,3 +21,5 @@ jobs:
       run: docker compose run -e KEYBOARD="cherry/G80-0614H" builder
     - name: Run Build for Cherry G80-1104H
       run: docker compose run -e KEYBOARD="cherry/G80-1104H" builder
+    - name: Run Build for MicroSwitch 122ST13
+      run: docker compose run -e KEYBOARD="microswitch/122st13" builder
