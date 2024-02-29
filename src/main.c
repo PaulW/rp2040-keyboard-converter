@@ -41,6 +41,7 @@ int main(void) {
   pico_get_unique_board_id_string(pico_unique_id, sizeof(pico_unique_id));
   printf("--------------------------------\n");
   printf("[INFO] RP2040 Keyboard Converter\n");
+  printf("[INFO] RP2040 Serial ID: %s\n", pico_unique_id);
   printf("[INFO] Build Time: %s\n", BUILD_TIME);
   printf("--------------------------------\n");
   printf("[INFO] Keyboard Make: %s\n", KEYBOARD_MAKE);
@@ -48,7 +49,6 @@ int main(void) {
   printf("[INFO] Keyboard Description: %s\n", KEYBOARD_DESCRIPTION);
   printf("[INFO] Keyboard Protocol: %s\n", KEYBOARD_PROTOCOL);
   printf("[INFO] Keyboard Scancode Set: %s\n", KEYBOARD_CODESET);
-  printf("[INFO] RP2040 Serial ID: %s\n", pico_unique_id);
   printf("--------------------------------\n");
 
   // Initialise aspects of the program.
