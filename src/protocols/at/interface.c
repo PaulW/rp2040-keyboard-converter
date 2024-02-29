@@ -35,6 +35,7 @@
 uint keyboard_sm = 0;
 uint offset = 0;
 PIO keyboard_pio = pio1;
+uint16_t keyboard_id = 0xFFFF;
 
 static const uint8_t keyboard_parity_table[256] = {
     /* Mapping of HEX to Parity Bit for input from AT Keyboard
@@ -57,12 +58,19 @@ static const uint8_t keyboard_parity_table[256] = {
     1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1   // F
 };
 
+// Check if we are a Terminal Keyboard (Keyboards utilising Set 3 Scancodes).
+// This is used to determine if we should perform the additional steps required for Terminal Keyboards.
+#define CODESET_3 (strcmp(KEYBOARD_CODESET, "set3") == 0)
+
 static uint8_t keyboard_lock_leds = 0;
 
 static enum {
   UNINITIALISED,
   INIT_AWAIT_ACK,
   INIT_AWAIT_SELFTEST,
+  INIT_READ_ID_1,
+  INIT_READ_ID_2,
+  INIT_SETUP,
   SET_LOCK_LEDS,
   INITIALISED,
 } keyboard_state = UNINITIALISED;
@@ -79,10 +87,17 @@ static void keyboard_event_processor(uint8_t data_byte) {
       switch (data_byte) {
         case 0xAA:
           // Likely we are powering on for the first time and initialising. Keyboard sends 0xAA on power on following successful BAT
-          printf("[DBG] Keyboard Initialised!\n");
+          printf("[DBG] Keyboard Self Test OK!\n");
           buzzer_play_sound_sequence_non_blocking(READY_SEQUENCE);
           keyboard_lock_leds = 0;
-          keyboard_state = INITIALISED;
+          if (CODESET_3) {
+            // Only perform this step if we are a Terminal Keyboard (Keyboards utilising Set 3 Scancodes)
+            printf("[DBG] Waiting for Keyboard ID...\n");
+            keyboard_state = INIT_READ_ID_1;
+          } else {
+            printf("[DBG] Keyboard Initialised!\n");
+            keyboard_state = INITIALISED;
+          }
           break;
         default:
           // This event is reached if we receieve any other event before intiiialisation.  This may be an unsuccesful BAT or just weird power-on state.
@@ -105,10 +120,17 @@ static void keyboard_event_processor(uint8_t data_byte) {
     case INIT_AWAIT_SELFTEST:
       switch (data_byte) {
         case 0xAA:
-          printf("[DBG] Keyboard Initialised!\n");
+          printf("[DBG] Keyboard Self Test OK!\n");
           buzzer_play_sound_sequence_non_blocking(READY_SEQUENCE);
           keyboard_lock_leds = 0;
-          keyboard_state = INITIALISED;
+          if (CODESET_3) {
+            // Only perform this step if we are a Terminal Keyboard (Keyboards utilising Set 3 Scancodes)
+            printf("[DBG] Waiting for Keyboard ID...\n");
+            keyboard_state = INIT_READ_ID_1;
+          } else {
+            printf("[DBG] Keyboard Initialised!\n");
+            keyboard_state = INITIALISED;
+          }
           break;
         default:
           printf("[DBG] Self-Test invalid response (0x%02X).  Asking again to Reset...\n", data_byte);
@@ -116,6 +138,42 @@ static void keyboard_event_processor(uint8_t data_byte) {
           keyboard_command_handler(0xFF);
       }
       break;
+
+    // If we are a Terminal Keyboard, then we should receive 2 more responses which will be the ID of the keyboard.
+    // This will timeout after 500ms if no response is received, and this is handled within the keyboard_interface_task function.
+    // We then want to ensure we set all keys to Make/Break however if we do receive a response in time.
+    case INIT_READ_ID_1:
+      printf("[DBG] Keyboard First ID Byte read as 0x%02X\n", data_byte);
+      keyboard_id &= 0x00FF;
+      keyboard_id |= (uint16_t)data_byte << 8;
+      keyboard_state = INIT_READ_ID_2;
+      break;
+    case INIT_READ_ID_2:
+      printf("[DBG] Keyboard Second ID Byte read as 0x%02X\n", data_byte);
+      keyboard_id &= 0xFF00;
+      keyboard_id |= (uint16_t)data_byte;
+      printf("[DBG] Keyboard ID: 0x%04X\n", keyboard_id);
+      // Handle Make/Break Setup
+      printf("[DBG] Setting all Keys to Make/Break\n");
+      keyboard_command_handler(0xF8);
+      keyboard_state = INIT_SETUP;
+      break;
+    case INIT_SETUP:
+      // We want to ensure we set Make/Break
+      switch (data_byte) {
+        case 0xFA:
+          printf("[DBG] Keyboard Initialised!\n");
+          keyboard_state = INITIALISED;
+          break;
+        default:
+          printf("[DBG] Unknown Response (0x%02X).  Continuing...\n", data_byte);
+          keyboard_id = 0xFFFF;
+          printf("[DBG] Keyboard Initialised!\n");
+          keyboard_state = INITIALISED;
+      }
+      break;
+
+    // Handle LED Events.
     case SET_LOCK_LEDS:
       // We likely need to check for a F0 event (key-up) but I think we should be OK?
       switch (data_byte) {
@@ -134,6 +192,8 @@ static void keyboard_event_processor(uint8_t data_byte) {
           keyboard_state = INITIALISED;
       }
       break;
+
+    // If we are initialised, then we should process the keycodes.
     case INITIALISED:
       if (!ringbuf_is_full()) ringbuf_put(data_byte);
   }
@@ -175,13 +235,16 @@ static void __isr keyboard_input_event_handler() {
         keyboard_pio_restart();
         keyboard_state = UNINITIALISED;
       }
+      // Ask Keyboard to re-send the data.
       keyboard_command_handler(0xFE);
       return;  // We don't want to process this event any further.
     }
     // We should reset/restart the State Machine
     keyboard_pio_restart();
     keyboard_state = UNINITIALISED;
+    return;
   }
+
   keyboard_event_processor(data_byte);
 }
 
@@ -190,31 +253,12 @@ void keyboard_interface_task() {
   // It is responsible for initialising the keyboard, setting the lock LEDs, and processing
   // any keycodes that are sent from the keyboard.
 
-  static uint8_t detect_init_count = 0;
+  static uint8_t detect_stall_count = 0;
 
-  if (keyboard_state < SET_LOCK_LEDS) {
-    // This portion helps with initialisation of the keyboard.
-    static uint32_t detect_ms = 0;
-    if (board_millis() - detect_ms > 1000) {
-      detect_ms = board_millis();
-      // int pin_state = gpio_get(DATA_PIN + 1);
-      if (gpio_get(DATA_PIN + 1) == 1) {
-        if (detect_init_count < 3) {
-          detect_init_count++;
-          printf("[DBG] Keyboard Detected, waiting for ACK (%i/3)\n", detect_init_count);
-        } else {
-          printf("[DBG] Keyboard Detected but we had no ACK!\n");
-          printf("[DBG] Asking Keyboard to Reset\n");
-          keyboard_state = INIT_AWAIT_ACK;
-          detect_init_count = 0;
-          keyboard_command_handler(0xFF);
-        }
-      } else {
-        printf("[DBG] Waiting for Keyboard Clock HIGH\n");
-      }
-    }
-  } else if (keyboard_state == INITIALISED) {
+  if (keyboard_state == INITIALISED) {
+    // Handle further initialization steps now, this is more for terminal keyboard support.
     // This portion helps with Lock LED changes.  We only get here once the keyboard has initialised.
+    detect_stall_count = 0;  // Reset the detect_stall_count as we are initialised.
     if (ps2_lock_values != keyboard_lock_leds) {
       keyboard_state = SET_LOCK_LEDS;
       keyboard_command_handler(0xED);
@@ -226,14 +270,57 @@ void keyboard_interface_task() {
           tud_remote_wakeup();
         } else {
           if (tud_hid_ready()) {
-            uint32_t status = save_and_disable_interrupts();  // disable IRQ
-            int c = ringbuf_get();                            // critical_section
-            restore_interrupts(status);
-            if (c != -1) {
-              process_scancode((uint8_t)c);
-            }
+            uint32_t status = save_and_disable_interrupts();  // Stop any interrupts from triggering
+            int c = ringbuf_get();                            // Pull from the ringbuffer
+            restore_interrupts(status);                       // Release the interrupts, allowing key events to resume.
+            process_scancode((uint8_t)c);
           }
         }
+      }
+    }
+  } else {
+    // This portion helps with initialisation of the keyboard.
+    // Here we handle Timeout events.  If we don't receive a response from the keyboard when in an alternate state,
+    // then we will reset the keyboard and try again.  This is to handle the case where the keyboard is not responding.
+    static uint32_t detect_ms = 0;
+    if (board_millis() - detect_ms > 500) {
+      detect_ms = board_millis();
+      if (gpio_get(DATA_PIN + 1) == 1) {
+        // Only perform timeout checks if the clock is HIGH (Keyboard Detected).
+        detect_stall_count++;  // Always increment the detect_stall_count if we have a HIGH clock and not in INITIALISED state.
+        switch (keyboard_state) {
+          case INIT_READ_ID_1 ... INIT_SETUP:
+            if (detect_stall_count > 1) {
+              // Stall Detected during Reading of Keyboard ID or Setup Process
+              printf("[DBG] Keyboard Read ID/Setup Timeout, continuing.\n");
+              keyboard_id = 0xFFFF;
+              printf("[DBG] Keyboard Initialised!\n");
+              keyboard_state = INITIALISED;
+              detect_stall_count = 0;
+            }
+            break;
+          case SET_LOCK_LEDS:
+            if (detect_stall_count > 1) {
+              // Stall Detected during Setting of Lock LEDs
+              printf("[DBG] Keyboard Lock LED Set Timeout, continuing.\n");
+              keyboard_state = INITIALISED;
+              detect_stall_count = 0;
+            }
+            break;
+          default:
+            if (detect_stall_count < 5) {
+              printf("[DBG] Keyboard Detected, waiting for ACK (%i/5)\n", detect_stall_count);
+            } else {
+              printf("[DBG] Keyboard Detected but we had no ACK!\n");
+              printf("[DBG] Asking Keyboard to Reset\n");
+              keyboard_state = INIT_AWAIT_ACK;
+              detect_stall_count = 0;
+              keyboard_command_handler(0xFF);
+            }
+            break;
+        }
+      } else {
+        printf("[DBG] Waiting for Keyboard Clock HIGH\n");
       }
     }
   }
