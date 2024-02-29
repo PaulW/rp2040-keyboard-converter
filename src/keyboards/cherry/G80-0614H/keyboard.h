@@ -21,7 +21,7 @@
 #ifndef KEYMAP_H
 #define KEYMAP_H
 
-#include "keymaps.h"
+#include "hid_keycodes.h"
 
 /* Cherry G80-0614H
  * Keyboard uses a Scancode Set 1

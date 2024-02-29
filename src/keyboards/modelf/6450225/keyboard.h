@@ -21,7 +21,7 @@
 #ifndef KEYMAP_H
 #define KEYMAP_H
 
-#include "keymaps.h"
+#include "hid_keycodes.h"
 
 /* IBM 5170 (Model F-AT)
  * Keyboard uses Scancode Set 2.

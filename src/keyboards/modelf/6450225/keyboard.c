@@ -20,7 +20,7 @@
 
 #include "keyboard.h"
 
-#include "hid_keycodes.h"
+#include "keymaps.h"
 
 // clang-format off
 

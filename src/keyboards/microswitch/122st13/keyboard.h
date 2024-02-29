@@ -21,7 +21,7 @@
 #ifndef KEYMAP_H
 #define KEYMAP_H
 
-#include "keymaps.h"
+#include "hid_keycodes.h"
 
 /* MicroSwitch 122ST13 Terminal Keyboard:
  * Keyboard uses Scancode Set 3.

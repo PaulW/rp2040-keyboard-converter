@@ -21,7 +21,7 @@
 #ifndef KEYMAP_H
 #define KEYMAP_H
 
-#include "keymaps.h"
+#include "hid_keycodes.h"
 
 /* IBM Model M 101 Key
  * Keyboard uses a Scancode Set 2
