@@ -315,25 +315,25 @@ void keyboard_interface_task() {
           case SET_LOCK_LEDS:
             if (detect_stall_count > 1) {
               // Stall Detected during Setting of Lock LEDs
-              printf("[DBG] Keyboard Lock LED Set Timeout, continuing.\n");
+              printf("[DBG] Timeout while setting keyboard lock LEDs, continuing.\n");
               keyboard_state = INITIALISED;
               detect_stall_count = 0;
             }
             break;
           default:
             if (detect_stall_count < 5) {
-              printf("[DBG] Keyboard Detected, waiting for ACK (%i/5)\n", detect_stall_count);
+              printf("[DBG] Keyboard detected, awaiting ACK (%i/5 attempts)\n", detect_stall_count);
             } else {
-              printf("[DBG] Keyboard Detected but we had no ACK!\n");
-              printf("[DBG] Asking Keyboard to Reset\n");
+              printf("[DBG] Keyboard detected, but no ACK received!\n");
+              printf("[DBG] Requesting keyboard reset\n");
               keyboard_state = INIT_AWAIT_ACK;
               detect_stall_count = 0;
               keyboard_command_handler(0xFF);
             }
             break;
         }
-      } else {
-        printf("[DBG] Waiting for Keyboard Clock HIGH\n");
+      } else if (keyboard_state == UNINITIALISED) {
+        printf("[DBG] Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
         detect_stall_count = 0;  // Reset the detect_stall_count as we are waiting for the clock to go HIGH.
       }
     }

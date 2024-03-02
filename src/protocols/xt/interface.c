@@ -108,7 +108,7 @@ void keyboard_interface_task() {
     }
   } else {
     // This portion helps with initialisation of the keyboard.
-    static uint8_t detect_init_count = 0;
+    static uint8_t detect_stall_count = 0;
     static uint32_t detect_ms = 0;
     // if ((gpio_get(DATA_PIN) == 1) && (gpio_get(DATA_PIN + 1) == 1)) {
     //   printf("[DBG] Keyboard Initialised (BAT OK)!\n");
@@ -118,17 +118,18 @@ void keyboard_interface_task() {
       detect_ms = board_millis();
       // int pin_state = gpio_get(DATA_PIN + 1);
       if (gpio_get(DATA_PIN + 1) == 1) {
-        if (detect_init_count < 5) {
-          detect_init_count++;
-          printf("[DBG] Keyboard Detected, waiting for ACK (%i/3)\n", detect_init_count);
+        if (detect_stall_count < 5) {
+          detect_stall_count++;
+          printf("[DBG] Keyboard detected, awaiting ACK (%i/5 attempts)\n", detect_stall_count);
         } else {
-          printf("[DBG] Keyboard Detected but we had no ACK!\n");
-          printf("[DBG] Asking Keyboard to Reset\n");
+          printf("[DBG] Keyboard detected, but no ACK received!\n");
+          printf("[DBG] Requesting keyboard reset\n");
           keyboard_pio_restart();
-          detect_init_count = 0;
+          detect_stall_count = 0;
         }
-      } else {
-        printf("[DBG] Waiting for Keyboard Clock HIGH\n");
+      } else if (keyboard_state == UNINITIALISED) {
+        printf("[DBG] Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
+        detect_stall_count = 0;
       }
     }
   }
