@@ -22,12 +22,6 @@ I have since designed a custom hardware solution which fits inside the Model F P
 
 I am also working on an inline connector design now, to allow support for multiple keyboards & protocols.
 
-## Licence
-
-The project is licensed under **GPLv3** or later. [Pico-SDK](https://github.com/raspberrypi/pico-sdk) and [TinyUSB](https://github.com/hathach/tinyusb) stack have their own license respectively, and as such remain intact in any included portions of code from those shared resources.
-
-Ringbuffer implementation is on the one from the [TMK](https://github.com/tmk/tmk_keyboard) repository.
-
 ## Supported Keyboards
 
 Please refer to the [Keyboards Folder](src/keyboards/) to see what current Keyboards are available and supported.  I plan on adding more as/when I get them to develop with, but please feel free to add your own.
@@ -167,3 +161,47 @@ Device Status:     0x0002
   (Bus Powered)
   Remote Wakeup Enabled
 ```
+
+## Serial Debugging
+
+If you have a Serial-UART device connected to the UART output of the RP2040, then you will see some extra debugging information while the converter runs.  Here is an example output from when the RP2040 is powered on with a keyboard connected:
+
+```
+--------------------------------
+[INFO] RP2040 Keyboard Converter
+[INFO] RP2040 Serial ID: E66160F423782037
+[INFO] Build Time: 2024-03-02 13:40
+--------------------------------
+[INFO] Keyboard Make: IBM
+[INFO] Keyboard Model: 1390131
+[INFO] Keyboard Description: Model M (101-key)
+[INFO] Keyboard Protocol: at
+[INFO] Keyboard Scancode Set: set2
+--------------------------------
+[INFO] RP2040 Clock Speed: 125000KHz
+[INFO] Interface Polling Interval: 50us
+[INFO] Interface Polling Clock: 20kHz
+[INFO] Clock Divider based on 11 SM Cycles per Keyboard Clock Cycle: 568.00
+[INFO] Effective SM Clock Speed: 220.07kHz
+[INFO] PIO SM Interface program loaded at 7 with clock divider of 568.00
+--------------------------------
+[DBG] Waiting for Keyboard Clock HIGH
+[DBG] Waiting for Keyboard Clock HIGH
+[DBG] Keyboard Detected, waiting for ACK (1/5)
+[DBG] Keyboard Detected, waiting for ACK (2/5)
+[DBG] Keyboard Self Test OK!
+[DBG] Waiting for Keyboard ID...
+[DBG] Keyboard ID/Setup Timeout, retrying...
+[DBG] ACK Keyboard ID Request
+[DBG] Waiting for Keyboard ID...
+[DBG] Keyboard First ID Byte read as 0xAB
+[DBG] Keyboard Second ID Byte read as 0x83
+[DBG] Keyboard ID: 0xAB83
+[DBG] Keyboard Initialised!
+```
+
+## Licence
+
+The project is licensed under **GPLv3** or later. [Pico-SDK](https://github.com/raspberrypi/pico-sdk) and [TinyUSB](https://github.com/hathach/tinyusb) stack have their own license respectively, and as such remain intact in any included portions of code from those shared resources.
+
+Ringbuffer implementation is on the one from the [TMK](https://github.com/tmk/tmk_keyboard) repository.
