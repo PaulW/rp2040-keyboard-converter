@@ -114,11 +114,11 @@ void keyboard_interface_task() {
     //   printf("[DBG] Keyboard Initialised (BAT OK)!\n");
     //   keyboard_state = INITIALISED;
     // }
-    if (board_millis() - detect_ms > 1000) {
+    if (board_millis() - detect_ms > 200) {
       detect_ms = board_millis();
       // int pin_state = gpio_get(DATA_PIN + 1);
       if (gpio_get(DATA_PIN + 1) == 1) {
-        if (detect_init_count < 3) {
+        if (detect_init_count < 5) {
           detect_init_count++;
           printf("[DBG] Keyboard Detected, waiting for ACK (%i/3)\n", detect_init_count);
         } else {
