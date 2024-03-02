@@ -38,7 +38,7 @@
  * `-------' `-----'   `---------------------------------------'   `-----' `---------------'
  * 
  *  -: Hidden Keys (not used in standard UK Layout)
- *  ~: Remaps to alternate code (83-03, 84-7F)
+ *  ~: Remaps to alternate code (83-02, 84-7F)
  */
 
 // clang-format off
