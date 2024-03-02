@@ -46,7 +46,7 @@ void process_scancode(uint8_t code) {
           handle_keyboard_report(0x02, true);
           break;
         case 0x84:  // Keypad Plus (Legend says minus)
-          handle_keyboard_report(0x7C, true);
+          handle_keyboard_report(0x7F, true);
           break;
         case 0xAA:  // Self-test passed
         case 0xFC:  // Self-test failed
@@ -71,7 +71,7 @@ void process_scancode(uint8_t code) {
           state = INIT;
           break;
         case 0x84:  // Keypad Plus (Legend says minus)
-          handle_keyboard_report(0x7C, false);
+          handle_keyboard_report(0x7F, false);
           state = INIT;
           break;
         default:

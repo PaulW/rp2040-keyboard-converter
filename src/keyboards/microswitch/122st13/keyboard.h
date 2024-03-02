@@ -42,14 +42,14 @@
  * | 01| 09| | 11  |   | 19 |               29            | 39 |   | 58  |     | 60|     |     70| 71|   |
  * `-------' `-----'   `---------------------------------------'   `-----'     `---'     `---------------'
  * 
- *  ~: Remaps to alternate code (83-02, 84-7C)
+ *  ~: Remaps to alternate code (83-02, 84-7F)
  */
 
 // clang-format off
 #define KEYMAP_PC122( \
                   K08,K10,K18,K20,K28,K30,K38,K40,K48,K50,K57,K5F, \
                   K07,K0F,K17,K1F,K27,K2F,K37,K3F,K47,K4F,K56,K5E, \
-    K05,K06,  K0E,K16,K1E,K26,K25,K2E,K36,K3D,K3E,K46,K45,K4E,K55,    K66,  K67,K6E,K6F,  K76,K77,K7E,K7C, \
+    K05,K06,  K0E,K16,K1E,K26,K25,K2E,K36,K3D,K3E,K46,K45,K4E,K55,    K66,  K67,K6E,K6F,  K76,K77,K7E,K7F, \
     K04,K0C,  K0D,    K15,K1D,K24,K2D,K2C,K35,K3C,K43,K44,K4D,K54,K5B,      K64,K65,K6D,  K6C,K75,K7D,K68, \
     K03,K0B,  K14,    K1C,K1B,K23,K2B,K34,K33,K3B,K42,K4B,K4C,K52,K53,K5A,      K63,      K6B,K73,K74,K7B, \
     K02,K0A,  K12,K13,K1A,K22,K21,K2A,K32,K31,K3A,K41,K49,K4A,        K59,  K61,K62,K6A,  K69,K72,K7A,K79, \
@@ -70,7 +70,7 @@
     { KC_##K60, KC_##K61, KC_##K62, KC_##K63, KC_##K64, KC_##K65, KC_##K66, KC_##K67,    /* 60-67 */ \
       KC_##K68, KC_##K69, KC_##K6A, KC_##K6B, KC_##K6C, KC_##K6D, KC_##K6E, KC_##K6F },  /* 68-6F */ \
     { KC_##K70, KC_##K71, KC_##K72, KC_##K73, KC_##K74, KC_##K75, KC_##K76, KC_##K77,    /* 70-77 */ \
-      KC_NO,    KC_##K79, KC_##K7A, KC_##K7B, KC_##K7C, KC_##K7D, KC_##K7E, KC_NO }      /* 78-7F */ \
+      KC_NO,    KC_##K79, KC_##K7A, KC_##K7B, KC_NO,    KC_##K7D, KC_##K7E, KC_##K7F }   /* 78-7F */ \
 }
 // clang-format on
 
