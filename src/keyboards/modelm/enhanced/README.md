@@ -1,8 +1,8 @@
-# IBM Model M (101-key) Keyboard, Model 1390131
+# IBM Model M Enhanced Keyboard (101-102-key)
 
 ![Model M (1390131)](doc/IBM-1390131.jpeg)
 
-This is the Keyboard Mapping & Configuration for the IBM Model M Keyboard, model 1390131.  This model has a US ANSI Layout.  It operates using the AT Protocol, and uses Set 2 Scancodes.
+This is the Keyboard Mapping & Configuration for the IBM Model M Enhanced Keyboard, and covers both 101 and 102 key variants (ANSI and ISO).  It operates using the AT Protocol, and uses Set 2 Scancodes.
 
 ## Key Mapping
 

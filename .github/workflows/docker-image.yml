@@ -15,8 +15,8 @@ jobs:
       run: docker compose build
     - name: Run Build for Model F 6450225
       run: docker compose run -e KEYBOARD="modelf/6450225" builder
-    - name: Run Build for Model M 1390131
-      run: docker compose run -e KEYBOARD="modelm/1390131" builder
+    - name: Run Build for Model M Enhanced
+      run: docker compose run -e KEYBOARD="modelm/enhanced" builder
     - name: Run Build for Cherry G80-0614H
       run: docker compose run -e KEYBOARD="cherry/G80-0614H" builder
     - name: Run Build for Cherry G80-1104H
