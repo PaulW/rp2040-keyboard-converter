@@ -32,51 +32,6 @@
 /* Define Super Macro Toggle */
 #define SUPER_MACRO_INIT(code) (((code) & ((1 << (KC_LSHIFT & 0x7)) | (1 << (KC_RSHIFT & 0x7)))) == ((1 << (KC_LSHIFT & 0x7)) | (1 << (KC_RSHIFT & 0x7))))
 
-/* Raw Hid Code Definitions */
-/* Generic Desktop Page(0x01) */
-/* System Power Control */
-#define SYSTEM_POWER_DOWN 0x0081
-#define SYSTEM_SLEEP 0x0082
-#define SYSTEM_WAKE_UP 0x0083
-/* Consumer Page Page (0x0C) */
-/* Media Controls */
-#define MEDIA_PLAY 0x00B0
-#define MEDIA_PAUSE 0x00B1
-#define MEDIA_RECORD 0x00B2
-#define MEDIA_FAST_FORWARD 0x00B3
-#define MEDIA_REWIND 0x00B4
-#define MEDIA_NEXT_TRACK 0x00B5
-#define MEDIA_PREV_TRACK 0x00B6
-#define MEDIA_STOP 0x00B7
-#define MEDIA_EJECT 0x00B8
-#define MEDIA_STOP_EJECT 0x00CC
-#define MEDIA_PLAY_PAUSE 0x00CD
-#define AUDIO_MUTE 0x00E2
-#define AUDIO_VOL_UP 0x00E9
-#define AUDIO_VOL_DOWN 0x00EA
-/* App Launch */
-#define APPLAUNCH_CC_CONFIG 0x0183
-#define APPLAUNCH_EMAIL 0x018A
-#define APPLAUNCH_CALCULATOR 0x0192
-#define APPLAUNCH_LOCAL_BROWSER 0x0194
-#define APPLAUNCH_BROWSER 0x0196
-#define APPLAUNCH_LOCK 0x019E
-#define APPLAUNCH_COMMAND_RUN 0x01A0
-#define APPLAUNCH_FILE_EXPLORER 0x01B4
-/* App Control */
-#define APPCONTROL_MAXIMIZE 0x0205
-#define APPCONTROL_MINIMIZE 0x0206
-#define APPCONTROL_SEARCH 0x0221
-#define APPCONTROL_HOME 0x0223
-#define APPCONTROL_BACK 0x0224
-#define APPCONTROL_FORWARD 0x0225
-#define APPCONTROL_STOP 0x0226
-#define APPCONTROL_REFRESH 0x0227
-#define APPCONTROL_BOOKMARKS 0x022A
-/* Display Brightness Controls  https://www.usb.org/sites/default/files/hutrr41_0.pdf */
-#define BRIGHTNESS_INCREMENT 0x006F
-#define BRIGHTNESS_DECREMENT 0x0070
-
 /*
  * Short names for ease of definition of keymap
  */
@@ -210,188 +165,242 @@
 #define KC_SPECIAL_BOOT 0xD4
 #define KC_BOOT KC_SPECIAL_BOOT
 
-/* USB HID Keyboard/Keypad Usage(0x07) */
-enum hid_keyboard_keypad_usage {
-  KC_NO = 0x00,
-  KC_ROLL_OVER,       // 01
-  KC_POST_FAIL,       // 02
-  KC_UNDEFINED,       // 03
-  KC_A,               // 04
-  KC_B,               // 05
-  KC_C,               // 06
-  KC_D,               // 07
-  KC_E,               // 08
-  KC_F,               // 09
-  KC_G,               // 0A
-  KC_H,               // 0B
-  KC_I,               // 0C
-  KC_J,               // 0D
-  KC_K,               // 0E
-  KC_L,               // 0F
-  KC_M,               // 10
-  KC_N,               // 11
-  KC_O,               // 12
-  KC_P,               // 13
-  KC_Q,               // 14
-  KC_R,               // 15
-  KC_S,               // 16
-  KC_T,               // 17
-  KC_U,               // 18
-  KC_V,               // 19
-  KC_W,               // 1A
-  KC_X,               // 1B
-  KC_Y,               // 1C
-  KC_Z,               // 1D
-  KC_1,               // 1E
-  KC_2,               // 1F
-  KC_3,               // 20
-  KC_4,               // 21
-  KC_5,               // 22
-  KC_6,               // 23
-  KC_7,               // 24
-  KC_8,               // 25
-  KC_9,               // 26
-  KC_0,               // 27
-  KC_ENTER,           // 28
-  KC_ESCAPE,          // 29
-  KC_BSPACE,          // 2A
-  KC_TAB,             // 2B
-  KC_SPACE,           // 2C
-  KC_MINUS,           // 2D
-  KC_EQUAL,           // 2E
-  KC_LBRACKET,        // 2F
-  KC_RBRACKET,        // 30
-  KC_BSLASH,          // 31   \ (and |)
-  KC_NONUS_HASH,      // 32   Non-US # and ~ (Typically near the Enter key)
-  KC_SCOLON,          // 33   ; (and :)
-  KC_QUOTE,           // 34   ' and "
-  KC_GRAVE,           // 35   Grave accent and tilde
-  KC_COMMA,           // 36   , and <
-  KC_DOT,             // 37   . and >
-  KC_SLASH,           // 38   / and ?
-  KC_CAPSLOCK,        // 39
-  KC_F1,              // 3A
-  KC_F2,              // 3B
-  KC_F3,              // 3C
-  KC_F4,              // 3D
-  KC_F5,              // 3E
-  KC_F6,              // 3F
-  KC_F7,              // 40
-  KC_F8,              // 41
-  KC_F9,              // 42
-  KC_F10,             // 43
-  KC_F11,             // 44
-  KC_F12,             // 45
-  KC_PSCREEN,         // 46
-  KC_SCROLLLOCK,      // 47
-  KC_PAUSE,           // 48
-  KC_INSERT,          // 49
-  KC_HOME,            // 4A
-  KC_PGUP,            // 4B
-  KC_DELETE,          // 4C
-  KC_END,             // 4D
-  KC_PGDOWN,          // 4E
-  KC_RIGHT,           // 4F
-  KC_LEFT,            // 50
-  KC_DOWN,            // 51
-  KC_UP,              // 52
-  KC_NUMLOCK,         // 53
-  KC_KP_SLASH,        // 54
-  KC_KP_ASTERISK,     // 55
-  KC_KP_MINUS,        // 56
-  KC_KP_PLUS,         // 57
-  KC_KP_ENTER,        // 58
-  KC_KP_1,            // 59
-  KC_KP_2,            // 5A
-  KC_KP_3,            // 5B
-  KC_KP_4,            // 5C
-  KC_KP_5,            // 5D
-  KC_KP_6,            // 5E
-  KC_KP_7,            // 5F
-  KC_KP_8,            // 60
-  KC_KP_9,            // 61
-  KC_KP_0,            // 62
-  KC_KP_DOT,          // 63
-  KC_NONUS_BSLASH,    // 64   Non-US \ and | (Typically near the Left-Shift key) */
-  KC_APPLICATION,     // 65
-  KC_POWER,           // 66
-  KC_KP_EQUAL,        // 67
-  KC_F13,             // 68
-  KC_F14,             // 69
-  KC_F15,             // 6A
-  KC_F16,             // 6B
-  KC_F17,             // 6C
-  KC_F18,             // 6D
-  KC_F19,             // 6E
-  KC_F20,             // 6F
-  KC_F21,             // 70
-  KC_F22,             // 71
-  KC_F23,             // 72
-  KC_F24,             // 73
-  KC_EXECUTE,         // 74
-  KC_HELP,            // 75
-  KC_MENU,            // 76
-  KC_SELECT,          // 77
-  KC_STOP,            // 78
-  KC_AGAIN,           // 79
-  KC_UNDO,            // 7A
-  KC_CUT,             // 7B
-  KC_COPY,            // 7C
-  KC_PASTE,           // 7D
-  KC_FIND,            // 7E
-  KC__MUTE,           // 7F
-  KC__VOLUP,          // 80
-  KC__VOLDOWN,        // 81
-  KC_LOCKING_CAPS,    // 82   locking Caps Lock */
-  KC_LOCKING_NUM,     // 83   locking Num Lock */
-  KC_LOCKING_SCROLL,  // 84   locking Scroll Lock */
-  KC_KP_COMMA,        // 85
-  KC_KP_EQUAL_AS400,  // 86   equal sign on AS/400 */
-  KC_INT1,            // 87
-  KC_INT2,            // 88
-  KC_INT3,            // 89
-  KC_INT4,            // 8A
-  KC_INT5,            // 8B
-  KC_INT6,            // 8C
-  KC_INT7,            // 8D
-  KC_INT8,            // 8E
-  KC_INT9,            // 8F
-  KC_LANG1,           // 90
-  KC_LANG2,           // 91
-  KC_LANG3,           // 92
-  KC_LANG4,           // 93
-  KC_LANG5,           // 94
-  KC_LANG6,           // 95
-  KC_LANG7,           // 96
-  KC_LANG8,           // 97
-  KC_LANG9,           // 98
-  KC_ALT_ERASE,       // 99
-  KC_SYSREQ,          // 9A
-  KC_CANCEL,          // 9B
-  KC_CLEAR,           // 9C
-  KC_PRIOR,           // 9D
-  KC_RETURN,          // 9E
-  KC_SEPARATOR,       // 9F
-  KC_OUT,             // A0
-  KC_OPER,            // A1
-  KC_CLEAR_AGAIN,     // A2
-  KC_CRSEL,           // A3
-  KC_EXSEL,           // A4
-
-  /* Modifiers */
-  KC_LCTRL = 0xE0,
-  KC_LSHIFT,  // E1
-  KC_LALT,    // E2
-  KC_LGUI,    // E3
-  KC_RCTRL,   // E4
-  KC_RSHIFT,  // E5
-  KC_RALT,    // E6
-  KC_RGUI,    // E7
+/* HID Usage Tables */
+/* HID Generic Desktop Usage Page (0x01) */
+enum hid_generic_desktop_usage_page {
+  SYSTEM_POWER_DOWN = 0x0081,  // 0x0081 /* System Power Down */
+  SYSTEM_SLEEP,                // 0x0082 /* System Sleep */
+  SYSTEM_WAKE_UP,              // 0x0083 /* System Wake Up */
 };
 
-/* Special keycodes for 8-bit keymap
-   NOTE: 0xA5-DF and 0xE8-FF are used for internal special purpose */
-enum internal_special_keycodes {
+/* HID Keyboard Usage Page (0x07) */
+enum hid_keyboard_usage_page {
+  KC_NO = 0x00,       // 0x00 /* No event in this report */
+  KC_ROLL_OVER,       // 0x01 /* Keyboard Error Roll Over */
+  KC_POST_FAIL,       // 0x02 /* Keyboard POST Fail */
+  KC_UNDEFINED,       // 0x03 /* Keyboard Error Undefined */
+  KC_A,               // 0x04 /* Keyboard a and A */
+  KC_B,               // 0x05 /* Keyboard b and B */
+  KC_C,               // 0x06 /* Keyboard c and C */
+  KC_D,               // 0x07 /* Keyboard d and D */
+  KC_E,               // 0x08 /* Keyboard e and E */
+  KC_F,               // 0x09 /* Keyboard f and F */
+  KC_G,               // 0x0A /* Keyboard g and G */
+  KC_H,               // 0x0B /* Keyboard h and H */
+  KC_I,               // 0x0C /* Keyboard i and I */
+  KC_J,               // 0x0D /* Keyboard j and J */
+  KC_K,               // 0x0E /* Keyboard k and K */
+  KC_L,               // 0x0F /* Keyboard l and L */
+  KC_M,               // 0x10 /* Keyboard m and M */
+  KC_N,               // 0x11 /* Keyboard n and N */
+  KC_O,               // 0x12 /* Keyboard o and O */
+  KC_P,               // 0x13 /* Keyboard p and P */
+  KC_Q,               // 0x14 /* Keyboard q and Q */
+  KC_R,               // 0x15 /* Keyboard r and R */
+  KC_S,               // 0x16 /* Keyboard s and S */
+  KC_T,               // 0x17 /* Keyboard t and T */
+  KC_U,               // 0x18 /* Keyboard u and U */
+  KC_V,               // 0x19 /* Keyboard v and V */
+  KC_W,               // 0x1A /* Keyboard w and W */
+  KC_X,               // 0x1B /* Keyboard x and X */
+  KC_Y,               // 0x1C /* Keyboard y and Y */
+  KC_Z,               // 0x1D /* Keyboard z and Z */
+  KC_1,               // 0x1E /* Keyboard 1 and ! */
+  KC_2,               // 0x1F /* Keyboard 2 and @ */
+  KC_3,               // 0x20 /* Keyboard 3 and # */
+  KC_4,               // 0x21 /* Keyboard 4 and $ */
+  KC_5,               // 0x22 /* Keyboard 5 and % */
+  KC_6,               // 0x23 /* Keyboard 6 and ^ */
+  KC_7,               // 0x24 /* Keyboard 7 and & */
+  KC_8,               // 0x25 /* Keyboard 8 and * */
+  KC_9,               // 0x26 /* Keyboard 9 and ( */
+  KC_0,               // 0x27 /* Keyboard 0 and ) */
+  KC_ENTER,           // 0x28 /* Keyboard Enter (Return) */
+  KC_ESCAPE,          // 0x29 /* Keyboard Escape */
+  KC_BSPACE,          // 0x2A /* Keyboard Backspace */
+  KC_TAB,             // 0x2B /* Keyboard Tab */
+  KC_SPACE,           // 0x2C /* Keyboard Spacebar */
+  KC_MINUS,           // 0x2D /* Keyboard - and _ */
+  KC_EQUAL,           // 0x2E /* Keyboard = and + */
+  KC_LBRACKET,        // 0x2F /* Keyboard [ and { */
+  KC_RBRACKET,        // 0x30 /* Keyboard ] and } */
+  KC_BSLASH,          // 0x31 /* Keyboard \ (and |) */
+  KC_NONUS_HASH,      // 0x32 /* Keyboard Non-US # and ~ (Typically near the Enter key) */
+  KC_SCOLON,          // 0x33 /* Keyboard ; (and :) */
+  KC_QUOTE,           // 0x34 /* Keyboard ' and " */
+  KC_GRAVE,           // 0x35 /* Keyboard Grave accent and tilde */
+  KC_COMMA,           // 0x36 /* Keyboard , and < */
+  KC_DOT,             // 0x37 /* Keyboard . and > */
+  KC_SLASH,           // 0x38 /* Keyboard / and ? */
+  KC_CAPSLOCK,        // 0x39 /* Keyboard Caps Lock */
+  KC_F1,              // 0x3A /* Keyboard F1 */
+  KC_F2,              // 0x3B /* Keyboard F2 */
+  KC_F3,              // 0x3C /* Keyboard F3 */
+  KC_F4,              // 0x3D /* Keyboard F4 */
+  KC_F5,              // 0x3E /* Keyboard F5 */
+  KC_F6,              // 0x3F /* Keyboard F6 */
+  KC_F7,              // 0x40 /* Keyboard F7 */
+  KC_F8,              // 0x41 /* Keyboard F8 */
+  KC_F9,              // 0x42 /* Keyboard F9 */
+  KC_F10,             // 0x43 /* Keyboard F10 */
+  KC_F11,             // 0x44 /* Keyboard F11 */
+  KC_F12,             // 0x45 /* Keyboard F12 */
+  KC_PSCREEN,         // 0x46 /* Keyboard Print Screen */
+  KC_SCROLLLOCK,      // 0x47 /* Keyboard Scroll Lock */
+  KC_PAUSE,           // 0x48 /* Keyboard Pause */
+  KC_INSERT,          // 0x49 /* Keyboard Insert */
+  KC_HOME,            // 0x4A /* Keyboard Home */
+  KC_PGUP,            // 0x4B /* Keyboard Page Up */
+  KC_DELETE,          // 0x4C /* Keyboard Delete */
+  KC_END,             // 0x4D /* Keyboard End */
+  KC_PGDOWN,          // 0x4E /* Keyboard Page Down */
+  KC_RIGHT,           // 0x4F /* Keyboard Right Arrow */
+  KC_LEFT,            // 0x50 /* Keyboard Left Arrow */
+  KC_DOWN,            // 0x51 /* Keyboard Down Arrow */
+  KC_UP,              // 0x52 /* Keyboard Up Arrow */
+  KC_NUMLOCK,         // 0x53 /* Keyboard Num Lock */
+  KC_KP_SLASH,        // 0x54 /* Keypad Slash */
+  KC_KP_ASTERISK,     // 0x55 /* Keypad Asterisk */
+  KC_KP_MINUS,        // 0x56 /* Keypad Minus */
+  KC_KP_PLUS,         // 0x57 /* Keypad Plus */
+  KC_KP_ENTER,        // 0x58 /* Keypad Enter */
+  KC_KP_1,            // 0x59 /* Keypad 1 */
+  KC_KP_2,            // 0x5A /* Keypad 2 */
+  KC_KP_3,            // 0x5B /* Keypad 3 */
+  KC_KP_4,            // 0x5C /* Keypad 4 */
+  KC_KP_5,            // 0x5D /* Keypad 5 */
+  KC_KP_6,            // 0x5E /* Keypad 6 */
+  KC_KP_7,            // 0x5F /* Keypad 7 */
+  KC_KP_8,            // 0x60 /* Keypad 8 */
+  KC_KP_9,            // 0x61 /* Keypad 9 */
+  KC_KP_0,            // 0x62 /* Keypad 0 */
+  KC_KP_DOT,          // 0x63 /* Keypad Dot */
+  KC_NONUS_BSLASH,    // 0x64 /* Non-US \ and | (Typically near the Left-Shift key) */
+  KC_APPLICATION,     // 0x65 /* Keyboard Application */
+  KC_POWER,           // 0x66 /* Keyboard Power */
+  KC_KP_EQUAL,        // 0x67 /* Keypad Equal Sign */
+  KC_F13,             // 0x68 /* Keyboard F13 */
+  KC_F14,             // 0x69 /* Keyboard F14 */
+  KC_F15,             // 0x6A /* Keyboard F15 */
+  KC_F16,             // 0x6B /* Keyboard F16 */
+  KC_F17,             // 0x6C /* Keyboard F17 */
+  KC_F18,             // 0x6D /* Keyboard F18 */
+  KC_F19,             // 0x6E /* Keyboard F19 */
+  KC_F20,             // 0x6F /* Keyboard F20 */
+  KC_F21,             // 0x70 /* Keyboard F21 */
+  KC_F22,             // 0x71 /* Keyboard F22 */
+  KC_F23,             // 0x72 /* Keyboard F23 */
+  KC_F24,             // 0x73 /* Keyboard F24 */
+  KC_EXECUTE,         // 0x74 /* Keyboard Execute */
+  KC_HELP,            // 0x75 /* Keyboard Help */
+  KC_MENU,            // 0x76 /* Keyboard Menu */
+  KC_SELECT,          // 0x77 /* Keyboard Select */
+  KC_STOP,            // 0x78 /* Keyboard Stop */
+  KC_AGAIN,           // 0x79 /* Keyboard Again */
+  KC_UNDO,            // 0x7A /* Keyboard Undo */
+  KC_CUT,             // 0x7B /* Keyboard Cut */
+  KC_COPY,            // 0x7C /* Keyboard Copy */
+  KC_PASTE,           // 0x7D /* Keyboard Paste */
+  KC_FIND,            // 0x7E /* Keyboard Find */
+  KC__MUTE,           // 0x7F /* Keyboard Mute */
+  KC__VOLUP,          // 0x80 /* Keyboard Volume Up */
+  KC__VOLDOWN,        // 0x81 /* Keyboard Volume Down */
+  KC_LOCKING_CAPS,    // 0x82 /* Keyboard Locking Caps Lock */
+  KC_LOCKING_NUM,     // 0x83 /* Keyboard Locking Num Lock */
+  KC_LOCKING_SCROLL,  // 0x84 /* Keyboard Locking Scroll Lock */
+  KC_KP_COMMA,        // 0x85 /* Keypad Comma */
+  KC_KP_EQUAL_AS400,  // 0x86 /* Keypad Equal Sign on AS/400 */
+  KC_INT1,            // 0x87 /* Keyboard International1 (Yen) */
+  KC_INT2,            // 0x88 /* Keyboard International2 (Ro) */
+  KC_INT3,            // 0x89 /* Keyboard International3 (Kana) */
+  KC_INT4,            // 0x8A /* Keyboard International4 (JIS Katakana/Hiragana) */
+  KC_INT5,            // 0x8B /* Keyboard International5 (JIS Zenkaku/Hankaku) */
+  KC_INT6,            // 0x8C /* Keyboard International6 */
+  KC_INT7,            // 0x8D /* Keyboard International7 */
+  KC_INT8,            // 0x8E /* Keyboard International8 */
+  KC_INT9,            // 0x8F /* Keyboard International9 */
+  KC_LANG1,           // 0x90 /* Keyboard LANG1 (Hangul/English) */
+  KC_LANG2,           // 0x91 /* Keyboard LANG2 (Hanja) */
+  KC_LANG3,           // 0x92 /* Keyboard LANG3 (Katakana) */
+  KC_LANG4,           // 0x93 /* Keyboard LANG4 (Hiragana) */
+  KC_LANG5,           // 0x94 /* Keyboard LANG5 (Zenkaku/Hankaku) */
+  KC_LANG6,           // 0x95 /* Keyboard LANG6 */
+  KC_LANG7,           // 0x96 /* Keyboard LANG7 */
+  KC_LANG8,           // 0x97 /* Keyboard LANG8 */
+  KC_LANG9,           // 0x98 /* Keyboard LANG9 */
+  KC_ALT_ERASE,       // 0x99 /* Keyboard Alternate Erase */
+  KC_SYSREQ,          // 0x9A /* Keyboard SysReq/Attention */
+  KC_CANCEL,          // 0x9B /* Keyboard Cancel */
+  KC_CLEAR,           // 0x9C /* Keyboard Clear */
+  KC_PRIOR,           // 0x9D /* Keyboard Prior */
+  KC_RETURN,          // 0x9E /* Keyboard Return */
+  KC_SEPARATOR,       // 0x9F /* Keyboard Separator */
+  KC_OUT,             // 0xA0 /* Keyboard Out */
+  KC_OPER,            // 0xA1 /* Keyboard Oper */
+  KC_CLEAR_AGAIN,     // 0xA2 /* Keyboard Clear/Again */
+  KC_CRSEL,           // 0xA3 /* Keyboard CrSel/Props */
+  KC_EXSEL,           // 0xA4 /* Keyboard ExSel */
+
+  /* Modifiers */
+  KC_LCTRL = 0xE0,  // 0xE0 /* Keyboard Left Control */
+  KC_LSHIFT,        // 0xE1 /* Keyboard Left Shift */
+  KC_LALT,          // 0xE2 /* Keyboard Left Alt */
+  KC_LGUI,          // 0xE3 /* Keyboard Left GUI */
+  KC_RCTRL,         // 0xE4 /* Keyboard Right Control */
+  KC_RSHIFT,        // 0xE5 /* Keyboard Right Shift */
+  KC_RALT,          // 0xE6 /* Keyboard Right Alt */
+  KC_RGUI,          // 0xE7 /* Keyboard Right GUI */
+};
+
+/* HID Consumer Usage Page (0x0C) */
+enum hid_consumer_usage_page {
+  /* Media Controls */
+  MEDIA_PLAY = 0x00B0,        // 0x00B0 /* Keyboard Play */
+  MEDIA_PAUSE,                // 0x00B1 /* Keyboard Pause */
+  MEDIA_RECORD,               // 0x00B2 /* Keyboard Record */
+  MEDIA_FAST_FORWARD,         // 0x00B3 /* Keyboard Fast Forward */
+  MEDIA_REWIND,               // 0x00B4 /* Keyboard Rewind */
+  MEDIA_NEXT_TRACK,           // 0x00B5 /* Keyboard Next */
+  MEDIA_PREV_TRACK,           // 0x00B6 /* Keyboard Previous */
+  MEDIA_STOP,                 // 0x00B7 /* Keyboard Stop */
+  MEDIA_EJECT,                // 0x00B8 /* Keyboard Eject */
+  MEDIA_STOP_EJECT = 0x00CC,  // 0x00CC /* Keyboard Stop/Eject */
+  MEDIA_PLAY_PAUSE,           // 0x00CD /* Keyboard Play/Pause */
+  AUDIO_MUTE = 0x00E2,        // 0x00E2 /* Keyboard Mute */
+  AUDIO_VOL_UP = 0x00E9,      // 0x00E9 /* Keyboard Volume Up */
+  AUDIO_VOL_DOWN,             // 0x00EA /* Keyboard Volume Down */
+
+  /* App Launch */
+  APPLAUNCH_CC_CONFIG = 0x0183,      // 0x0183 /* Keyboard Configuration */
+  APPLAUNCH_EMAIL = 0x018A,          // 0x018A /* Keyboard Email */
+  APPLAUNCH_CALCULATOR = 0x0192,     // 0x0192 /* Keyboard Calculator */
+  APPLAUNCH_LOCAL_BROWSER = 0x0194,  // 0x0194 /* Keyboard Local Browser */
+  APPLAUNCH_BROWSER = 0x0196,        // 0x0196 /* Keyboard Browser */
+  APPLAUNCH_LOCK = 0x019E,           // 0x019E /* Keyboard Lock */
+  APPLAUNCH_COMMAND_RUN = 0x01A0,    // 0x01A0 /* Keyboard Command Run */
+  APPLAUNCH_FILE_EXPLORER = 0x01B4,  // 0x01B4 /* Keyboard File Explorer */
+
+  /* App Control */
+  APPCONTROL_MAXIMIZE = 0x0205,   // 0x0205 /* Keyboard Maximize */
+  APPCONTROL_MINIMIZE,            // 0x0206 /* Keyboard Minimize */
+  APPCONTROL_SEARCH = 0x0221,     // 0x0221 /* Keyboard Search */
+  APPCONTROL_HOME = 0x0223,       // 0x0223 /* Keyboard Home */
+  APPCONTROL_BACK,                // 0x0224 /* Keyboard Back */
+  APPCONTROL_FORWARD,             // 0x0225 /* Keyboard Forward */
+  APPCONTROL_STOP,                // 0x0226 /* Keyboard Stop */
+  APPCONTROL_REFRESH,             // 0x0227 /* Keyboard Refresh */
+  APPCONTROL_BOOKMARKS = 0x022A,  // 0x022A /* Keyboard Bookmarks */
+
+  /* Display Brightness Controls */
+  BRIGHTNESS_INCREMENT = 0x006F,  // 0x006F /* Keyboard Brightness Increment */
+  BRIGHTNESS_DECREMENT,           // 0x0070 /* Keyboard Brightness Decrement */
+};
+
+/* Internal Special Codes
+  * These are not part of the HID Usage Tables, but are used internally
+  * to represent special keys that are not part of the standard HID Usage Tables.
+  */
+enum internal_special_codes {
   /* System Control */
   KC_SYSTEM_POWER = 0xA5,
   KC_SYSTEM_SLEEP,  // A6
@@ -438,6 +447,7 @@ enum internal_special_keycodes {
   KC_BRIGHTNESS_INC,  // C7
   KC_BRIGHTNESS_DEC,  // C8
 };
+
 // clang-format off
 
 #define CODE_TO_SYSTEM(key) \
