@@ -26,7 +26,6 @@
 #include <stdlib.h>
 
 #include "bsp/board.h"
-#include "buzzer.h"
 #include "config.h"
 #include "hid_interface.h"
 #include "interface.h"
@@ -34,6 +33,14 @@
 #include "pico/unique_id.h"
 #include "ringbuf.h"
 #include "tusb.h"
+
+// The following includes are optional and are only included if the relevant features are enabled.
+#ifdef CONVERTER_PIEZO
+#include "buzzer.h"
+#endif
+#ifdef CONVERTER_LEDS
+#include "ws2812/ws2812.h"
+#endif
 
 int main(void) {
   hid_device_setup();
@@ -44,17 +51,24 @@ int main(void) {
   printf("[INFO] RP2040 Serial ID: %s\n", pico_unique_id);
   printf("[INFO] Build Time: %s\n", BUILD_TIME);
   printf("--------------------------------\n");
+
+  // Initialise Optional Components
+#ifdef CONVERTER_PIEZO
+  buzzer_init(PIEZO_PIN);  // Setup the buzzer.
+#endif
+#ifdef CONVERTER_LEDS
+  ws2812_setup(LED_PIN);  // Setup the WS2812 LEDs.
+#endif
+
+  // Initialise aspects of the Interface.
   printf("[INFO] Keyboard Make: %s\n", KEYBOARD_MAKE);
   printf("[INFO] Keyboard Model: %s\n", KEYBOARD_MODEL);
   printf("[INFO] Keyboard Description: %s\n", KEYBOARD_DESCRIPTION);
   printf("[INFO] Keyboard Protocol: %s\n", KEYBOARD_PROTOCOL);
   printf("[INFO] Keyboard Scancode Set: %s\n", KEYBOARD_CODESET);
   printf("--------------------------------\n");
-
-  // Initialise aspects of the program.
   ringbuf_reset();                     // Even though Ringbuf is statically initialised, we reset it here to be sure it's empty.
   keyboard_interface_setup(DATA_PIN);  // Setup the keyboard interface.
-  buzzer_init(PIEZO_PIN);              // Setup the buzzer.
   printf("--------------------------------\n");
   while (1) {
     keyboard_interface_task();  // Keyboard interface task.

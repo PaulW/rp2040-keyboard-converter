@@ -105,7 +105,7 @@ static inline void keyboard_interface_program_init(PIO pio, uint sm, uint offset
 
   sm_config_set_clkdiv(&c, div);
 
-  pio_set_irq0_source_enabled(pio, pis_sm0_rx_fifo_not_empty, true);
+  pio_set_irq0_source_enabled(pio, pis_sm0_rx_fifo_not_empty + sm, true);
 
   pio_sm_init(pio, sm, offset, &c);
 
