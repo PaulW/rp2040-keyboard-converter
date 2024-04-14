@@ -182,8 +182,13 @@ file(GLOB PROTOCOL_PIO_FILES CONFIGURE_DEPENDS
   ${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/*.pio
 )
 
+# Define list of Common PIO files for compilation
+file(GLOB_RECURSE COMMON_PIO_FILES CONFIGURE_DEPENDS
+  ${CMAKE_SOURCE_DIR}/common/*.pio
+)
+
 # Loop through each PIO file and generate header.
-foreach(PIO_FILE IN LISTS PROTOCOL_PIO_FILES)
+foreach(PIO_FILE IN LISTS COMMON_PIO_FILES PROTOCOL_PIO_FILES)
   # Extract directory and filename without extension
   get_filename_component(PIO_DIR ${PIO_FILE} DIRECTORY)
   get_filename_component(PIO_NAME ${PIO_FILE} NAME_WE)

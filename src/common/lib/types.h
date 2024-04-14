@@ -3,6 +3,9 @@
  *
  * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
  *
+ * Portions of this specific file are licensed under the MIT License.
+ * The original source can be found at: https://github.com/Zheoni/pico-simon
+ *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -18,28 +21,19 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef LOCK_LEDS_H
-#define LOCK_LEDS_H
+#ifndef TYPES_H
+#define TYPES_H
 
-#include <stdint.h>
+// This contains some standard type values which are used throughout the codebase.
 
-// Define the LED Locklight Indicators
-typedef struct lock_keys {
-  unsigned char numLock : 1;
-  unsigned char capsLock : 1;
-  unsigned char scrollLock : 1;
-} lock_keys;
+enum led_types {
+  // Define the different types of LED which we can use
+  LED_RGB = 0x00,  // 0x00 /* RGB LED Type */
+  LED_RBG,         // 0x01 /* RBG LED Type */
+  LED_GRB,         // 0x02 /* GRB LED Type */
+  LED_GBR,         // 0x03 /* GBR LED Type */
+  LED_BRG,         // 0x04 /* BRG LED Type */
+  LED_BGR,         // 0x05 /* BGR LED Type */
+};
 
-typedef union lock_keys_union {
-  lock_keys keys;
-  unsigned char value;
-} lock_keys_union;
-
-extern lock_keys_union lock_leds;
-
-extern uint8_t hid_lock_values;
-extern uint8_t ps2_lock_values;
-
-void set_lock_values_from_hid(uint8_t lock_val);
-
-#endif /* LOCK_LEDS_H */
+#endif /* TYPES_H */

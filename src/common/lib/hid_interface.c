@@ -25,7 +25,7 @@
 #include "bsp/board.h"
 #include "hid_keycodes.h"
 #include "keymaps.h"
-#include "lock_leds.h"
+#include "led_helper.h"
 #include "pico/bootrom.h"
 #include "tusb.h"
 #include "usb_descriptors.h"
@@ -112,6 +112,10 @@ void handle_keyboard_report(uint8_t code, bool make) {
         if (macro_key == KC_BOOT) {
           // Initiate Bootloader
           printf("[INFO] Initiate Bootloader\n");
+#ifdef CONVERTER_LEDS
+          // Set Status LED to indicate Bootloader Mode
+          update_converter_status(3);
+#endif
           // Reboot into Bootloader
           reset_usb_boot(0, 0);
         }

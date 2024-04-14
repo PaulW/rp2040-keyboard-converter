@@ -25,10 +25,14 @@
 #include "bsp/board.h"
 #include "config.h"
 #include "hardware/clocks.h"
-#include "hardware/pio.h"
 #include "interface.pio.h"
+#include "pio_helper.h"
 #include "ringbuf.h"
 #include "scancode.h"
+
+#ifdef CONVERTER_LEDS
+#include "led_helper.h"
+#endif
 
 uint keyboard_sm = 0;
 uint offset = 0;
@@ -65,6 +69,9 @@ static void keyboard_event_processor(uint8_t data_byte) {
     case INITIALISED:
       if (!ringbuf_is_full()) ringbuf_put(data_byte);
   }
+#ifdef CONVERTER_LEDS
+  update_converter_status(keyboard_state == INITIALISED ? 1 : 2);
+#endif
 }
 
 // IRQ Event Handler used to read keycode data from the XT Keyboard
@@ -82,7 +89,6 @@ static void __isr keyboard_input_event_handler() {
     keyboard_pio_restart();
     return;
   }
-
   keyboard_event_processor(data_byte);
 }
 
@@ -137,9 +143,30 @@ void keyboard_interface_task() {
 
 // Public function to initialise the XT PIO interface.
 void keyboard_interface_setup(uint data_pin) {
+#ifdef CONVERTER_LEDS
+  update_converter_status(2);  // Always reset Converter Status here
+#endif
+
+  // First we need to determine which PIO to use for the Keyboard Interface.
+  // To do this, we check each PIO to see if there is space to load the Keyboard Interface program.
+  // If there is space, we claim the PIO and load the program.  If not, we continue to the next PIO.
+  // We can call `pio_can_add_program` to check if there is space for the program.
+  // `find_available_pio` is a helper function that will check both PIO0 and PIO1 for space.
+  // If the function returns NULL, then there is no space available, and we should return.
+
+  keyboard_pio = find_available_pio(&keyboard_interface_program);
+  if (keyboard_pio == NULL) {
+    printf("[ERR] No PIO available for Keyboard Interface Program\n");
+    return;
+  }
+
+  // Now we can claim the PIO and load the program.
   keyboard_sm = (uint)pio_claim_unused_sm(keyboard_pio, true);
   offset = pio_add_program(keyboard_pio, &keyboard_interface_program);
-  uint pio_irq = PIO1_IRQ_0;
+
+  // Define the IRQ for the PIO State Machine.
+  // This should either be set to PIO0_IRQ_0 or PIO1_IRQ_0 depending on the PIO used.
+  uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
 
   // Define the Polling Inteval for the State Machine.
   // The XT Protocol runs at a clock speed of around 31kHz due to the clock
@@ -169,7 +196,7 @@ void keyboard_interface_setup(uint data_pin) {
 
   keyboard_interface_program_init(keyboard_pio, keyboard_sm, offset, data_pin, clock_div);
 
-  printf("[INFO] PIO SM Interface program loaded at %d with clock divider of %.2f\n", offset, clock_div);
+  printf("[INFO] PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n", (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, offset, clock_div);
 
   irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
   irq_set_enabled(pio_irq, true);
