@@ -34,7 +34,7 @@
 
 uint keyboard_sm = 0;
 uint offset = 0;
-PIO keyboard_pio = pio1;
+PIO keyboard_pio;
 uint16_t keyboard_id = 0xFFFF;
 
 static const uint8_t keyboard_parity_table[256] = {
@@ -79,7 +79,7 @@ static enum {
 // Command Handler function to issue commands to the attached AT Keyboard.
 static void keyboard_command_handler(uint8_t data_byte) {
   uint16_t data_with_parity = (uint16_t)(data_byte + (keyboard_parity_table[data_byte] << 8));
-  pio_sm_put(pio1, keyboard_sm, data_with_parity);
+  pio_sm_put(keyboard_pio, keyboard_sm, data_with_parity);
 }
 
 static void keyboard_event_processor(uint8_t data_byte) {
