@@ -297,7 +297,7 @@ void keyboard_interface_task() {
         detect_stall_count++;  // Always increment the detect_stall_count if we have a HIGH clock and not in INITIALISED state.
         switch (keyboard_state) {
           case INIT_READ_ID_1 ... INIT_SETUP:
-            if (detect_stall_count > 1) {
+            if (detect_stall_count > 2) {
               // Stall Detected during Reading of Keyboard ID or Setup Process
               if (!id_retry) {
                 // We've not tried re-requesting the ID, let's do that first...
@@ -316,7 +316,7 @@ void keyboard_interface_task() {
             }
             break;
           case SET_LOCK_LEDS:
-            if (detect_stall_count > 1) {
+            if (detect_stall_count > 2) {
               // Stall Detected during Setting of Lock LEDs
               printf("[DBG] Timeout while setting keyboard lock LEDs, continuing.\n");
               keyboard_state = INITIALISED;
@@ -339,6 +339,9 @@ void keyboard_interface_task() {
         printf("[DBG] Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
         detect_stall_count = 0;  // Reset the detect_stall_count as we are waiting for the clock to go HIGH.
       }
+#ifdef CONVERTER_LEDS
+      update_converter_status(keyboard_state == INITIALISED ? 1 : 2);
+#endif
     }
   }
 }

@@ -137,6 +137,9 @@ void keyboard_interface_task() {
         printf("[DBG] Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
         detect_stall_count = 0;
       }
+#ifdef CONVERTER_LEDS
+      update_converter_status(keyboard_state == INITIALISED ? 1 : 2);
+#endif
     }
   }
 }
