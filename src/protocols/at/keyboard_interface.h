@@ -18,12 +18,12 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef INTERFACE_H
-#define INTERFACE_H
+#ifndef KEYBOARD_INTERFACE_H
+#define KEYBOARD_INTERFACE_H
 
 #include "pico/stdlib.h"
 
 void keyboard_interface_setup(uint data_pin);
 void keyboard_interface_task();
 
-#endif /* INTERFACE_H */
+#endif /* KEYBOARD_INTERFACE_H */

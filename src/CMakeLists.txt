@@ -100,8 +100,8 @@ add_definitions(-D_KEYBOARD_PROTOCOL="${PROTOCOL}")
 add_definitions(-D_KEYBOARD_CODESET="${CODESET}")
 
 set(REQUIRED_PROTOCOL_FILES
-  "${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/interface.h"
-  "${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/interface.c"
+  "${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/keyboard_interface.h"
+  "${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/keyboard_interface.c"
 )
 
 set(REQUIRED_SCANCODE_FILES

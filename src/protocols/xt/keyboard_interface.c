@@ -18,14 +18,14 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "interface.h"
+#include "keyboard_interface.h"
 
 #include <math.h>
 
 #include "bsp/board.h"
 #include "config.h"
 #include "hardware/clocks.h"
-#include "interface.pio.h"
+#include "keyboard_interface.pio.h"
 #include "pio_helper.h"
 #include "ringbuf.h"
 #include "scancode.h"
