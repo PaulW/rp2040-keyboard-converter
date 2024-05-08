@@ -1,0 +1,61 @@
+name: Mark stale issues and pull requests
+
+on:
+  schedule:
+  - cron: '17 2 * * *'
+
+jobs:
+  stale:
+
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      actions: write
+
+    steps:
+    - uses: actions/stale@v5
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+        remove-stale-when-updated: true
+        exempt-draft-pr: true
+        ascending: true
+
+        stale-ussue-label: stale
+        days-before-issue-stale: 90
+        days-before-issue-close: 30
+        exempt-issue-labels: bug,in progress,on hold,discussion,to do
+        
+        stale-issue-message: >
+          This issue has automatically been markes as stale because it has not had any activity in the
+          last 90 days. It will be closed in the next 30 days unless it is tagged properly, or there is
+          any further activity.
+
+        close-issue-message: >
+          This issue has been automatically closed as there has not been any further activity in the last
+          30 days. If this issue is still valid, please re-open the issue.
+
+          // [stale-action-closed]
+
+        stale-pr-label: stale
+        days-before-pr-stale: 45
+        days-before-pr-close: 30
+        exempt-pr-labels: bug,awaiting review,breaking_change,in progress,on hold
+        
+        stale-pr-message: >
+          Thankyou for contributing!
+
+          This pull request has automatically been marked as stale as there has not been any further activity
+          within the last 45 days.  It will be closed in the next 30 days if there is no further activity against
+          it.
+
+          Please feel free to give a status update, or re-open when ready.
+
+        close-pr-message: >
+          Thankyou for contributing!
+
+          This pull request has been automatically closed as there has not been any further activity in the last
+          30 days. Please feel free to give a status update now, request review, or re-open when it's ready.
+
+          // [stale-action-closed]
