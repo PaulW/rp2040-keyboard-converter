@@ -22,7 +22,7 @@ jobs:
         exempt-draft-pr: true
         ascending: true
 
-        stale-ussue-label: stale
+        stale-issue-label: stale
         days-before-issue-stale: 90
         days-before-issue-close: 30
         exempt-issue-labels: bug,in progress,on hold,discussion,to do
