@@ -23,6 +23,7 @@
 #include <stdio.h>
 
 #include "bsp/board.h"
+#include "config.h"
 #include "hid_keycodes.h"
 #include "keymaps.h"
 #include "led_helper.h"
@@ -30,18 +31,19 @@
 #include "tusb.h"
 #include "usb_descriptors.h"
 
-static hid_keyboard_report_t keyboard_report;
-
 enum {
   USAGE_PAGE_KEYBOARD = 0x0,
   USAGE_PAGE_CONSUMER = 0xC,
 };
 
+static hid_keyboard_report_t keyboard_report;
+static hid_mouse_report_t mouse_report;
+
 // Output the HID Report sent to the host.  Purely for debugging.
-static void hid_print_report(void) {
-  printf("[HID-REPORT] ");
-  uint8_t* p = (uint8_t*)&keyboard_report;
-  for (uint i = 0; i < sizeof(keyboard_report); i++) {
+static void hid_print_report(void* report, size_t size, const char* message) {
+  printf("[%s-HID-REPORT] ", message);
+  uint8_t* p = (uint8_t*)report;
+  for (size_t i = 0; i < size; i++) {
     printf("%02X ", *p++);
   }
   printf("\n");
@@ -57,14 +59,12 @@ static bool hid_keyboard_add_key(uint8_t key) {
     return false;
   }
 
-  int empty = -1;
   for (size_t i = 0; i < 6; i++) {
     if (keyboard_report.keycode[i] == key) return false;
-    if (empty == -1 && keyboard_report.keycode[i] == 0) empty = (int)i;
-  }
-  if (empty != -1) {
-    keyboard_report.keycode[empty] = key;
-    return true;
+    if (keyboard_report.keycode[i] == 0) {
+      keyboard_report.keycode[i] = key;
+      return true;
+    }
   }
   return false;
 }
@@ -72,8 +72,9 @@ static bool hid_keyboard_add_key(uint8_t key) {
 // Remove keycode from HID report when key is released.
 static bool hid_keyboard_del_key(uint8_t key) {
   if (IS_MOD(key)) {
-    if ((keyboard_report.modifier & (uint8_t)(1 << (key & 0x7))) != 0) {
-      keyboard_report.modifier &= (uint8_t) ~(1 << (key & 0x7));
+    uint8_t modifier_bit = (uint8_t)(1 << (key & 0x7));
+    if ((keyboard_report.modifier & modifier_bit) != 0) {
+      keyboard_report.modifier &= (uint8_t)~modifier_bit;
       return true;
     }
     return false;
@@ -107,14 +108,15 @@ void handle_keyboard_report(uint8_t code, bool make) {
     // Check for any Macro Combinations here
     if (keymap_is_action_key_pressed()) {
       if (SUPER_MACRO_INIT(keyboard_report.modifier)) {
-        printf("Macro Modifiers HOLD\n");
+        printf("[DBG] Macro Modifiers HOLD\n");
         uint8_t macro_key = MACRO_KEY_CODE(code);
         if (macro_key == KC_BOOT) {
           // Initiate Bootloader
           printf("[INFO] Initiate Bootloader\n");
 #ifdef CONVERTER_LEDS
           // Set Status LED to indicate Bootloader Mode
-          update_converter_status(3);
+          converter.state.fw_flash = 1;
+          update_converter_status();
 #endif
           // Reboot into Bootloader
           reset_usb_boot(0, 0);
@@ -125,8 +127,8 @@ void handle_keyboard_report(uint8_t code, bool make) {
     if (report_modified) {
       bool res = tud_hid_n_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &keyboard_report, sizeof(keyboard_report));
       if (!res) {
-        printf("[ERR] KEYBOARD HID REPORT FAIL\n");
-        hid_print_report();
+        printf("[ERR] Keyboard HID Report Failed:\n");
+        hid_print_report(&keyboard_report, sizeof(keyboard_report), "handle_keyboard_report");
       }
     }
   } else if (IS_CONSUMER(code)) {
@@ -138,8 +140,21 @@ void handle_keyboard_report(uint8_t code, bool make) {
     }
     bool res = tud_hid_n_report(ITF_NUM_CONSUMER_CONTROL, REPORT_ID_CONSUMER_CONTROL, &usage, sizeof(usage));
     if (!res) {
-      printf("[ERR] Consumer Report Failed: 0x%04X\n", usage);
+      printf("[ERR] Consumer HID Report Failed: 0x%04X\n", usage);
     }
+  }
+}
+
+void handle_mouse_report(const uint8_t buttons[5], int8_t pos[3]) {
+  // Handle Mouse Report
+  mouse_report.buttons = buttons[0] | (buttons[1] << 1) | (buttons[2] << 2) | (buttons[3] << 3) | (buttons[4] << 4);
+  mouse_report.x = pos[0];
+  mouse_report.y = pos[1];
+  mouse_report.wheel = pos[2];
+  bool res = tud_hid_n_report(KEYBOARD_ENABLED ? ITF_NUM_MOUSE : ITF_NUM_KEYBOARD, REPORT_ID_MOUSE, &mouse_report, sizeof(mouse_report));
+  if (!res) {
+    printf("[ERR] Mouse HID Report Failed:\n");
+    hid_print_report(&mouse_report, sizeof(mouse_report), "handle_mouse_report");
   }
 }
 

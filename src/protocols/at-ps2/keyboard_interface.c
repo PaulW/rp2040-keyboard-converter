@@ -24,39 +24,19 @@
 
 #include "bsp/board.h"
 #include "buzzer.h"
-#include "config.h"
+#include "common_interface.h"
 #include "hardware/clocks.h"
-#include "keyboard_interface.pio.h"
+#include "interface.pio.h"
 #include "led_helper.h"
 #include "pio_helper.h"
 #include "ringbuf.h"
 #include "scancode.h"
 
 uint keyboard_sm = 0;
-uint offset = 0;
+uint keyboard_offset = 0;
 PIO keyboard_pio;
 uint16_t keyboard_id = 0xFFFF;
-
-static const uint8_t keyboard_parity_table[256] = {
-    /* Mapping of HEX to Parity Bit for input from AT Keyboard
-    0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F */
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,  // 0
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,  // 1
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,  // 2
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,  // 3
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,  // 4
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,  // 5
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,  // 6
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,  // 7
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,  // 8
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,  // 9
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,  // A
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,  // B
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,  // C
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,  // D
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,  // E
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1   // F
-};
+uint keyboard_data_pin;
 
 // Check if we are a Terminal Keyboard (Keyboards utilising Set 3 Scancodes).
 // This is used to determine if we should perform the additional steps required for Terminal Keyboards.
@@ -78,7 +58,7 @@ static enum {
 
 // Command Handler function to issue commands to the attached AT Keyboard.
 static void keyboard_command_handler(uint8_t data_byte) {
-  uint16_t data_with_parity = (uint16_t)(data_byte + (keyboard_parity_table[data_byte] << 8));
+  uint16_t data_with_parity = (uint16_t)(data_byte + (interface_parity_table[data_byte] << 8));
   pio_sm_put(keyboard_pio, keyboard_sm, data_with_parity);
 }
 
@@ -202,19 +182,20 @@ static void keyboard_event_processor(uint8_t data_byte) {
       if (!ringbuf_is_full()) ringbuf_put(data_byte);
   }
 #ifdef CONVERTER_LEDS
-  update_converter_status(keyboard_state == INITIALISED ? 1 : 2);
+  converter.state.kb_ready = keyboard_state == INITIALISED ? 1 : 0;
+  update_converter_status();
 #endif
 }
 
 void keyboard_pio_restart() {
   // Restart the AT PIO State Machine
-  printf("[DBG] Resetting State Machine and Keyboard (Offset: 0x%02X)\n", offset);
+  printf("[DBG] Resetting State Machine and Keyboard (Offset: 0x%02X)\n", keyboard_offset);
   keyboard_state = UNINITIALISED;
   id_retry = false;
   pio_sm_drain_tx_fifo(keyboard_pio, keyboard_sm);
   pio_sm_clear_fifos(keyboard_pio, keyboard_sm);
   pio_sm_restart(keyboard_pio, keyboard_sm);
-  pio_sm_exec(keyboard_pio, keyboard_sm, pio_encode_jmp(offset));
+  pio_sm_exec(keyboard_pio, keyboard_sm, pio_encode_jmp(keyboard_offset));
 }
 
 // IRQ Event Handler used to read keycode data from the AT Keyboard
@@ -228,7 +209,7 @@ static void __isr keyboard_input_event_handler() {
   uint8_t parity_bit = (data >> 9) & 0x1;
   uint8_t stop_bit = (data >> 10) & 0x1;
   uint8_t data_byte = (uint8_t)((data_cast >> 1) & 0xFF);
-  uint8_t parity_bit_check = keyboard_parity_table[data_byte];
+  uint8_t parity_bit_check = interface_parity_table[data_byte];
 
   if (start_bit != 0 || parity_bit != parity_bit_check || stop_bit != 1) {
     if (start_bit != 0) printf("[ERR] Start Bit Validation Failed: start_bit=%i\n", start_bit);
@@ -270,19 +251,15 @@ void keyboard_interface_task() {
       keyboard_state = SET_LOCK_LEDS;
       keyboard_command_handler(0xED);
     } else {
-      if (!ringbuf_is_empty()) {
-        if (tud_suspended()) {
-          // Wake up host if we are in suspend mode
-          // and REMOTE_WAKEUP feature is enabled by host
-          tud_remote_wakeup();
-        } else {
-          if (tud_hid_ready()) {
-            uint32_t status = save_and_disable_interrupts();  // Stop any interrupts from triggering
-            int c = ringbuf_get();                            // Pull from the ringbuffer
-            restore_interrupts(status);                       // Release the interrupts, allowing key events to resume.
-            process_scancode((uint8_t)c);
-          }
-        }
+      if (!ringbuf_is_empty() && tud_hid_ready()) {
+        // We only process the ringbuffer if it's not empty and we're ready to send a HID report.
+        // If we don't check for HID ready, we can end up having reports fail to send.
+
+        // Previously we would pause all interrupts while reading the ringbuffer.
+        // However, this didn't seem to do anything other than cause latency for keypresses.
+        // We may need to revisit this if we encounter issues.
+        int c = ringbuf_get();  // Pull from the ringbuffer
+        if (c != -1) process_scancode((uint8_t)c);
       }
     }
   } else {
@@ -292,7 +269,7 @@ void keyboard_interface_task() {
     static uint32_t detect_ms = 0;
     if (board_millis() - detect_ms > 200) {
       detect_ms = board_millis();
-      if (gpio_get(DATA_PIN + 1) == 1) {
+      if (gpio_get(keyboard_data_pin + 1) == 1) {
         // Only perform timeout checks if the clock is HIGH (Keyboard Detected).
         detect_stall_count++;  // Always increment the detect_stall_count if we have a HIGH clock and not in INITIALISED state.
         switch (keyboard_state) {
@@ -340,7 +317,8 @@ void keyboard_interface_task() {
         detect_stall_count = 0;  // Reset the detect_stall_count as we are waiting for the clock to go HIGH.
       }
 #ifdef CONVERTER_LEDS
-      update_converter_status(keyboard_state == INITIALISED ? 1 : 2);
+      converter.state.kb_ready = keyboard_state == INITIALISED ? 1 : 0;
+      update_converter_status();
 #endif
     }
   }
@@ -349,8 +327,11 @@ void keyboard_interface_task() {
 // Public function to initialise the AT PIO interface.
 void keyboard_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
-  update_converter_status(2);  // Always reset Converter Status here
+  converter.state.kb_ready = 0;
+  update_converter_status();  // Always reset Converter Status here
 #endif
+
+  ringbuf_reset();  // Even though Ringbuf is statically initialised, we reset it here to be sure it's empty.
 
   // First we need to determine which PIO to use for the Keyboard Interface.
   // To do this, we check each PIO to see if there is space to load the Keyboard Interface program.
@@ -359,7 +340,7 @@ void keyboard_interface_setup(uint data_pin) {
   // `find_available_pio` is a helper function that will check both PIO0 and PIO1 for space.
   // If the function returns NULL, then there is no space available, and we should return.
 
-  keyboard_pio = find_available_pio(&keyboard_interface_program);
+  keyboard_pio = find_available_pio(&pio_interface_program);
   if (keyboard_pio == NULL) {
     printf("[ERR] No PIO available for Keyboard Interface Program\n");
     return;
@@ -367,7 +348,8 @@ void keyboard_interface_setup(uint data_pin) {
 
   // Now we can claim the PIO and load the program.
   keyboard_sm = (uint)pio_claim_unused_sm(keyboard_pio, true);
-  offset = pio_add_program(keyboard_pio, &keyboard_interface_program);
+  keyboard_offset = pio_add_program(keyboard_pio, &pio_interface_program);
+  keyboard_data_pin = data_pin;
 
   // Define the IRQ for the PIO State Machine.
   // This should either be set to PIO0_IRQ_0 or PIO1_IRQ_0 depending on the PIO used.
@@ -396,10 +378,10 @@ void keyboard_interface_setup(uint data_pin) {
   printf("[INFO] Clock Divider based on %d SM Cycles per Keyboard Clock Cycle: %.2f\n", cycles_per_clock, clock_div);
   printf("[INFO] Effective SM Clock Speed: %.2fkHz\n", (float)(rp_clock_khz / clock_div));
 
-  keyboard_interface_program_init(keyboard_pio, keyboard_sm, offset, data_pin, clock_div);
-
-  printf("[INFO] PIO SM Interface program loaded at %d with clock divider of %.2f\n", offset, clock_div);
+  pio_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin, clock_div);
 
   irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
   irq_set_enabled(pio_irq, true);
+
+  printf("[INFO] PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n", (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
 }

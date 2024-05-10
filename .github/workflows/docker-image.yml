@@ -13,9 +13,9 @@ jobs:
     - uses: actions/checkout@v4
     - name: Create Build Container
       run: docker compose build
-    - name: Run Build for Model F 6450225
-      run: docker compose run -e KEYBOARD="modelf/6450225" builder
-    - name: Run Build for Model M Enhanced
+    - name: Run Build for Model F/AT PC Keyboard
+      run: docker compose run -e KEYBOARD="modelf/pcat" builder
+    - name: Run Build for Model M Enhanced PC Keyboard
       run: docker compose run -e KEYBOARD="modelm/enhanced" builder
     - name: Run Build for Cherry G80-0614H
       run: docker compose run -e KEYBOARD="cherry/G80-0614H" builder
@@ -23,3 +23,7 @@ jobs:
       run: docker compose run -e KEYBOARD="cherry/G80-1104H" builder
     - name: Run Build for MicroSwitch 122ST13
       run: docker compose run -e KEYBOARD="microswitch/122st13" builder
+    - name: Run Build for Generic PS/2 Mouse Only
+      run: docker compose run -e MOUSE="at-ps2" builder
+    - name: Run Build for Generic PS/2 Mouse and Model M Enhanced PC Keyboard
+      run: docker compose run -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder

@@ -34,6 +34,19 @@ extern "C" {
 // COMMON CONFIGURATION
 //--------------------------------------------------------------------
 
+// defines which interfaces are enabled in the device
+#ifdef _KEYBOARD_ENABLED
+#define KEYBOARD_ENABLED _KEYBOARD_ENABLED
+#else
+#define KEYBOARD_ENABLED 0
+#endif
+
+#ifdef _MOUSE_ENABLED
+#define MOUSE_ENABLED _MOUSE_ENABLED
+#else
+#define MOUSE_ENABLED 0
+#endif
+
 // defined by board.mk
 #ifndef CFG_TUSB_MCU
 #error CFG_TUSB_MCU must be defined
@@ -80,7 +93,19 @@ extern "C" {
 #endif
 
 //------------- CLASS -------------//
-#define CFG_TUD_HID 2
+#ifdef KEYBOARD_ENABLED
+#define KEYBOARD_TUD_HID 2
+#else
+#define KEYBOARD_TUD_HID 0
+#endif
+
+#ifdef MOUSE_ENABLED
+#define MOUSE_TUD_HID 1
+#else
+#define MOUSE_TUD_HID 0
+#endif
+
+#define CFG_TUD_HID (KEYBOARD_TUD_HID + MOUSE_TUD_HID)
 #define CFG_TUD_CDC 0
 #define CFG_TUD_MSC 0
 #define CFG_TUD_MIDI 0

@@ -25,6 +25,20 @@
 
 #include "config.h"
 
+// Define Converter State
+typedef struct converter_state {
+  unsigned char kb_ready : 1;
+  unsigned char mouse_ready : 1;
+  unsigned char fw_flash : 1;
+} converter_state;
+
+typedef union converter_state_union {
+  converter_state state;
+  unsigned char value;
+} converter_state_union;
+
+extern converter_state_union converter;
+
 // Define the LED Locklight Indicators
 typedef struct lock_keys {
   unsigned char numLock : 1;
@@ -45,7 +59,7 @@ extern uint8_t ps2_lock_values;
 void set_lock_values_from_hid(uint8_t lock_val);
 
 #ifdef CONVERTER_LEDS
-void update_converter_status(uint8_t status);
+void update_converter_status(void);
 #endif
 
 #endif /* LED_HELPER_H */

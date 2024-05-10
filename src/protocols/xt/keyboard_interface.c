@@ -23,7 +23,6 @@
 #include <math.h>
 
 #include "bsp/board.h"
-#include "config.h"
 #include "hardware/clocks.h"
 #include "keyboard_interface.pio.h"
 #include "pio_helper.h"
@@ -35,8 +34,9 @@
 #endif
 
 uint keyboard_sm = 0;
-uint offset = 0;
+uint keyboard_offset = 0;
 PIO keyboard_pio = pio1;
+uint keyboard_data_pin;
 
 static enum {
   UNINITIALISED,
@@ -45,12 +45,12 @@ static enum {
 
 void keyboard_pio_restart() {
   // Restart the XT PIO State Machine
-  printf("[DBG] Resetting State Machine and Keyboard (Offset: 0x%02X)\n", offset);
+  printf("[DBG] Resetting State Machine and Keyboard (Offset: 0x%02X)\n", keyboard_offset);
   keyboard_state = UNINITIALISED;
   pio_sm_drain_tx_fifo(keyboard_pio, keyboard_sm);
   pio_sm_clear_fifos(keyboard_pio, keyboard_sm);
   pio_sm_restart(keyboard_pio, keyboard_sm);
-  pio_sm_exec(keyboard_pio, keyboard_sm, pio_encode_jmp(offset));
+  pio_sm_exec(keyboard_pio, keyboard_sm, pio_encode_jmp(keyboard_offset));
   printf("[DBG] State Machine Restarted\n");
 }
 
@@ -70,7 +70,8 @@ static void keyboard_event_processor(uint8_t data_byte) {
       if (!ringbuf_is_full()) ringbuf_put(data_byte);
   }
 #ifdef CONVERTER_LEDS
-  update_converter_status(keyboard_state == INITIALISED ? 1 : 2);
+  converter.state.kb_ready = keyboard_state == INITIALISED ? 1 : 0;
+  update_converter_status();
 #endif
 }
 
@@ -94,23 +95,15 @@ static void __isr keyboard_input_event_handler() {
 
 void keyboard_interface_task() {
   if (keyboard_state == INITIALISED) {
-    // This portion helps with Lock LED changes.  We only get here once the keyboard has initialised.
+    if (!ringbuf_is_empty() && tud_hid_ready()) {
+      // We only process the ringbuffer if it's not empty and we're ready to send a HID report.
+      // If we don't check for HID ready, we can end up having reports fail to send.
 
-    if (!ringbuf_is_empty()) {
-      if (tud_suspended()) {
-        // Wake up host if we are in suspend mode
-        // and REMOTE_WAKEUP feature is enabled by host
-        tud_remote_wakeup();
-      } else {
-        if (tud_hid_ready()) {
-          uint32_t status = save_and_disable_interrupts();  // disable IRQ
-          int c = ringbuf_get();                            // critical_section
-          restore_interrupts(status);
-          if (c != -1) {
-            process_scancode((uint8_t)c);
-          }
-        }
-      }
+      // Previously we would pause all interrupts while reading the ringbuffer.
+      // However, this didn't seem to do anything other than cause latency for keypresses.
+      // We may need to revisit this if we encounter issues.
+      int c = ringbuf_get();  // Pull from the ringbuffer
+      if (c != -1) process_scancode((uint8_t)c);
     }
   } else {
     // This portion helps with initialisation of the keyboard.
@@ -123,7 +116,7 @@ void keyboard_interface_task() {
     if (board_millis() - detect_ms > 200) {
       detect_ms = board_millis();
       // int pin_state = gpio_get(DATA_PIN + 1);
-      if (gpio_get(DATA_PIN + 1) == 1) {
+      if (gpio_get(keyboard_data_pin + 1) == 1) {
         if (detect_stall_count < 5) {
           detect_stall_count++;
           printf("[DBG] Keyboard detected, awaiting ACK (%i/5 attempts)\n", detect_stall_count);
@@ -138,7 +131,8 @@ void keyboard_interface_task() {
         detect_stall_count = 0;
       }
 #ifdef CONVERTER_LEDS
-      update_converter_status(keyboard_state == INITIALISED ? 1 : 2);
+      converter.state.kb_ready = keyboard_state == INITIALISED ? 1 : 0;
+      update_converter_status();
 #endif
     }
   }
@@ -147,8 +141,11 @@ void keyboard_interface_task() {
 // Public function to initialise the XT PIO interface.
 void keyboard_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
-  update_converter_status(2);  // Always reset Converter Status here
+  converter.state.kb_ready = 0;
+  update_converter_status();  // Always reset Converter Status here
 #endif
+
+  ringbuf_reset();  // Even though Ringbuf is statically initialised, we reset it here to be sure it's empty.
 
   // First we need to determine which PIO to use for the Keyboard Interface.
   // To do this, we check each PIO to see if there is space to load the Keyboard Interface program.
@@ -165,7 +162,8 @@ void keyboard_interface_setup(uint data_pin) {
 
   // Now we can claim the PIO and load the program.
   keyboard_sm = (uint)pio_claim_unused_sm(keyboard_pio, true);
-  offset = pio_add_program(keyboard_pio, &keyboard_interface_program);
+  keyboard_offset = pio_add_program(keyboard_pio, &keyboard_interface_program);
+  keyboard_data_pin = data_pin;
 
   // Define the IRQ for the PIO State Machine.
   // This should either be set to PIO0_IRQ_0 or PIO1_IRQ_0 depending on the PIO used.
@@ -197,10 +195,10 @@ void keyboard_interface_setup(uint data_pin) {
   printf("[INFO] Clock Divider based on %d SM Cycles per Keyboard Clock Cycle: %.2f\n", cycles_per_clock, clock_div);
   printf("[INFO] Effective SM Clock Speed: %.2fkHz\n", (float)(rp_clock_khz / clock_div));
 
-  keyboard_interface_program_init(keyboard_pio, keyboard_sm, offset, data_pin, clock_div);
-
-  printf("[INFO] PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n", (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, offset, clock_div);
+  keyboard_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin, clock_div);
 
   irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
   irq_set_enabled(pio_irq, true);
+
+  printf("[INFO] PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n", (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
 }

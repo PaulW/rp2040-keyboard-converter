@@ -18,14 +18,11 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef HID_INTERFACE_H
-#define HID_INTERFACE_H
+#ifndef COMMON_INTERFACE_H
+#define COMMON_INTERFACE_H
 
-#include "config.h"
 #include "pico/stdlib.h"
 
-void handle_keyboard_report(uint8_t code, bool make);
-void handle_mouse_report(const uint8_t buttons[5], int8_t pos[3]);
-void hid_device_setup(void);
+extern uint8_t interface_parity_table[];
 
-#endif /* HID_INTERFACE_H */
+#endif /* COMMON_INTERFACE_H */

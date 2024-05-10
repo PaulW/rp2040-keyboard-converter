@@ -65,12 +65,7 @@ The Firmware (once flashed) has the ability to put itself into Bootloader Mode b
 Press (and hold in order) - **Fn** + **LShift** + **RShift** + **B**
 
 ### Validating/Testing
-
-The RP2040 should now perform an init task against the connected PC/AT Keyboard, and also present itself as a USB HID Device with 2 Interfaces:
-
-```
-$ lsusb -v
-Bus 002 Device 002: ID 5515:4008
+Bus 002 Device 001: ID 5515:400c
 Device Descriptor:
   bLength                18
   bDescriptorType         1
@@ -80,23 +75,22 @@ Device Descriptor:
   bDeviceProtocol         0
   bMaxPacketSize0        64
   idVendor           0x5515
-  idProduct          0x4008
+  idProduct          0x400c
   bcdDevice            1.00
   iManufacturer           1 paulbramhall.uk
-  iProduct                2 RP2040 Keyboard Converter
+  iProduct                2 RP2040 Keyboard & Mouse Convert
   iSerial                 3 E66160F423782037
   bNumConfigurations      1
   Configuration Descriptor:
     bLength                 9
     bDescriptorType         2
-    wTotalLength           59
-    bNumInterfaces          2
+    wTotalLength           84
+    bNumInterfaces          3
     bConfigurationValue     1
     iConfiguration          0
-    bmAttributes         0xa0
+    bmAttributes         0x80
       (Bus Powered)
-      Remote Wakeup
-    MaxPower              300mA
+    MaxPower              250mA
     Interface Descriptor:
       bLength                 9
       bDescriptorType         4
@@ -157,9 +151,38 @@ Device Descriptor:
           Usage Type               Data
         wMaxPacketSize     0x0010  1x 16 bytes
         bInterval               8
-Device Status:     0x0002
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        2
+      bAlternateSetting       0
+      bNumEndpoints           1
+      bInterfaceClass         3 Human Interface Device
+      bInterfaceSubClass      1 Boot Interface Subclass
+      bInterfaceProtocol      2 Mouse
+      iInterface              0
+        HID Device Descriptor:
+          bLength                 9
+          bDescriptorType        33
+          bcdHID               1.11
+          bCountryCode            0 Not supported
+          bNumDescriptors         1
+          bDescriptorType        34 Report
+          wDescriptorLength      79
+         Report Descriptors:
+           ** UNAVAILABLE **
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x83  EP 3 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0040  1x 64 bytes
+        bInterval               8
+Device Status:     0x0000
   (Bus Powered)
-  Remote Wakeup Enabled
 ```
 
 ## Serial Debugging

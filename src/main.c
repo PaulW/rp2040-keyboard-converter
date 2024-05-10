@@ -28,11 +28,17 @@
 #include "bsp/board.h"
 #include "config.h"
 #include "hid_interface.h"
+#include "pico/unique_id.h"
+#include "tusb.h"
+
+#if KEYBOARD_ENABLED
 #include "keyboard.h"
 #include "keyboard_interface.h"
-#include "pico/unique_id.h"
-#include "ringbuf.h"
-#include "tusb.h"
+#endif
+
+#if MOUSE_ENABLED
+#include "mouse_interface.h"
+#endif
 
 // The following includes are optional and are only included if the relevant features are enabled.
 #ifdef CONVERTER_PIEZO
@@ -56,23 +62,38 @@ int main(void) {
 #ifdef CONVERTER_PIEZO
   buzzer_init(PIEZO_PIN);  // Setup the buzzer.
 #endif
+
 #ifdef CONVERTER_LEDS
   ws2812_setup(LED_PIN);  // Setup the WS2812 LEDs.
 #endif
 
   // Initialise aspects of the Interface.
+#if KEYBOARD_ENABLED
+  printf("[INFO] Keyboard Support Enabled\n");
   printf("[INFO] Keyboard Make: %s\n", KEYBOARD_MAKE);
   printf("[INFO] Keyboard Model: %s\n", KEYBOARD_MODEL);
   printf("[INFO] Keyboard Description: %s\n", KEYBOARD_DESCRIPTION);
   printf("[INFO] Keyboard Protocol: %s\n", KEYBOARD_PROTOCOL);
   printf("[INFO] Keyboard Scancode Set: %s\n", KEYBOARD_CODESET);
   printf("--------------------------------\n");
-  ringbuf_reset();                     // Even though Ringbuf is statically initialised, we reset it here to be sure it's empty.
-  keyboard_interface_setup(DATA_PIN);  // Setup the keyboard interface.
+  keyboard_interface_setup(KEYBOARD_DATA_PIN);  // Setup the keyboard interface.
+#endif
+#if MOUSE_ENABLED
+  printf("[INFO] Mouse Support Enabled\n");
+  printf("[INFO] Mouse Protocol: %s\n", MOUSE_PROTOCOL);
   printf("--------------------------------\n");
+  mouse_interface_setup(MOUSE_DATA_PIN);  // Setup the mouse interface.
+#endif
+
+  // These tasks run on Core 0, regardless of whether multicore is enabled.
   while (1) {
+#if KEYBOARD_ENABLED
     keyboard_interface_task();  // Keyboard interface task.
-    tud_task();                 // TinyUSB device task.
+#endif
+#if MOUSE_ENABLED
+    mouse_interface_task();  // Mouse interface task.
+#endif
+    tud_task();  // TinyUSB device task.
   }
 
   return 0;

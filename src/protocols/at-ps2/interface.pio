@@ -1,10 +1,11 @@
-.program keyboard_interface
+.program pio_interface
 .wrap_target
 
 ; Pins: 0 = data, 1 = clock
 
 init:
-    ; Wait until CLK goes high before we continue.  As the Keyboard initialises, this is pulled LOW.
+    ; Wait until CLK is high before we continue.  Keyboards seem to pull this LOW briefly
+    ; during power on.  This prevents the first bit read being shifted in this scenario.
     wait 1 pin 1
 
 check:
@@ -78,7 +79,7 @@ bitLoopOutLoop:
     wait 1 pin 0 [5]
 
 % c-sdk {
-static inline void keyboard_interface_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {
+static inline void pio_interface_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {
   pio_sm_set_consecutive_pindirs(pio, sm, pin, 2, false);
 
   pio_gpio_init(pio, pin);
@@ -91,7 +92,7 @@ static inline void keyboard_interface_program_init(PIO pio, uint sm, uint offset
   gpio_pull_up(pin);
   gpio_pull_down(pin + 1);
 
-  pio_sm_config c = keyboard_interface_program_get_default_config(offset);
+  pio_sm_config c = pio_interface_program_get_default_config(offset);
 
   sm_config_set_set_pins(&c, pin, 2);
 

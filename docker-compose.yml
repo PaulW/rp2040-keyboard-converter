@@ -1,5 +1,3 @@
-version: '3.4'
-
 services:
   builder:
     image: tardis-io/rp2040-kbd-converter
@@ -10,6 +8,7 @@ services:
     restart: never
     environment:
       - KEYBOARD
+      - MOUSE
     volumes:
       - ./src:/usr/local/builder/src
       - ./build:/usr/local/builder/build

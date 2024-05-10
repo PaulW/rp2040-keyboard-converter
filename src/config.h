@@ -40,18 +40,34 @@
 #define CONVERTER_LEDS_STATUS_FWFLASH_COLOR 0xFF00FF    // Color of Status LED when in Bootloader Mode (Firmware Flashing)
 #define CONVERTER_LOCK_LEDS_COLOR 0x00FF00              // Color of Lock Light LEDs
 
-// Ensure you specify the correct DATA Pin for the connector.  Also, ensure CLK is connected to DATA+1
-#define DATA_PIN 6    // We assume that DATA and CLOCK are positioned next to each other, as such Clock will be DATA_PIN + 1
-#define PIEZO_PIN 11  // Piezo Buzzer GPIO Pin
-#define LED_PIN 5     // LED DATA Pin.  As we use WS2812 LEDs, all LEDs are driven from a single GPIO Pin
+// Define the GPIO Pins for the Keyboard Converter.
+#define KEYBOARD_DATA_PIN 6  // This is the starting pin for the connected Keyboard.  Depending on the keyboard, we may use 2, 3 or more pins.
+#define MOUSE_DATA_PIN 3     // This is the starting pin for the connected Mouse.  Depending on the mouse, we may use 2, 3 or more pins.
+#define PIEZO_PIN 11         // Piezo Buzzer GPIO Pin.  Only required if CONVERTER_PIEZO is defined
+#define LED_PIN 5            // LED GPIO Pin.  If using WS2812 LEDs, this is the GPIO Pin for the Data Line, otherwise we require 4 total GPIO for individual LED connections
 
 // Define some Compile Time variables.  Do not modify below this line
 #define BUILD_TIME _BUILD_TIME
+
+// Define the Keyboard Information
+#ifdef _KEYBOARD_ENABLED
+#define KEYBOARD_ENABLED _KEYBOARD_ENABLED
 #define KEYBOARD_MAKE _KEYBOARD_MAKE
 #define KEYBOARD_MODEL _KEYBOARD_MODEL
 #define KEYBOARD_DESCRIPTION _KEYBOARD_DESCRIPTION
 #define KEYBOARD_PROTOCOL _KEYBOARD_PROTOCOL
 #define KEYBOARD_CODESET _KEYBOARD_CODESET
+#else
+#define KEYBOARD_ENABLED 0
+#endif
+
+// Define the Mouse Information
+#ifdef _MOUSE_ENABLED
+#define MOUSE_ENABLED _MOUSE_ENABLED
+#define MOUSE_PROTOCOL _MOUSE_PROTOCOL
+#else
+#define MOUSE_ENABLED 0
+#endif
 
 // Some Validation rules for the configuration
 #ifdef CONVERTER_LEDS_BRIGHTNESS

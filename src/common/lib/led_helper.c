@@ -24,24 +24,22 @@
 #include "ws2812/ws2812.h"
 #endif
 
+converter_state_union converter = {.value = 0xC3};  // Initialise with both keyboard and mouse states set to ready
 lock_keys_union lock_leds;
 uint8_t ps2_lock_values = 0;
-uint8_t converter_status = 0;
 
 #ifdef CONVERTER_LEDS
 void update_converter_leds(void) {
-  // Update the Status LED (Keep blank for now)
-  switch (converter_status) {
-    case 1:
+  if (converter.state.fw_flash) {
+    ws2812_show(CONVERTER_LEDS_STATUS_FWFLASH_COLOR);
+  } else {
+    if (converter.state.kb_ready && converter.state.mouse_ready) {
       ws2812_show(CONVERTER_LEDS_STATUS_READY_COLOR);
-      break;
-    case 2:
+    } else {
       ws2812_show(CONVERTER_LEDS_STATUS_NOT_READY_COLOR);
-      break;
-    case 3:
-      ws2812_show(CONVERTER_LEDS_STATUS_FWFLASH_COLOR);
-      break;
+    }
   }
+
 #ifdef CONVERTER_LOCK_LEDS
   // Update the Lock LEDs
   ws2812_show(lock_leds.keys.numLock ? CONVERTER_LOCK_LEDS_COLOR : 0);
@@ -52,9 +50,10 @@ void update_converter_leds(void) {
   busy_wait_us(60);
 }
 
-void update_converter_status(uint8_t status) {
-  if (status != converter_status) {
-    converter_status = status;
+void update_converter_status(void) {
+  static uint8_t status;
+  if (status != converter.value) {
+    status = converter.value;
     update_converter_leds();
   }
 }

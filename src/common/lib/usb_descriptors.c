@@ -25,6 +25,7 @@
 
 #include "usb_descriptors.h"
 
+#include "config.h"
 #include "pico/unique_id.h"
 #include "tusb.h"
 
@@ -80,15 +81,20 @@ uint8_t const desc_hid_report_keyboard[] = {
 uint8_t const desc_hid_report_consumer[] = {
     TUD_HID_REPORT_DESC_CONSUMER(HID_REPORT_ID(REPORT_ID_CONSUMER_CONTROL))};
 
+uint8_t const desc_hid_report_mouse[] = {
+    TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID(REPORT_ID_MOUSE))};
+
 // Invoked when received GET HID REPORT DESCRIPTOR
 // Application return pointer to descriptor
 // Descriptor contents must exist long enough for transfer to complete
 uint8_t const* tud_hid_descriptor_report_cb(uint8_t interface) {
   switch (interface) {
     case ITF_NUM_KEYBOARD:
-      return desc_hid_report_keyboard;
+      return KEYBOARD_ENABLED ? desc_hid_report_keyboard : desc_hid_report_mouse;
     case ITF_NUM_CONSUMER_CONTROL:
-      return desc_hid_report_consumer;
+      return KEYBOARD_ENABLED ? desc_hid_report_consumer : NULL;
+    case ITF_NUM_MOUSE:
+      return MOUSE_ENABLED ? desc_hid_report_mouse : NULL;
     default:
       return NULL;
   }
@@ -98,25 +104,37 @@ uint8_t const* tud_hid_descriptor_report_cb(uint8_t interface) {
 // Configuration Descriptor
 //--------------------------------------------------------------------+
 
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + 2 * TUD_HID_DESC_LEN)
+const uint ITF_NUM_TOTAL = (KEYBOARD_ENABLED == 1 ? 2 : 0) + (MOUSE_ENABLED == 1 ? 1 : 0);
+
+#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + ITF_NUM_TOTAL * TUD_HID_DESC_LEN)
 
 #define EPNUM_KEYBOARD 0x81
 #define EPNUM_CONSUMER_CONTROL 0x82
+#define EPNUM_MOUSE 0x83
 
 uint8_t const desc_configuration[] = {
-    // Config number, interface count, string index, total length, attribute, power in mA
+    // Config number, interface count, string index, total length, bmAttributes, power in mA
+    // setting bmAttributes to 0x80 means bus-powered, and will prevent the host from trying to
+    // suspend the device.
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN,
-                          TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 300),
+                          0x00, 250),
 
-    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
+#if KEYBOARD_ENABLED
     TUD_HID_DESCRIPTOR(ITF_NUM_KEYBOARD, 0, HID_ITF_PROTOCOL_KEYBOARD,
                        sizeof(desc_hid_report_keyboard), EPNUM_KEYBOARD,
                        KEYBOARD_EP_BUFSIZE, 8),
 
     TUD_HID_DESCRIPTOR(ITF_NUM_CONSUMER_CONTROL, 0, HID_ITF_PROTOCOL_NONE,
                        sizeof(desc_hid_report_consumer), EPNUM_CONSUMER_CONTROL,
-                       CONSUMER_EP_BUFSIZE, 8)};
+                       CONSUMER_EP_BUFSIZE, 8),
+#endif
 
+#if MOUSE_ENABLED
+    TUD_HID_DESCRIPTOR(KEYBOARD_ENABLED ? ITF_NUM_MOUSE : ITF_NUM_KEYBOARD, 0, HID_ITF_PROTOCOL_MOUSE,
+                       sizeof(desc_hid_report_mouse), KEYBOARD_ENABLED ? EPNUM_MOUSE : EPNUM_KEYBOARD,
+                       CFG_TUD_HID_EP_BUFSIZE, 8),
+#endif
+};
 // Invoked when received GET CONFIGURATION DESCRIPTOR
 // Application return pointer to descriptor
 // Descriptor contents must exist long enough for transfer to complete
@@ -133,10 +151,10 @@ uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
 
 // array of pointer to string descriptors
 char const* string_desc_arr[] = {
-    (const char[]){0x09, 0x04},   // 0: is supported language is English (0x0409)
-    "paulbramhall.uk",            // 1: Manufacturer
-    "RP2040 Keyboard Converter",  // 2: Product
-    "",                           // 3: Serial, We will set this later to the unique Flash ID
+    (const char[]){0x09, 0x04},           // 0: is supported language is English (0x0409)
+    "paulbramhall.uk",                    // 1: Manufacturer
+    "RP2040 Keyboard & Mouse Converter",  // 2: Product
+    "",                                   // 3: Serial, We will set this later to the unique Flash ID
 };
 
 static uint16_t _desc_str[32];

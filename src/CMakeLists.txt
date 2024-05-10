@@ -31,95 +31,23 @@ if (DEFINED ENV{KEYBOARD})
   set(KEYBOARD $ENV{KEYBOARD})
 endif()
 
-if(NOT KEYBOARD)
+if(DEFINED ENV{MOUSE})
+  set(MOUSE $ENV{MOUSE})
+endif()
+
+if(NOT KEYBOARD AND NOT MOUSE)
   message(FATAL_ERROR
-  "When building, you need to ensure you set the required Keyboard that will\n"
-  "be used for the build.  You do this by passing the required Keyboard to\n"
-  "the build command in docker-compose, for example:\n"
-  "  docker-compose run -e KEYBOARD=\"modelf/6450225\" builder")
+  "When building, you need to ensure you set the required Keyboard or Mouse "
+  "that will be used for the build.  You do this by passing the required "
+  "device to the build command in docker-compose, for example:\n"
+  "  docker-compose run -e KEYBOARD=\"modelf/pcat\" builder\n"
+  "or\n"
+  "  docker-compose run -e MOUSE=\"at-ps2\" builder\n"
+  "You can build for either a Keyboard or Mouse, or both.\n"
+  "Some Keyboards may have an inbuilt Mouse, so this will automatically be "
+  "set when building for that Keyboard, anbd as such, any user-specified "
+  "`MOUSE` option specified will be ignored in favour of the built-in device..\n")
 endif()
-
-set(REQUIRED_KEYBOARD_FILES
-  "${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/keyboard.h"
-  "${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/keyboard.c"
-  "${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/keyboard.config"
-)
-
-foreach(file IN LISTS REQUIRED_KEYBOARD_FILES)
-  if(NOT EXISTS "${file}")
-    message(FATAL_ERROR "File '${file}' does not exist!")
-  endif()
-endforeach()
-
-# Read in Keyboard Config to ensure we include the correct build-time files
-file(READ "${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/keyboard.config" KEYBOARD_CONFIG)
-
-if(NOT KEYBOARD_CONFIG)
-  message(WARNING "WARNING: Keyboard config file '${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/keyboard.config' is empty or doesn't exist.")
-endif()
-
-# Now parse KEYBOARD_CONFIG into a list of key/val pairs and set them.
-# We only want to MATCHALL against actual key/val pairs, not comments or empty lines.
-string(REGEX MATCHALL "[^\n\r][A-Z]+=[a-zA-Z0-9_/()-. ]+" KEYBOARD_CONFIG "${KEYBOARD_CONFIG}")
-
-foreach(line ${KEYBOARD_CONFIG})
-  # Find the index of the '=' character in the line
-  string(FIND "${line}" "=" EQL_IDX)
-
-  # Extract the part before '=' (left side of the equation) as the key name
-  string(SUBSTRING "${line}" 0 ${EQL_IDX} KEY_NAME)
-
-  # Calculate the index of the character after '='
-  math(EXPR VAL_IDX "${EQL_IDX} + 1")
-
-  # Extract the part after '=' as the key value
-  string(SUBSTRING "${line}" ${VAL_IDX} -1 KEY_VAL)
-
-  # Set the variable with the extracted key name to the extracted key value
-  set(${KEY_NAME} "${KEY_VAL}")
-endforeach()
-
-set(REQUIRED_VARIABLES MAKE DESCRIPTION MODEL PROTOCOL CODESET)
-
-set(MISSING_CONFIG_OPTIONS "")
-foreach(variable ${REQUIRED_VARIABLES})
-  if (NOT DEFINED ${variable})
-    list(APPEND MISSING_CONFIG_OPTIONS "'${variable}'")
-  endif()
-endforeach()
-
-if (MISSING_CONFIG_OPTIONS)
-  message(FATAL_ERROR "Keyboard config file '${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/keyboard.config' is missing the following key(s): ${MISSING_CONFIG_OPTIONS}")
-endif()
-
-# Pass the required variables to the compiler
-add_definitions(-D_KEYBOARD_MAKE="${MAKE}")
-add_definitions(-D_KEYBOARD_DESCRIPTION="${DESCRIPTION}")
-add_definitions(-D_KEYBOARD_MODEL="${MODEL}")
-add_definitions(-D_KEYBOARD_PROTOCOL="${PROTOCOL}")
-add_definitions(-D_KEYBOARD_CODESET="${CODESET}")
-
-set(REQUIRED_PROTOCOL_FILES
-  "${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/keyboard_interface.h"
-  "${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/keyboard_interface.c"
-)
-
-set(REQUIRED_SCANCODE_FILES
-  "${CMAKE_SOURCE_DIR}/scancodes/${CODESET}/scancode.h"
-  "${CMAKE_SOURCE_DIR}/scancodes/${CODESET}/scancode.h"
-)
-
-foreach(file IN LISTS REQUIRED_PROTOCOL_FILES)
-  if(NOT EXISTS "${file}")
-    message(FATAL_ERROR "File '${file}' does not exist!")
-  endif()
-endforeach()
-
-foreach(file IN LISTS REQUIRED_SCANCODE_FILES)
-  if(NOT EXISTS "${file}")
-    message(FATAL_ERROR "File '${file}' does not exist!")
-  endif()
-endforeach()
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
@@ -147,60 +75,7 @@ set_target_properties(${PROJECT_NAME}
 
 pico_add_uf2_output(${PROJECT_NAME})
 
-target_include_directories(${PROJECT_NAME} PUBLIC
-  ${CMAKE_SOURCE_DIR}/
-  ${CMAKE_SOURCE_DIR}/common/lib/
-  ${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/
-  ${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/
-  ${CMAKE_SOURCE_DIR}/scancodes/${CODESET}/
-)
-
-# Define list of common source files within project root
-file(GLOB SRC_ROOT CMAKE_CONFIGURE_DEPENDS
-  ${CMAKE_SOURCE_DIR}/*.c
-)
-
-# Define list of source files for common libraries
-file(GLOB_RECURSE SRC_COMMON CONFIGURE_DEPENDS
-  ${CMAKE_SOURCE_DIR}/common/*.c
-)
-
-file(GLOB SRC_KEYBOARD CONFIGURE_DEPENDS
-  ${CMAKE_SOURCE_DIR}/keyboards/${KEYBOARD}/*.c
-)
-
-file(GLOB SRC_PROTOCOL CMAKE_CONFIGURE_DEPENDS
-  ${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/*.c
-)
-
-file(GLOB SRC_SCANCODE CMAKE_CONFIGURE_DEPENDS
-  ${CMAKE_SOURCE_DIR}/scancodes/${CODESET}/*.c
-)
-
-# Define list of State Machine PIO files for compilation
-file(GLOB PROTOCOL_PIO_FILES CONFIGURE_DEPENDS
-  ${CMAKE_SOURCE_DIR}/protocols/${PROTOCOL}/*.pio
-)
-
-# Define list of Common PIO files for compilation
-file(GLOB_RECURSE COMMON_PIO_FILES CONFIGURE_DEPENDS
-  ${CMAKE_SOURCE_DIR}/common/*.pio
-)
-
-# Loop through each PIO file and generate header.
-foreach(PIO_FILE IN LISTS COMMON_PIO_FILES PROTOCOL_PIO_FILES)
-  # Extract directory and filename without extension
-  get_filename_component(PIO_DIR ${PIO_FILE} DIRECTORY)
-  get_filename_component(PIO_NAME ${PIO_FILE} NAME_WE)
-
-  # Generate header filename and path
-  set(PIO_HEADER ${PIO_DIR}/${PIO_NAME}.h)
-
-  # Call pico_generate_pio_header with individual file and output path
-  pico_generate_pio_header(${PROJECT_NAME}
-    ${PIO_FILE}
-  )
-endforeach()
+SET(PIO_FILES "")
 
 # Build all globs
 target_sources(${PROJECT_NAME} PUBLIC
@@ -211,27 +86,35 @@ target_sources(${PROJECT_NAME} PUBLIC
   ${SRC_SCANCODE}
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC
-  hardware_pio
-  hardware_pwm
-  pico_stdlib
-  pico_unique_id
-  tinyusb_board
-  tinyusb_device
-)
+include(${CMAKE_SOURCE_DIR}/cmake_includes/common.cmake)
 
-target_compile_options(${PROJECT_NAME} PUBLIC
-  # The following options blow up with errors from the tiny-usb library inclusion.
-  # -pedantic
-  # -Wconversion
-  # Disable Shadow warnings which are caused by hardware_flash library.
-  -Wno-shadow
-  # The following options should be enabled.
-  -Wformat=2
-  -Wcast-qual
-  -Wall
-  -Werror
-  -Wextra
-  -Wunused
-  -O2
-)
+# If we have a Keyboard, include the Keyboard cmake file
+if(KEYBOARD)
+  include(${CMAKE_SOURCE_DIR}/cmake_includes/keyboard.cmake)
+endif()
+
+# If we have a Keyboard with an inbuilt Mouse, set the MOUSE variable
+# This will override any MOUSE variable set in the build command
+if(KEYBOARD_MOUSE)
+  set(MOUSE ${KEYBOARD_MOUSE})
+endif()
+
+# If we have a Mouse, include the Mouse cmake file
+if(MOUSE)
+  include(${CMAKE_SOURCE_DIR}/cmake_includes/mouse.cmake)
+endif()
+
+# Loop through each PIO file and generate header.
+list(REMOVE_DUPLICATES PIO_FILES)
+foreach(PIO_FILE IN LISTS PIO_FILES)
+  # Extract directory and filename without extension
+  get_filename_component(PIO_DIR ${PIO_FILE} DIRECTORY)
+  get_filename_component(PIO_NAME ${PIO_FILE} NAME_WE)
+
+  # Call pico_generate_pio_header with individual file and output path
+  pico_generate_pio_header(${PROJECT_NAME}
+    ${PIO_FILE}
+  )
+endforeach()
+
+include(${CMAKE_SOURCE_DIR}/cmake_includes/compile_flags.cmake)
