@@ -1,9 +1,9 @@
 # RP2040 Keyboard Converter for Raspberry Pi PICO RP2040
 [![Test Building of Converter Firmware](https://github.com/PaulW/rp2040-keyboard-converter/actions/workflows/docker-image.yml/badge.svg)](https://github.com/PaulW/rp2040-keyboard-converter/actions/workflows/docker-image.yml)
 
-This project is part of a refurbish/overhaul of an IBM Model F 5170 PC/AT Keyboard, specifically model 6450225. The goal of this is to allow me to use the Model F Keyboard on modern hardware via USB, but to have specific customisations where required.
+This project originally was part of a refurbish/overhaul of an IBM Model F 5170 PC/AT Keyboard, specifically model 6450225. The goal of this was to allow me to use the Model F Keyboard on modern hardware via USB, but to have specific customisations where required.  Now that this has been completed, I've moved my attention on further enhancing the Firmware to support multiple keyboards and protocols, as well as inclusion of support for mice.
 
-Currently, the majority of converters available for this keyboard are based on Atmel AVR and Cortex-M hardware (such as TMK/QMK/VIAL, Soarers Converter to name a few), however with the attractive price point of RP2040-based hardware and availability, I decided I'd like to try and build my own converter from scratch, with the prospect of also creating custom interface hardware to build into the keyboard itself.
+Currently, the majority of converters available are based on Atmel AVR and Cortex-M hardware (such as TMK/QMK/VIAL, Soarers Converter to name a few), however with the attractive price point of RP2040-based hardware and availability, this is why I decided I'd like to try and build my own converter from scratch, with the prospect of also creating custom interface hardware to build into the keyboard itself.
 
 I am aware there is work on other converters which utilise a complete replacement of the controller board within the keyboard itself, however, I'd rather avoid physical hardware changes such as this, to allow me (if required) to restore the keyboard to its original state at some point in the future.
 
@@ -20,11 +20,15 @@ This is connected as follows:
 
 I have since designed a custom hardware solution which fits inside the Model F PC/AT Keyboard.  To simplify the documentation, I've kept the specific hardware details [Here](doc/custom_pcb.md)
 
-I am also working on an inline connector design now, to allow support for multiple keyboards & protocols.
+I am also working on an inline connector design now, to allow support for multiple keyboards, mice & protocols.
 
 ## Supported Keyboards
 
 Please refer to the [Keyboards Folder](src/keyboards/) to see what current Keyboards are available and supported.  I plan on adding more as/when I get them to develop with, but please feel free to add your own.
+
+## Supported Mice
+
+Mice support is built more directly into the Protocol spec than having individual configuration such as we do for Keyboards.  As such, when specifying a Mouse, you only need to specify the protocol as the option.
 
 ## Supported Protocols
 
@@ -48,9 +52,9 @@ To set up the Build Environment, we need to tell Docker to build a local contain
 
 Next, we tell docker to run the container we have just built, and ensure that in the command line, we specify the specific Keyboard we wish to compile:
 
-`docker-compose run -e KEYBOARD="modelf/6450225" builder`
+`docker-compose run -e KEYBOARD="modelf/pcat" -e MOUSE="at-ps2" builder`
 
-In this example, we are specifying `-e KEYBOARD="modelf/6450225"` to build the Firmware with support for the IBM Model F Keyboard.  As new Keyboards are added (at time of writing there are 2), you simply specify the path from within the `keyboards` subfolder within `src`.
+In this example, we are specifying `-e KEYBOARD="modelf/pcat"` to build the Firmware with support for the IBM Model F Keyboard.  We also specify `-e MOUSE="at-ps2"` which also tells the compiler to build Mouse support for this particular protocol too.  As new Keyboards and Mice are added, you simply specify the path from within the `keyboards` subfolder within `src`, as well as the relevant protocol required for the Mouse.
 
 This will then build `rp2040-kbd-converter.uf2` firmware file which you can then flash to your RP2040.  This file is located in the `./build` folder within your locally cloned repository.
 
@@ -64,7 +68,11 @@ The Firmware (once flashed) has the ability to put itself into Bootloader Mode b
 
 Press (and hold in order) - **Fn** + **LShift** + **RShift** + **B**
 
+Please note, there is no Macro Combination for entering Bootloader mode when only a Mouse has been built, as such, you will need to manually hold the BOOT switch when powering on or pressing RESET.
+
 ### Validating/Testing
+Here we see the output from `lsusb -v` for when the converter is configured for both Keyboard and Mouse support.  Please note, only specific configurations are defined depending on the required build-time options.  The converter will not identify as a device for something it has not been built for.
+```
 Bus 002 Device 001: ID 5515:400c
 Device Descriptor:
   bLength                18
