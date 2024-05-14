@@ -231,8 +231,19 @@ If you have a Serial-UART device connected to the UART output of the RP2040, the
 [DBG] Keyboard Initialised!
 ```
 
-## Licence
+## License
 
-The project is licensed under **GPLv3** or later. [Pico-SDK](https://github.com/raspberrypi/pico-sdk) and [TinyUSB](https://github.com/hathach/tinyusb) stack have their own license respectively, and as such remain intact in any included portions of code from those shared resources.
+The project is licensed under **GPLv3** or later. Third-party libraries and code used in this project have their own licenses as follows:
 
-Ringbuffer implementation is on the one from the [TMK](https://github.com/tmk/tmk_keyboard) repository.
+* **Pico-SDK (https://github.com/raspberrypi/pico-sdk)**: License information can be found in the Pico-SDK repository.
+
+* **TinyUSB (https://github.com/hathach/tinyusb)**: License information can be found in the TinyUSB repository. These licenses remain intact in any included portions of code from those shared resources.
+
+* **Pico-Simon (https://github.com/Zheoni/pico-simon)**: Portions of code from the Pico-Simon project are used under the MIT License. A copy of the MIT License can be found in the Pico-Simon repository.
+
+* **Ringbuffer implementation (source files: ringbuf.c, etc.)**:
+  * Based on code originally created by Hasu@tmk for the TMK Keyboard Firmware project.
+  * Potential source references:
+    * https://github.com/tmk/tinyusb_ps2/blob/main/ringbuf.h
+    * https://github.com/tmk/tmk_keyboard/blob/master/tmk_core/ring_buffer.h
+  * License: Likely GPLv2 or later (same as TMK) due to its inclusion in the TMK repository, but the exact origin is unclear.

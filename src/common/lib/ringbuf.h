@@ -3,6 +3,15 @@
  *
  * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
  *
+ * Portions of this specific file are licensed under the GPLv2 License.
+ * The Ringbuffer has been adapted and based upon the tinyusb repository
+ * by Hasu@tmk, which in turn originates from the main TMK Keyboard
+ * Firmware repository.
+ *
+ * The original source can be found at:
+ * https://github.com/tmk/tinyusb_ps2/blob/main/ringbuf.h
+ * https://github.com/tmk/tmk_keyboard/blob/master/tmk_core/ring_buffer.h
+ *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of

@@ -3,9 +3,6 @@
  *
  * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
  *
- * Portions of this specific file are licensed under the MIT License.
- * The original source can be found at: https://github.com/Zheoni/pico-simon
- *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
