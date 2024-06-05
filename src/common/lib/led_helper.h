@@ -57,9 +57,6 @@ extern lock_keys_union lock_leds;
 extern uint8_t ps2_lock_values;
 
 void set_lock_values_from_hid(uint8_t lock_val);
-
-#ifdef CONVERTER_LEDS
 void update_converter_status(void);
-#endif
 
 #endif /* LED_HELPER_H */
