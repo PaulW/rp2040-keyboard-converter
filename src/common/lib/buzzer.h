@@ -40,7 +40,6 @@ extern note LOCK_LED[];
   { 0, 0 }
 
 sound buzzer_calc_sound(uint freq);
-
 void buzzer_init(uint buzzer_pin);
 bool buzzer_play_sound_sequence_non_blocking(note *notes);
 

@@ -3,7 +3,6 @@
 target_link_libraries(${PROJECT_NAME} PUBLIC
   hardware_pio
   hardware_pwm
-  pico_multicore
   pico_stdlib
   pico_unique_id
   tinyusb_board

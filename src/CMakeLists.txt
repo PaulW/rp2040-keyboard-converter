@@ -53,7 +53,7 @@ endif()
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 # Set the project name
-project(rp2040-kbd-converter C CXX ASM)
+project(rp2040-converter C CXX ASM)
 
 # Initialize the Raspberry Pi Pico SDK
 pico_sdk_init()

@@ -24,5 +24,6 @@
 #include "hardware/pio.h"
 
 PIO find_available_pio(const pio_program_t *program);
+void pio_restart(PIO pio, uint sm, uint offset);
 
 #endif /* PIO_HELPER_H */

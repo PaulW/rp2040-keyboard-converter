@@ -40,12 +40,18 @@ typedef struct {
 
 static uint8_t buf[BUF_SIZE];
 
-static ringbuf_t rbuf = {
-    .buffer = buf,  // Cast to array of chars for initialization
-    .head = 0,
-    .tail = 0,
-    .size_mask = BUF_SIZE - 1};
+static ringbuf_t rbuf = {.buffer = buf,  // Cast to array of chars for initialization
+                         .head = 0,
+                         .tail = 0,
+                         .size_mask = BUF_SIZE - 1};
 
+/**
+ * @brief Retrieves the next element from the ring buffer.
+ * This function retrieves the next element from the ring buffer. If the buffer is empty, it will
+ * returns -1.
+ *
+ * @return The next element from the ring buffer, or -1 if the buffer is empty.
+ */
 int16_t ringbuf_get() {
   if (ringbuf_is_empty()) return -1;
   uint8_t data = rbuf.buffer[rbuf.tail];
@@ -54,6 +60,15 @@ int16_t ringbuf_get() {
   return data;
 }
 
+/**
+ * @brief Puts a byte of data into the ring buffer.
+ * This function puts a byte of data into the ring buffer if it is not full.
+ *
+ * @param data The byte of data to be put into the ring buffer.
+ *
+ * @return Returns true if the data was successfully put into the ring buffer, false if the ring
+ *         buffer is full.
+ */
 bool ringbuf_put(uint8_t data) {
   if (ringbuf_is_full()) {
     return false;
@@ -64,14 +79,29 @@ bool ringbuf_put(uint8_t data) {
   return true;
 }
 
-bool ringbuf_is_empty() {
-  return (rbuf.head == rbuf.tail);
-}
+/**
+ * @brief Checks if the ring buffer is empty.
+ * This function checks if the ring buffer is empty by comparing the head and tail indices.
+ *
+ * @return true if the ring buffer is empty, false otherwise.
+ */
+bool ringbuf_is_empty() { return (rbuf.head == rbuf.tail); }
 
-bool ringbuf_is_full() {
-  return (((rbuf.head + 1) & rbuf.size_mask) == rbuf.tail);
-}
+/**
+ * @brief Checks if the ring buffer is full.
+ * This function checks whether the ring buffer is full by comparing the head and tail indices. If
+ * the head index plus one (wrapped around by the size mask) is equal to the tail index, it means
+ * the buffer is full.
+ *
+ * @return true if the ring buffer is full, false otherwise.
+ */
+bool ringbuf_is_full() { return (((rbuf.head + 1) & rbuf.size_mask) == rbuf.tail); }
 
+/**
+ * @brief Resets the ring buffer.
+ * This function resets the head and tail pointers of the ring buffer to 0, effectively clearing the
+ * buffer.
+ */
 void ringbuf_reset() {
   rbuf.head = 0;
   rbuf.tail = 0;

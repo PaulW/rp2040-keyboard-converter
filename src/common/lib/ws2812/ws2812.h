@@ -21,15 +21,9 @@
 #ifndef WS2812_H
 #define WS2812_H
 
-#include "config.h"
-
-#ifdef CONVERTER_LEDS
-
 #include "pico/stdlib.h"
 
 void ws2812_show(uint32_t led_color);
 void ws2812_setup(uint data_pin);
-
-#endif
 
 #endif /* WS2812_H */

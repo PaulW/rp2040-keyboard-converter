@@ -23,6 +23,7 @@
 
 #include "hid_keycodes.h"
 
+// clang-format off
 /* IBM 5170 (Model F-AT)
  * Keyboard uses Scancode Set 2.
  * ,-------. ,-----------------------------------------------------------. ,---------------.
@@ -41,7 +42,6 @@
  *  ~: Remaps to alternate code (83-02, 84-7F)
  */
 
-// clang-format off
 #define KEYMAP_PCAT( \
     K05,K06,  K0E,K16,K1E,K26,K25,K2E,K36,K3D,K3E,K46,K45,K4E,K55,K5D,K66,  K76,K77,K7E,K7F, \
     K04,K0C,  K0D,    K15,K1D,K24,K2D,K2C,K35,K3C,K43,K44,K4D,K54,K5B,      K6C,K75,K7D,K7C, \

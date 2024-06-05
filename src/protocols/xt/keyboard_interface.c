@@ -25,13 +25,10 @@
 #include "bsp/board.h"
 #include "hardware/clocks.h"
 #include "keyboard_interface.pio.h"
+#include "led_helper.h"
 #include "pio_helper.h"
 #include "ringbuf.h"
 #include "scancode.h"
-
-#ifdef CONVERTER_LEDS
-#include "led_helper.h"
-#endif
 
 uint keyboard_sm = 0;
 uint keyboard_offset = 0;
@@ -43,17 +40,14 @@ static enum {
   INITIALISED,
 } keyboard_state = UNINITIALISED;
 
-void keyboard_pio_restart() {
-  // Restart the XT PIO State Machine
-  printf("[DBG] Resetting State Machine and Keyboard (Offset: 0x%02X)\n", keyboard_offset);
-  keyboard_state = UNINITIALISED;
-  pio_sm_drain_tx_fifo(keyboard_pio, keyboard_sm);
-  pio_sm_clear_fifos(keyboard_pio, keyboard_sm);
-  pio_sm_restart(keyboard_pio, keyboard_sm);
-  pio_sm_exec(keyboard_pio, keyboard_sm, pio_encode_jmp(keyboard_offset));
-  printf("[DBG] State Machine Restarted\n");
-}
-
+/**
+ * @brief Processes keyboard event data.
+ * This function is responsible for processing keyboard events and updating the keyboard state
+ * accordingly. It handles various stages of keyboard initialization. If the keyboard is
+ * initialized, it puts the received keycode into the ring buffer for further processing.
+ *
+ * @param data_byte The data byte received from the keyboard.
+ */
 static void keyboard_event_processor(uint8_t data_byte) {
   switch (keyboard_state) {
     case UNINITIALISED:
@@ -62,8 +56,8 @@ static void keyboard_event_processor(uint8_t data_byte) {
         keyboard_state = INITIALISED;
       } else {
         printf("[ERR] Keyboard Self-Test Failed: 0x%02X\n", data_byte);
-        keyboard_pio_restart();
         keyboard_state = UNINITIALISED;
+        pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
       }
       break;
     case INITIALISED:
@@ -75,8 +69,23 @@ static void keyboard_event_processor(uint8_t data_byte) {
 #endif
 }
 
-// IRQ Event Handler used to read keycode data from the XT Keyboard
-// and ensure relevant code is valid when checking against relevant check bits.
+/**
+ * @brief IRQ Event Handler used to read keycode data from the XT Keyboard.
+ * This function is responsible for handling the interrupt request (IRQ) event that occurs when data
+ * is received from the XT Keyboard.
+ * - It extracts the start bit and data byte from the received data.
+ * - It then performs validation checks on the start bit.
+ * - If the validation check fails, an error messages are printed and appropriate action is taken.
+ * - If the validation check passes, the data byte is processed by the keyboard_event_processor()
+ * function.
+ *
+ * @note The XT Keyboard Reset Command is not handled here.  This is handled by the actual PIO Code
+ * itself, and triggers each time the PIO State Machine is initialised.
+ *
+ * @note Depending on whether a Genuine IBM or Clone XT Keyboard is used, the start bit may be sent
+ * as a single bit or a double bit.  This is handled transparently by the PIO code itself to filter
+ * out the double start bit.
+ */
 static void __isr keyboard_input_event_handler() {
   io_ro_32 data_cast = keyboard_pio->rxf[keyboard_sm] >> 23;
   uint16_t data = (uint16_t)data_cast;
@@ -87,14 +96,27 @@ static void __isr keyboard_input_event_handler() {
 
   if (start_bit != 1) {
     printf("[ERR] Start Bit Validation Failed: start_bit=%i\n", start_bit);
-    keyboard_pio_restart();
+    keyboard_state = UNINITIALISED;
+    pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
     return;
   }
   keyboard_event_processor(data_byte);
 }
 
+/**
+ * @brief Task function for the keyboard interface.
+ * This function handles the initialization and communication with the keyboard.
+ * It is responsible for processing stored keypresses which are held within the ring buffer, and
+ * then sends it to the relevant scancode processing function to be processed.  It also handles
+ * events if certain conditions are not met within a certain time frame.
+ *
+ * @note This function should be called periodically in the main loop, or within a task scheduler.
+ */
 void keyboard_interface_task() {
+  static uint8_t detect_stall_count = 0;
+
   if (keyboard_state == INITIALISED) {
+    detect_stall_count = 0;  // Reset the stall count if we're initialised.
     if (!ringbuf_is_empty() && tud_hid_ready()) {
       // We only process the ringbuffer if it's not empty and we're ready to send a HID report.
       // If we don't check for HID ready, we can end up having reports fail to send.
@@ -107,7 +129,6 @@ void keyboard_interface_task() {
     }
   } else {
     // This portion helps with initialisation of the keyboard.
-    static uint8_t detect_stall_count = 0;
     static uint32_t detect_ms = 0;
     // if ((gpio_get(DATA_PIN) == 1) && (gpio_get(DATA_PIN + 1) == 1)) {
     //   printf("[DBG] Keyboard Initialised (BAT OK)!\n");
@@ -123,7 +144,8 @@ void keyboard_interface_task() {
         } else {
           printf("[DBG] Keyboard detected, but no ACK received!\n");
           printf("[DBG] Requesting keyboard reset\n");
-          keyboard_pio_restart();
+          keyboard_state = UNINITIALISED;
+          pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
           detect_stall_count = 0;
         }
       } else if (keyboard_state == UNINITIALISED) {
@@ -138,14 +160,30 @@ void keyboard_interface_task() {
   }
 }
 
-// Public function to initialise the XT PIO interface.
+/**
+ * @brief Initializes the XT PIO interface for the keyboard.
+ * This function initializes the XT PIO interface for the keyboard by performing the following
+ * steps:
+ * 1. Resets the converter status if CONVERTER_LEDS is defined.
+ * 2. Resets the ring buffer.
+ * 3. Finds an available PIO to use for the keyboard interface program.
+ * 4. Claims the PIO and loads the program.
+ * 5. Sets up the IRQ for the PIO state machine.
+ * 6. Defines the polling interval and cycles per clock for the state machine.
+ * 7. Gets the base clock speed of the RP2040.
+ * 8. Initializes the PIO interface program.
+ * 9. Sets the IRQ handler and enables the IRQ.
+ *
+ * @param data_pin The data pin to be used for the keyboard interface.
+ */
 void keyboard_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
   converter.state.kb_ready = 0;
   update_converter_status();  // Always reset Converter Status here
 #endif
 
-  ringbuf_reset();  // Even though Ringbuf is statically initialised, we reset it here to be sure it's empty.
+  ringbuf_reset();  // Even though Ringbuf is statically initialised, we reset it here to be sure
+                    // it's empty.
 
   // First we need to determine which PIO to use for the Keyboard Interface.
   // To do this, we check each PIO to see if there is space to load the Keyboard Interface program.
@@ -192,7 +230,8 @@ void keyboard_interface_setup(uint data_pin) {
   printf("[INFO] Interface Polling Clock: %.0fkHz\n", polling_interval_khz);
   // Always round clock_div to prevent jitter by having a fractional divider.
   float clock_div = roundf((rp_clock_khz / polling_interval_khz) / cycles_per_clock);
-  printf("[INFO] Clock Divider based on %d SM Cycles per Keyboard Clock Cycle: %.2f\n", cycles_per_clock, clock_div);
+  printf("[INFO] Clock Divider based on %d SM Cycles per Keyboard Clock Cycle: %.2f\n",
+         cycles_per_clock, clock_div);
   printf("[INFO] Effective SM Clock Speed: %.2fkHz\n", (float)(rp_clock_khz / clock_div));
 
   keyboard_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin, clock_div);
@@ -200,5 +239,6 @@ void keyboard_interface_setup(uint data_pin) {
   irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
   irq_set_enabled(pio_irq, true);
 
-  printf("[INFO] PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n", (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
+  printf("[INFO] PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
+         (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
 }

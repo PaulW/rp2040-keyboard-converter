@@ -30,7 +30,9 @@
 #define IS_CONSUMER(code) (KC_MPLY <= (code) && (code) <= KC_BRTD)
 
 /* Define Super Macro Toggle */
-#define SUPER_MACRO_INIT(code) (((code) & ((1 << (KC_LSHIFT & 0x7)) | (1 << (KC_RSHIFT & 0x7)))) == ((1 << (KC_LSHIFT & 0x7)) | (1 << (KC_RSHIFT & 0x7))))
+#define SUPER_MACRO_INIT(code)                                         \
+  (((code) & ((1 << (KC_LSHIFT & 0x7)) | (1 << (KC_RSHIFT & 0x7)))) == \
+   ((1 << (KC_LSHIFT & 0x7)) | (1 << (KC_RSHIFT & 0x7))))
 
 /*
  * Short names for ease of definition of keymap
@@ -397,9 +399,9 @@ enum hid_consumer_usage_page {
 };
 
 /* Internal Special Codes
-  * These are not part of the HID Usage Tables, but are used internally
-  * to represent special keys that are not part of the standard HID Usage Tables.
-  */
+ * These are not part of the HID Usage Tables, but are used internally
+ * to represent special keys that are not part of the standard HID Usage Tables.
+ */
 enum internal_special_codes {
   /* System Control */
   KC_SYSTEM_POWER = 0xA5,

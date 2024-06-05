@@ -20,6 +20,22 @@
 
 #include "common_interface.h"
 
+/**
+ * @brief Mapping of HEX to Parity Bit for input from AT Keyboard.
+ *
+ * This array maps each hexadecimal value (0-255) to its corresponding parity bit for input from an
+ * AT Keyboard. The parity bit is used for error checking in the keyboard data.
+ *
+ * The array is organized in a 16x16 grid, where each row represents a hexadecimal digit (0-F) and
+ * each column represents a parity bit (0 or 1). The value at each position in the grid represents
+ * the parity bit for the corresponding hexadecimal value.
+ *
+ * Example:
+ * - interface_parity_table[0x3C] = 0 (parity bit for hexadecimal value 3C is 0)
+ * - interface_parity_table[0x8A] = 1 (parity bit for hexadecimal value 8A is 1)
+ *
+ * @note This array is used in the implementation of the AT and PS2 protocols.
+ */
 uint8_t interface_parity_table[256] = {
     /* Mapping of HEX to Parity Bit for input from AT Keyboard
     0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F */

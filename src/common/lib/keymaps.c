@@ -28,6 +28,18 @@
 static int keymap_layer = 0; /* TO-DO Add full Layer Switching Support */
 static bool action_key_pressed = false;
 
+/**
+ * @brief Searches for the key code in the keymap based on the specified row and column.
+ * This function searches for the key code in the keymap based on the specified row and column. It
+ * first checks the current layer, and if the key code is KC_TRNS (transparent), it searches through
+ * the previous layers until a non-transparent key code is found. If no non-transparent key code is
+ * found, it returns KC_NO (no key).
+ *
+ * @param row The row index in the keymap.
+ * @param col The column index in the keymap.
+ *
+ * @return The key code found in the keymap.
+ */
 static uint8_t keymap_search_layers(uint8_t row, uint8_t col) {
   uint8_t key_code = keymap_map[keymap_layer][row][col];
 
@@ -49,6 +61,24 @@ static uint8_t keymap_search_layers(uint8_t row, uint8_t col) {
   return key_code;
 }
 
+/**
+ * @brief Retrieves the key value at the specified position in the keymap.
+ * This function takes a position value and a boolean indicating whether the key is being pressed or
+ * released. It calculates the row and column values from the position and searches the keymap for
+ * the corresponding key code.
+ *
+ * If the key code is KC_FN, it sets the action_key_pressed flag and returns KC_NO. Otherwise, if
+ * the action_key_pressed flag is set, it checks if there is an action key code at the specified
+ * position in the action key map. If there is, it updates the key code with the action key code.
+ *
+ * If the key code is KC_NFLP, it searches the keymap again to get the flip key code and converts it
+ * to the corresponding numpad flip code. Finally, it returns the key code.
+ *
+ * @param pos  The position of the key in the keymap.
+ * @param make A boolean indicating whether the key is being pressed (true) or released (false).
+ *
+ * @return The key code at the specified position in the keymap.
+ */
 uint8_t keymap_get_key_val(uint8_t pos, bool make) {
   const uint8_t row = (pos >> 4) & 0x0F;
   const uint8_t col = pos & 0x0F;
@@ -75,4 +105,11 @@ uint8_t keymap_get_key_val(uint8_t pos, bool make) {
   }
 }
 
+/**
+ * @brief Checks if the action key is currently pressed.
+ * This function returns a boolean value indicating whether the action key is currently pressed or
+ * not.  This ensures we only expose this value read-only to the rest of the code.
+ *
+ * @return true if the action key is pressed, false otherwise.
+ */
 bool keymap_is_action_key_pressed(void) { return action_key_pressed; }

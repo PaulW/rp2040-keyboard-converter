@@ -24,14 +24,31 @@
 
 #include "hid_interface.h"
 
-// Called when character data exists in the ringbuffer from the main processing loop.
-// Handles keycodes sent to it, and translates these from Scancode Set 3 and then sending
-// a new HID report to the host to signal key press/release.
+/**
+ * @brief Process Keyboard Input (Scancode Set 3) Data
+ * This function is called from the keyboard_interface_task() function whenever there is data in the
+ * ringbuffer.  It will then process the relevant scancode and then call handle_keyboard_report() to
+ * send the relevant HID report to the host.  Key press and release events are also determined here
+ * depending on the scancode sequence relating to any received Break code (0xF0).
+ *
+ * @param code The keycode to process.
+ *
+ * @note handle_keyboard_report() function directly handles translation from scancode to HID report.
+ * It used a lookup against the relevant keyboard configuration to determine the associated Keycode,
+ * and then sends the relevant HID report to the host.
+ *
+ * @note With Scancode Set 3, most keyboard default to typematic mode, which means that the keyboard
+ * will send a key press event, followed by a delay, and then a stream of key press events. However,
+ * we assume that the keyboard has been configured to send make/break codes, and as such we don't
+ * need to handle typematic mode, and will process release events from the Break code.
+ */
 void process_scancode(uint8_t code) {
+  // clang-format off
   static enum {
     INIT,
     F0,
   } state = INIT;
+  // clang-format on
 
   switch (state) {
     case INIT:

@@ -23,6 +23,7 @@
 
 #include "hid_keycodes.h"
 
+// clang-format off
 /* Cherry G80 (ISO Layout - 1104H):
  * Keyboard uses a Scancode Set 1
  * ,---.   ,---------------. ,---------------. ,---------------. ,-----------.
@@ -39,12 +40,11 @@
  * |-----------------------------------------------------------| ,-----------. |-----------|   |
  * | 1D |    | 7B |              39             | e38|    | e1D| |e4B|e50|e4D| |   52|   53|   |
  * `----'    `---------------------------------------`    '----' `-----------' `---------------'
- * 
+ *
  * e: E0-prefixed codes.
  * *: special handling codes
  */
 
-// clang-format off
 #define KEYMAP_ISO( \
     K01,    K3B,K3C,K3D,K3E,  K3F,K40,K41,K42,  K43,K44,K57,K58,  K54,K46,K55, \
     K29,K02,K03,K04,K05,K06,K07,K08,K09,K0A,K0B,K0C,K0D,    K0E,  K71,K74,K77,  K45,K7F,K37,K4A, \

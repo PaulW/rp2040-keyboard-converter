@@ -23,6 +23,7 @@
 
 #include "hid_keycodes.h"
 
+// clang-format off
 /* MicroSwitch 122ST13 Terminal Keyboard:
  * Keyboard uses Scancode Set 3.
  *               ,-----------------------------------------------.
@@ -45,7 +46,6 @@
  *  ~: Remaps to alternate code (83-02, 84-7F)
  */
 
-// clang-format off
 #define KEYMAP_PC122( \
                   K08,K10,K18,K20,K28,K30,K38,K40,K48,K50,K57,K5F, \
                   K07,K0F,K17,K1F,K27,K2F,K37,K3F,K47,K4F,K56,K5E, \

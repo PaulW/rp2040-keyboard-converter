@@ -23,6 +23,7 @@
 
 #include "hid_keycodes.h"
 
+// clang-format off
 /* IBM Model M Enhanced Keyboard
  * Keyboards use Scancode Set 2
  * ,---.   ,---------------. ,---------------. ,---------------. ,-----------.
@@ -47,7 +48,6 @@
  * 61 is ISO 102-key Backslash Key
  */
 
-// clang-format off
 #define KEYMAP( \
     K76,    K05,K06,K04,K0C,  K03,K0B,K02,K0A,  K01,K09,K78,K07,  K7F,K7E,K00, \
     K0E,K16,K1E,K26,K25,K2E,K36,K3D,K3E,K46,K45,K4E,K55,    K66,  K39,K2F,K5E,  K77,K60,K7C,K7B, \

@@ -39,11 +39,13 @@ uint16_t keyboard_id = 0xFFFF;
 uint keyboard_data_pin;
 
 // Check if we are a Terminal Keyboard (Keyboards utilising Set 3 Scancodes).
-// This is used to determine if we should perform the additional steps required for Terminal Keyboards.
+// This is used to determine if we should perform the additional steps required for Terminal
+// Keyboards.
 #define CODESET_3 (strcmp(KEYBOARD_CODESET, "set3") == 0)
 
 static uint8_t keyboard_lock_leds = 0;
-static bool id_retry = false;  // Used to determine whether we've already retried reading the Keyboard ID.
+static bool id_retry =
+    false;  // Used to determine whether we've already retried reading the Keyboard ID.
 
 static enum {
   UNINITIALISED,
@@ -56,12 +58,29 @@ static enum {
   INITIALISED,
 } keyboard_state = UNINITIALISED;
 
-// Command Handler function to issue commands to the attached AT Keyboard.
+/**
+ * @brief Command Handler function to issue commands to the attached AT/PS2 Keyboard.
+ * This function is responsible for handling commands to be sent to the AT/PS2 Keyboard. It takes a
+ * single parameter, `data_byte`, which represents the command to be issued. The function calculates
+ * the parity of the data byte and combines it with the data byte to form a 16-bit value. This value
+ * is then sent to the peripheral using the PIO state machine.
+ *
+ * @param data_byte The data byte to be sent to the keyboard.
+ */
 static void keyboard_command_handler(uint8_t data_byte) {
   uint16_t data_with_parity = (uint16_t)(data_byte + (interface_parity_table[data_byte] << 8));
   pio_sm_put(keyboard_pio, keyboard_sm, data_with_parity);
 }
 
+/**
+ * @brief Processes keyboard event data.
+ * This function is responsible for processing keyboard events and updating the keyboard state
+ * accordingly. It handles various stages of keyboard initialization, including self-test, reading
+ * the keyboard ID, setting up make/break codes, and handling LED events. If the keyboard is
+ * initialized, it puts the received keycode into the ring buffer for further processing.
+ *
+ * @param data_byte The data byte received from the keyboard.
+ */
 static void keyboard_event_processor(uint8_t data_byte) {
   switch (keyboard_state) {
     case UNINITIALISED:
@@ -69,7 +88,8 @@ static void keyboard_event_processor(uint8_t data_byte) {
       keyboard_id = 0xFFFF;  // Reset the keyboard_id as we are uninitialised.
       switch (data_byte) {
         case 0xAA:
-          // Likely we are powering on for the first time and initialising. Keyboard sends 0xAA on power on following successful BAT
+          // Likely we are powering on for the first time and initialising. Keyboard sends 0xAA on
+          // power on following successful BAT
           printf("[DBG] Keyboard Self Test OK!\n");
           buzzer_play_sound_sequence_non_blocking(READY_SEQUENCE);
           keyboard_lock_leds = 0;
@@ -77,7 +97,8 @@ static void keyboard_event_processor(uint8_t data_byte) {
           keyboard_state = INIT_READ_ID_1;
           break;
         default:
-          // This event is reached if we receieve any other event before intiiialisation.  This may be an unsuccesful BAT or just weird power-on state.
+          // This event is reached if we receieve any other event before intiiialisation.  This may
+          // be an unsuccesful BAT or just weird power-on state.
           printf("[DBG] Asking Keyboard to Reset\n");
           keyboard_state = INIT_AWAIT_ACK;
           keyboard_command_handler(0xFF);
@@ -105,14 +126,16 @@ static void keyboard_event_processor(uint8_t data_byte) {
           keyboard_state = INIT_READ_ID_1;
           break;
         default:
-          printf("[DBG] Self-Test invalid response (0x%02X).  Asking again to Reset...\n", data_byte);
+          printf("[DBG] Self-Test invalid response (0x%02X).  Asking again to Reset...\n",
+                 data_byte);
           keyboard_state = INIT_AWAIT_ACK;
           keyboard_command_handler(0xFF);
       }
       break;
 
-    // If we are a Terminal Keyboard, then we should receive 2 more responses which will be the ID of the keyboard.
-    // This will timeout after 500ms if no response is received, and this is handled within the keyboard_interface_task function.
+    // If we are a Terminal Keyboard, then we should receive 2 more responses which will be the ID
+    // of the keyboard. This will timeout after 500ms if no response is received, and this is
+    // handled within the keyboard_interface_task function.
     case INIT_READ_ID_1:
       switch (data_byte) {
         case 0xFA:
@@ -133,7 +156,8 @@ static void keyboard_event_processor(uint8_t data_byte) {
       printf("[DBG] Keyboard ID: 0x%04X\n", keyboard_id);
       // Handle Make/Break Setup for Terminal Keyboards
       if (CODESET_3) {
-        // We then want to ensure we set all keys to Make/Break if we're a Terminal Keyboard (Keyboards utilising Set 3 Scancodes)
+        // We then want to ensure we set all keys to Make/Break if we're a Terminal Keyboard
+        // (Keyboards utilising Set 3 Scancodes)
         printf("[DBG] Setting all Keys to Make/Break\n");
         keyboard_command_handler(0xF8);
         keyboard_state = INIT_SETUP;
@@ -187,19 +211,17 @@ static void keyboard_event_processor(uint8_t data_byte) {
 #endif
 }
 
-void keyboard_pio_restart() {
-  // Restart the AT PIO State Machine
-  printf("[DBG] Resetting State Machine and Keyboard (Offset: 0x%02X)\n", keyboard_offset);
-  keyboard_state = UNINITIALISED;
-  id_retry = false;
-  pio_sm_drain_tx_fifo(keyboard_pio, keyboard_sm);
-  pio_sm_clear_fifos(keyboard_pio, keyboard_sm);
-  pio_sm_restart(keyboard_pio, keyboard_sm);
-  pio_sm_exec(keyboard_pio, keyboard_sm, pio_encode_jmp(keyboard_offset));
-}
-
-// IRQ Event Handler used to read keycode data from the AT Keyboard
-// and ensure relevant code is valid when checking against relevant check bits.
+/**
+ * @brief IRQ Event Handler used to read keycode data from the AT/PS2 Keyboard.
+ * This function is responsible for handling the interrupt request (IRQ) event that occurs when data
+ * is received from the AT/PS2 Keyboard.
+ * - It extracts the start bit, parity bit, stop bit, and data byte from the received data.
+ * - It then performs validation checks on the start bit, parity bit, and stop bit.
+ * - If any of the validation checks fail, error messages are printed and appropriate actions are
+ * taken.
+ * - If all the validation checks pass, the data byte is processed by the keyboard_event_processor()
+ * function.
+ */
 static void __isr keyboard_input_event_handler() {
   io_ro_32 data_cast = keyboard_pio->rxf[keyboard_sm] >> 21;
   uint16_t data = (uint16_t)data_cast;
@@ -215,37 +237,50 @@ static void __isr keyboard_input_event_handler() {
     if (start_bit != 0) printf("[ERR] Start Bit Validation Failed: start_bit=%i\n", start_bit);
     if (stop_bit != 1) printf("[ERR] Stop Bit Validation Failed: stop_bit=%i\n", stop_bit);
     if (parity_bit != parity_bit_check) {
-      printf("[ERR] Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check, parity_bit);
+      printf("[ERR] Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check,
+             parity_bit);
       if (data_byte == 0x54 && parity_bit == 1) {
-        // Likely we are powering on, or initialising. Keyboard sends 0xAA on power on following successful BAT
-        // however, it also drops clock & data low briefly during initial power on, and as such, causes an extra
-        // bit to be read so shifts data in fifo to change from 0xAA to 0x54 with invalid parity.
-        // This has been fixed, but left here for reference (or if it breaks again!)
+        // Likely we are powering on, or initialising. Keyboard sends 0xAA on power on following
+        // successful BAT however, it also drops clock & data low briefly during initial power on,
+        // and as such, causes an extra bit to be read so shifts data in fifo to change from 0xAA to
+        // 0x54 with invalid parity. This has been fixed, but left here for reference (or if it
+        // breaks again!)
         printf("[DBG] Likely Keyboard Connect Event detected.\n");
-        keyboard_pio_restart();
+        keyboard_state = UNINITIALISED;
+        id_retry = false;
+        pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
       }
       // Ask Keyboard to re-send the data.
       keyboard_command_handler(0xFE);
       return;  // We don't want to process this event any further.
     }
     // We should reset/restart the State Machine
-    keyboard_pio_restart();
+    keyboard_state = UNINITIALISED;
+    id_retry = false;
+    pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
     return;
   }
 
   keyboard_event_processor(data_byte);
 }
 
+/**
+ * @brief Task function for the keyboard interface.
+ * This function handles the initialization and communication with the keyboard.
+ * It is responsible for processing stored keypresses which are held within the ring buffer, and
+ * then sends it to the relevant scancode processing function to be processed.  It also handles the
+ * initialisation of the keyboard, including self-test and reading the keyboard ID, handling events
+ * if certain conditions are not met within a certain time frame.
+ *
+ * @note This function should be called periodically in the main loop, or within a task scheduler.
+ */
 void keyboard_interface_task() {
-  // This function is called from the main loop and is used to handle the keyboard interface.
-  // It is responsible for initialising the keyboard, setting the lock LEDs, and processing
-  // any keycodes that are sent from the keyboard.
-
   static uint8_t detect_stall_count = 0;
 
   if (keyboard_state == INITIALISED) {
     // Handle further initialization steps now, this is more for terminal keyboard support.
-    // This portion helps with Lock LED changes.  We only get here once the keyboard has initialised.
+    // This portion helps with Lock LED changes.  We only get here once the keyboard has
+    // initialised.
     detect_stall_count = 0;  // Reset the detect_stall_count as we are initialised.
     if (ps2_lock_values != keyboard_lock_leds) {
       keyboard_state = SET_LOCK_LEDS;
@@ -264,14 +299,16 @@ void keyboard_interface_task() {
     }
   } else {
     // This portion helps with initialisation of the keyboard.
-    // Here we handle Timeout events.  If we don't receive a response from the keyboard when in an alternate state,
-    // then we will reset the keyboard and try again.  This is to handle the case where the keyboard is not responding.
+    // Here we handle Timeout events.  If we don't receive a response from the keyboard when in an
+    // alternate state, then we will reset the keyboard and try again.  This is to handle the case
+    // where the keyboard is not responding.
     static uint32_t detect_ms = 0;
     if (board_millis() - detect_ms > 200) {
       detect_ms = board_millis();
       if (gpio_get(keyboard_data_pin + 1) == 1) {
         // Only perform timeout checks if the clock is HIGH (Keyboard Detected).
-        detect_stall_count++;  // Always increment the detect_stall_count if we have a HIGH clock and not in INITIALISED state.
+        detect_stall_count++;  // Always increment the detect_stall_count if we have a HIGH clock
+                               // and not in INITIALISED state.
         switch (keyboard_state) {
           case INIT_READ_ID_1 ... INIT_SETUP:
             if (detect_stall_count > 2) {
@@ -282,7 +319,7 @@ void keyboard_interface_task() {
                 id_retry = true;
                 keyboard_state = INIT_READ_ID_1;  // Set State to Reading of Keyboard ID
                 keyboard_command_handler(0xF2);   // Request Keyboard ID
-                detect_stall_count = 0;           // Reset the detect_stall_count as we are retrying.
+                detect_stall_count = 0;  // Reset the detect_stall_count as we are retrying.
               } else {
                 printf("[DBG] Keyboard Read ID/Setup Timed out again, continuing with defaults.\n");
                 keyboard_id = 0xFFFF;
@@ -314,7 +351,8 @@ void keyboard_interface_task() {
         }
       } else if (keyboard_state == UNINITIALISED) {
         printf("[DBG] Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
-        detect_stall_count = 0;  // Reset the detect_stall_count as we are waiting for the clock to go HIGH.
+        // Reset the detect_stall_count as we are waiting for the clock to go HIGH.
+        detect_stall_count = 0;
       }
 #ifdef CONVERTER_LEDS
       converter.state.kb_ready = keyboard_state == INITIALISED ? 1 : 0;
@@ -324,14 +362,30 @@ void keyboard_interface_task() {
   }
 }
 
-// Public function to initialise the AT PIO interface.
+/**
+ * @brief Initializes the AT/PS2 PIO interface for the keyboard.
+ * This function initializes the AT/PS2 PIO interface for the keyboard by performing the following
+ * steps:
+ * 1. Resets the converter status if CONVERTER_LEDS is defined.
+ * 2. Resets the ring buffer.
+ * 3. Finds an available PIO to use for the keyboard interface program.
+ * 4. Claims the PIO and loads the program.
+ * 5. Sets up the IRQ for the PIO state machine.
+ * 6. Defines the polling interval and cycles per clock for the state machine.
+ * 7. Gets the base clock speed of the RP2040.
+ * 8. Initializes the PIO interface program.
+ * 9. Sets the IRQ handler and enables the IRQ.
+ *
+ * @param data_pin The data pin to be used for the keyboard interface.
+ */
 void keyboard_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
   converter.state.kb_ready = 0;
   update_converter_status();  // Always reset Converter Status here
 #endif
 
-  ringbuf_reset();  // Even though Ringbuf is statically initialised, we reset it here to be sure it's empty.
+  ringbuf_reset();  // Even though Ringbuf is statically initialised, we reset it here to be sure
+                    // it's empty.
 
   // First we need to determine which PIO to use for the Keyboard Interface.
   // To do this, we check each PIO to see if there is space to load the Keyboard Interface program.
@@ -375,7 +429,8 @@ void keyboard_interface_setup(uint data_pin) {
   printf("[INFO] Interface Polling Clock: %.0fkHz\n", polling_interval_khz);
   // Always round clock_div to prevent jitter by having a fractional divider.
   float clock_div = roundf((rp_clock_khz / polling_interval_khz) / cycles_per_clock);
-  printf("[INFO] Clock Divider based on %d SM Cycles per Keyboard Clock Cycle: %.2f\n", cycles_per_clock, clock_div);
+  printf("[INFO] Clock Divider based on %d SM Cycles per Keyboard Clock Cycle: %.2f\n",
+         cycles_per_clock, clock_div);
   printf("[INFO] Effective SM Clock Speed: %.2fkHz\n", (float)(rp_clock_khz / clock_div));
 
   pio_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin, clock_div);
@@ -383,5 +438,6 @@ void keyboard_interface_setup(uint data_pin) {
   irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
   irq_set_enabled(pio_irq, true);
 
-  printf("[INFO] PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n", (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
+  printf("[INFO] PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
+         (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
 }

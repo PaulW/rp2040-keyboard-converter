@@ -61,29 +61,52 @@ typedef enum {
   Y_OVERFLOW,
 } parameter_index;
 
-typedef enum {
-  X_POS,
-  Y_POS,
-  Z_POS
-} mousepos_index;
+typedef enum { X_POS, Y_POS, Z_POS } mousepos_index;
 
-// Command Handler function to issue commands to the attached AT/PS2 Mouse.
-static void
-mouse_command_handler(uint8_t data_byte) {
+/**
+ * @brief Command Handler function to issue commands to the attached AT/PS2 Mouse.
+ * This function is responsible for handling commands to be sent to the AT/PS2 Mouse. It takes a
+ * single parameter, `data_byte`, which represents the command to be issued. The function calculates
+ * the parity of the data byte and combines it with the data byte to form a 16-bit value. This value
+ * is then sent to the peripheral using the PIO state machine.
+ *
+ * @param data_byte The command byte to be sent to the AT/PS2 Mouse.
+ */
+static void mouse_command_handler(uint8_t data_byte) {
   uint16_t data_with_parity = (uint16_t)(data_byte + (interface_parity_table[data_byte] << 8));
   pio_sm_put(mouse_pio, mouse_sm, data_with_parity);
 }
 
+/**
+ * @brief Calculates the XY movement based on the given position and sign bit.
+ * This function takes a position value and a sign bit and calculates the XY movement.
+ * If the sign bit is set and the position is non-zero, the position is decremented by 0x100.
+ * The resulting position is then clamped between -127 and 127.
+ *
+ * @param pos      The position value.
+ * @param sign_bit The sign bit.
+ *
+ * @return The calculated XY movement as an int8_t value.
+ */
 int8_t get_xy_movement(uint8_t pos, int sign_bit) {
   int16_t new_pos = pos;
   if (new_pos && sign_bit) {
     new_pos -= 0x100;
   }
-  new_pos = (new_pos > 127) ? 127 : (new_pos < -127) ? -127
-                                                     : new_pos;
+  new_pos = (new_pos > 127) ? 127 : (new_pos < -127) ? -127 : new_pos;
   return (int8_t)new_pos;
 }
 
+/**
+ * @brief Retrieves the Z-axis movement from the given position.
+ * This function extracts the Z-axis movement from the given position byte.
+ * The position byte is expected to be in the format: [0 | 0 | 0 | 0 | Z3 | Z2 | Z1 | Z0],
+ * where Z3-Z0 represent the Z-axis movement.
+ *
+ * @param pos The position byte from which to extract the Z-axis movement.
+ *
+ * @return The Z-axis movement as a signed 8-bit integer.
+ */
 int8_t get_z_movement(uint8_t pos) {
   int8_t z_pos = pos & 0xF;
   if (pos) {
@@ -93,6 +116,18 @@ int8_t get_z_movement(uint8_t pos) {
   return z_pos;
 }
 
+/**
+ * @brief Process the mouse event data.
+ * This function is responsible for processing mouse events and updating the mouse state
+ * accordingly. It handles various stages of mouse initialisation, including self-test, mouse type
+ * detection, and configuration.  If the mouse is initialised, it processes the mouse data and sends
+ * it to the HID interface.
+ *
+ * @param data_byte The data byte received from the mouse.
+ *
+ * @note Unlike the keyboard interface, the mouse interface does not utilise a ring buffer, and
+ * instead sends data directly to the HID interface.
+ */
 void mouse_event_processor(uint8_t data_byte) {
   static uint8_t mouse_type_detect_sequence = 0;
   static uint8_t mouse_max_packets = 0;
@@ -133,7 +168,8 @@ void mouse_event_processor(uint8_t data_byte) {
           mouse_state = INIT_AWAIT_ID;
           break;
         default:
-          printf("[DBG] Self-Test invalid response (0x%02X).  Asking again to Reset...\n", data_byte);
+          printf("[DBG] Self-Test invalid response (0x%02X).  Asking again to Reset...\n",
+                 data_byte);
           mouse_state = INIT_AWAIT_ACK;
           mouse_command_handler(0xFF);
       }
@@ -267,11 +303,15 @@ void mouse_event_processor(uint8_t data_byte) {
           break;
         case 1:
           // Read in X Data
-          pos[X_POS] = !(parameters[X_OVERFLOW] || parameters[Y_OVERFLOW]) ? get_xy_movement(data_byte, parameters[X_SIGN]) : 0;
+          pos[X_POS] = !(parameters[X_OVERFLOW] || parameters[Y_OVERFLOW])
+                           ? get_xy_movement(data_byte, parameters[X_SIGN])
+                           : 0;
           break;
         case 2:
           // Read in Y Data
-          pos[Y_POS] = !(parameters[X_OVERFLOW] || parameters[Y_OVERFLOW]) ? get_xy_movement(~data_byte, parameters[Y_SIGN] ^= 1) : 0;
+          pos[Y_POS] = !(parameters[X_OVERFLOW] || parameters[Y_OVERFLOW])
+                           ? get_xy_movement(~data_byte, parameters[Y_SIGN] ^= 1)
+                           : 0;
           break;
         case 3:
           // Read in Z/Extended Data
@@ -306,17 +346,17 @@ void mouse_event_processor(uint8_t data_byte) {
 #endif
 }
 
-void mouse_pio_restart() {
-  // Restart the AT PIO State Machine
-  printf("[DBG] Resetting State Machine and Mouse (Offset: 0x%02X)\n", mouse_offset);
-  mouse_state = UNINITIALISED;
-  mouse_id = 0xFF;
-  pio_sm_drain_tx_fifo(mouse_pio, mouse_sm);
-  pio_sm_clear_fifos(mouse_pio, mouse_sm);
-  pio_sm_restart(mouse_pio, mouse_sm);
-  pio_sm_exec(mouse_pio, mouse_sm, pio_encode_jmp(mouse_offset));
-}
-
+/**
+ * @brief IRQ Event Handler used to read data from the AT/PS2 Mouse.
+ * This function is responsible for handling the interrupt request (IRQ) event that occurs when data
+ * is received from the AT/PS2 Mouse.
+ * - It extracts the start bit, parity bit, stop bit, and data byte from the received data.
+ * - It then performs validation checks on the start bit, parity bit, and stop bit.
+ * - If any of the validation checks fail, error messages are printed and appropriate actions are
+ * taken.
+ * - If all the validation checks pass, the data byte is processed by the mouse_event_processor()
+ * function.
+ */
 void mouse_input_event_handler() {
   io_ro_32 data_cast = mouse_pio->rxf[mouse_sm] >> 21;
   uint16_t data = (uint16_t)data_cast;
@@ -328,27 +368,36 @@ void mouse_input_event_handler() {
   uint8_t data_byte = (uint8_t)((data_cast >> 1) & 0xFF);
   uint8_t parity_bit_check = interface_parity_table[data_byte];
 
-  // printf("[INFO] Mouse Data: 0x%04X\n", data_byte);
-
   if (start_bit != 0 || parity_bit != parity_bit_check || stop_bit != 1) {
     if (start_bit != 0) printf("[ERR] Start Bit Validation Failed: start_bit=%i\n", start_bit);
     if (stop_bit != 1) printf("[ERR] Stop Bit Validation Failed: stop_bit=%i\n", stop_bit);
     if (parity_bit != parity_bit_check) {
-      printf("[ERR] Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check, parity_bit);
+      printf("[ERR] Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check,
+             parity_bit);
       mouse_command_handler(0xFE);  // Request Resend
       return;
     }
     // We should reset/restart the State Machine
-    mouse_pio_restart();
+    mouse_state = UNINITIALISED;
+    mouse_id = 0xFF;
+    pio_restart(mouse_pio, mouse_sm, mouse_offset);
   }
 
   mouse_event_processor(data_byte);
 }
 
+/**
+ * @brief Task function for the mouse interface.
+ * This function simply assists with the initialisation of the mouse interface and handles timeout
+ * events.
+ *
+ * @note This function should be called periodically in the main loop, or within a task scheduler.
+ */
 void mouse_interface_task() {
   // Mouse Interface Initialisation helper
-  // Here we handle Timeout events. If we don't receive responses from an attached Mouse with a set period of time
-  // for any condition other than INITIALISED, we will then perform an appropriate action.
+  // Here we handle Timeout events. If we don't receive responses from an attached Mouse with a set
+  // period of time for any condition other than INITIALISED, we will then perform an appropriate
+  // action.
   if (mouse_state != INITIALISED) {
     // If we are in an uninitialised state, we will send a reset command to the Mouse.
     static uint32_t detect_ms = 0;
@@ -368,7 +417,8 @@ void mouse_interface_task() {
         }
       } else if (mouse_state == UNINITIALISED) {
         printf("[DBG] Awaiting mouse detection. Please ensure a mouse is connected.\n");
-        detect_stall_count = 0;  // Reset the detect_stall_count as we are waiting for the clock to go HIGH.
+        detect_stall_count =
+            0;  // Reset the detect_stall_count as we are waiting for the clock to go HIGH.
       }
 #ifdef CONVERTER_LEDS
       converter.state.mouse_ready = mouse_state == INITIALISED ? 1 : 0;
@@ -378,7 +428,21 @@ void mouse_interface_task() {
   }
 }
 
-// Public function to initialise the XT PIO interface.
+/**
+ * @brief Initializes the AT/PS2 PIO interface for the mouse.
+ * This function initializes the AT/PS2 PIO interface for the mouse by performing the following
+ * steps:
+ * 1. Resets the converter status if CONVERTER_LEDS is defined.
+ * 2. Finds an available PIO to use for the keyboard interface program.
+ * 3. Claims the PIO and loads the program.
+ * 4. Sets up the IRQ for the PIO state machine.
+ * 5. Defines the polling interval and cycles per clock for the state machine.
+ * 6. Gets the base clock speed of the RP2040.
+ * 7. Initializes the PIO interface program.
+ * 8. Sets the IRQ handler and enables the IRQ.
+ *
+ * @param data_pin The data pin to be used for the mouse interface.
+ */
 void mouse_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
   converter.state.mouse_ready = 0;
@@ -426,7 +490,8 @@ void mouse_interface_setup(uint data_pin) {
   printf("[INFO] Interface Polling Clock: %.0fkHz\n", polling_interval_khz);
   // Always round clock_div to prevent jitter by having a fractional divider.
   float clock_div = roundf((rp_clock_khz / polling_interval_khz) / cycles_per_clock);
-  printf("[INFO] Clock Divider based on %d SM Cycles per Mouse Clock Cycle: %.2f\n", cycles_per_clock, clock_div);
+  printf("[INFO] Clock Divider based on %d SM Cycles per Mouse Clock Cycle: %.2f\n",
+         cycles_per_clock, clock_div);
   printf("[INFO] Effective SM Clock Speed: %.2fkHz\n", (float)(rp_clock_khz / clock_div));
 
   pio_interface_program_init(mouse_pio, mouse_sm, mouse_offset, data_pin, clock_div);
@@ -434,5 +499,7 @@ void mouse_interface_setup(uint data_pin) {
   irq_set_exclusive_handler(pio_irq, &mouse_input_event_handler);
   irq_set_enabled(pio_irq, true);
 
-  printf("[INFO] PIO%d SM%d Interface program loaded at mouse_offset %d with clock divider of %.2f\n", (mouse_pio == pio0 ? 0 : 1), mouse_sm, mouse_offset, clock_div);
+  printf(
+      "[INFO] PIO%d SM%d Interface program loaded at mouse_offset %d with clock divider of %.2f\n",
+      (mouse_pio == pio0 ? 0 : 1), mouse_sm, mouse_offset, clock_div);
 }

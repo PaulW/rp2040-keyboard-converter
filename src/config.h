@@ -21,6 +21,9 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// Turn off clang-format for this file as we want to keep the formatting as is
+// clang-format off
+
 // Include some common type definitions for this config.h file
 #include "types.h"
 
@@ -66,11 +69,18 @@
 #define MOUSE_ENABLED 0
 #endif
 
+// Quick Validation to ensure that we have at least one of Keyboard or Mouse enabled
+#if MOUSE_ENABLED == 0 && KEYBOARD_ENABLED == 0
+#error "You must build with either a Keyboard or Mouse or both enabled"
+#endif
+
 // Some Validation rules for the configuration
 #ifdef CONVERTER_LEDS_BRIGHTNESS
 #if CONVERTER_LEDS_BRIGHTNESS < 1 || CONVERTER_LEDS_BRIGHTNESS > 10
 #error "CONVERTER_LEDS_BRIGHTNESS must be between 1 and 10"
 #endif
 #endif
+
+// clang-format on
 
 #endif /* CONFIG_H */

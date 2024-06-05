@@ -1,4 +1,4 @@
-# RP2040 Keyboard Converter for Raspberry Pi PICO RP2040
+# RP2040 Keyboard & Mouse Converter for Raspberry Pi PICO RP2040
 [![Test Building of Converter Firmware](https://github.com/PaulW/rp2040-keyboard-converter/actions/workflows/docker-image.yml/badge.svg)](https://github.com/PaulW/rp2040-keyboard-converter/actions/workflows/docker-image.yml)
 
 This project originally was part of a refurbish/overhaul of an IBM Model F 5170 PC/AT Keyboard, specifically model 6450225. The goal of this was to allow me to use the Model F Keyboard on modern hardware via USB, but to have specific customisations where required.  Now that this has been completed, I've moved my attention on further enhancing the Firmware to support multiple keyboards and protocols, as well as inclusion of support for mice.
@@ -56,13 +56,13 @@ Next, we tell docker to run the container we have just built, and ensure that in
 
 In this example, we are specifying `-e KEYBOARD="modelf/pcat"` to build the Firmware with support for the IBM Model F Keyboard.  We also specify `-e MOUSE="at-ps2"` which also tells the compiler to build Mouse support for this particular protocol too.  As new Keyboards and Mice are added, you simply specify the path from within the `keyboards` subfolder within `src`, as well as the relevant protocol required for the Mouse.
 
-This will then build `rp2040-kbd-converter.uf2` firmware file which you can then flash to your RP2040.  This file is located in the `./build` folder within your locally cloned repository.
+This will then build `rp2040-converter.uf2` firmware file which you can then flash to your RP2040.  This file is located in the `./build` folder within your locally cloned repository.
 
 ### Flashing / Updating Firmware
 
 Please refer to the relevant documentation for your Raspberry Pi Pico device.  However, as is commonly performed across multiple RP2040 controllers, the following steps should apply:
 1. Put the RP2040 into Bootloader mode by holding BOOT and pressing RESET.  This should now mount the RP2040 as a volume named `RPI-RP2`.
-2. Copy `build/rp2040-kbd-converter.uf2`to the newly mounted volume.  Once copied, the volume will automatically unmount and the RP2040 will reboot.
+2. Copy `build/rp2040-converter.uf2`to the newly mounted volume.  Once copied, the volume will automatically unmount and the RP2040 will reboot.
 
 The Firmware (once flashed) has the ability to put itself into Bootloader Mode by using a Macro Combination:
 
@@ -86,7 +86,7 @@ Device Descriptor:
   idProduct          0x400c
   bcdDevice            1.00
   iManufacturer           1 paulbramhall.uk
-  iProduct                2 RP2040 Keyboard & Mouse Convert
+  iProduct                2 RP2040 Device Converter
   iSerial                 3 E66160F423782037
   bNumConfigurations      1
   Configuration Descriptor:

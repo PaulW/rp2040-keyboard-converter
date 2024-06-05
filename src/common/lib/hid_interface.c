@@ -39,7 +39,16 @@ enum {
 static hid_keyboard_report_t keyboard_report;
 static hid_mouse_report_t mouse_report;
 
-// Output the HID Report sent to the host.  Purely for debugging.
+/**
+ * @brief Prints the contents of a HID report.
+ * This function takes a HID report, its size, and a message as input and prints the contents of the
+ * report in hexadecimal format. The message is prefixed to the printed output for identification
+ * purposes.
+ *
+ * @param report   Pointer to the HID report.
+ * @param size     Size of the HID report.
+ * @param message  Message to be printed before the HID report.
+ */
 static void hid_print_report(void* report, size_t size, const char* message) {
   printf("[%s-HID-REPORT] ", message);
   uint8_t* p = (uint8_t*)report;
@@ -49,7 +58,21 @@ static void hid_print_report(void* report, size_t size, const char* message) {
   printf("\n");
 }
 
-// Add a new keycode to the HID report upon keypress.
+/**
+ * @brief Adds a key to the HID keyboard report.
+ * This function is responsible for adding a key to the HID keyboard report. The HID keyboard report
+ * is a data structure that represents the state of the keyboard, including pressed keys and
+ * modifier keys (e.g., Shift, Ctrl, Alt). The function first checks if the key is a modifier key.
+ *
+ * If it is, it checks if the modifier key is already pressed. If not, it sets the corresponding bit
+ * in the modifier field of the keyboard report. If the key is not a modifier key, it searches for
+ * an empty slot in the keycode array of the keyboard report and adds the key to that slot. The
+ * function returns true if the key was successfully added, and false otherwise.
+ *
+ * @param key The key to be added.
+ *
+ * @return True if the key was successfully added, false otherwise.
+ */
 static bool hid_keyboard_add_key(uint8_t key) {
   if (IS_MOD(key)) {
     if ((keyboard_report.modifier & (uint8_t)(1 << (key & 0x7))) == 0) {
@@ -69,7 +92,16 @@ static bool hid_keyboard_add_key(uint8_t key) {
   return false;
 }
 
-// Remove keycode from HID report when key is released.
+/**
+ * @brief Removes a keycode from the HID report when a key is released.
+ * This function checks if the given key is a modifier key. If it is, the corresponding modifier bit
+ * is cleared in the keyboard report. If the key is not a modifier key, it is searched for in the
+ * keycode array of the keyboard report and removed if found.
+ *
+ * @param key The keycode to be removed.
+ *
+ * @return true if the keycode was successfully removed, false otherwise.
+ */
 static bool hid_keyboard_del_key(uint8_t key) {
   if (IS_MOD(key)) {
     uint8_t modifier_bit = (uint8_t)(1 << (key & 0x7));
@@ -89,11 +121,16 @@ static bool hid_keyboard_del_key(uint8_t key) {
   return false;
 }
 
-// Handle input reports for the keyboard usage page
-// Only if the Keyboard Report changes do we then call `hid_send_report_with_retry`
-// PS2 Keyboards send typematic key presses repetatively, yet with HID devices, we
-// only want to send a report for each Key Press/Release Event.  The host will handle
-// all typematic events itself.
+/**
+ * @brief Handles input reports for the keyboard usage page.
+ * Only if the Keyboard Report changes do we then call `hid_send_report_with_retry`. Some PS2
+ * Keyboards and other types send typematic key presses repetitively, yet with HID devices, we only
+ * want to send a report for each Key Press/Release Event. The host will handle all typematic events
+ * itself.
+ *
+ * @param code The interface scancode of the key.
+ * @param make A boolean indicating whether the key is being pressed (true) or released (false).
+ */
 void handle_keyboard_report(uint8_t code, bool make) {
   // Convert the Interface Scancode to a HID Keycode
   code = keymap_get_key_val(code, make);
@@ -125,7 +162,8 @@ void handle_keyboard_report(uint8_t code, bool make) {
     }
 
     if (report_modified) {
-      bool res = tud_hid_n_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &keyboard_report, sizeof(keyboard_report));
+      bool res = tud_hid_n_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &keyboard_report,
+                                  sizeof(keyboard_report));
       if (!res) {
         printf("[ERR] Keyboard HID Report Failed:\n");
         hid_print_report(&keyboard_report, sizeof(keyboard_report), "handle_keyboard_report");
@@ -138,30 +176,57 @@ void handle_keyboard_report(uint8_t code, bool make) {
     } else {
       usage = 0;
     }
-    bool res = tud_hid_n_report(ITF_NUM_CONSUMER_CONTROL, REPORT_ID_CONSUMER_CONTROL, &usage, sizeof(usage));
+    bool res = tud_hid_n_report(ITF_NUM_CONSUMER_CONTROL, REPORT_ID_CONSUMER_CONTROL, &usage,
+                                sizeof(usage));
     if (!res) {
       printf("[ERR] Consumer HID Report Failed: 0x%04X\n", usage);
     }
   }
 }
 
+/**
+ * @brief Handles the mouse report.
+ * This function handles the mouse report by updating the mouse_report structure with the provided
+ * button states and position values. It then sends the updated report to the USB HID interface
+ * using the tud_hid_n_report function. If the report fails to send, an error message is printed and
+ * the report is printed for debugging purposes.
+ *
+ * @param buttons An array of uint8_t representing the button states.
+ * @param pos An array of int8_t representing the mouse position values (x, y, wheel).
+ */
 void handle_mouse_report(const uint8_t buttons[5], int8_t pos[3]) {
   // Handle Mouse Report
-  mouse_report.buttons = buttons[0] | (buttons[1] << 1) | (buttons[2] << 2) | (buttons[3] << 3) | (buttons[4] << 4);
+  mouse_report.buttons =
+      buttons[0] | (buttons[1] << 1) | (buttons[2] << 2) | (buttons[3] << 3) | (buttons[4] << 4);
   mouse_report.x = pos[0];
   mouse_report.y = pos[1];
   mouse_report.wheel = pos[2];
-  bool res = tud_hid_n_report(KEYBOARD_ENABLED ? ITF_NUM_MOUSE : ITF_NUM_KEYBOARD, REPORT_ID_MOUSE, &mouse_report, sizeof(mouse_report));
+  bool res = tud_hid_n_report(KEYBOARD_ENABLED ? ITF_NUM_MOUSE : ITF_NUM_KEYBOARD, REPORT_ID_MOUSE,
+                              &mouse_report, sizeof(mouse_report));
   if (!res) {
     printf("[ERR] Mouse HID Report Failed:\n");
     hid_print_report(&mouse_report, sizeof(mouse_report), "handle_mouse_report");
   }
 }
 
-// Invoked when received GET_REPORT control request
-// Application must fill buffer report's content and return its length.
-// Return zero will cause the stack to STALL request
-uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
+/**
+ * @brief Callback function invoked when a GET_REPORT control request is received.
+ * This function is called when a GET_REPORT control request is received by the application. The
+ * application should fill the buffer with the content of the report and return the length of the
+ * report. If the application returns zero, the request will be stalled by the stack.
+ *
+ * @param instance    The instance of the HID interface.
+ * @param report_id   The ID of the report.
+ * @param report_type The type of the report.
+ * @param buffer      The buffer to store the report content.
+ * @param reqlen      The length of the request.
+ *
+ * @return The length of the report. Returning zero will cause the stack to stall the request.
+ *
+ * @note This function is not implemented, and always returns zero.
+ */
+uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type,
+                               uint8_t* buffer, uint16_t reqlen) {
   // TODO not Implemented
   (void)instance;
   (void)report_id;
@@ -172,9 +237,24 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
   return 0;
 }
 
-// Invoked when received SET_REPORT control request or
-// received data on OUT endpoint ( Report ID = 0, Type = 0 )
-void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
+/**
+ * @brief Callback function invoked when a SET_REPORT control request is received or data is
+ * received on the OUT endpoint.
+ * This is responsible for handling HID reports dependant on the report type and report ID. The
+ * function is called when a SET_REPORT control request is received or data is received on the OUT
+ * endpoint. The function should parse the received HID report and take the appropriate action based
+ * on the report type and report ID.
+ *
+ * @param instance    The instance number of the HID interface.
+ * @param report_id   The report ID of the received HID report.
+ * @param report_type The type of the received HID report.
+ * @param buffer      Pointer to the buffer containing the received HID report data.
+ * @param bufsize     The size of the received HID report data buffer.
+ *
+ * @note This function only handles the keyboard LED report.
+ */
+void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type,
+                           uint8_t const* buffer, uint16_t bufsize) {
   (void)buffer;
 
   if (instance != ITF_NUM_KEYBOARD) return;
@@ -189,7 +269,11 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
   }
 }
 
-// Public function which sets up the tinyusb stack
+/**
+ * @brief Sets up the HID device by initializing the board and the tinyusb stack.
+ * This function should be called before using any HID device functionality. It initializes the
+ * board and the tinyusb stack, allowing the device to communicate with the host.
+ */
 void hid_device_setup(void) {
   board_init();
   tusb_init();
