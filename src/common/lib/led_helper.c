@@ -28,7 +28,6 @@
 converter_state_union converter = {.value = 0xC3};
 
 lock_keys_union lock_leds;
-uint8_t ps2_lock_values = 0;
 
 /**
  * @brief Updates the LEDs on the converter based on the current state.
@@ -89,8 +88,6 @@ void update_converter_status(void) {
  * are building that specific controller.
  *
  * @param lock_val The HID lock value.
- *
- * @todo Move controller-specific lock values to their respective files.
  */
 void set_lock_values_from_hid(uint8_t lock_val) {
   lock_leds.keys.numLock = (unsigned char)(lock_val & 0x01);
@@ -100,9 +97,4 @@ void set_lock_values_from_hid(uint8_t lock_val) {
 #ifdef CONVERTER_LEDS
   update_converter_leds();
 #endif
-
-  // Update interface-specific lock values
-  // PS/2
-  ps2_lock_values = (uint8_t)((lock_leds.keys.capsLock << 2) | (lock_leds.keys.numLock << 1) |
-                              lock_leds.keys.scrollLock);
 }

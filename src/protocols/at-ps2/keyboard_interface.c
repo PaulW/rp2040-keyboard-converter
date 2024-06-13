@@ -186,17 +186,20 @@ static void keyboard_event_processor(uint8_t data_byte) {
       // We likely need to check for a F0 event (key-up) but I think we should be OK?
       switch (data_byte) {
         case 0xFA:
-          if (ps2_lock_values != keyboard_lock_leds) {
-            keyboard_lock_leds = ps2_lock_values;
-            keyboard_command_handler(ps2_lock_values);
+          if (lock_leds.value != keyboard_lock_leds) {
+            keyboard_lock_leds = lock_leds.value;
+            keyboard_command_handler((uint8_t)((lock_leds.keys.capsLock << 2) |
+                                               (lock_leds.keys.numLock << 1) |
+                                               lock_leds.keys.scrollLock));
           } else {
+            // We've received the ACK for setting the Lock LEDs, so we can move on.
             buzzer_play_sound_sequence_non_blocking(LOCK_LED);
             keyboard_state = INITIALISED;
           }
           break;
         default:
           printf("[DBG] SET_LOCK_LED FAILED (0x%02X)\n", data_byte);
-          keyboard_lock_leds = ps2_lock_values;
+          keyboard_lock_leds = lock_leds.value;
           keyboard_state = INITIALISED;
       }
       break;
@@ -282,7 +285,7 @@ void keyboard_interface_task() {
     // This portion helps with Lock LED changes.  We only get here once the keyboard has
     // initialised.
     detect_stall_count = 0;  // Reset the detect_stall_count as we are initialised.
-    if (ps2_lock_values != keyboard_lock_leds) {
+    if (lock_leds.value != keyboard_lock_leds) {
       keyboard_state = SET_LOCK_LEDS;
       keyboard_command_handler(0xED);
     } else {
