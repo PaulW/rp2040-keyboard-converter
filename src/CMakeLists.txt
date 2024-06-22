@@ -93,9 +93,10 @@ if(KEYBOARD)
   include(${CMAKE_SOURCE_DIR}/cmake_includes/keyboard.cmake)
 endif()
 
-# If we have a Keyboard with an inbuilt Mouse, set the MOUSE variable
-# This will override any MOUSE variable set in the build command
-if(KEYBOARD_MOUSE)
+# If we have a Keyboard with a built-in Mouse, set the Mouse to the one
+# defined within the Keyboard Config. However, if the user has specified
+# a Mouse, then use that instead, as we may not want to use the built-in Mouse.
+if(KEYBOARD_MOUSE AND NOT MOUSE)
   set(MOUSE ${KEYBOARD_MOUSE})
 endif()
 

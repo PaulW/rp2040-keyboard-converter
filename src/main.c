@@ -53,7 +53,7 @@ int main(void) {
   char pico_unique_id[32];
   pico_get_unique_board_id_string(pico_unique_id, sizeof(pico_unique_id));
   printf("--------------------------------\n");
-  printf("[INFO] RP2040 Keyboard Converter\n");
+  printf("[INFO] RP2040 Device Converter\n");
   printf("[INFO] RP2040 Serial ID: %s\n", pico_unique_id);
   printf("[INFO] Build Time: %s\n", BUILD_TIME);
   printf("--------------------------------\n");
@@ -77,12 +77,17 @@ int main(void) {
   printf("[INFO] Keyboard Scancode Set: %s\n", KEYBOARD_CODESET);
   printf("--------------------------------\n");
   keyboard_interface_setup(KEYBOARD_DATA_PIN);  // Setup the keyboard interface.
+#else
+  printf("[INFO] Keyboard Support Disabled\n");
 #endif
+
 #if MOUSE_ENABLED
   printf("[INFO] Mouse Support Enabled\n");
   printf("[INFO] Mouse Protocol: %s\n", MOUSE_PROTOCOL);
   printf("--------------------------------\n");
   mouse_interface_setup(MOUSE_DATA_PIN);  // Setup the mouse interface.
+#else
+  printf("[INFO] Mouse Support Disabled\n");
 #endif
 
   // These tasks run on Core 0, regardless of whether multicore is enabled.
