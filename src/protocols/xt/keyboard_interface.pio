@@ -24,22 +24,41 @@ pwrOnCheck:
     jmp pwrOnCheck
 
 softReset:
-    ; Now clear ISR as this is a testing bit.
+    ; Firstly, clear our internal ISR of the previous testing bit.
     mov isr null
 
-    ; Perform now a Soft Reset, we need to bring CLOCK LOW
+    ; To instruct the XT Keyboard to perform a Soft Reset, the host must inhibit CLOCK
+    ; for around 20ms or so. The Keyboard will ACK the reset request by bringing DATA HIGH
+    ; at which point we can safely release CLOCK to the keyboard to control.
+
+    ; On Genuine XT Keyboards, once CLOCK is released, the keyboard will strobe CLOCK to issue
+    ; a pseudo start bit while keeping DATA HIGH, which interprets as 0xFF.  Clone XT Keyboards
+    ; (at least ones tested) appear to not follow this behaviour and simply bring CLOCK HIGH.
+
+    ; The Keyboard then brings DATA LOW and starts its own self test routines.  At this point
+    ; we cam safely assume that the next bytecode received from the Keyboard will either signal
+    ; a successful self test (BAT) by sending 0xAA.
+    
+    ; If we recieve anything other than 0xAA, or if we hit some timeout condition where we don't
+    ; receive a response within a set period of time, the State Machine will be reset, causing
+    ; this PIO code to be restarted.  This step is handled out side of the PIO Code, but is
+    ; commented here for clarity.
+
+    ; Let's inhibit CLOCK and force it low to initiate a Soft Reset.
     set pindirs 2 [1]   ; Set CLOCK pin to Output Mode
     set pins, 0         ; Set CLOCK to LOW to signal Soft Reset Request
 
-    ; Wait for DATA to signal HIGH (Reset)
-    ; During reset, controller releases DATA (HIGH) which seems to ACK
-    ; the Soft Reset request, before continuing to drive CLOCK.
-    wait 1 pin 0
+    ; As described above, let's now wait for DATA to be brought HIGH to signify the Keyboard
+    ; has acknowledged the Soft Reset.
+    wait 1 pin 0 [1]
 
     ; Now set both CLOCK and DATA to Input Modes to allow both to be driven
     ; by the keyboard.
     set pindirs 1  [1]   ; Set clock pin to input mode
     set pindirs, 0       ; Set data pin to input mode so we can read ACK
+
+    ; To avoid reading in the pseudo-start bit, we want to wait until DATA is released LOW again
+    wait 0 pin 0 [1]
 
 check:
     ; Wait for incoming data
