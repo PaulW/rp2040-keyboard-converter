@@ -108,8 +108,11 @@ void buzzer_play_sound(sound s) {
   top = s & 0x0000FFFF;
 
   uint slice_num = pwm_gpio_to_slice_num(pwm_gpio);
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Warray-bounds"
   pwm_hw->slice[slice_num].div = div;
   pwm_hw->slice[slice_num].top = top;
+  #pragma GCC diagnostic pop
   pwm_set_gpio_level(pwm_gpio, top / 2);
   pwm_set_enabled(slice_num, 1);
 }
