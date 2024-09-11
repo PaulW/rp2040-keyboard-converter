@@ -11,4 +11,3 @@ echo "Cleaning old build/compile files (if any)..."
 rm -rf cmake_install.cmake CMakeCache.txt CMakeFiles elf2uf2 generated Makefile pico-sdk pioasm
 cmake ${APP_DIR}/src
 cmake --build .
-mv *.elf.map ../build/
