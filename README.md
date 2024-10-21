@@ -46,13 +46,13 @@ Docker is used to perform the build tasks for this project, so to ensure a consi
 
 To set up the Build Environment, we need to tell Docker to build a local container which is configured with the relevant build libraries and tools:
 
-`docker-compose build builder`
+`docker compose build builder`
 
 ### Building the Firmware
 
 Next, we tell docker to run the container we have just built, and ensure that in the command line, we specify the specific Keyboard we wish to compile:
 
-`docker-compose run -e KEYBOARD="modelf/pcat" -e MOUSE="at-ps2" builder`
+`docker compose run -e KEYBOARD="modelf/pcat" -e MOUSE="at-ps2" builder`
 
 In this example, we are specifying `-e KEYBOARD="modelf/pcat"` to build the Firmware with support for the IBM Model F Keyboard.  We also specify `-e MOUSE="at-ps2"` which also tells the compiler to build Mouse support for this particular protocol too.  As new Keyboards and Mice are added, you simply specify the path from within the `keyboards` subfolder within `src`, as well as the relevant protocol required for the Mouse.
 

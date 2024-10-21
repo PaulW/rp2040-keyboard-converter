@@ -39,10 +39,10 @@ if(NOT KEYBOARD AND NOT MOUSE)
   message(FATAL_ERROR
   "When building, you need to ensure you set the required Keyboard or Mouse "
   "that will be used for the build.  You do this by passing the required "
-  "device to the build command in docker-compose, for example:\n"
-  "  docker-compose run -e KEYBOARD=\"modelf/pcat\" builder\n"
+  "device to the build command in docker compose, for example:\n"
+  "  docker compose run -e KEYBOARD=\"modelf/pcat\" builder\n"
   "or\n"
-  "  docker-compose run -e MOUSE=\"at-ps2\" builder\n"
+  "  docker compose run -e MOUSE=\"at-ps2\" builder\n"
   "You can build for either a Keyboard or Mouse, or both.\n"
   "Some Keyboards may have an inbuilt Mouse, so this will automatically be "
   "set when building for that Keyboard, anbd as such, any user-specified "
