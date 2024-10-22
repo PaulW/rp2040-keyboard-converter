@@ -11,4 +11,4 @@ services:
       - MOUSE
     volumes:
       - ./src:/usr/local/builder/src
-      - ./build:/usr/local/builder/build
+      - ./build:/usr/local/builder/build:rw
