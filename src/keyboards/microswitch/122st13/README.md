@@ -1,6 +1,6 @@
 # MicroSwitch 122ST13 Keyboard
 
-![G80-0614H](doc/G80-0614H.jpeg)
+![122ST13](doc/122ST13.jpg)
 
 This is the Keyboard Mapping & Configuration for the MicroSwitch 122ST13.  There are multiple versions of this board, in particular (this use case) we are basing on the 122ST13-9E-J.
 
