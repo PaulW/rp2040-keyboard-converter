@@ -47,6 +47,15 @@ static uint8_t keyboard_lock_leds = 0;
 static bool id_retry =
     false;  // Used to determine whether we've already retried reading the Keyboard ID.
 
+// Define the Stop Bit State.  This will help to determine if we are compliant with the AT/PS2 protocol, or whether we are likely a Z-150 or similar keyboard.
+// By default, the Stop Bit should be HIGH following the Parity Bit.  If the Stop Bit is LOW, then we could be dealing with a Z-150 or similar keyboard.
+// Please refer to the interface.pio file for more information on the signalling.
+static enum {
+  STOP_BIT_LOW,
+  STOP_BIT_HIGH
+} stop_bit_state = STOP_BIT_HIGH;
+
+// Define overall Keyboard State
 static enum {
   UNINITIALISED,
   INIT_AWAIT_ACK,
@@ -236,9 +245,14 @@ static void __isr keyboard_input_event_handler() {
   uint8_t data_byte = (uint8_t)((data_cast >> 1) & 0xFF);
   uint8_t parity_bit_check = interface_parity_table[data_byte];
 
-  if (start_bit != 0 || parity_bit != parity_bit_check || stop_bit != 1) {
+  // Determine Stop Bit State and update if necessary.
+  if (stop_bit_state != (stop_bit ? STOP_BIT_HIGH : STOP_BIT_LOW)) {
+    stop_bit_state = stop_bit ? STOP_BIT_HIGH : STOP_BIT_LOW;
+    printf("[DBG] Stop Bit %s Detected\n", stop_bit ? "High" : "Low");
+  }
+
+  if (start_bit != 0 || parity_bit != parity_bit_check) {
     if (start_bit != 0) printf("[ERR] Start Bit Validation Failed: start_bit=%i\n", start_bit);
-    if (stop_bit != 1) printf("[ERR] Stop Bit Validation Failed: stop_bit=%i\n", stop_bit);
     if (parity_bit != parity_bit_check) {
       printf("[ERR] Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check,
              parity_bit);
