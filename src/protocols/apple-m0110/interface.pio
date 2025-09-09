@@ -1,0 +1,120 @@
+.program apple_m0110_interface
+.wrap_target
+
+; Apple M0110 Protocol Implementation
+; Pins: 0 = data, 1 = clock
+; 
+; SIGNALING:
+; 1) IDLE: Both lines high
+; 2) KEYBOARD→HOST: Host reads bit on RISING edge of clock
+;    - 160µs clock low, 170µs clock high (330µs total)
+;    - Data stable 40µs before falling edge
+; 3) HOST→KEYBOARD: Host asserts bit on FALLING edge of clock  
+;    - Host pulls DATA low for 840µs to request send
+;    - 180µs clock low, 220µs clock high (400µs total)
+;    - Keyboard reads data 80µs after rising edge
+
+init:
+    ; Initialize - both pins as inputs with pullups (IDLE state)
+    set pindirs, 0      ; Both pins as inputs
+    wait 1 pin 0        ; Wait for DATA high (idle state)
+    wait 1 pin 1        ; Wait for CLOCK high (idle state)
+
+check_state:
+    ; Check if we need to send a command (OSR not empty)
+    jmp !osre, send_command
+    
+    ; Wait for keyboard to initiate transmission (CLOCK goes low)
+    jmp pin, check_state    ; If CLOCK is high, keep waiting
+    
+    ; KEYBOARD→HOST: Clock went low - keyboard is starting transmission
+    ; Host reads data on RISING edge of clock
+    mov isr null        ; Clear ISR before reading new data
+    set x, 7            ; Prepare to receive 8 bits (MSB first)
+    
+receive_loop:
+    ; Wait for CLOCK rising edge to read data bit
+    wait 1 pin 1        ; Wait for clock rising edge
+    in pins, 1          ; Read DATA pin on rising edge
+    ; Wait for CLOCK falling edge for next bit  
+    wait 0 pin 1
+    jmp x--, receive_loop
+    
+    ; All 8 bits received, push to RX FIFO and return to idle
+    push block
+    jmp check_state
+
+send_command:
+    ; HOST→KEYBOARD: Mac initiates by pulling DATA low for 840µs
+    set pindirs, 1      ; Set DATA as output, CLOCK stays input (keyboard controlled)
+    set pins, 0         ; Pull DATA low to request send
+    
+    ; Hold DATA low for approximately 840µs (request to send period)
+    ; With clock divider calculated for 80µs polling interval (12.5kHz effective):
+    ; 840µs = ~10.5 cycles, use 10 loops with 1 cycle delay = 20 cycles ≈ 1600µs
+    ; This is longer than required but ensures reliable detection by keyboard
+    set y, 9            ; Loop counter for delay (10 iterations)
+request_delay:
+    nop [1]             ; 2 cycles per iteration  
+    jmp y--, request_delay  ; Total ~20 cycles
+    
+    ; Wait for keyboard to start clocking (CLOCK goes low)
+    wait 0 pin 1
+    
+    ; Now send 8 bits, MSB first
+    ; Host places data bit on FALLING edge of clock
+    set x, 7            ; Prepare to send 8 bits
+    
+send_loop:
+    ; Place data bit on DATA line on falling edge
+    out pins, 1         ; Set data bit on falling edge of clock
+    ; Wait for CLOCK rising edge
+    wait 1 pin 1
+    ; Wait for CLOCK falling edge for next bit
+    wait 0 pin 1
+    jmp x--, send_loop
+    
+    ; Command sent, prepare to receive response
+    ; Hold DATA high for 80µs then release
+    ; At 12.5kHz effective clock: 80µs = 1 cycle, use 2 cycles for safety
+    set pins, 1         ; Set DATA high
+    nop [1]             ; Hold for ~160µs (2 cycles at 12.5kHz)
+    
+    ; Release DATA line back to input for keyboard response
+    set pindirs, 0      ; Both pins back to input
+    
+    ; Jump back to wait for keyboard response
+    jmp check_state
+
+.wrap
+
+% c-sdk {
+static inline void apple_m0110_interface_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 2, false);
+    
+    pio_gpio_init(pio, pin);
+    pio_gpio_init(pio, pin + 1);
+    
+    // Set pullups for open-drain protocol
+    gpio_pull_up(pin);      // DATA
+    gpio_pull_up(pin + 1);  // CLOCK (keyboard controlled)
+    
+    pio_sm_config c = apple_m0110_interface_program_get_default_config(offset);
+    
+    sm_config_set_set_pins(&c, pin, 2);
+    sm_config_set_jmp_pin(&c, pin + 1);  // CLOCK pin for jump
+    sm_config_set_in_pins(&c, pin);      // DATA pin for input
+    sm_config_set_out_pins(&c, pin, 1);  // Only DATA pin for output (CLOCK is keyboard controlled)
+    
+    // MSB first for Apple M0110 protocol
+    sm_config_set_in_shift(&c, false, true, 8);   // Shift left (MSB first), autopush at 8 bits
+    sm_config_set_out_shift(&c, false, true, 8);  // Shift left (MSB first), autopull at 8 bits
+    
+    sm_config_set_clkdiv(&c, div);
+    
+    pio_set_irq0_source_enabled(pio, pis_sm0_rx_fifo_not_empty + sm, true);
+    
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}
