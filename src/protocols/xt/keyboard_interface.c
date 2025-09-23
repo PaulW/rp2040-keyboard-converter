@@ -207,32 +207,8 @@ void keyboard_interface_setup(uint data_pin) {
   // This should either be set to PIO0_IRQ_0 or PIO1_IRQ_0 depending on the PIO used.
   uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
 
-  // Define the Polling Inteval for the State Machine.
-  // The XT Protocol runs at a clock speed of around 31kHz due to the clock
-  // cycle of 12.5us LOW and 20us HIGH (32.5us total) per Clock Cycle.
-  // There are a total maximum of 11 data bits we need to read per clock, due to
-  // the possibility of a double-start bit on Genuine XT Keyboards.  XT Clone Keyboards
-  // will only ever send a single start bit, but we need to be able to handle both.
-  // As such, we set the polling interval to the duration of the HIGH clock cycle (20us),
-  // but ensure we have 11 SM cycles per clock cycle to ensure we operate at a high enough
-  // clock speed to ensure we can capture the first start bit if we are receiving a double,
-  // as this does need detecting within 5us of clock going LOW.
-
-  int polling_interval_us = 20;
-  int cycles_per_clock = 11;
-
-  // Get base clock speed of RP2040.  This should always equal 125MHz, but we will check anyway.
-  float rp_clock_khz = 0.001 * clock_get_hz(clk_sys);
-
-  printf("[INFO] RP2040 Clock Speed: %.0fKHz\n", rp_clock_khz);
-  printf("[INFO] Interface Polling Interval: %dus\n", polling_interval_us);
-  float polling_interval_khz = 1000 / polling_interval_us;
-  printf("[INFO] Interface Polling Clock: %.0fkHz\n", polling_interval_khz);
-  // Always round clock_div to prevent jitter by having a fractional divider.
-  float clock_div = roundf((rp_clock_khz / polling_interval_khz) / cycles_per_clock);
-  printf("[INFO] Clock Divider based on %d SM Cycles per Keyboard Clock Cycle: %.2f\n",
-         cycles_per_clock, clock_div);
-  printf("[INFO] Effective SM Clock Speed: %.2fkHz\n", (float)(rp_clock_khz / clock_div));
+  // The XT Protocol clock will pulse high for ~66us, and low for ~30us.
+  float clock_div = calculate_clock_divider(30);
 
   keyboard_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin, clock_div);
 
