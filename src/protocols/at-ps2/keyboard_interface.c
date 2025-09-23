@@ -426,29 +426,12 @@ void keyboard_interface_setup(uint data_pin) {
   // This should either be set to PIO0_IRQ_0 or PIO1_IRQ_0 depending on the PIO used.
   uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
 
-  // Define the Polling Inteval for the State Machine.
-  // The AT/PS2 Protocol runs at a clock speed range of 10-16.7KHz.
-  // At 16.7KHz, the maximum polling interval would be 60us, however, clock
-  // must be HIGH for 30us to 50us, and LOW for 30us to 50us.  As such, we
-  // will use a polling interval of 50us, which should equate to a clock of 20KHz.
-  // We also want to ensure we have 11 SM cycles per clock cycle, as there are
-  // approx 11 bits per byte, and we want to ensure we are reading the data correctly.
-
-  int polling_interval_us = 50;
-  int cycles_per_clock = 11;
-
-  // Get base clock speed of RP2040.  This should always equal 125MHz, but we will check anyway.
-  float rp_clock_khz = 0.001 * clock_get_hz(clk_sys);
-
-  printf("[INFO] RP2040 Clock Speed: %.0fKHz\n", rp_clock_khz);
-  printf("[INFO] Interface Polling Interval: %dus\n", polling_interval_us);
-  float polling_interval_khz = 1000 / polling_interval_us;
-  printf("[INFO] Interface Polling Clock: %.0fkHz\n", polling_interval_khz);
-  // Always round clock_div to prevent jitter by having a fractional divider.
-  float clock_div = roundf((rp_clock_khz / polling_interval_khz) / cycles_per_clock);
-  printf("[INFO] Clock Divider based on %d SM Cycles per Keyboard Clock Cycle: %.2f\n",
-         cycles_per_clock, clock_div);
-  printf("[INFO] Effective SM Clock Speed: %.2fkHz\n", (float)(rp_clock_khz / clock_div));
+  // Define the polling interval and cycles per clock for the state machine.
+  // This is determined from the shortest clock pulse width of the AT/PS2 protocol.
+  // According to the 84F9735 PS2 Hardware Interface Technical Reference from IBM:
+  //    https://archive.org/details/bitsavers_ibmpcps284erfaceTechnicalReferenceCommonInterfaces_39004874/page/n229/mode/2up?q=keyboard
+  // Clock Pulse Width can be anywhere between 30us and 50us.
+  float clock_div = calculate_clock_divider(30);  // 30us minimum clock pulse width
 
   pio_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin, clock_div);
 

@@ -25,5 +25,6 @@
 
 PIO find_available_pio(const pio_program_t *program);
 void pio_restart(PIO pio, uint sm, uint offset);
+float calculate_clock_divider(int min_clock_pulse_width_us);
 
 #endif /* PIO_HELPER_H */
