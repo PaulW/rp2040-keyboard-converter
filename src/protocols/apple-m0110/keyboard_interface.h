@@ -18,10 +18,10 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef APPLE_M0110_KEYBOARD_INTERFACE_H
-#define APPLE_M0110_KEYBOARD_INTERFACE_H
+#ifndef KEYBOARD_INTERFACE_H
+#define KEYBOARD_INTERFACE_H
 
-#include <stdint.h>
+#include "pico/stdlib.h"
 
 /**
  * @brief Apple M0110 Protocol Commands
@@ -44,12 +44,12 @@
  * 
  * @param data_pin The GPIO pin connected to the DATA line
  */
-void keyboard_interface_setup(unsigned int data_pin);
+void keyboard_interface_setup(uint data_pin);
 
 /**
  * @brief Main task function for Apple M0110 keyboard interface.
  * Should be called periodically from the main loop.
  */
-void keyboard_interface_task(void);
+void keyboard_interface_task();
 
-#endif // APPLE_M0110_KEYBOARD_INTERFACE_H
+#endif /* KEYBOARD_INTERFACE_H */

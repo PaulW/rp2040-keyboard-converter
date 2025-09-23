@@ -21,31 +21,32 @@
 #include "keyboard_interface.h"
 
 #include <math.h>
-#include <stdio.h>
 
 #include "bsp/board.h"
 #include "hardware/clocks.h"
-#include "interface.pio.h"
+#include "keyboard_interface.pio.h"
 #include "led_helper.h"
 #include "pio_helper.h"
 #include "ringbuf.h"
 #include "scancode.h"
 
-unsigned int apple_m0110_sm = 0;
-unsigned int apple_m0110_offset = 0;
-PIO apple_m0110_pio = pio1;
-unsigned int apple_m0110_data_pin;
+unsigned int keyboard_sm = 0;
+unsigned int keyboard_offset = 0;
+PIO keyboard_pio = pio1;
+unsigned int keyboard_data_pin;
 
 static enum {
   UNINITIALISED,
-  INIT_INQUIRY,
   INIT_MODEL_REQUEST,
   INIT_COMPLETE,
-  OPERATIONAL
-} apple_m0110_state = UNINITIALISED;
+  INQUIRY,
+  INQUIRY_RESPONSE
+} keyboard_state = UNINITIALISED;
 
+static uint32_t last_command_time = 0;
+static uint8_t model_retry_count = 0;
 static uint32_t last_inquiry_time = 0;
-static uint8_t inquiry_retry_count = 0;
+static uint32_t last_response_time = 0;
 static bool keyboard_detected = false;
 
 /**
@@ -53,14 +54,15 @@ static bool keyboard_detected = false;
  * 
  * @param command The command byte to send
  */
-void apple_m0110_send_command(uint8_t command) {
-  if (pio_sm_is_tx_fifo_full(apple_m0110_pio, apple_m0110_sm)) {
+void keyboard_command_handler(uint8_t command) {
+  if (pio_sm_is_tx_fifo_full(keyboard_pio, keyboard_sm)) {
     printf("[WARN] M0110 TX FIFO full, command 0x%02X dropped\n", command);
     return; // TX FIFO is full, cannot send
   }
   
-  printf("[DBG] M0110 sending command: 0x%02X\n", command);
-  pio_sm_put(apple_m0110_pio, apple_m0110_sm, command);
+  // printf("[DBG] M0110 sending command: 0x%02X\n", command);
+  // With right shift configuration, put data in lower 8 bits for MSB-first transmission
+  pio_sm_put(keyboard_pio, keyboard_sm, (uint32_t)command << 24);
 }
 
 /**
@@ -68,61 +70,51 @@ void apple_m0110_send_command(uint8_t command) {
  * 
  * @param data_byte The data byte received from the keyboard
  */
-static void apple_m0110_keyboard_event_processor(uint8_t data_byte) {
-  printf("[DBG] M0110 received: 0x%02X\n", data_byte);
+static void keyboard_event_processor(uint8_t data_byte) {
+  // printf("[DBG] M0110 received: 0x%02X\n", data_byte);
+  last_response_time = board_millis(); // Update response time for any received data
   
-  switch (apple_m0110_state) {
-    case INIT_INQUIRY:
-      if (data_byte == M0110_RESP_NULL) {
-        printf("[INFO] Apple M0110 Keyboard detected\n");
-        keyboard_detected = true;
-        apple_m0110_state = INIT_MODEL_REQUEST;
-        apple_m0110_send_command(M0110_CMD_MODEL);
-      } else if (data_byte == M0110_RESP_KEYPAD) {
-        printf("[INFO] Apple M0110 Keypad detected\n");
-        keyboard_detected = true;
-        apple_m0110_state = INIT_MODEL_REQUEST;
-        apple_m0110_send_command(M0110_CMD_MODEL);
-      } else {
-        printf("[DBG] Unexpected response during inquiry: 0x%02X\n", data_byte);
-      }
-      break;
-      
+  switch (keyboard_state) {
     case INIT_MODEL_REQUEST:
       switch (data_byte) {
         case M0110_RESP_MODEL_M0110:
-          printf("[INFO] Apple M0110 Keyboard Model: M0110\n");
-          apple_m0110_state = INIT_COMPLETE;
+          printf("[INFO] Apple M0110 Keyboard Model: M0110 - keyboard reset and ready\n");
+          keyboard_detected = true;
+          keyboard_state = INIT_COMPLETE;
           break;
         case M0110_RESP_MODEL_M0110A:
-          printf("[INFO] Apple M0110 Keyboard Model: M0110A\n");
-          apple_m0110_state = INIT_COMPLETE;
+          printf("[INFO] Apple M0110 Keyboard Model: M0110A - keyboard reset and ready\n");
+          keyboard_detected = true;
+          keyboard_state = INIT_COMPLETE;
           break;
         default:
           printf("[DBG] Unknown model response: 0x%02X\n", data_byte);
-          apple_m0110_state = INIT_COMPLETE;
+          // Still proceed to complete initialization
+          keyboard_detected = true;
+          keyboard_state = INIT_COMPLETE;
           break;
       }
       break;
       
-    case OPERATIONAL:
-      if (data_byte == M0110_RESP_NULL) {
-        // No key pressed, ignore
-        return;
+    case INQUIRY_RESPONSE:
+      // We're expecting key data or null responses
+      switch (data_byte) {
+        case M0110_RESP_NULL:
+          // Null response - keyboard is still there but no key pressed
+          keyboard_state = INQUIRY; // Go back to sending inquiries
+          break;
+        default:
+          if (!ringbuf_is_full()) {
+            ringbuf_put(data_byte);
+          }
       }
-      
-      // Valid key data, add to ring buffer
-      if (!ringbuf_is_full()) {
-        ringbuf_put(data_byte);
-      }
-      break;
-      
-    default:
-      break;
+
+      default:
+        break;
   }
   
 #ifdef CONVERTER_LEDS
-  converter.state.kb_ready = (apple_m0110_state == OPERATIONAL) ? 1 : 0;
+  converter.state.kb_ready = (keyboard_state >= INIT_COMPLETE) ? 1 : 0;
   update_converter_status();
 #endif
 }
@@ -130,11 +122,10 @@ static void apple_m0110_keyboard_event_processor(uint8_t data_byte) {
 /**
  * @brief IRQ handler for Apple M0110 keyboard interface.
  */
-static void __isr apple_m0110_input_event_handler(void) {
-  while (!pio_sm_is_rx_fifo_empty(apple_m0110_pio, apple_m0110_sm)) {
-    uint8_t data_byte = (uint8_t)pio_sm_get(apple_m0110_pio, apple_m0110_sm);
-    apple_m0110_keyboard_event_processor(data_byte);
-  }
+static void __isr keyboard_input_event_handler(void) {
+  // Simply read one byte from RX FIFO and process it
+  uint8_t data_byte = (uint8_t)pio_sm_get(keyboard_pio, keyboard_sm);
+  keyboard_event_processor(data_byte);
 }
 
 /**
@@ -143,52 +134,84 @@ static void __isr apple_m0110_input_event_handler(void) {
 void keyboard_interface_task(void) {
   uint32_t current_time = board_millis();
   
-  switch (apple_m0110_state) {
+  switch (keyboard_state) {
     case UNINITIALISED:
-      if (current_time - last_inquiry_time > 1000) { // Wait 1 second before first inquiry
-        printf("[INFO] Starting Apple M0110 keyboard detection\n");
-        apple_m0110_state = INIT_INQUIRY;
-        apple_m0110_send_command(M0110_CMD_INQUIRY);
-        last_inquiry_time = current_time;
-        inquiry_retry_count = 0;
+      if (current_time - last_command_time > 1000) { // Wait 1 second before first model request
+        printf("[INFO] Starting Apple M0110 keyboard detection with Model Number command\n");
+        keyboard_state = INIT_MODEL_REQUEST;
+        keyboard_command_handler(M0110_CMD_MODEL);
+        last_command_time = current_time;
+        model_retry_count = 0;
       }
       break;
       
-    case INIT_INQUIRY:
-      if (current_time - last_inquiry_time > 500) { // 500ms timeout
-        if (inquiry_retry_count < 5) {
-          printf("[DBG] Retrying keyboard inquiry (%d/5)\n", inquiry_retry_count + 1);
-          apple_m0110_send_command(M0110_CMD_INQUIRY);
-          last_inquiry_time = current_time;
-          inquiry_retry_count++;
+    case INIT_MODEL_REQUEST:
+      if (current_time - last_command_time > 500) { // 500ms timeout (1/2 second)
+        if (model_retry_count < 5) {
+          printf("[DBG] Retrying Model Number command (%d/5)\n", model_retry_count + 1);
+          keyboard_command_handler(M0110_CMD_MODEL);
+          last_command_time = current_time;
+          model_retry_count++;
         } else {
-          printf("[ERR] Apple M0110 keyboard not detected after 5 attempts\n");
-          apple_m0110_state = UNINITIALISED;
-          last_inquiry_time = current_time;
+          printf("[ERR] Apple M0110 keyboard not responding to Model Number command after 5 attempts\n");
+          keyboard_state = UNINITIALISED;
+          last_command_time = current_time;
         }
       }
       break;
       
     case INIT_COMPLETE:
-      printf("[INFO] Apple M0110 keyboard initialization complete\n");
-      apple_m0110_state = OPERATIONAL;
+      printf("[INFO] Apple M0110 keyboard initialization complete - beginning normal operation\n");
+      keyboard_state = INQUIRY;
       last_inquiry_time = current_time;
+      last_response_time = current_time;
       break;
       
-    case OPERATIONAL:
-      // Process ring buffer if we have data and HID is ready
+    case INQUIRY:
+      // printf("[DBG] Sending Inquiry command to Apple M0110 keyboard\n");
+      keyboard_command_handler(M0110_CMD_INQUIRY);
+      keyboard_state = INQUIRY_RESPONSE;
+      last_inquiry_time = current_time;
+      break;
+
+    case INQUIRY_RESPONSE:
+      if (current_time - last_response_time > 500) { // 500ms timeout (1/2 second)
+        printf("[WARN] No response from keyboard within 1/2 second - restarting with Model Number\n");
+        keyboard_state = UNINITIALISED;
+        last_command_time = current_time;
+        keyboard_detected = false;
+        break;
+      }
+
       if (!ringbuf_is_empty() && tud_hid_ready()) {
         int c = ringbuf_get();
         if (c != -1) {
-          process_scancode((uint8_t)c);
+          printf("[DBG] Processing scancode: 0x%02X\n", (uint8_t)c);
+          keyboard_state = INQUIRY; // Go back to sending inquiries
+          // process_scancode((uint8_t)c);
         }
       }
+      // Process ring buffer if we have data and HID is ready
+      // if (!ringbuf_is_empty() && tud_hid_ready()) {
+      //   int c = ringbuf_get();
+      //   if (c != -1) {
+      //     process_scancode((uint8_t)c);
+      //   }
+      // }
       
-      // Send periodic inquiry to check for key presses
-      if (current_time - last_inquiry_time > 16) { // ~60Hz polling
-        apple_m0110_send_command(M0110_CMD_INQUIRY);
-        last_inquiry_time = current_time;
-      }
+      // // Send Inquiry command every 1/4 second (250ms) in normal operation
+      // if (current_time - last_inquiry_time >= 250) {
+      //   keyboard_command_handler(M0110_CMD_INQUIRY);
+      //   last_inquiry_time = current_time;
+      // }
+      
+      // // If no response from keyboard within 1/2 second, assume keyboard missing
+      // if (current_time - last_response_time > 500) {
+      //   printf("[WARN] No response from keyboard within 1/2 second - restarting with Model Number\n");
+      //   keyboard_state = UNINITIALISED;
+      //   last_command_time = current_time;
+      //   keyboard_detected = false;
+      // }
       break;
 
     default:
@@ -201,7 +224,7 @@ void keyboard_interface_task(void) {
  * 
  * @param data_pin The GPIO pin connected to the DATA line (CLOCK is data_pin + 1)
  */
-void keyboard_interface_setup(unsigned int data_pin) {
+void keyboard_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
   converter.state.kb_ready = 0;
   update_converter_status();
@@ -210,58 +233,33 @@ void keyboard_interface_setup(unsigned int data_pin) {
   ringbuf_reset();
   
   // Find available PIO
-  apple_m0110_pio = find_available_pio(&apple_m0110_interface_program);
-  if (apple_m0110_pio == NULL) {
+  keyboard_pio = find_available_pio(&keyboard_interface_program);
+  if (keyboard_pio == NULL) {
     printf("[ERR] No PIO available for Apple M0110 Interface Program\n");
     return;
   }
   
   // Claim PIO resources
-  apple_m0110_sm = (unsigned int)pio_claim_unused_sm(apple_m0110_pio, true);
-  apple_m0110_offset = (unsigned int)pio_add_program(apple_m0110_pio, &apple_m0110_interface_program);
-  apple_m0110_data_pin = data_pin;
+  keyboard_sm = (unsigned int)pio_claim_unused_sm(keyboard_pio, true);
+  keyboard_offset = (unsigned int)pio_add_program(keyboard_pio, &keyboard_interface_program);
+  keyboard_data_pin = data_pin;
   
   // Setup IRQ
-  uint pio_irq = apple_m0110_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+  uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
   
   // Apple M0110 timing requirements:
   // KEYBOARD→HOST: 330µs cycles (160µs low, 170µs high) ≈ 3.03kHz
   // HOST→KEYBOARD: 400µs cycles (180µs low, 220µs high) ≈ 2.5kHz  
   // Request-to-send: 840µs DATA low period
   // DATA hold: 80µs after command
-  //
-  // The M0110 protocol operates at much slower speeds than XT/AT, so we need
-  // to calculate appropriate timing. The critical path is the 840µs request period
-  // which needs 20 loop iterations × 2 cycles = 40 cycles total.
-  // We want sufficient resolution for the timing loops while still being fast enough
-  // to respond to the keyboard's clock edges reliably.
+  float clock_div = calculate_clock_divider(160); // 160µs minimum clock pulse width for reliable detection
 
-  // Set polling interval based on the faster of the two clock rates (330µs cycle)
-  // We'll use 1/4 of the cycle time to ensure good responsiveness
-  int polling_interval_us = 80;  // 1/4 of 330µs cycle for good responsiveness
-  int cycles_per_clock = 8;      // Need enough cycles for timing loops and edge detection
-
-  // Get base clock speed of RP2040 (typically 125MHz)
-  float rp_clock_khz = 0.001 * clock_get_hz(clk_sys);
-
-  printf("[INFO] RP2040 Clock Speed: %.0fkHz\n", rp_clock_khz);
-  printf("[INFO] M0110 Interface Polling Interval: %dus\n", polling_interval_us);
-  float polling_interval_khz = 1000.0 / polling_interval_us;
-  printf("[INFO] M0110 Interface Polling Clock: %.0fkHz\n", polling_interval_khz);
-  
-  // Calculate clock divider using the same method as XT/AT protocols
-  float clock_div = roundf((rp_clock_khz / polling_interval_khz) / cycles_per_clock);
-  
-  printf("[INFO] Clock Divider based on %d SM Cycles per M0110 Clock Cycle: %.2f\n",
-         cycles_per_clock, clock_div);
-  printf("[INFO] Effective SM Clock Speed: %.2fkHz\n", rp_clock_khz / clock_div);
-  
-  apple_m0110_interface_program_init(apple_m0110_pio, apple_m0110_sm, apple_m0110_offset, 
+  keyboard_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, 
                                      data_pin, clock_div);
   
-  irq_set_exclusive_handler(pio_irq, &apple_m0110_input_event_handler);
+  irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
   irq_set_enabled(pio_irq, true);
   
   printf("[INFO] PIO%d SM%u Apple M0110 Interface program loaded at offset %u with clock divider of %.2f\n",
-         (apple_m0110_pio == pio0 ? 0 : 1), apple_m0110_sm, apple_m0110_offset, clock_div);
+         (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
 }
