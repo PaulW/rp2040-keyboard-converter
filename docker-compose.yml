@@ -4,6 +4,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        PICO_SDK_VERSION: "2.2.0"
     user: "1001:1001"
     restart: never
     environment:

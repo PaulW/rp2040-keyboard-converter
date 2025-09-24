@@ -16,8 +16,9 @@ RUN useradd --uid 1001 builder && \
 
 USER builder
 # Set up pico-sdk
+ARG PICO_SDK_VERSION
 ENV PICO_SDK_PATH=${APP_DIR}/pico-sdk
-RUN git clone https://github.com/raspberrypi/pico-sdk.git ${PICO_SDK_PATH} && \
+RUN git clone --branch ${PICO_SDK_VERSION} https://github.com/raspberrypi/pico-sdk.git ${PICO_SDK_PATH} && \
   cd ${PICO_SDK_PATH} && \
   git submodule update --init
 ENV CXX=g++
@@ -29,7 +30,7 @@ RUN mkdir -p ${PICO_TOOL_PATH} && \
   mkdir -p ${PICO_TOOL_PATH}/build && \
   mkdir -p ${PICO_TOOL_PATH}/bin
 
-RUN git clone https://github.com/raspberrypi/picotool.git ${PICO_TOOL_PATH}/src
+RUN git clone --branch ${PICO_SDK_VERSION} https://github.com/raspberrypi/picotool.git ${PICO_TOOL_PATH}/src
 
 RUN cd ${PICO_TOOL_PATH}/build && \
   cmake -DCMAKE_INSTALL_PREFIX=${PICO_TOOL_PATH}/bin -DPICOTOOL_FLAT_INSTALL=1 ../src/ && \
