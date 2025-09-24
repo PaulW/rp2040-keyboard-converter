@@ -18,12 +18,112 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file keyboard_interface.h  
+ * @brief IBM XT Keyboard Protocol Implementation
+ * 
+ * This file implements the IBM XT keyboard protocol used by the original IBM PC/XT
+ * systems (1981-1987). This is the simplest of the IBM keyboard protocols.
+ * 
+ * Protocol Characteristics:
+ * - 1-wire interface: DATA only (no separate clock line)
+ * - Keyboard generates its own clock signal on DATA line
+ * - Unidirectional communication (keyboard to host only)
+ * - LSB-first bit transmission (bit 0 → bit 7)
+ * - No parity, start, or stop bits
+ * - Fixed scan code set (Set 1 equivalent)
+ * - No host commands or acknowledgments
+ * 
+ * Physical Interface:
+ * - Single DATA line with pull-up resistor
+ * - Keyboard pulls line low/high to generate clock and data
+ * - 5V TTL logic levels
+ * - 5-pin DIN connector on original IBM keyboards
+ * 
+ * Timing Requirements:
+ * - Keyboard-generated clock: approximately 10 kHz
+ * - Clock pulse width: ~40µs low, 60µs high
+ * - Total bit time: ~100µs
+ * - No host timing control or flow control
+ * 
+ * Data Format:
+ * - 8 bits per scan code, LSB first
+ * - Make codes: 0x01-0x53 (key press)
+ * - Break codes: Make code + 0x80 (key release)
+ * - No multi-byte sequences or special commands
+ * 
+ * Initialization:
+ * - No initialization sequence required
+ * - Keyboard begins transmitting immediately when powered
+ * - Host simply receives and processes scan codes
+ * 
+ * Compatibility:
+ * - Compatible with IBM PC (1981), PC/XT (1983)
+ * - Subset of AT keyboard functionality
+ * - Simple, reliable protocol with minimal overhead
+ */
+
 #ifndef KEYBOARD_INTERFACE_H
 #define KEYBOARD_INTERFACE_H
 
 #include "pico/stdlib.h"
 
+/**
+ * @brief IBM XT Protocol Response Codes
+ * 
+ * XT keyboards only send scan codes and self-test results to the host.
+ * There are no command codes since XT protocol is unidirectional.
+ */
+#define XT_RESP_BAT_PASSED          0xAA  /**< Basic Assurance Test (self-test) passed */
+#define XT_RESP_BAT_FAILED          0xFC  /**< Basic Assurance Test (self-test) failed (rare) */
+
+/**
+ * @brief IBM XT Scan Code Ranges
+ * 
+ * XT protocol uses a fixed scan code set with these ranges.
+ * All scan codes are single-byte values transmitted LSB-first.
+ */
+#define XT_SCANCODE_MAKE_MIN        0x01  /**< Minimum make code (ESC key) */
+#define XT_SCANCODE_MAKE_MAX        0x53  /**< Maximum make code */
+#define XT_SCANCODE_BREAK_OFFSET    0x80  /**< Offset added to make code for break code */
+
+/**
+ * @brief Common IBM XT Scan Code Examples
+ * 
+ * These are some commonly referenced scan codes for debugging
+ * and validation purposes.
+ */
+#define XT_SCANCODE_ESC             0x01  /**< Escape key make code */
+#define XT_SCANCODE_SPACE           0x39  /**< Space bar make code */
+#define XT_SCANCODE_ENTER           0x1C  /**< Enter key make code */
+#define XT_SCANCODE_LEFT_SHIFT      0x2A  /**< Left Shift key make code */
+#define XT_SCANCODE_RIGHT_SHIFT     0x36  /**< Right Shift key make code */
+
+/**
+ * @brief Protocol Timing Constants
+ * 
+ * These timing values are used for PIO clock divider calculation and protocol operation.
+ */
+#define XT_TIMING_CLOCK_MIN_US      30    /**< Minimum pulse width for reliable detection (30µs) */
+#define XT_TIMING_BIT_PERIOD_US     100   /**< Typical bit period (~100µs at ~10 kHz) */
+
+/**
+ * @brief Initializes the IBM XT keyboard interface
+ * 
+ * Sets up PIO state machine and GPIO configuration for XT keyboard
+ * communication. XT keyboards require minimal setup since they use
+ * a simple unidirectional protocol.
+ * 
+ * @param data_pin GPIO pin for DATA line (single wire interface)
+ */
 void keyboard_interface_setup(uint data_pin);
+
+/**
+ * @brief Main task function for IBM XT keyboard interface
+ * 
+ * Processes received scan codes and manages the simple XT protocol
+ * state machine. Should be called periodically from main loop.
+ */
 void keyboard_interface_task();
 
 #endif /* KEYBOARD_INTERFACE_H */
