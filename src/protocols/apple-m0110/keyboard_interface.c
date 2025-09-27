@@ -121,7 +121,7 @@ void keyboard_command_handler(uint8_t command) {
     printf("[WARN] M0110 TX FIFO full, command 0x%02X dropped\n", command);
     return; // PIO TX FIFO full - drop command to prevent blocking
   }
-  
+
   // printf("[DBG] M0110 sending command: 0x%02X\n", command);
   // M0110 protocol uses MSB-first transmission - position command in upper byte
   // PIO automatically handles MSB-first bit order during transmission
@@ -222,9 +222,9 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * @note PIO FIFO depth provides buffering for multiple rapid key events
  */
 static void __isr keyboard_input_event_handler(void) {
-    // Extract received byte from PIO RX FIFO (MSB-aligned 8-bit data)
-  uint8_t data_byte = (uint8_t)(keyboard_pio->rxf[keyboard_sm] >> 24);
-  
+  // Extract received byte from PIO RX FIFO (MSB-aligned 8-bit data)
+  uint8_t data_byte = (uint8_t)keyboard_pio->rxf[keyboard_sm];
+
   // Route response to appropriate handler based on protocol state
   keyboard_event_processor(data_byte);
 }
