@@ -1,6 +1,7 @@
 # Common compile options for all targets
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
+  hardware_dma
   hardware_pio
   hardware_pwm
   pico_stdlib

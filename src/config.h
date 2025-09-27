@@ -24,6 +24,9 @@
 // Turn off clang-format for this file as we want to keep the formatting as is
 // clang-format off
 
+#define UART_TX_PIN 0
+#define UART_BAUD   115200
+
 // Include some common type definitions for this config.h file
 #include "types.h"
 
@@ -41,10 +44,10 @@
 #define CONVERTER_LOCK_LEDS_COLOR 0x00FF00              // Color of Lock Light LEDs
 
 // Define the GPIO Pins for the Keyboard Converter.
-#define KEYBOARD_DATA_PIN 6  // This is the starting pin for the connected Keyboard.  Depending on the keyboard, we may use 2, 3 or more pins.
-#define MOUSE_DATA_PIN 3     // This is the starting pin for the connected Mouse.  Depending on the mouse, we may use 2, 3 or more pins.
+#define KEYBOARD_DATA_PIN 2  // This is the starting pin for the connected Keyboard.  Depending on the keyboard, we may use 2, 3 or more pins.
+#define MOUSE_DATA_PIN 6     // This is the starting pin for the connected Mouse.  Depending on the mouse, we may use 2, 3 or more pins.
 #define PIEZO_PIN 11         // Piezo Buzzer GPIO Pin.  Only required if CONVERTER_PIEZO is defined
-#define LED_PIN 5            // LED GPIO Pin.  If using WS2812 LEDs, this is the GPIO Pin for the Data Line, otherwise we require 4 total GPIO for individual LED connections
+#define LED_PIN 29           // LED GPIO Pin.  If using WS2812 LEDs, this is the GPIO Pin for the Data Line, otherwise we require 4 total GPIO for individual LED connections
 
 // Define some Compile Time variables.  Do not modify below this line
 #define BUILD_TIME _BUILD_TIME

@@ -487,6 +487,7 @@ void mouse_interface_setup(uint data_pin) {
 
   irq_set_exclusive_handler(pio_irq, &mouse_input_event_handler);
   irq_set_enabled(pio_irq, true);
+  irq_set_priority(pio_irq, 0);
 
   printf(
       "[INFO] PIO%d SM%d Interface program loaded at mouse_offset %d with clock divider of %.2f\n",

@@ -443,6 +443,7 @@ void keyboard_interface_setup(uint data_pin) {
 
   irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
   irq_set_enabled(pio_irq, true);
+  irq_set_priority(pio_irq, 0);
 
   printf("[INFO] PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
          (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
