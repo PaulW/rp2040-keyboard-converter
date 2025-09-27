@@ -42,9 +42,6 @@
  * // Use standard C library functions - they automatically use DMA
  * printf("Debug: key pressed = 0x%02X\n", scancode);
  * puts("System initialized");
- * 
- * // Or use direct DMA printf for specific formatting control
- * uart_dma_printf("Timing: %lu microseconds\n", time_us);
  * ```
  * 
  * Configuration:
@@ -80,7 +77,6 @@
 #define UART_H
 
 #include "config.h"
-#include <stdint.h>
 
 /**
  * @brief Initialize DMA-Based UART Logging System
