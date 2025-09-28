@@ -436,8 +436,8 @@ void keyboard_interface_setup(uint data_pin) {
   // Configure PIO interrupt based on allocated instance (PIO0_IRQ_0 or PIO1_IRQ_0)
   uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
 
-  // XT timing: ~30µs minimum pulse width for reliable signal detection
-  float clock_div = calculate_clock_divider(30);
+  // XT timing: ~10µs minimum pulse width for reliable signal detection)
+  float clock_div = calculate_clock_divider(10);
 
   keyboard_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin, clock_div);
 
