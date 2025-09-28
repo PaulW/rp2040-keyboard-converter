@@ -24,8 +24,39 @@
 // Turn off clang-format for this file as we want to keep the formatting as is
 // clang-format off
 
-#define UART_TX_PIN 0
-#define UART_BAUD   115200
+// --- UART Hardware Configuration ---
+#define UART_TX_PIN 0       // GPIO pin for UART transmission (typically GP0)
+#define UART_BAUD   115200  // UART transmission baud rate
+
+// --- UART DMA Queue Policy Configuration ---
+// Controls behavior when the message queue becomes full during logging bursts.
+// The policy is selected at compile time for zero runtime overhead.
+
+#define UART_DMA_WAIT_US 5000  // Maximum wait time in microseconds (applies to WAIT policies)
+
+// UART DMA Policy Constants - do not modify these values
+#define UART_DMA_POLICY_DROP        0  // Immediately drop messages if queue is full
+#define UART_DMA_POLICY_WAIT_FIXED  1  // Wait up to UART_DMA_WAIT_US with tight polling
+#define UART_DMA_POLICY_WAIT_EXP    2  // Exponential backoff delays (CPU-friendly)
+
+// Define the UART DMA Policy - choose ONE of the following:
+//
+// UART_DMA_POLICY_DROP:       Immediately drop messages if queue is full
+//                              * Real-time safe (never blocks)
+//                              * Recommended for keyboard converter application
+//                              * May lose messages under extreme load
+//
+// UART_DMA_POLICY_WAIT_FIXED: Wait up to UART_DMA_WAIT_US with tight polling
+//                              * Better message preservation
+//                              * CPU intensive during waits
+//                              * May cause timing issues in real-time code
+//
+// UART_DMA_POLICY_WAIT_EXP:    Exponential backoff delays (1μs, 2μs, 4μs, ...)
+//                              * CPU-friendly waiting with progressive delays
+//                              * Good balance of message preservation and performance
+//                              * Delays capped at 1024μs per step
+//
+#define UART_DMA_POLICY UART_DMA_POLICY_DROP
 
 // Include some common type definitions for this config.h file
 #include "types.h"

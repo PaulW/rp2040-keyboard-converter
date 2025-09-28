@@ -27,39 +27,39 @@
  * operations such as keyboard protocol timing or USB HID communication.
  * 
  * Key Features:
- * - Non-blocking operation: Logging never blocks the calling thread
+ * - Configurable queue policies: DROP, WAIT_FIXED, or WAIT_EXP behavior when queue full
+ * - Non-blocking operation: Logging never blocks the calling thread (with DROP policy)
  * - DMA-driven transmission: Minimal CPU overhead during output
  * - Large circular buffer queue: Handles initialization bursts without message loss
  * - stdio integration: Works with printf(), puts(), and other standard functions
- * - Adaptive behavior: Short waits during bursts, immediate drops under sustained load
+ * - Compile-time configuration: Zero runtime overhead for policy selection
  * - Low priority: Designed to not interfere with PIO state machines
  * 
  * Architecture:
- * The system uses a dual-path approach with a circular buffer queue:
+ * The system uses stdio integration with a circular buffer queue:
  * 
- * 1. **Raw Write Path**: Used by stdio integration (printf, puts, etc.)
- *    - Bypasses vsnprintf() formatting overhead for pre-formatted strings
- *    - Direct memcpy() to queue buffers for maximum efficiency
- *    - Optimal for standard C library output functions
+ * **stdio Integration Path**: All standard C library functions (printf, puts, etc.)
+ * are redirected through the Pico SDK stdio system to our DMA-based implementation.
+ * This provides:
+ *    - Transparent replacement of standard UART stdio
+ *    - No application code changes required
+ *    - Direct memcpy() of pre-formatted strings to queue buffers
+ *    - Maximum efficiency since formatting is handled by Pico SDK
  * 
- * 2. **Formatted Write Path**: Used by direct uart_dma_printf() calls
- *    - Full vsnprintf() formatting for complex printf-style operations
- *    - Used when caller needs printf formatting capabilities
- * 
- * Both paths feed into the same DMA transmission system. When a message is
- * queued, if the DMA controller is idle, transmission begins immediately.
- * The DMA interrupt handler automatically starts subsequent queued messages,
- * providing continuous transmission without CPU intervention.
+ * When a message is queued, if the DMA controller is idle, transmission begins
+ * immediately. The DMA interrupt handler automatically starts subsequent queued
+ * messages, providing continuous transmission without CPU intervention.
  * 
  * Performance Optimizations:
- * - Dual-path architecture: Raw writes bypass formatting overhead
+ * - stdio integration: Direct memcpy() of pre-formatted strings bypasses additional formatting
  * - Queue size: 64 entries (power of 2) for handling initialization bursts
  * - Buffer alignment: 4-byte aligned for optimal DMA performance
  * - Bitwise operations: Uses AND instead of modulo for index calculations
  * - Separated producer/consumer: Clean queue management with atomic updates
  * - Low priority: DMA and IRQ configured to not interfere with timing-critical code
  * - Lock-free design: Relies on RP2040's natural atomicity for 8-bit operations
- * - Adaptive waiting: Short waits during bursts to prevent message loss
+ * - Configurable queue policies: Compile-time selection eliminates runtime overhead
+ * - Exponential backoff: CPU-friendly waiting with progressive delays (WAIT_EXP policy)
  * 
  * Thread Safety:
  * The implementation is designed to be safely called from any context, including
@@ -73,11 +73,10 @@
  * stdio driver, providing a drop-in replacement that works with all standard
  * C library functions while offering superior performance characteristics:
  * 
- * - **stdio functions** (printf, puts, putchar, etc.): Use optimized raw write path
- * - **Direct calls** (uart_dma_printf): Use formatted write path when needed  
+ * - **stdio functions** (printf, puts, putchar, etc.): Automatically use DMA transmission
  * - **Transparent operation**: No code changes required for existing printf usage
- * - **Performance gains**: Significant improvement for stdio output via raw writes
- * - **Real-time safe**: Non-blocking operation prevents PIO timing interference
+ * - **Performance gains**: Non-blocking DMA transmission with configurable queue policies
+ * - **Real-time safe**: Configurable behavior from immediate drop to CPU-friendly backoff
  */
 
 #include "pico/stdlib.h"
@@ -86,7 +85,6 @@
 #include "pico/stdio/driver.h"
 #include "pico/time.h"
 #include "uart.h"
-#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -106,6 +104,15 @@
  */
 #define PRINTF_BUF_SIZE  256   /**< Size of each individual log message buffer (bytes) */
 #define PRINTF_QUEUE_LEN 64    /**< Number of queued log messages (power of 2 for efficient indexing) */
+
+// --- Sanity check: queue length must be power of 2 ---
+#if (PRINTF_QUEUE_LEN & (PRINTF_QUEUE_LEN - 1)) != 0
+#  error "PRINTF_QUEUE_LEN must be a power of 2"
+#endif
+
+// --- Queue full policy configuration ---
+// Policy constants and configuration are now defined in config.h
+// This ensures consistent configuration across the entire project
 
 /**
  * @brief Log Entry Structure
@@ -219,25 +226,58 @@ void dma_handler() {
 }
 
 /**
- * @brief Wait for queue to have available space
+ * @brief Queue full policy handler with configurable behavior
  * 
- * This function waits for the queue to drain enough to accept new messages.
- * It's used during initialization to prevent message loss during log bursts.
+ * This function implements the compile-time selected queue full policy:
  * 
- * @param max_wait_us Maximum time to wait in microseconds (0 = don't wait)
- * @return true if space became available, false if timeout
+ * - **DROP Policy**: Returns immediately if queue is full (real-time safe)
+ * - **WAIT_FIXED Policy**: Busy-waits with tight polling until timeout
+ * - **WAIT_EXP Policy**: Uses exponential backoff delays (CPU-friendly)
+ * 
+ * The behavior is determined at compile time by UART_DMA_POLICY setting,
+ * ensuring zero runtime overhead for policy selection. The maximum wait
+ * time is controlled by UART_DMA_WAIT_US configuration parameter.
+ * 
+ * Policy Details:
+ * - DROP: Always returns immediately with queue status
+ * - WAIT_FIXED: Polls continuously using tight_loop_contents() 
+ * - WAIT_EXP: Progressive delays: 1μs → 2μs → 4μs → ... → 1024μs (capped)
+ * 
+ * @return true if queue has space available, false if full (DROP) or timeout reached
+ * 
+ * @note Policy is compile-time configured via UART_DMA_POLICY macro
+ * @note Maximum wait time configured via UART_DMA_WAIT_US macro
+ * @note Thread-safe: Uses atomic queue state checking
  */
-static bool wait_for_queue_space(uint32_t max_wait_us) {
-    if (!queue_full()) return true;
-    
-    if (max_wait_us == 0) return false;  // No waiting requested
-    
-    uint32_t start_time = time_us_32();
-    while (queue_full() && (time_us_32() - start_time) < max_wait_us) {
-        tight_loop_contents();  // Efficient spin wait
-    }
-    
+// --- Queue full policy handling ---
+static inline bool wait_for_queue_space(void) {
+#if UART_DMA_POLICY == UART_DMA_POLICY_DROP
+    // Always drop if full
     return !queue_full();
+
+#elif UART_DMA_POLICY == UART_DMA_POLICY_WAIT_FIXED
+    // Poll until queue frees or timeout expires
+    absolute_time_t deadline = make_timeout_time_us(UART_DMA_WAIT_US);
+    while (queue_full() && !time_reached(deadline)) {
+        tight_loop_contents();
+    }
+    return !queue_full();
+
+#elif UART_DMA_POLICY == UART_DMA_POLICY_WAIT_EXP
+    // Exponential backoff: 1us, 2us, 4us, ... up to UART_DMA_WAIT_US
+    int delay_us = 1;
+    int waited = 0;
+    while (queue_full() && waited < UART_DMA_WAIT_US) {
+        sleep_us(delay_us);
+        waited += delay_us;
+        delay_us <<= 1;  // double delay
+        if (delay_us > 1024) delay_us = 1024; // cap step size
+    }
+    return !queue_full();
+
+#else
+#  error "Invalid UART_DMA_POLICY setting"
+#endif
 }
 
 /**
@@ -248,19 +288,19 @@ static bool wait_for_queue_space(uint32_t max_wait_us) {
  * for stdio integration where the message is already formatted.
  * 
  * Key Features:
- * - Direct memcpy() to queue buffer (no formatting overhead)
- * - Adaptive waiting during initialization bursts
+ * - Direct memcpy() to queue buffer for maximum efficiency
+ * - Configurable queue policies for different application needs
  * - Input validation and length limiting
  * - Automatic DMA initiation when idle
  * 
  * Performance Path:
- * This is the "Raw Write Path" used by stdio functions (printf, puts, etc.)
- * via the my_out_chars() stdio driver hook. It bypasses all formatting
- * operations since the Pico SDK has already formatted the string.
+ * This function is used by stdio functions (printf, puts, etc.) via the 
+ * my_out_chars() stdio driver hook. It provides maximum efficiency by directly
+ * copying pre-formatted strings since the Pico SDK has already handled formatting.
  * 
  * Behavior:
- * - Waits up to 1ms for queue space during bursts
- * - Drops message if queue remains full (graceful degradation)
+ * - Uses compile-time configured queue policy (DROP/WAIT_FIXED/WAIT_EXP)
+ * - Behavior varies by policy: immediate drop, fixed wait, or exponential backoff
  * - Truncates messages exceeding buffer size
  * - Starts DMA transfer immediately if controller is idle
  * 
@@ -274,8 +314,8 @@ static void uart_dma_write_raw(const char *s, int len) {
     if (len <= 0) return;
     if (len >= PRINTF_BUF_SIZE) len = PRINTF_BUF_SIZE - 1;
 
-    // For stdio output, wait a short time for queue space during bursts
-    if (!wait_for_queue_space(1000)) return;  // Wait up to 1ms, then drop
+    // Apply configurable queue policy for stdio output
+    if (!wait_for_queue_space()) return;  // Policy-dependent behavior
 
     log_entry_t *entry = &log_queue[q_head];
     memcpy(entry->buf, s, len);
@@ -285,86 +325,7 @@ static void uart_dma_write_raw(const char *s, int len) {
     start_next_dma_if_needed();
 }
 
-/**
- * @brief Non-Blocking DMA-Based Printf Implementation
- * 
- * This function provides a high-performance, non-blocking printf implementation
- * that queues formatted messages for DMA transmission. It represents the
- * "Formatted Write Path" in the dual-path architecture, handling full
- * printf-style formatting before queueing.
- * 
- * Key Features:
- * - Standard vsnprintf() formatting with all printf capabilities
- * - Adaptive waiting (5ms) for queue space during bursts
- * - Input validation and automatic message truncation
- * - Immediate DMA initiation when controller is idle
- * - Graceful degradation under sustained load
- * 
- * Performance Path:
- * This is the "Formatted Write Path" for direct application calls that need
- * printf-style formatting. Unlike the raw write path used by stdio, this
- * path includes the full vsnprintf() formatting overhead but provides
- * complete printf compatibility.
- * 
- * Behavior:
- * - Waits up to 5ms for queue space (longer than stdio raw writes)
- * - Formats message using standard vsnprintf() with full printf support
- * - Validates formatting results and handles errors gracefully
- * - Truncates messages exceeding 256-byte buffer size
- * - Drops message if queue remains full after waiting period
- * - Atomically commits formatted message to queue
- * - Initiates DMA transfer if controller is idle
- * 
- * Thread Safety:
- * - Safe to call from any context (main loop, interrupts, etc.)
- * - Uses atomic operations on RP2040 (8-bit index updates)
- * - No explicit locking required due to careful design
- * - Lock-free queue operations prevent blocking
- * 
- * Performance Characteristics:
- * - Formatting overhead: ~10-50µs (depends on format complexity)
- * - Queue operation: ~1-2µs (atomic index update)
- * - DMA setup: ~5-10µs (when starting new transfer)
- * - Total overhead: Usually <100µs for typical formatted messages
- * 
- * @param fmt Printf-style format string (supports all standard printf specifiers)
- * @param ... Variable arguments corresponding to format specifiers
- * 
- * @note Use standard printf() for most cases - it automatically uses raw write path
- * @note This function is for cases requiring direct DMA printf calls
- * @note Thread-safe: Can be called from any context including interrupts
- * 
- * @example
- * ```c
- * uart_dma_printf("Status: %s, Code: 0x%04X, Time: %lu\n", status, code, timestamp);
- * uart_dma_printf("Float value: %.2f\n", sensor_reading);
- * ```
- */
-void uart_dma_printf(const char *fmt, ...) {
-    // Wait for queue space, with longer timeout for direct printf calls
-    // This helps prevent message loss during initialization bursts
-    if (!wait_for_queue_space(5000)) {  // Wait up to 5ms for direct calls
-        return;  // Drop message if still full after waiting
-    }
 
-    // Format message into the next available queue slot
-    log_entry_t *entry = &log_queue[q_head];
-    va_list args;
-    va_start(args, fmt);
-    int len = vsnprintf(entry->buf, PRINTF_BUF_SIZE, fmt, args);
-    va_end(args);
-
-    // Validate formatting result
-    if (len <= 0) return;  // Formatting error
-    if (len >= PRINTF_BUF_SIZE) len = PRINTF_BUF_SIZE - 1;  // Truncate if too long
-    entry->len = len;
-
-    // Atomically commit message to queue
-    // This is the critical section - must be atomic
-    q_head = (q_head + 1) & (PRINTF_QUEUE_LEN - 1);
-
-    start_next_dma_if_needed();
-}
 
 /**
  * @brief Standard I/O Integration
@@ -454,9 +415,9 @@ static stdio_driver_t dma_stdio_driver = {
  * Post-Initialization Behavior:
  * After this function completes successfully:
  * - All printf(), puts(), putchar() calls use DMA automatically
- * - uart_dma_printf() is available for direct formatted calls
- * - System provides non-blocking, real-time safe debug output
+ * - System provides configurable non-blocking debug output behavior
  * - No code changes required for existing printf usage
+ * - Queue policy determines behavior under load (drop/wait/backoff)
  * 
  * @note **CRITICAL**: Must be called once during system initialization
  * @note **TIMING**: Call before any printf/logging operations

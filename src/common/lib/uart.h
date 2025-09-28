@@ -27,44 +27,55 @@
  * keyboard protocol converters where timing is critical.
  * 
  * Key Features:
- * - **Dual-path architecture**: Optimized raw writes for stdio, formatted writes for direct calls
+ * - **Configurable queue policies**: DROP, WAIT_FIXED, or WAIT_EXP behavior when queue full
  * - **Large message queue**: 64-entry buffer handles initialization bursts without loss
- * - **Adaptive behavior**: Short waits during bursts, immediate drops under sustained load
  * - **DMA-driven transmission**: Minimal CPU overhead during log output
  * - **stdio integration**: Works transparently with printf(), puts(), etc.
- * - **Performance optimized**: Raw write path bypasses formatting overhead
+ * - **Performance optimized**: Direct memcpy() bypasses formatting overhead
  * - **Thread-safe**: Safe to call from any context including interrupts
  * - **Low priority**: Designed to not interfere with PIO or USB operations
+ * - **Compile-time optimization**: Zero runtime overhead for policy selection
  * 
  * Usage:
  * ```c
  * // Initialize once during system startup
  * init_uart_dma();
  * 
- * // Use standard C library functions - they automatically use optimized raw writes
+ * // Use standard C library functions - they automatically use DMA transmission
  * printf("Debug: key pressed = 0x%02X\n", scancode);
  * puts("System initialized");
- * 
- * // Or use direct DMA functions for formatted output when needed
- * uart_dma_printf("Status: %s (code: %d)\n", status_msg, error_code);
  * ```
  * 
  * Configuration:
- * The UART configuration (baud rate, pins) is defined in config.h:
+ * The UART configuration is defined in config.h:
+ * 
+ * **Hardware Configuration:**
  * - UART_BAUD: Transmission speed (typically 115200)
  * - UART_TX_PIN: GPIO pin for UART transmission
  * 
+ * **Queue Policy Configuration:**
+ * - UART_DMA_POLICY: Queue behavior selection
+ *   - UART_DMA_POLICY_DROP: Always drop messages when queue full (real-time safe)
+ *   - UART_DMA_POLICY_WAIT_FIXED: Poll with tight loop until timeout
+ *   - UART_DMA_POLICY_WAIT_EXP: Exponential backoff delays (CPU-friendly)
+ * - UART_DMA_WAIT_US: Maximum wait time for WAIT policies (microseconds)
+ * 
+ * Policy Trade-offs:
+ * - DROP: Zero blocking, may lose messages under extreme load
+ * - WAIT_FIXED: High CPU usage during waits, reliable message delivery
+ * - WAIT_EXP: Low CPU usage during waits, reliable message delivery
+ * 
  * Performance Characteristics:
- * - Message formatting: ~10-50µs (depends on message complexity)
- * - Queue operation: ~1-2µs (atomic index update)
+ * - Queue operation: ~1-2µs (atomic index update with bitwise operations)
  * - DMA setup: ~5-10µs (when starting new transfer)
- * - Total overhead: Usually <100µs for typical log messages
+ * - Policy overhead: 0µs (DROP), variable (WAIT policies)
+ * - Total overhead: Usually ~20µs for typical log messages
  * 
  * Limitations:
  * - Output only (no UART input support)
- * - Maximum 16 queued messages (configurable in implementation)
- * - Maximum 256 characters per message (configurable in implementation)
- * - Messages dropped when queue is full (no blocking)
+ * - Maximum 64 queued messages (fixed at compile time)
+ * - Maximum 256 characters per message (fixed at compile time)
+ * - Behavior when queue full depends on selected policy
  * 
  * Thread Safety:
  * All functions are designed to be safely called from any execution context:
@@ -76,6 +87,11 @@
  * The implementation uses lock-free algorithms and relies on the RP2040's
  * atomic operations for 8-bit values to ensure thread safety without
  * explicit synchronization primitives.
+ * 
+ * Queue Policy Behavior:
+ * - **DROP Policy**: Returns immediately if queue full (never blocks)
+ * - **WAIT_FIXED Policy**: Polls continuously until space or timeout
+ * - **WAIT_EXP Policy**: Progressive delays: 1µs → 2µs → 4µs → ... → 1024µs (capped)
  */
 
 #ifndef UART_H
@@ -89,23 +105,26 @@
  * @brief Initialize DMA-Based UART Logging System
  * 
  * Sets up the complete UART logging infrastructure including:
- * - UART hardware configuration (baud rate, pins)
+ * - UART hardware configuration (baud rate, pins from config.h)
  * - DMA channel allocation and configuration
- * - Interrupt handler registration
- * - stdio driver integration
+ * - Interrupt handler registration (low priority)
+ * - stdio driver integration for transparent printf() support
  * 
  * This function must be called once during system initialization before
  * any logging operations. After initialization, all standard C library
  * output functions (printf, puts, putchar, etc.) will automatically
- * use the DMA-based transmission system.
+ * use the DMA-based transmission system with the configured queue policy.
  * 
- * Configuration is read from config.h:
+ * Configuration Parameters (from config.h):
  * - UART_BAUD: Transmission baud rate
  * - UART_TX_PIN: GPIO pin for UART TX
+ * - UART_DMA_POLICY: Queue full behavior policy
+ * - UART_DMA_WAIT_US: Maximum wait time for WAIT policies
  * 
  * @note This function completely replaces the standard Pico SDK UART stdio
  * @note Must be called before any printf/logging operations
  * @note Safe to call multiple times (subsequent calls are ignored)
+ * @note Queue policy behavior is determined at compile time for optimal performance
  */
 void init_uart_dma();
 
