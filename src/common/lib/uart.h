@@ -27,21 +27,26 @@
  * keyboard protocol converters where timing is critical.
  * 
  * Key Features:
- * - **Non-blocking operation**: All functions return immediately, never blocking
+ * - **Dual-path architecture**: Optimized raw writes for stdio, formatted writes for direct calls
+ * - **Large message queue**: 64-entry buffer handles initialization bursts without loss
+ * - **Adaptive behavior**: Short waits during bursts, immediate drops under sustained load
  * - **DMA-driven transmission**: Minimal CPU overhead during log output
  * - **stdio integration**: Works transparently with printf(), puts(), etc.
+ * - **Performance optimized**: Raw write path bypasses formatting overhead
  * - **Thread-safe**: Safe to call from any context including interrupts
  * - **Low priority**: Designed to not interfere with PIO or USB operations
- * - **Graceful degradation**: Drops messages when overwhelmed rather than blocking
  * 
  * Usage:
  * ```c
  * // Initialize once during system startup
  * init_uart_dma();
  * 
- * // Use standard C library functions - they automatically use DMA
+ * // Use standard C library functions - they automatically use optimized raw writes
  * printf("Debug: key pressed = 0x%02X\n", scancode);
  * puts("System initialized");
+ * 
+ * // Or use direct DMA functions for formatted output when needed
+ * uart_dma_printf("Status: %s (code: %d)\n", status_msg, error_code);
  * ```
  * 
  * Configuration:
@@ -77,6 +82,8 @@
 #define UART_H
 
 #include "config.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 /**
  * @brief Initialize DMA-Based UART Logging System
