@@ -75,8 +75,7 @@
  */
 #define M0110_RESP_NULL         0x7B  /**< Null response - no key pressed or released (0111 1011) */
 #define M0110_RESP_KEYPAD       0x79  /**< Keypad attached response - indicates external keypad present (0111 1001) */
-#define M0110_RESP_MODEL_M0110  0x0B  /**< Model M0110 identification - original compact keyboard (0000 1011) */
-#define M0110_RESP_MODEL_M0110A 0x05  /**< Model M0110A identification - enhanced keyboard with keypad (0000 0101) */
+#define M0110_RESP_MODEL_M0110A 0x0B  /**< Model M0110A identification - enhanced keyboard with keypad (0000 0101) */
 
 /**
  * @brief Protocol Timing Constants

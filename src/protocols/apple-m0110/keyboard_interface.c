@@ -44,15 +44,14 @@
  * - Data hold: 80µs minimum after final clock edge
  * 
  * State Machine:
- * 1. UNINITIALISED → Wait for startup delay
- * 2. INIT_MODEL_REQUEST → Send model command, wait for response
- * 3. INIT_COMPLETE → Transition to normal operation
- * 4. INQUIRY → Send inquiry command every 250ms
- * 5. INQUIRY_RESPONSE → Process keyboard responses
+ * 1. UNINITIALISED → Wait for startup delay (1000ms)
+ * 2. INIT_MODEL_REQUEST → Send model command, wait for response (500ms retry intervals)
+ * 3. INITIALISED → Normal operation with response timeout monitoring (500ms)
  * 
  * Error Handling:
  * - Timeout detection (500ms max response time)
- * - Automatic retry with exponential backoff
+ * - Timer wraparound protection for robust timeout calculations
+ * - Automatic retry with maximum attempt limits
  * - State machine reset on communication failure
  * - PIO FIFO overflow protection
  */
@@ -79,18 +78,14 @@ unsigned int keyboard_data_pin;        /**< GPIO pin for DATA line (CLOCK = DATA
  * @brief Apple M0110 Protocol State Machine
  * 
  * The state machine manages the initialization and operation phases:
- * - UNINITIALISED: Initial state, waiting for startup delay
- * - INIT_MODEL_REQUEST: Sending Model Number commands, waiting for keyboard identification  
- * - INIT_COMPLETE: Keyboard identified, preparing for normal operation
- * - INQUIRY: Sending Inquiry commands to request key data
- * - INQUIRY_RESPONSE: Processing responses from keyboard (key data or NULL)
+ * - UNINITIALISED: Initial state, waiting for 1000ms startup delay
+ * - INIT_MODEL_REQUEST: Sending Model Number commands every 500ms, waiting for identification  
+ * - INITIALISED: Normal operation with key processing and 500ms response timeout monitoring
  */
 static enum {
   UNINITIALISED,        /**< System startup, waiting for initial delay */
   INIT_MODEL_REQUEST,   /**< Sending model commands during initialization */
-  INIT_COMPLETE,        /**< Initialization complete, transitioning to operation */
-  INQUIRY,              /**< Normal operation: sending inquiry commands */
-  INQUIRY_RESPONSE      /**< Normal operation: processing keyboard responses */
+  INITIALISED           /**< Initialization complete, transitioning to operation */
 } keyboard_state = UNINITIALISED;
 
 /* Timing and State Tracking Variables */
@@ -141,13 +136,13 @@ void keyboard_command_handler(uint8_t command) {
  * performs minimal processing and delegates complex operations to the main task.
  * 
  * Response Processing by State:
- * - INIT_MODEL_REQUEST: Process model ID and advance to operational state
- * - INQUIRY_RESPONSE: Handle key data (store in ring buffer) or NULL responses
+ * - INIT_MODEL_REQUEST: Process model ID and advance to INITIALISED state
+ * - INITIALISED: Handle key data (store in ring buffer) or NULL responses
  * 
  * Timing Considerations:
- * - Updates response timestamp for timeout detection
- * - Fast NULL response handling (immediate state transition)
- * - Key data buffered for main task processing
+ * - Updates response timestamp used by main task for optimized timeout detection
+ * - Response timing enables wraparound-safe timeout calculations in main loop
+ * - Key data buffered for main task processing when USB HID interface ready
  * 
  * @param data_byte 8-bit response received from keyboard (MSB-first)
  */
@@ -156,32 +151,33 @@ static void keyboard_event_processor(uint8_t data_byte) {
   last_response_time = board_millis(); // Record response time for timeout management
   
   switch (keyboard_state) {
+    case UNINITIALISED:
+      // Should not receive data in UNINITIALISED state - ignore
+      printf("[WARN] M0110 received data in UNINITIALISED state: 0x%02X\n", data_byte);
+      break;
     case INIT_MODEL_REQUEST:
       // Handle model number response during initialization phase
       switch (data_byte) {
-        case M0110_RESP_MODEL_M0110:
-          printf("[INFO] Apple M0110 Keyboard Model: M0110 - keyboard reset and ready\n");
-          keyboard_state = INIT_COMPLETE;
-          break;
         case M0110_RESP_MODEL_M0110A:
           printf("[INFO] Apple M0110 Keyboard Model: M0110A - keyboard reset and ready\n");
-          keyboard_state = INIT_COMPLETE;
           break;
         default:
           printf("[DBG] Unknown model response: 0x%02X - proceeding with initialization\n", data_byte);
-          // Handle non-standard model responses gracefully - continue with normal operation
-          keyboard_state = INIT_COMPLETE;
           break;
       }
+      keyboard_state = INITIALISED;
+      keyboard_command_handler(M0110_CMD_INQUIRY);
       break;
       
-    case INQUIRY_RESPONSE:
+    case INITIALISED:
       // Handle inquiry responses during normal polling operation
       switch (data_byte) {
         case M0110_RESP_NULL:
-          // NULL response (0x7B) - no keys pressed, keyboard operational
-          // Return to polling state to maintain 250ms inquiry cycle
-          keyboard_state = INQUIRY;
+          // NULL response (0x7B) - We get this when no keys are pressed, keyboard is ready
+          // Immediately send next inquiry command to maintain 250ms polling cycle
+          // printf("[DBG] M0110 NULL response received, sending next inquiry\n");
+          keyboard_command_handler(M0110_CMD_INQUIRY);
+          last_command_time = board_millis(); // Update command time for timeout tracking
           break;
         default:
           // Scan code or special response - queue for main task processing
@@ -198,7 +194,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
   }
   
 #ifdef CONVERTER_LEDS
-  converter.state.kb_ready = (keyboard_state >= INIT_COMPLETE) ? 1 : 0;
+  converter.state.kb_ready = (keyboard_state >= INITIALISED) ? 1 : 0;
   update_converter_status();
 #endif
 }
@@ -226,6 +222,7 @@ static void __isr keyboard_input_event_handler(void) {
   uint8_t data_byte = (uint8_t)keyboard_pio->rxf[keyboard_sm];
 
   // Route response to appropriate handler based on protocol state
+  // We don't have any parity or framing errors to check for in M0110
   keyboard_event_processor(data_byte);
 }
 
@@ -238,44 +235,48 @@ static void __isr keyboard_input_event_handler(void) {
  * State Machine Operation:
  * 
  * 1. UNINITIALISED (Startup Phase):
- *    - Waits for initial 1-second delay to allow keyboard power-up
- *    - Transitions to model identification phase
+ *    - Waits for initial 1000ms delay to allow keyboard power-up
+ *    - Uses command timing to track startup delay
+ *    - Transitions to model identification phase when delay expires
  * 
  * 2. INIT_MODEL_REQUEST (Keyboard Detection):
- *    - Sends Model Number commands (0x16) every 500ms
- *    - Retries up to 5 times if no response
+ *    - Sends Model Number commands (0x16) every 500ms using command timing
+ *    - Retries up to 5 times if no response received
  *    - Model command causes keyboard to reset and identify itself
- *    - Transitions to operational phase on successful response
+ *    - Transitions to INITIALISED phase on successful response (handled by IRQ)
  * 
- * 3. INIT_COMPLETE (Transition State):
- *    - Brief state to log successful initialization
- *    - Immediately transitions to inquiry phase
+ * 3. INITIALISED (Normal Operation):
+ *    - Monitors keyboard responses using response timing for 500ms timeout
+ *    - Processes buffered key data when USB HID interface ready
+ *    - Timeout detection triggers return to UNINITIALISED for recovery
+ *    - Key data processing occurs via ring buffer from interrupt handler
  * 
- * 4. INQUIRY (Normal Operation - Command Phase):
- *    - Sends Inquiry commands (0x10) immediately
- *    - Transitions to response processing phase
- * 
- * 5. INQUIRY_RESPONSE (Normal Operation - Response Phase):
- *    - Monitors for keyboard responses (handled by IRQ)
- *    - Processes buffered key data when HID interface ready
- *    - Implements 500ms timeout for unresponsive keyboard
- *    - Returns to INQUIRY phase after processing or NULL response
+ * Timing and Performance:
+ * - Optimized timing calculations with single elapsed time computation
+ * - Timer wraparound protection prevents false timeouts on system rollover
  * 
  * Error Recovery:
  * - Timeout detection triggers full protocol restart
  * - State machine reset returns to UNINITIALISED phase
- * - Exponential backoff prevents rapid retry loops
+ * - Maximum retry limits prevent infinite retry loops
  * 
  * @note This function manages protocol timing and state transitions
  * @note Actual data reception occurs in interrupt context
+ * @note Timer calculations are optimized to handle uint32_t wraparound scenarios
  */
 void keyboard_interface_task(void) {
   uint32_t current_time = board_millis();
   
+  // Calculate elapsed time once for all timing checks (handles timer wraparound)
+  uint32_t elapsed_since_command = current_time - last_command_time;
+  uint32_t elapsed_since_response = current_time - last_response_time;
+  bool command_elapsed_valid = elapsed_since_command < (UINT32_MAX / 2);
+  bool response_elapsed_valid = elapsed_since_response < (UINT32_MAX / 2);
+  
   switch (keyboard_state) {
     case UNINITIALISED:
       // Wait for keyboard power-up and internal initialization
-      if (current_time - last_command_time > M0110_INITIALIZATION_DELAY_MS) {
+      if (command_elapsed_valid && elapsed_since_command > M0110_INITIALIZATION_DELAY_MS) {
         printf("[INFO] Starting Apple M0110 keyboard detection with Model Number command\n");
         keyboard_state = INIT_MODEL_REQUEST;
         keyboard_command_handler(M0110_CMD_MODEL);
@@ -287,7 +288,7 @@ void keyboard_interface_task(void) {
     case INIT_MODEL_REQUEST:
       // Model identification phase with automatic retry logic
       // Apple spec requires 500ms intervals between retry attempts
-      if (current_time - last_command_time > M0110_MODEL_RETRY_INTERVAL_MS) {
+      if (command_elapsed_valid && elapsed_since_command > M0110_MODEL_RETRY_INTERVAL_MS) {
         if (model_retry_count < 5) {
           printf("[DBG] Retrying Model Number command (%d/5)\n", model_retry_count + 1);
           keyboard_command_handler(M0110_CMD_MODEL);
@@ -302,32 +303,16 @@ void keyboard_interface_task(void) {
       }
       break;
       
-    case INIT_COMPLETE:
+    case INITIALISED:
       // Transition state - keyboard identified successfully, entering normal operation
-      printf("[INFO] Apple M0110 keyboard initialization complete - beginning normal operation\n");
-      keyboard_state = INQUIRY;
-      last_response_time = current_time;
-      break;
-      
-    case INQUIRY:
-      // Normal operation - send inquiry commands to request key data
-      // Commands are sent immediately when entering this state to maintain responsive operation
-      // Apple specification: send inquiry every 1/4 second, but we optimize for responsiveness
-      keyboard_command_handler(M0110_CMD_INQUIRY);
-      keyboard_state = INQUIRY_RESPONSE;
-      break;
-
-    case INQUIRY_RESPONSE:
-      // Normal operation - waiting for and processing keyboard responses
-      
       // Timeout detection - if keyboard stops responding, assume disconnection or error
-      if (current_time - last_response_time > M0110_RESPONSE_TIMEOUT_MS) {
+      if (response_elapsed_valid && elapsed_since_response > M0110_RESPONSE_TIMEOUT_MS) {
         printf("[WARN] No response from keyboard within 1/2 second - restarting with Model Number\n");
         keyboard_state = UNINITIALISED;
         last_command_time = current_time;
         break;
       }
-
+      
       // Process any received key data when USB HID interface is ready
       // Ring buffer provides thread-safe communication from IRQ handler
       if (!ringbuf_is_empty() && tud_hid_ready()) {
@@ -335,7 +320,6 @@ void keyboard_interface_task(void) {
         if (c != -1) {
           printf("[DBG] Processing scancode: 0x%02X\n", (uint8_t)c);
           process_scancode((uint8_t)c);
-          keyboard_state = INQUIRY; // Return to inquiry phase for next command
         }
       }
       break;
