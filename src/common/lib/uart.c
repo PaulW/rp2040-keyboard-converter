@@ -27,18 +27,33 @@
  * operations such as keyboard protocol timing or USB HID communication.
  * 
  * Key Features:
- * - Configurable queue policies: DROP, WAIT_FIXED, or WAIT_EXP behavior when queue full
- * - Non-blocking operation: Logging never blocks the calling thread (with DROP policy)
- * - DMA-driven transmission: Minimal CPU overhead during output
- * - Large circular buffer queue: Handles initialization bursts without message loss
- * - stdio integration: Works with printf(), puts(), and other standard functions
- * - Compile-time configuration: Zero runtime overhead for policy selection
- * - Low priority: Designed to not interfere with PIO state machines
+ * - **Configurable queue policies**: DROP, WAIT_FIXED, or WAIT_EXP behavior when queue full
+ * - **Large circular buffer queue**: 64-entry buffer handles initialization bursts without loss
+ * - **DMA-driven transmission**: Minimal CPU overhead during output
+ * - **stdio integration**: Works transparently with printf(), puts(), etc.
+ * - **Thread-safe multi-producer**: Lock-free atomic operations prevent races
+ * - **IRQ-aware policies**: Never blocks in interrupt context
+ * - **Compile-time optimization**: Zero runtime overhead for policy selection
+ * - **Low interrupt priority**: Designed to not interfere with PIO state machines
  * 
  * Architecture:
- * The system uses stdio integration with a circular buffer queue:
+ * The system uses stdio integration with a thread-safe circular buffer queue:
  * 
- * **stdio Integration Path**: All standard C library functions (printf, puts, etc.)
+ * ```
+ * Application Code
+ *        ↓
+ * printf(), puts(), etc. (Standard C Library)
+ *        ↓
+ * Pico SDK stdio system
+ *        ↓  
+ * my_out_chars() (stdio driver hook)
+ *        ↓
+ * uart_dma_write_raw() → try_reserve_slot() (atomic CAS)
+ *        ↓
+ * Queue Entry → DMA Controller → UART Hardware
+ * ```
+ * 
+ * **stdio Integration**: All standard C library functions (printf, puts, etc.)
  * are redirected through the Pico SDK stdio system to our DMA-based implementation.
  * This provides:
  *    - Transparent replacement of standard UART stdio
@@ -51,22 +66,24 @@
  * messages, providing continuous transmission without CPU intervention.
  * 
  * Performance Optimizations:
- * - stdio integration: Direct memcpy() of pre-formatted strings bypasses additional formatting
- * - Queue size: 64 entries (power of 2) for handling initialization bursts
- * - Buffer alignment: 4-byte aligned for optimal DMA performance
- * - Bitwise operations: Uses AND instead of modulo for index calculations
- * - Separated producer/consumer: Clean queue management with atomic updates
- * - Low priority: DMA and IRQ configured to not interfere with timing-critical code
- * - Lock-free design: Relies on RP2040's natural atomicity for 8-bit operations
- * - Configurable queue policies: Compile-time selection eliminates runtime overhead
- * - Exponential backoff: CPU-friendly waiting with progressive delays (WAIT_EXP policy)
+ * - **stdio integration**: Direct memcpy() of pre-formatted strings bypasses additional formatting
+ * - **Queue size**: 64 entries (power of 2) for handling initialization bursts
+ * - **Buffer alignment**: 4-byte aligned for optimal DMA performance
+ * - **Bitwise operations**: Uses AND instead of modulo for index calculations
+ * - **Atomic operations**: Lock-free multi-producer safety via CAS operations
+ * - **Low priority**: DMA and IRQ configured to not interfere with timing-critical code
+ * - **Configurable queue policies**: Compile-time selection eliminates runtime overhead
+ * - **Exponential backoff**: CPU-friendly waiting with progressive delays (WAIT_EXP policy)
+ * - **IRQ-aware behavior**: Policies adapt to interrupt context automatically
  * 
  * Thread Safety:
  * The implementation is designed to be safely called from any context, including
  * interrupts, without the need for explicit locking. This is achieved through:
- * - Lock-free circular buffer design
- * - Atomic index updates (8-bit operations on RP2040)
- * - DMA hardware handling the actual transmission
+ * - **Lock-free circular buffer design** with atomic slot reservation
+ * - **Compare-and-swap operations** for multi-producer safety
+ * - **Acquire/release semantics** for proper memory ordering
+ * - **DMA hardware handling** the actual transmission
+ * - **IRQ context detection** that adapts policy behavior appropriately
  * 
  * Integration:
  * This UART implementation completely replaces the standard Pico SDK UART
@@ -82,9 +99,13 @@
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
 #include "hardware/dma.h"
+#include "hardware/structs/scb.h"   // for scb_hw->icsr
+#include "hardware/regs/m0plus.h"   // for M0PLUS_ICSR_VECTACTIVE_BITS
 #include "pico/stdio/driver.h"
 #include "pico/time.h"
+
 #include "uart.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -109,6 +130,10 @@
 #if (PRINTF_QUEUE_LEN & (PRINTF_QUEUE_LEN - 1)) != 0
 #  error "PRINTF_QUEUE_LEN must be a power of 2"
 #endif
+
+// Compile-time bounds (uint8_t indices, uint16_t lengths)
+_Static_assert(PRINTF_QUEUE_LEN <= 256, "PRINTF_QUEUE_LEN must fit uint8_t index");
+_Static_assert(PRINTF_BUF_SIZE  <= 65535, "PRINTF_BUF_SIZE must fit uint16_t len");
 
 // --- Queue full policy configuration ---
 // Policy constants and configuration are now defined in config.h
@@ -137,6 +162,7 @@ static volatile uint8_t q_head = 0;        /**< Queue head index (next write pos
 static volatile uint8_t q_tail = 0;        /**< Queue tail index (next read position) */
 static volatile bool dma_active = false;   /**< DMA transfer active flag */
 static int uart_dma_chan;                  /**< DMA channel number allocated for UART TX */
+static bool uart_dma_inited = false;       /**< One-time init guard */
 
 /**
  * @brief Queue Management Helper Functions
@@ -169,6 +195,26 @@ static inline bool queue_full() {
 }
 
 /**
+ * @brief IRQ Context Detection Helper
+ * 
+ * Determines if the current execution context is within an interrupt service
+ * routine by checking the VECTACTIVE field of the Interrupt Control and State Register.
+ * 
+ * This function is used by the queue policy implementation to adapt behavior
+ * in interrupt context, ensuring that potentially blocking operations (like
+ * sleep_us or extended polling) are avoided when called from ISRs.
+ * 
+ * @return true if executing in interrupt/exception context
+ * @return false if executing in thread mode
+ * 
+ * @note Uses ARM Cortex-M0+ ICSR register for reliable detection
+ * @note Zero overhead inline function
+ */
+static inline bool in_irq(void) {
+    return (scb_hw->icsr & M0PLUS_ICSR_VECTACTIVE_BITS) != 0;
+}
+
+/**
  * @brief Start next DMA transfer if conditions are met
  * 
  * This function initiates a DMA transfer for the next queued message if:
@@ -191,13 +237,25 @@ static inline bool queue_full() {
  * @note The q_tail index will be advanced by dma_handler() upon completion
  */
 static void start_next_dma_if_needed() {
-    if (!dma_active && !queue_empty()) {
-        log_entry_t *entry = &log_queue[q_tail];
-        dma_channel_set_read_addr(uart_dma_chan, entry->buf, false);
-        dma_channel_set_trans_count(uart_dma_chan, entry->len, true);
-        dma_active = true;
-        // q_tail will be advanced in dma_handler() once this transfer completes
+    // Check hardware busy as well as our flag to avoid races
+    if (queue_empty() || dma_active || dma_channel_is_busy(uart_dma_chan)) {
+        return;
     }
+
+    // Only start when the tail entry is marked ready (len > 0)
+    log_entry_t *entry = &log_queue[q_tail];
+    // Acquire-load pairs with producer's release-store to len
+    uint16_t len = __atomic_load_n(&entry->len, __ATOMIC_ACQUIRE);
+    if (len == 0) {
+        return; // producer hasn’t published the entry yet
+    }
+
+    // Mark active before arming to avoid a window where producers see it as idle
+    dma_active = true;
+
+    dma_channel_set_read_addr(uart_dma_chan, entry->buf, false);
+    dma_channel_set_trans_count(uart_dma_chan, len, true);
+    // q_tail will be advanced in dma_handler() once this transfer completes
 }
 
 /**
@@ -214,15 +272,23 @@ static void start_next_dma_if_needed() {
  * Handler Priority: Low (configured in init_uart_dma)
  * Execution Context: Interrupt (keep minimal and fast)
  */
-void dma_handler() {
-    dma_hw->ints0 = 1u << uart_dma_chan;  // clear IRQ flag
-    dma_active = false;
+void __isr dma_handler() {
+    uint32_t mask = 1u << uart_dma_chan;
+    if (dma_hw->ints0 & mask) {
+        dma_hw->ints0 = mask;  // clear IRQ flag
+        dma_active = false;
 
-    // Finished current entry → consume it
-    q_tail = (q_tail + 1) & (PRINTF_QUEUE_LEN - 1);
+        // Finished current entry → consume it
+        uint8_t finished = q_tail;
+        q_tail = (q_tail + 1) & (PRINTF_QUEUE_LEN - 1);
 
-    // Start next if available
-    start_next_dma_if_needed();
+        // Mark the slot as empty (len = 0) so a future start won’t arm early
+        log_entry_t *done = &log_queue[finished];
+        done->len = 0;
+
+        // Start next if available
+        start_next_dma_if_needed();
+    }
 }
 
 /**
@@ -256,6 +322,10 @@ static inline bool wait_for_queue_space(void) {
     return !queue_full();
 
 #elif UART_DMA_POLICY == UART_DMA_POLICY_WAIT_FIXED
+    // If called from IRQ, avoid spinning; treat as DROP
+    if (in_irq()) {
+        return !queue_full();
+    }
     // Poll until queue frees or timeout expires
     absolute_time_t deadline = make_timeout_time_us(UART_DMA_WAIT_US);
     while (queue_full() && !time_reached(deadline)) {
@@ -264,7 +334,10 @@ static inline bool wait_for_queue_space(void) {
     return !queue_full();
 
 #elif UART_DMA_POLICY == UART_DMA_POLICY_WAIT_EXP
-    // Exponential backoff: 1us, 2us, 4us, ... up to UART_DMA_WAIT_US
+    // Exponential backoff; in IRQ, avoid sleeping → treat as DROP
+    if (in_irq()) {
+        return !queue_full();
+    }
     int delay_us = 1;
     int waited = 0;
     while (queue_full() && waited < UART_DMA_WAIT_US) {
@@ -281,34 +354,82 @@ static inline bool wait_for_queue_space(void) {
 }
 
 /**
- * @brief Raw message enqueue for pre-formatted strings
+ * @brief Atomically reserve a queue slot for thread-safe operation
  * 
- * This function provides a high-performance path for enqueueing pre-formatted
- * messages without the overhead of vsnprintf(). It's specifically designed
- * for stdio integration where the message is already formatted.
- * 
- * Key Features:
- * - Direct memcpy() to queue buffer for maximum efficiency
- * - Configurable queue policies for different application needs
- * - Input validation and length limiting
- * - Automatic DMA initiation when idle
- * 
- * Performance Path:
- * This function is used by stdio functions (printf, puts, etc.) via the 
- * my_out_chars() stdio driver hook. It provides maximum efficiency by directly
- * copying pre-formatted strings since the Pico SDK has already handled formatting.
+ * This function provides lock-free multi-producer safety by atomically
+ * reserving a queue slot using compare-and-swap operations. It prevents
+ * race conditions when multiple execution contexts (main thread + ISRs)
+ * attempt to enqueue messages simultaneously.
  * 
  * Behavior:
- * - Uses compile-time configured queue policy (DROP/WAIT_FIXED/WAIT_EXP)
- * - Behavior varies by policy: immediate drop, fixed wait, or exponential backoff
- * - Truncates messages exceeding buffer size
- * - Starts DMA transfer immediately if controller is idle
+ * - **Thread context**: Retries briefly on CAS contention to handle rare races
+ * - **IRQ context**: Single attempt only to avoid spinning in interrupt handlers
+ * - **Queue full**: Returns false immediately regardless of context
+ * - **Success**: Returns the reserved slot index via out parameter
+ * 
+ * The function uses relaxed memory ordering for the CAS operation since the
+ * RP2040's single-core nature and the queue's design make stronger ordering
+ * unnecessary while still providing the required atomicity.
+ * 
+ * @param out_idx Pointer to store the reserved slot index on success
+ * @return true if slot successfully reserved, false if queue full or contention (IRQ)
+ * 
+ * @note Uses __atomic_compare_exchange_n for lock-free operation
+ * @note IRQ-safe: Never spins when called from interrupt context
+ * @note Thread-safe: Handles concurrent access from multiple contexts
+ */
+static inline bool try_reserve_slot(uint8_t *out_idx) {
+    for (;;) {
+        uint8_t head = q_head;
+        uint8_t next = (head + 1) & (PRINTF_QUEUE_LEN - 1);
+        if (next == q_tail) {
+            return false; // full
+        }
+        if (__atomic_compare_exchange_n(&q_head, &head, next, false,
+                                        __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+            *out_idx = head;
+            return true;
+        }
+        // CAS failed due to concurrent producer
+        if (in_irq()) {
+            return false; // don't spin in IRQ
+        }
+        tight_loop_contents(); // brief yield before retry
+    }
+}
+
+/**
+ * @brief Raw message enqueue for pre-formatted strings
+ * 
+ * This function provides the core message enqueueing functionality for the
+ * stdio integration path. It handles thread-safe slot reservation, message
+ * copying, and DMA initiation with configurable queue policies.
+ * 
+ * Key Features:
+ * - **Thread-safe operation**: Uses atomic slot reservation to prevent races
+ * - **Configurable queue policies**: DROP/WAIT_FIXED/WAIT_EXP behavior selection
+ * - **Input validation**: Length limiting and bounds checking
+ * - **Publish-subscribe pattern**: Atomic length update signals message ready
+ * - **Automatic DMA initiation**: Starts transmission when controller is idle
+ * 
+ * Message Flow:
+ * 1. **Policy check**: wait_for_queue_space() applies configured behavior
+ * 2. **Slot reservation**: try_reserve_slot() atomically claims queue entry  
+ * 3. **Data copy**: memcpy() transfers pre-formatted message to queue buffer
+ * 4. **Publish**: Atomic length store marks entry ready for DMA consumption
+ * 5. **DMA start**: start_next_dma_if_needed() initiates transfer if idle
+ * 
+ * The function uses acquire/release semantics for the length field to ensure
+ * proper memory ordering between producers and the DMA consumer, guaranteeing
+ * that DMA never reads partially written message data.
  * 
  * @param s Pointer to pre-formatted string buffer
  * @param len Length of string to enqueue (bytes)
  * 
- * @note Used internally by stdio integration - not for direct application calls
- * @note Thread-safe: Can be called from any context including interrupts
+ * @note Used internally by stdio integration - not for direct application calls  
+ * @note Thread-safe: Safe to call from any context including interrupts
+ * @note IRQ-aware: Adapts behavior based on execution context
+ * @note Performance: Direct memcpy with atomic publish for efficiency
  */
 static void uart_dma_write_raw(const char *s, int len) {
     if (len <= 0) return;
@@ -317,11 +438,20 @@ static void uart_dma_write_raw(const char *s, int len) {
     // Apply configurable queue policy for stdio output
     if (!wait_for_queue_space()) return;  // Policy-dependent behavior
 
-    log_entry_t *entry = &log_queue[q_head];
-    memcpy(entry->buf, s, len);
-    entry->len = len;
+    uint8_t idx;
+    if (!try_reserve_slot(&idx)) {
+        return; // full or contended (ISR), or rare CAS contention (thread)
+    }
 
-    q_head = (q_head + 1) & (PRINTF_QUEUE_LEN - 1);
+    log_entry_t *entry = &log_queue[idx];
+
+    // Write payload first
+    memcpy(entry->buf, s, len);
+
+    // Publish last: mark entry ready by setting len > 0
+    // Use an atomic store (release) for extra safety, but simple store also works on RP2040.
+    __atomic_store_n(&entry->len, (uint16_t)len, __ATOMIC_RELEASE);
+
     start_next_dma_if_needed();
 }
 
@@ -389,7 +519,7 @@ static stdio_driver_t dma_stdio_driver = {
  * 3. **Interrupt System Setup**:
  *    - Enables DMA completion interrupts for allocated channel
  *    - Registers dma_handler() as exclusive interrupt handler
- *    - Sets low priority (level 2) to avoid interfering with real-time code
+ *    - Sets low priority to avoid interfering with real-time code
  *    - Enables interrupt in NVIC for DMA_IRQ_0
  * 
  * 4. **stdio Integration**:
@@ -429,8 +559,12 @@ static stdio_driver_t dma_stdio_driver = {
  * @warning Do not call from interrupt context during initialization
  */
 void init_uart_dma() {
+    if (uart_dma_inited) return;
+    uart_dma_inited = true;
     // Initialize UART hardware with configured baud rate and TX pin
     uart_init(UART_ID, UART_BAUD);                        // UART_BAUD defined in config.h
+    uart_set_format(UART_ID, 8, 1, UART_PARITY_NONE);
+    uart_set_fifo_enabled(UART_ID, true);
     gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);       // UART_TX_PIN defined in config.h
 
     // Allocate and configure DMA channel for UART transmission
@@ -438,8 +572,10 @@ void init_uart_dma() {
     dma_channel_config c = dma_channel_get_default_config(uart_dma_chan);
     
     // Configure DMA transfer parameters
-    channel_config_set_transfer_data_size(&c, DMA_SIZE_8);              // 8-bit transfers (char data)
-    channel_config_set_dreq(&c, uart_get_dreq(UART_ID, true));         // Use UART TX data request signal
+    channel_config_set_transfer_data_size(&c, DMA_SIZE_8);      // 8-bit transfers (char data)
+    channel_config_set_read_increment(&c, true);                // Increment source (queue buffer)
+    channel_config_set_write_increment(&c, false);              // Fixed destination (UART data register)
+    channel_config_set_dreq(&c, uart_get_dreq(UART_ID, true));  // Use UART TX data request signal
     
     // Configure the DMA channel with settings
     dma_channel_configure(uart_dma_chan, &c,
@@ -448,9 +584,14 @@ void init_uart_dma() {
     
     // Setup interrupt handling for DMA completion
     dma_channel_set_irq0_enabled(uart_dma_chan, true);   // Enable interrupts for this channel
+
+    // Clear any pending IRQ for this channel before enabling
+    uint32_t mask = 1u << uart_dma_chan;
+    dma_hw->ints0 = mask;
+
     irq_set_exclusive_handler(DMA_IRQ_0, dma_handler);   // Set our handler function  
     irq_set_enabled(DMA_IRQ_0, true);                    // Enable the interrupt
-    irq_set_priority(DMA_IRQ_0, 2);                      // Low priority (0=highest, 255=lowest)
+    irq_set_priority(DMA_IRQ_0, 0xC0);                   // Low priority (0=highest, 255=lowest)
 
     // Register this implementation as the system stdio driver
     // This replaces the standard Pico SDK UART stdio functionality

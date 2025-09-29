@@ -31,8 +31,8 @@
  * - **Large message queue**: 64-entry buffer handles initialization bursts without loss
  * - **DMA-driven transmission**: Minimal CPU overhead during log output
  * - **stdio integration**: Works transparently with printf(), puts(), etc.
- * - **Performance optimized**: Direct memcpy() bypasses formatting overhead
- * - **Thread-safe**: Safe to call from any context including interrupts
+ * - **Thread-safe multi-producer**: Lock-free atomic operations prevent races
+ * - **IRQ-aware policies**: Never blocks in interrupt context  
  * - **Low priority**: Designed to not interfere with PIO or USB operations
  * - **Compile-time optimization**: Zero runtime overhead for policy selection
  * 
@@ -61,14 +61,14 @@
  * - UART_DMA_WAIT_US: Maximum wait time for WAIT policies (microseconds)
  * 
  * Policy Trade-offs:
- * - DROP: Zero blocking, may lose messages under extreme load
- * - WAIT_FIXED: High CPU usage during waits, reliable message delivery
- * - WAIT_EXP: Low CPU usage during waits, reliable message delivery
+ * - **DROP**: Zero blocking, may lose messages under extreme load (real-time safe)
+ * - **WAIT_FIXED**: High CPU usage during waits, reliable message delivery
+ * - **WAIT_EXP**: Low CPU usage during waits, reliable message delivery
  * 
  * Performance Characteristics:
- * - Queue operation: ~1-2µs (atomic index update with bitwise operations)
+ * - Queue operation: ~1-2µs (atomic slot reservation with CAS operations)
  * - DMA setup: ~5-10µs (when starting new transfer)
- * - Policy overhead: 0µs (DROP), variable (WAIT policies)
+ * - Policy overhead: 0µs (DROP), variable (WAIT policies, IRQ-aware)
  * - Total overhead: Usually ~20µs for typical log messages
  * 
  * Limitations:
@@ -81,17 +81,20 @@
  * All functions are designed to be safely called from any execution context:
  * - Main application loop
  * - Interrupt service routines (including PIO interrupts)
- * - DMA completion handlers
+ * - DMA completion handlers  
  * - USB callback functions
  * 
- * The implementation uses lock-free algorithms and relies on the RP2040's
- * atomic operations for 8-bit values to ensure thread safety without
- * explicit synchronization primitives.
+ * The implementation uses lock-free algorithms with atomic compare-and-swap
+ * operations to ensure thread safety without explicit synchronization primitives.
+ * IRQ context is detected automatically and policies adapt accordingly.
  * 
  * Queue Policy Behavior:
  * - **DROP Policy**: Returns immediately if queue full (never blocks)
- * - **WAIT_FIXED Policy**: Polls continuously until space or timeout
- * - **WAIT_EXP Policy**: Progressive delays: 1µs → 2µs → 4µs → ... → 1024µs (capped)
+ * - **WAIT_FIXED Policy**: Polls continuously until space or timeout (IRQ-aware)
+ * - **WAIT_EXP Policy**: Progressive delays: 1µs → 2µs → 4µs → ... → 1024µs (IRQ-aware)
+ * 
+ * @note All policies automatically fall back to DROP behavior in IRQ context
+ * @note Only init_uart_dma() is exposed - this is a stdio replacement system
  */
 
 #ifndef UART_H
@@ -115,16 +118,36 @@
  * output functions (printf, puts, putchar, etc.) will automatically
  * use the DMA-based transmission system with the configured queue policy.
  * 
- * Configuration Parameters (from config.h):
- * - UART_BAUD: Transmission baud rate
- * - UART_TX_PIN: GPIO pin for UART TX
- * - UART_DMA_POLICY: Queue full behavior policy
- * - UART_DMA_WAIT_US: Maximum wait time for WAIT policies
+ * Initialization Sequence:
+ * 1. **Hardware Setup**: UART0 configuration with format and FIFO settings
+ * 2. **DMA Configuration**: Channel allocation with explicit transfer parameters
+ * 3. **Interrupt Setup**: Low-priority handler registration with IRQ clearing
+ * 4. **stdio Integration**: Complete replacement of standard UART stdio driver
  * 
- * @note This function completely replaces the standard Pico SDK UART stdio
- * @note Must be called before any printf/logging operations
- * @note Safe to call multiple times (subsequent calls are ignored)
- * @note Queue policy behavior is determined at compile time for optimal performance
+ * Configuration Parameters (from config.h):
+ * - UART_BAUD: Transmission baud rate (typically 115200)
+ * - UART_TX_PIN: GPIO pin for UART TX (typically GP0)
+ * - UART_DMA_POLICY: Queue full behavior policy (DROP/WAIT_FIXED/WAIT_EXP)
+ * - UART_DMA_WAIT_US: Maximum wait time for WAIT policies (microseconds)
+ * 
+ * Hardware Resources Allocated:
+ * - 1x DMA channel (claimed from available pool)
+ * - UART0 peripheral (configured for transmission only)
+ * - 1x GPIO pin (configured for UART function)
+ * - DMA_IRQ_0 interrupt vector (low priority 0xC0)
+ * 
+ * Memory Resources:
+ * - 16KB: Message queue (64 × 256-byte entries)
+ * - ~100 bytes: Control structures and state
+ * 
+ * @note **CRITICAL**: Must be called once during system initialization
+ * @note **TIMING**: Call before any printf/logging operations
+ * @note **IDEMPOTENT**: Safe to call multiple times (subsequent calls ignored)
+ * @note **STDIO REPLACEMENT**: Completely replaces standard Pico SDK UART stdio
+ * @note **REAL-TIME SAFE**: Uses low-priority interrupts and configurable policies
+ * 
+ * @warning Do not call from interrupt context during initialization
+ * @warning Calling printf() before this function results in no output
  */
 void init_uart_dma();
 
