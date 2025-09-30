@@ -11,7 +11,7 @@ The **Apple M0110 keyboard protocol** was the primary communication method used 
   - **M0110 (1984)**: This was the original, compact keyboard designed for the first Macintosh computers. Its design reflected the minimalist aesthetic of the early Macintoshes. The **M0120 numeric keypad was sold separately** and could be attached to the side of the keyboard or directly to the Mac.
   - **M0110A (1986)**: An enhanced version of the M0110, this keyboard was introduced with the Macintosh Plus and Macintosh SE. It featured a more complete layout with dedicated arrow keys and a separate numeric keypad.
 
-The protocol's design as a **passive polling system** means that the host must continuously poll the keyboard using inquiry commands, typically every **250ms**. Without these regular polls, any key presses or releases would be lost because the keyboard has no mechanism to independently signal a state change to the host. This design choice emphasized simplicity and reliability over more complex, interrupt-driven communication.
+The protocol's design as a **passive polling system** means that the host must continuously poll the keyboard using inquiry commands. The original Apple specification called for polls **every 250ms**, though modern implementations achieve much better responsiveness by polling immediately after each response (< 1ms latency). Without these regular polls, any key presses or releases would be lost because the keyboard has no mechanism to independently signal a state change to the host. This design choice emphasized simplicity and reliability over more complex, interrupt-driven communication.
 
 -----
 
@@ -97,7 +97,7 @@ The host uses a set of specific commands to communicate with the keyboard:
 
 | Command | Value | Description | Purpose |
 |---------|-------|-------------|---------|
-| **Inquiry** | `0x10` | Request key transitions | This is the primary command for normal operation, sent by the host every 250ms to check for key presses or releases. |
+| **Inquiry** | `0x10` | Request key transitions | This is the primary command for normal operation. The original Apple specification called for this command every 250ms, though modern implementations poll continuously (immediately after each response) for < 1ms latency. |
 | **Instant** | `0x14` | Request immediate key state | This command is rarely used and requests the current, real-time status of all keys, rather than just recent changes. |
 | **Model** | `0x16` | Request model identification | Used during initialization to identify the keyboard model (M0110 or M0110A) and to trigger an internal reset. |
 | **Test** | `0x36` | Initiate self-test | A diagnostic command that causes the keyboard to perform a self-test. |
@@ -144,23 +144,26 @@ The protocol requires a specific sequence to establish communication after power
 
 ### Normal Operation Loop
 
-The standard communication loop is a continuous polling process:
+The standard communication loop is a **continuous, immediate polling process** optimized for minimal latency:
 
-1.  The host sends an **Inquiry command (`0x10`)** approximately every **250ms**.
-2.  The keyboard responds with one of the following:
+1.  The keyboard responds to each Inquiry command with one of the following:
       - A **key event code** (from `0x00` to `0x7F` for a key press, or `0x80` to `0xFF` for a key release).
       - A **Null response (`0x7B`)** if there is no key activity to report.
       - A **status code** (e.g., for keypad detection).
+2.  **Immediately after receiving any response**, the host sends the next **Inquiry command (`0x10`)**.
 3.  The host processes the response and updates its internal representation of the keyboard's state.
-4.  The loop repeats, with the host sending another Inquiry command.
+4.  This creates a tight request-response loop with **< 1ms latency** between responses, far more responsive than the original 250ms polling interval.
+
+**Note**: The original Apple specification called for inquiry commands every 250ms. However, modern implementations achieve much better responsiveness by sending inquiry commands immediately after each response, maintaining continuous communication with minimal latency.
 
 ### Error Recovery
 
-The protocol handles errors through a timeout mechanism:
+The protocol handles errors through timeout detection and automatic retry mechanisms:
 
-  - **Timeout Handling**: If the host does not receive a response from the keyboard within **500ms**, it should consider the command to have timed out and retry the transmission.
-  - **Model Command Retry**: If the initial Model command fails, the host should retry it every **500ms** until a successful response is received.
-  - **Reset Recovery**: Since the Model command triggers a keyboard reset, it can also be used as a recovery mechanism to clear any internal error states.
+  - **Response Timeout**: If the host does not receive a response from the keyboard within **500ms**, it clears any buffered data and reinitializes the connection by returning to the UNINITIALISED state.
+  - **Model Command Retry**: If the Model command fails, the host automatically retries it every **500ms** for up to **5 attempts** before giving up and restarting the detection sequence.
+  - **Timeout Recovery**: The 500ms timeout indicates the keyboard is not behaving correctly (since it should always respond). The implementation clears the ring buffer and reinitializes to establish clean communication.
+  - **Reset Recovery**: Since the Model command triggers a keyboard reset, it serves as both identification and a recovery mechanism to clear any internal error states.
 
 -----
 
@@ -192,13 +195,13 @@ float clock_div = calculate_clock_divider(M0110_TIMING_KEYBOARD_LOW_US);
 
 ### State Machine States
 
-The implementation manages these states:
+The implementation manages these three states:
 
-  - **IDLE**: Waiting for keyboard activity or time to send command
-  - **INQUIRY\_PENDING**: Inquiry command sent, awaiting response
-  - **MODEL\_PENDING**: Model command sent, awaiting response
-  - **RECEIVING**: Reading data from keyboard
-  - **TRANSMITTING**: Sending command to keyboard
+  - **UNINITIALISED**: System startup state, waiting for 1000ms initialization delay before sending first Model command
+  - **INIT_MODEL_REQUEST**: Initialization phase—sending Model Number commands every 500ms with automatic retry (up to 5 attempts)
+  - **INITIALISED**: Normal operation state with continuous inquiry polling and 500ms response timeout monitoring
+
+The state machine is deliberately simple, with all protocol communication handled by the PIO hardware and interrupt-driven event processing. Commands are sent immediately in response to keyboard events, ensuring minimal latency and optimal responsiveness.
 
 -----
 
