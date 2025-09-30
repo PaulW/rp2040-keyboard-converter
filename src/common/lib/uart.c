@@ -120,24 +120,22 @@
 /**
  * @brief Performance and Buffer Configuration
  * 
- * These parameters are read from config.h and tuned for optimal performance
+ * These parameters are defined in config.h and tuned for optimal performance
  * while maintaining compatibility with real-time keyboard protocol operations.
  * 
  * Configuration options:
  * - UART_DMA_BUFFER_SIZE: Maximum message length (typically 256 bytes)
  * - UART_DMA_QUEUE_SIZE: Number of queued messages (must be power of 2)
  */
-#define PRINTF_BUF_SIZE  UART_DMA_BUFFER_SIZE   /**< Size of each individual log message buffer (bytes) */
-#define PRINTF_QUEUE_LEN UART_DMA_QUEUE_SIZE    /**< Number of queued log messages (power of 2 for efficient indexing) */
 
 // --- Sanity check: queue length must be power of 2 ---
-#if (PRINTF_QUEUE_LEN & (PRINTF_QUEUE_LEN - 1)) != 0
-#  error "PRINTF_QUEUE_LEN must be a power of 2"
+#if (UART_DMA_QUEUE_SIZE & (UART_DMA_QUEUE_SIZE - 1)) != 0
+#  error "UART_DMA_QUEUE_SIZE must be a power of 2"
 #endif
 
 // Compile-time bounds (uint8_t indices, uint16_t lengths)
-_Static_assert(PRINTF_QUEUE_LEN <= 256, "PRINTF_QUEUE_LEN must fit uint8_t index");
-_Static_assert(PRINTF_BUF_SIZE  <= 65535, "PRINTF_BUF_SIZE must fit uint16_t len");
+_Static_assert(UART_DMA_QUEUE_SIZE <= 256, "UART_DMA_QUEUE_SIZE must fit uint8_t index");
+_Static_assert(UART_DMA_BUFFER_SIZE  <= 65535, "UART_DMA_BUFFER_SIZE must fit uint16_t len");
 
 // --- Queue full policy configuration ---
 // Policy constants and configuration are now defined in config.h
@@ -151,8 +149,8 @@ _Static_assert(PRINTF_BUF_SIZE  <= 65535, "PRINTF_BUF_SIZE must fit uint16_t len
  * messages without transmitting unused buffer space.
  */
 typedef struct {
-    char buf[PRINTF_BUF_SIZE];   /**< Formatted message buffer */
-    uint16_t len;                /**< Actual length of formatted message */
+    char buf[UART_DMA_BUFFER_SIZE];   /**< Formatted message buffer */
+    uint16_t len;                      /**< Actual length of formatted message */
 } log_entry_t;
 
 /**
@@ -161,7 +159,7 @@ typedef struct {
  * The queue is implemented as a circular buffer with separate head and tail
  * indices. The alignment attribute ensures optimal DMA transfer performance.
  */
-static log_entry_t log_queue[PRINTF_QUEUE_LEN] __attribute__((aligned(4))); /**< Message queue (4-byte aligned for DMA) */
+static log_entry_t log_queue[UART_DMA_QUEUE_SIZE] __attribute__((aligned(4))); /**< Message queue (4-byte aligned for DMA) */
 static volatile uint8_t q_head = 0;        /**< Queue head index (next write position) */
 static volatile uint8_t q_tail = 0;        /**< Queue tail index (next read position) */
 static volatile bool dma_active = false;   /**< DMA transfer active flag */
@@ -202,13 +200,13 @@ static inline bool queue_empty() {
  * @brief Check if the message queue is full
  * 
  * Uses bitwise AND operation instead of modulo for performance.
- * This works because PRINTF_QUEUE_LEN is a power of 2.
+ * This works because UART_DMA_QUEUE_SIZE is a power of 2.
  * 
  * @return true if queue is full (would overflow on next write)
  * @return false if queue has space for more messages
  */
 static inline bool queue_full() {
-    return ((q_head + 1) & (PRINTF_QUEUE_LEN - 1)) == q_tail;
+    return ((q_head + 1) & (UART_DMA_QUEUE_SIZE - 1)) == q_tail;
 }
 
 /**
@@ -335,7 +333,7 @@ void __isr dma_handler() {
 
         // Finished current entry → consume it
         uint8_t finished = q_tail;
-        q_tail = (q_tail + 1) & (PRINTF_QUEUE_LEN - 1);
+        q_tail = (q_tail + 1) & (UART_DMA_QUEUE_SIZE - 1);
 
         // Mark the slot as empty (len = 0) so a future start won’t arm early
         log_entry_t *done = &log_queue[finished];
@@ -436,7 +434,7 @@ static inline bool wait_for_queue_space(void) {
 static inline bool try_reserve_slot(uint8_t *out_idx) {
     for (;;) {
         uint8_t head = q_head;
-        uint8_t next = (head + 1) & (PRINTF_QUEUE_LEN - 1);
+        uint8_t next = (head + 1) & (UART_DMA_QUEUE_SIZE - 1);
         if (next == q_tail) {
             return false; // full
         }
@@ -490,7 +488,7 @@ static inline bool try_reserve_slot(uint8_t *out_idx) {
  */
 static void uart_dma_write_raw(const char *s, int len) {
     if (len <= 0) return;
-    if (len >= PRINTF_BUF_SIZE) len = PRINTF_BUF_SIZE - 1;
+    if (len >= UART_DMA_BUFFER_SIZE) len = UART_DMA_BUFFER_SIZE - 1;
 
     // Apply configurable queue policy for stdio output
     if (!wait_for_queue_space()) {
