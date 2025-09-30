@@ -29,7 +29,9 @@
 
 #include "ringbuf.h"
 
-#define BUF_SIZE 16
+#include <stdio.h>
+
+#define BUF_SIZE 32  // Increased from 16 for better safety margin
 
 typedef struct {
   uint8_t *buffer;
@@ -40,7 +42,7 @@ typedef struct {
 
 static uint8_t buf[BUF_SIZE];
 
-static ringbuf_t rbuf = {.buffer = buf,  // Cast to array of chars for initialization
+static ringbuf_t rbuf = {.buffer = buf,
                          .head = 0,
                          .tail = 0,
                          .size_mask = BUF_SIZE - 1};
@@ -98,12 +100,22 @@ uint8_t ringbuf_get(void) {
  * CRITICAL: Caller MUST check ringbuf_is_full() before calling this function.
  * This function assumes the buffer has space and does NOT perform redundant checks.
  * 
+ * Overflow Protection:
+ * Defensive check logs error if called when buffer is full (API contract violation).
+ * This should never happen if caller follows protocol, but provides safety net.
+ * 
  * Thread-safety: Safe when called from IRQ while main loop modifies tail pointer.
  * The volatile qualifier ensures head writes are visible to main loop.
  * 
  * @param data The byte of data to be put into the ring buffer.
  */
 void ringbuf_put(uint8_t data) {
+  // Defensive check: should never trigger if caller checks is_full() first
+  if (ringbuf_is_full()) {
+    printf("[ERR] Ring buffer overflow! Lost scancode: 0x%02X\n", data);
+    return;  // Discard data - buffer is full
+  }
+  
   rbuf.buffer[rbuf.head] = data;
   rbuf.head++;
   rbuf.head &= rbuf.size_mask;

@@ -39,6 +39,10 @@
  * This ring buffer implementation provides lock-free communication between
  * IRQ context (producer) and main loop (consumer) for keyboard scancode buffering.
  * 
+ * Buffer Sizing:
+ * - Capacity: 32 bytes (31 usable due to full/empty distinction)
+ * - Sized for worst-case burst scenarios and fast typing
+ * 
  * Thread Safety Model:
  * - Producer (IRQ): Writes to head pointer, reads tail pointer
  * - Consumer (main): Writes to tail pointer, reads head pointer
@@ -50,6 +54,11 @@
  * - Power-of-2 size enables fast masking (AND) instead of modulo
  * - Caller-checked guards eliminate redundant conditional branches
  * - Direct uint8_t return (no int16_t conversion overhead)
+ * 
+ * Overflow Handling:
+ * - Defensive check in ringbuf_put() logs error if called when full
+ * - Simple logging - no counters or statistics tracking
+ * - Data discarded when buffer full (IRQ cannot block)
  * 
  * Usage Pattern:
  * ```c
