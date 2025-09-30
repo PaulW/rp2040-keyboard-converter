@@ -106,12 +106,17 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
  * - FIFO has 4-entry depth, but we check before each write for safety
  * 
  * @param led_color The color value to set for the LED (RGB format, 0x00RRGGBB)
- * @return true if color was queued to PIO, false if FIFO was full
+ * @return true if color was queued to PIO, false if FIFO was full or not initialized
  * 
  * @note Caller should check return value and defer/retry if false
  * @note Color is automatically converted to GRB and adjusted for brightness
  */
 bool ws2812_show(uint32_t led_color) {
+  // Guard against uninitialized PIO/SM
+  if (ws2812_pio == NULL) {
+    return false;
+  }
+  
   // Check if TX FIFO has space (non-blocking approach)
   if (pio_sm_is_tx_fifo_full(ws2812_pio, ws2812_sm)) {
     // FIFO full - return false so caller can defer update

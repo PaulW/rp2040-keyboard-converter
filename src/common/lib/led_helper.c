@@ -33,10 +33,11 @@ converter_state_union converter = {.value = 0xC3};
 lock_keys_union lock_leds;
 
 #ifdef CONVERTER_LEDS
-// Track last LED update time for non-blocking WS2812 reset timing
-static absolute_time_t last_led_update_time = {0};
+// Track last LED update time (us since boot) for non-blocking WS2812 reset timing
+// Using uint32_t for atomic access (64-bit absolute_time_t is not atomic on RP2040)
+static volatile uint32_t last_led_update_time_us = 0;
 // Track if an update is pending due to timing constraints
-static bool led_update_pending = false;
+static volatile bool led_update_pending = false;
 #endif
 
 /**
@@ -79,8 +80,8 @@ bool update_converter_leds(void) {
 #ifdef CONVERTER_LEDS
   // WS2812 requires ≥50µs reset time between updates
   // Check if enough time has elapsed since last update (non-blocking)
-  absolute_time_t now = get_absolute_time();
-  int64_t elapsed_us = absolute_time_diff_us(last_led_update_time, now);
+  uint32_t now_us = to_us_since_boot(get_absolute_time());
+  uint32_t elapsed_us = now_us - last_led_update_time_us;
   
   if (elapsed_us < 60) {
     // Not enough time has passed, mark update as pending
@@ -110,7 +111,7 @@ bool update_converter_leds(void) {
 
   if (success) {
     // All LEDs successfully queued - record time and clear pending flag
-    last_led_update_time = get_absolute_time();
+    last_led_update_time_us = now_us;
     led_update_pending = false;
   } else {
     // One or more LEDs failed to queue - mark as pending for retry
