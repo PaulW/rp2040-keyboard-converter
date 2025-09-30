@@ -68,6 +68,16 @@
 #include "ringbuf.h"
 #include "scancode.h"
 
+/* Compile-time validation of timing constants */
+_Static_assert(M0110_INITIALIZATION_DELAY_MS >= 500, 
+               "M0110 initialization delay must be at least 500ms for reliable keyboard startup");
+_Static_assert(M0110_MODEL_RETRY_INTERVAL_MS >= 100, 
+               "M0110 model retry interval must be at least 100ms");
+_Static_assert(M0110_RESPONSE_TIMEOUT_MS >= 100, 
+               "M0110 response timeout must be at least 100ms for reliable communication");
+_Static_assert(M0110_MODEL_RETRY_INTERVAL_MS <= 2000,
+               "M0110 model retry interval should not exceed 2 seconds");
+
 /* PIO State Machine Configuration */
 unsigned int keyboard_sm = 0;          /**< PIO state machine number */
 unsigned int keyboard_offset = 0;      /**< PIO program memory offset */
@@ -89,12 +99,12 @@ static enum {
 } keyboard_state = UNINITIALISED;
 
 /* Timing and State Tracking Variables */
-static uint32_t last_command_time = 0;     /**< Timestamp of last command sent (for timeouts) */
-static uint8_t model_retry_count = 0;      /**< Number of model command retries attempted */
-static uint32_t last_response_time = 0;    /**< Timestamp of last keyboard response received */
+static volatile uint32_t last_command_time = 0;     /**< Timestamp of last command sent (for timeouts) */
+static volatile uint8_t model_retry_count = 0;      /**< Number of model command retries attempted */
+static volatile uint32_t last_response_time = 0;    /**< Timestamp of last keyboard response received */
 
 /**
- * @brief Sends a command byte to the Apple M0110 keyboard
+ * @brief Sends a command byte to the Apple M0110 keyboard (internal function)
  * 
  * This function transmits an 8-bit command to the keyboard using the PIO state machine.
  * The command is sent according to the M0110 protocol timing requirements:
@@ -108,13 +118,13 @@ static uint32_t last_response_time = 0;    /**< Timestamp of last keyboard respo
  * @param command 8-bit command code to transmit to keyboard
  * @see M0110_CMD_INQUIRY, M0110_CMD_MODEL for common commands
  * 
- * @note If the TX FIFO is full, the command is dropped to prevent blocking.
- *       This protects against PIO state machine lockup conditions.
+ * @note If the TX FIFO is full, the command is dropped and logged.
+ * @note This is an internal function - not exposed in keyboard_interface.h
  */
-void keyboard_command_handler(uint8_t command) {
+static void keyboard_command_handler(uint8_t command) {
   if (pio_sm_is_tx_fifo_full(keyboard_pio, keyboard_sm)) {
     printf("[WARN] M0110 TX FIFO full, command 0x%02X dropped\n", command);
-    return; // PIO TX FIFO full - drop command to prevent blocking
+    return;
   }
 
   // printf("[DBG] M0110 sending command: 0x%02X\n", command);
@@ -167,30 +177,35 @@ static void keyboard_event_processor(uint8_t data_byte) {
       }
       keyboard_state = INITIALISED;
       keyboard_command_handler(M0110_CMD_INQUIRY);
+      last_command_time = board_millis();
       break;
       
     case INITIALISED:
       // Handle inquiry responses during normal polling operation
       switch (data_byte) {
         case M0110_RESP_NULL:
-          // NULL response (0x7B) - We get this when no keys are pressed, keyboard is ready
-          // Immediately send next inquiry command to maintain 250ms polling cycle
-          // printf("[DBG] M0110 NULL response received, sending next inquiry\n");
+          // NULL response (0x7B) - no keys pressed, keyboard is ready
+          // Send next inquiry command to maintain continuous polling
           keyboard_command_handler(M0110_CMD_INQUIRY);
-          last_command_time = board_millis(); // Update command time for timeout tracking
+          last_command_time = board_millis();
           break;
         default:
           // Scan code or special response - queue for main task processing
-          // Ring buffer ensures thread-safe transfer from IRQ to main loop
           if (!ringbuf_is_full()) {
             ringbuf_put(data_byte);
+          } else {
+            printf("[ERR] Ring buffer full! Scancode 0x%02X lost\n", data_byte);
           }
-          // State remains INQUIRY_RESPONSE - main task handles transition timing
+          
+          // Send next inquiry to continue polling - critical for responsiveness
+          keyboard_command_handler(M0110_CMD_INQUIRY);
+          last_command_time = board_millis();
           break;
       }
-
-      default:
-        break;
+      break;
+      
+    default:
+      break;
   }
   
 #ifdef CONVERTER_LEDS
@@ -282,6 +297,9 @@ void keyboard_interface_task(void) {
         keyboard_command_handler(M0110_CMD_MODEL);
         last_command_time = current_time;
         model_retry_count = 0;
+      } else if (board_millis() % 1000 < 10) {
+        // Periodic message during startup delay (avoid log spam)
+        printf("[DBG] Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
       }
       break;
       
@@ -290,13 +308,14 @@ void keyboard_interface_task(void) {
       // Apple spec requires 500ms intervals between retry attempts
       if (command_elapsed_valid && elapsed_since_command > M0110_MODEL_RETRY_INTERVAL_MS) {
         if (model_retry_count < 5) {
-          printf("[DBG] Retrying Model Number command (%d/5)\n", model_retry_count + 1);
+          printf("[DBG] Keyboard detected, retrying Model Number command (%d/5)\n", model_retry_count + 1);
           keyboard_command_handler(M0110_CMD_MODEL);
           last_command_time = current_time;
           model_retry_count++;
         } else {
           // Maximum retries exceeded - keyboard may be disconnected or incompatible
           printf("[ERR] Apple M0110 keyboard not responding to Model Number command after 5 attempts\n");
+          printf("[DBG] Restarting detection sequence\n");
           keyboard_state = UNINITIALISED;
           last_command_time = current_time;
         }
@@ -304,17 +323,17 @@ void keyboard_interface_task(void) {
       break;
       
     case INITIALISED:
-      // Transition state - keyboard identified successfully, entering normal operation
-      // Timeout detection - if keyboard stops responding, assume disconnection or error
+      // Check for keyboard timeout first - if no response in 500ms, assume keyboard failure
+      // The keyboard should ALWAYS respond, so timeout indicates a problem
       if (response_elapsed_valid && elapsed_since_response > M0110_RESPONSE_TIMEOUT_MS) {
-        printf("[WARN] No response from keyboard within 1/2 second - restarting with Model Number\n");
+        printf("[WARN] No response from keyboard within 1/2 second - keyboard not behaving, reinitializing\n");
+        ringbuf_reset();  // Clear any stale buffered data
         keyboard_state = UNINITIALISED;
         last_command_time = current_time;
-        break;
+        break;  // Skip processing, restart initialization
       }
       
-      // Process any received key data when USB HID interface is ready
-      // Ring buffer provides thread-safe communication from IRQ handler
+      // Process buffered key data (only reached if keyboard is responding normally)
       if (!ringbuf_is_empty() && tud_hid_ready()) {
         int c = ringbuf_get();
         if (c != -1) {
@@ -384,7 +403,12 @@ void keyboard_interface_setup(uint data_pin) {
   }
   
   // Claim PIO resources for exclusive use by M0110 protocol
-  keyboard_sm = (unsigned int)pio_claim_unused_sm(keyboard_pio, true);
+  int sm = pio_claim_unused_sm(keyboard_pio, false);  // Don't panic on failure
+  if (sm < 0) {
+    printf("[ERR] No PIO state machine available for Apple M0110 Interface\n");
+    return;
+  }
+  keyboard_sm = (unsigned int)sm;
   keyboard_offset = (unsigned int)pio_add_program(keyboard_pio, &keyboard_interface_program);
   keyboard_data_pin = data_pin;
   
