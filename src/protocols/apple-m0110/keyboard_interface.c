@@ -292,14 +292,11 @@ void keyboard_interface_task(void) {
     case UNINITIALISED:
       // Wait for keyboard power-up and internal initialization
       if (command_elapsed_valid && elapsed_since_command > M0110_INITIALIZATION_DELAY_MS) {
-        printf("[INFO] Starting Apple M0110 keyboard detection with Model Number command\n");
+        printf("[INFO] Attempting to determine which M0110 keyboard model is connected...\n");
         keyboard_state = INIT_MODEL_REQUEST;
         keyboard_command_handler(M0110_CMD_MODEL);
         last_command_time = current_time;
         model_retry_count = 0;
-      } else if (board_millis() % 1000 < 10) {
-        // Periodic message during startup delay (avoid log spam)
-        printf("[DBG] Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
       }
       break;
       
