@@ -151,4 +151,75 @@
  */
 void init_uart_dma();
 
+/**
+ * @brief Flush all pending UART messages
+ * 
+ * Blocks until all queued log messages have been transmitted via DMA and the
+ * UART hardware FIFO is empty. This ensures all debug output is complete before
+ * transitioning to a different system state.
+ * 
+ * Primary Use Case:
+ * - Before entering bootloader mode (ensures final log messages are visible)
+ * - Before system reset or power-down
+ * - When critical messages must be guaranteed to output
+ * 
+ * Behavior:
+ * - Polls queue state until empty (non-sleeping busy-wait)
+ * - Waits for active DMA transfer to complete
+ * - Waits for UART hardware FIFO to drain
+ * - Allows interrupts to run during polling (uses tight_loop_contents)
+ * 
+ * Performance Considerations:
+ * - Blocking time depends on queue depth and UART_BAUD setting
+ * - At 115200 baud: ~87µs per character
+ * - Full queue (64 × 256 bytes): worst case ~1.4 seconds
+ * - Empty queue: returns immediately
+ * 
+ * @note **BLOCKING**: Function blocks until all messages transmitted
+ * @note **CONTEXT**: Safe to call from main thread only (not ISR)
+ * @note **IDEMPOTENT**: Safe to call multiple times
+ * @note **INTERFERENCE**: Will block indefinitely if messages keep being added
+ * 
+ * @warning Do not call from interrupt context
+ * @warning May block for extended periods if queue is full
+ * @warning Ensure no other code continues to call printf() during flush
+ */
+void uart_dma_flush(void);
+
+#ifdef UART_DMA_DEBUG_STATS
+/**
+ * @brief Get UART DMA statistics
+ * 
+ * Retrieves current statistics for UART DMA operation including total messages
+ * enqueued and dropped. Only available when UART_DMA_DEBUG_STATS is enabled
+ * in config.h.
+ * 
+ * Statistics Usage:
+ * - Monitor queue behavior under different load conditions
+ * - Identify if queue sizing needs adjustment
+ * - Detect excessive logging that may impact real-time operations
+ * - Calculate drop rates to assess reliability
+ * 
+ * @param enqueued Pointer to receive total enqueued count (NULL to skip)
+ * @param dropped Pointer to receive total dropped count (NULL to skip)
+ * 
+ * @note Only available when UART_DMA_DEBUG_STATS is defined
+ * @note Thread-safe: Uses atomic loads
+ * @note Counters are cumulative since boot
+ * 
+ * Example:
+ * ```c
+ * #ifdef UART_DMA_DEBUG_STATS
+ * uint32_t enq, drop;
+ * uart_dma_get_stats(&enq, &drop);
+ * if (enq + drop > 0) {
+ *     uint32_t rate = (drop * 100) / (enq + drop);
+ *     printf("UART drop rate: %lu%%\n", rate);
+ * }
+ * #endif
+ * ```
+ */
+void uart_dma_get_stats(uint32_t *enqueued, uint32_t *dropped);
+#endif
+
 #endif /* UART_H */

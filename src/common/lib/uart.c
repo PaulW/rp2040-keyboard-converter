@@ -120,11 +120,15 @@
 /**
  * @brief Performance and Buffer Configuration
  * 
- * These parameters are tuned for optimal performance while maintaining
- * compatibility with real-time keyboard protocol operations.
+ * These parameters are read from config.h and tuned for optimal performance
+ * while maintaining compatibility with real-time keyboard protocol operations.
+ * 
+ * Configuration options:
+ * - UART_DMA_BUFFER_SIZE: Maximum message length (typically 256 bytes)
+ * - UART_DMA_QUEUE_SIZE: Number of queued messages (must be power of 2)
  */
-#define PRINTF_BUF_SIZE  256   /**< Size of each individual log message buffer (bytes) */
-#define PRINTF_QUEUE_LEN 64    /**< Number of queued log messages (power of 2 for efficient indexing) */
+#define PRINTF_BUF_SIZE  UART_DMA_BUFFER_SIZE   /**< Size of each individual log message buffer (bytes) */
+#define PRINTF_QUEUE_LEN UART_DMA_QUEUE_SIZE    /**< Number of queued log messages (power of 2 for efficient indexing) */
 
 // --- Sanity check: queue length must be power of 2 ---
 #if (PRINTF_QUEUE_LEN & (PRINTF_QUEUE_LEN - 1)) != 0
@@ -163,6 +167,19 @@ static volatile uint8_t q_tail = 0;        /**< Queue tail index (next read posi
 static volatile bool dma_active = false;   /**< DMA transfer active flag */
 static int uart_dma_chan;                  /**< DMA channel number allocated for UART TX */
 static bool uart_dma_inited = false;       /**< One-time init guard */
+
+#ifdef UART_DMA_DEBUG_STATS
+/**
+ * @brief Debug Statistics Counters
+ * 
+ * These counters track UART DMA operation statistics when UART_DMA_DEBUG_STATS
+ * is defined in config.h. Statistics are used to identify queue sizing issues
+ * and monitor system behavior under load.
+ */
+static volatile uint32_t stats_enqueued = 0;    /**< Total messages successfully enqueued */
+static volatile uint32_t stats_dropped = 0;     /**< Total messages dropped (queue full) */
+static volatile uint32_t stats_last_reported = 0; /**< Last reported drop count */
+#endif
 
 /**
  * @brief Queue Management Helper Functions
@@ -213,6 +230,44 @@ static inline bool queue_full() {
 static inline bool in_irq(void) {
     return (scb_hw->icsr & M0PLUS_ICSR_VECTACTIVE_BITS) != 0;
 }
+
+#ifdef UART_DMA_DEBUG_STATS
+/**
+ * @brief Report drop statistics when threshold reached
+ * 
+ * This function reports UART message drop statistics in an event-triggered manner.
+ * It only outputs when new drops have occurred, preventing log spam while still
+ * providing visibility into queue overflow issues.
+ * 
+ * The function reports every 10 drops to balance between responsiveness and
+ * avoiding excessive logging (which could itself cause more drops).
+ * 
+ * Statistics Format:
+ * - Total drops: Cumulative count since boot
+ * - Enqueued: Total successful enqueue operations
+ * - Drop rate: Percentage of messages dropped
+ * 
+ * @note Called automatically from uart_dma_write_raw() when drops occur
+ * @note Uses static tracking to avoid reporting unchanged statistics
+ * @note Safe to call from any context (uses existing printf infrastructure)
+ */
+static inline void report_drop_stats(void) {
+    uint32_t current_drops = stats_dropped;
+    
+    // Report every 10 drops to balance visibility vs log spam
+    if (current_drops > stats_last_reported && (current_drops % 10 == 0)) {
+        uint32_t total = stats_enqueued + stats_dropped;
+        uint32_t drop_pct = (total > 0) ? (stats_dropped * 100 / total) : 0;
+        
+        printf("[UART Stats] Dropped: %lu, Enqueued: %lu, Drop rate: %lu%%\n",
+               (unsigned long)stats_dropped,
+               (unsigned long)stats_enqueued, 
+               (unsigned long)drop_pct);
+        
+        stats_last_reported = current_drops;
+    }
+}
+#endif
 
 /**
  * @brief Start next DMA transfer if conditions are met
@@ -411,6 +466,7 @@ static inline bool try_reserve_slot(uint8_t *out_idx) {
  * - **Input validation**: Length limiting and bounds checking
  * - **Publish-subscribe pattern**: Atomic length update signals message ready
  * - **Automatic DMA initiation**: Starts transmission when controller is idle
+ * - **Statistics tracking**: Optional drop/enqueue counting (UART_DMA_DEBUG_STATS)
  * 
  * Message Flow:
  * 1. **Policy check**: wait_for_queue_space() applies configured behavior
@@ -418,6 +474,7 @@ static inline bool try_reserve_slot(uint8_t *out_idx) {
  * 3. **Data copy**: memcpy() transfers pre-formatted message to queue buffer
  * 4. **Publish**: Atomic length store marks entry ready for DMA consumption
  * 5. **DMA start**: start_next_dma_if_needed() initiates transfer if idle
+ * 6. **Stats update**: Track success/drops if debug stats enabled
  * 
  * The function uses acquire/release semantics for the length field to ensure
  * proper memory ordering between producers and the DMA consumer, guaranteeing
@@ -436,10 +493,20 @@ static void uart_dma_write_raw(const char *s, int len) {
     if (len >= PRINTF_BUF_SIZE) len = PRINTF_BUF_SIZE - 1;
 
     // Apply configurable queue policy for stdio output
-    if (!wait_for_queue_space()) return;  // Policy-dependent behavior
+    if (!wait_for_queue_space()) {
+#ifdef UART_DMA_DEBUG_STATS
+        __atomic_fetch_add(&stats_dropped, 1, __ATOMIC_RELAXED);
+        report_drop_stats();
+#endif
+        return;  // Queue full - drop message
+    }
 
     uint8_t idx;
     if (!try_reserve_slot(&idx)) {
+#ifdef UART_DMA_DEBUG_STATS
+        __atomic_fetch_add(&stats_dropped, 1, __ATOMIC_RELAXED);
+        report_drop_stats();
+#endif
         return; // full or contended (ISR), or rare CAS contention (thread)
     }
 
@@ -451,6 +518,10 @@ static void uart_dma_write_raw(const char *s, int len) {
     // Publish last: mark entry ready by setting len > 0
     // Use an atomic store (release) for extra safety, but simple store also works on RP2040.
     __atomic_store_n(&entry->len, (uint16_t)len, __ATOMIC_RELEASE);
+
+#ifdef UART_DMA_DEBUG_STATS
+    __atomic_fetch_add(&stats_enqueued, 1, __ATOMIC_RELAXED);
+#endif
 
     start_next_dma_if_needed();
 }
@@ -597,4 +668,84 @@ void init_uart_dma() {
     // This replaces the standard Pico SDK UART stdio functionality
     stdio_set_driver_enabled(&dma_stdio_driver, true);
 }
+
+/**
+ * @brief Flush all pending UART messages
+ * 
+ * This function blocks until all queued messages have been transmitted via DMA.
+ * It's designed for clean shutdown scenarios where you need to ensure all log
+ * messages are output before transitioning to a different state (e.g., bootloader).
+ * 
+ * The function polls the queue state and waits for the DMA controller to finish
+ * all pending transfers. It uses a tight polling loop for maximum responsiveness
+ * while still allowing other interrupts to run.
+ * 
+ * Use Cases:
+ * - Before entering bootloader mode
+ * - Before system reset or power-down
+ * - When ensuring critical log messages are output
+ * 
+ * Performance:
+ * - Blocking time depends on queue depth and UART baud rate
+ * - At 115200 baud: ~87µs per character, ~22ms per 256-byte message
+ * - 64-entry full queue: up to ~1.4 seconds worst case
+ * 
+ * @note This function blocks until queue is empty - use sparingly
+ * @note Safe to call from main context only (not from ISR)
+ * @note Will wait indefinitely if new messages keep being enqueued
+ * 
+ * @warning Do not call from interrupt context
+ * @warning May block for extended periods if queue is full
+ */
+void uart_dma_flush(void) {
+    // Wait for all queued messages to be transmitted
+    while (!queue_empty() || dma_active) {
+        tight_loop_contents();  // Allow interrupts to run
+    }
+    
+    // Extra safety: ensure UART FIFO is also empty
+    uart_tx_wait_blocking(UART_ID);
+}
+
+#ifdef UART_DMA_DEBUG_STATS
+/**
+ * @brief Get current UART DMA statistics
+ * 
+ * Retrieves the current statistics counters for UART DMA operation. This function
+ * is only available when UART_DMA_DEBUG_STATS is defined in config.h.
+ * 
+ * Statistics include:
+ * - Total messages successfully enqueued
+ * - Total messages dropped due to queue full
+ * - Derived drop rate percentage
+ * 
+ * Use this function to monitor queue behavior and identify if queue sizing
+ * adjustments are needed. High drop rates may indicate:
+ * - Queue too small for burst logging patterns
+ * - UART baud rate too slow for message volume
+ * - Excessive logging during critical operations
+ * 
+ * @param enqueued Pointer to store enqueued message count (can be NULL)
+ * @param dropped Pointer to store dropped message count (can be NULL)
+ * 
+ * @note Only available when UART_DMA_DEBUG_STATS is defined
+ * @note Uses atomic loads for thread-safe access
+ * @note Counters are cumulative since system boot
+ * 
+ * Example:
+ * ```c
+ * uint32_t enq, drop;
+ * uart_dma_get_stats(&enq, &drop);
+ * printf("Drop rate: %lu%%\n", (drop * 100) / (enq + drop));
+ * ```
+ */
+void uart_dma_get_stats(uint32_t *enqueued, uint32_t *dropped) {
+    if (enqueued) {
+        *enqueued = __atomic_load_n(&stats_enqueued, __ATOMIC_RELAXED);
+    }
+    if (dropped) {
+        *dropped = __atomic_load_n(&stats_dropped, __ATOMIC_RELAXED);
+    }
+}
+#endif
 

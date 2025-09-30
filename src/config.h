@@ -28,6 +28,33 @@
 #define UART_TX_PIN 0       // GPIO pin for UART transmission (typically GP0)
 #define UART_BAUD   115200  // UART transmission baud rate
 
+// --- UART DMA Buffer Configuration ---
+// Controls memory allocation for the DMA-based UART logging system.
+//
+// UART_DMA_BUFFER_SIZE: Maximum length of a single log message (bytes)
+//   - Typical: 256 bytes (sufficient for most log messages)
+//   - Memory impact: BUFFER_SIZE × QUEUE_SIZE total RAM usage
+//   - Messages longer than this will be truncated
+//
+// UART_DMA_QUEUE_SIZE: Number of messages that can be queued
+//   - Must be a power of 2 (enforced by compile-time check)
+//   - Typical: 64 entries (handles initialization bursts)
+//   - Memory usage: 256 × 64 = 16KB (current configuration)
+//   - Larger queue = more burst tolerance but more RAM usage
+//
+#define UART_DMA_BUFFER_SIZE 256  // Size of each message buffer in bytes (max message length)
+#define UART_DMA_QUEUE_SIZE  64   // Number of queued messages (must be power of 2)
+
+// --- UART DMA Debug Statistics ---
+// Uncomment to enable drop statistics tracking and reporting.
+// When enabled, the system tracks and reports when messages are dropped due to queue full.
+// Statistics are reported automatically when drops occur (event-triggered, non-interactive).
+//
+// Memory overhead: ~12 bytes (counters)
+// CPU overhead: One atomic increment per drop + occasional printf
+//
+// #define UART_DMA_DEBUG_STATS
+
 // --- UART DMA Queue Policy Configuration ---
 // Controls behavior when the message queue becomes full during logging bursts.
 // The policy is selected at compile time for zero runtime overhead.

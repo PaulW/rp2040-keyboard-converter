@@ -29,6 +29,7 @@
 #include "led_helper.h"
 #include "pico/bootrom.h"
 #include "tusb.h"
+#include "uart.h"
 #include "usb_descriptors.h"
 
 enum {
@@ -155,6 +156,9 @@ void handle_keyboard_report(uint8_t code, bool make) {
           converter.state.fw_flash = 1;
           update_converter_status();
 #endif
+          // Flush all pending UART messages before bootloader transition
+          uart_dma_flush();
+          
           // Reboot into Bootloader
           reset_usb_boot(0, 0);
         }
