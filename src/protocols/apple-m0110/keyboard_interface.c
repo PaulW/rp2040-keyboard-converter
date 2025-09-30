@@ -335,11 +335,9 @@ void keyboard_interface_task(void) {
       
       // Process buffered key data (only reached if keyboard is responding normally)
       if (!ringbuf_is_empty() && tud_hid_ready()) {
-        int c = ringbuf_get();
-        if (c != -1) {
-          printf("[DBG] Processing scancode: 0x%02X\n", (uint8_t)c);
-          process_scancode((uint8_t)c);
-        }
+        uint8_t scancode = ringbuf_get();
+        printf("[DBG] Processing scancode: 0x%02X\n", scancode);
+        process_scancode(scancode);
       }
       break;
 

@@ -311,8 +311,8 @@ void keyboard_interface_task() {
 
       // Historical note: interrupt disabling during ring buffer read was tested
       // but provided no benefit and increased input latency - removed for performance
-      int c = ringbuf_get();  // Retrieve next scan code from interrupt-filled buffer
-      if (c != -1) process_scancode((uint8_t)c);
+      uint8_t scancode = ringbuf_get();  // Retrieve next scan code from interrupt-filled buffer
+      process_scancode(scancode);
     }
   } else {
     // Keyboard detection and initialization management

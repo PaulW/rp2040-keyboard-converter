@@ -33,9 +33,9 @@
 
 typedef struct {
   uint8_t *buffer;
-  uint8_t head;
-  uint8_t tail;
-  uint8_t size_mask;
+  volatile uint8_t head;  // Modified by IRQ, read by main loop - must be volatile
+  volatile uint8_t tail;  // Modified by main loop, read by IRQ - must be volatile
+  uint8_t size_mask;      // Constant after initialization - no volatile needed
 } ringbuf_t;
 
 static uint8_t buf[BUF_SIZE];
@@ -46,14 +46,46 @@ static ringbuf_t rbuf = {.buffer = buf,  // Cast to array of chars for initializ
                          .size_mask = BUF_SIZE - 1};
 
 /**
- * @brief Retrieves the next element from the ring buffer.
- * This function retrieves the next element from the ring buffer. If the buffer is empty, it will
- * returns -1.
- *
- * @return The next element from the ring buffer, or -1 if the buffer is empty.
+ * @brief Checks if the ring buffer is empty.
+ * 
+ * Thread-safe read operation using volatile head/tail pointers.
+ * Can be called from both IRQ and main loop contexts.
+ * 
+ * @return true if the ring buffer is empty, false otherwise.
  */
-int16_t ringbuf_get() {
-  if (ringbuf_is_empty()) return -1;
+bool ringbuf_is_empty(void) { 
+  return (rbuf.head == rbuf.tail); 
+}
+
+/**
+ * @brief Checks if the ring buffer is full.
+ * 
+ * Thread-safe read operation using volatile head/tail pointers.
+ * Can be called from both IRQ and main loop contexts.
+ * 
+ * The buffer is considered full when the next head position would equal tail.
+ * This design sacrifices one buffer slot to distinguish full from empty state
+ * (effective capacity: BUF_SIZE - 1).
+ * 
+ * @return true if the ring buffer is full, false otherwise.
+ */
+bool ringbuf_is_full(void) { 
+  return (((rbuf.head + 1) & rbuf.size_mask) == rbuf.tail); 
+}
+
+/**
+ * @brief Retrieves the next element from the ring buffer.
+ * 
+ * CRITICAL: Caller MUST check ringbuf_is_empty() before calling this function.
+ * This function assumes the buffer is not empty and does NOT perform redundant checks.
+ * 
+ * Thread-safety: Safe when called from main loop while IRQ modifies head pointer.
+ * The volatile qualifier ensures tail writes are visible to IRQ context.
+ * 
+ * @return The next element from the ring buffer (0-255).
+ * @note Returns 0 if buffer is empty (undefined behavior - caller's responsibility)
+ */
+uint8_t ringbuf_get(void) {
   uint8_t data = rbuf.buffer[rbuf.tail];
   rbuf.tail++;
   rbuf.tail &= rbuf.size_mask;
@@ -62,47 +94,37 @@ int16_t ringbuf_get() {
 
 /**
  * @brief Puts a byte of data into the ring buffer.
- * This function puts a byte of data into the ring buffer if it is not full.
- *
+ * 
+ * CRITICAL: Caller MUST check ringbuf_is_full() before calling this function.
+ * This function assumes the buffer has space and does NOT perform redundant checks.
+ * 
+ * Thread-safety: Safe when called from IRQ while main loop modifies tail pointer.
+ * The volatile qualifier ensures head writes are visible to main loop.
+ * 
  * @param data The byte of data to be put into the ring buffer.
- *
- * @return Returns true if the data was successfully put into the ring buffer, false if the ring
- *         buffer is full.
  */
-bool ringbuf_put(uint8_t data) {
-  if (ringbuf_is_full()) {
-    return false;
-  }
+void ringbuf_put(uint8_t data) {
   rbuf.buffer[rbuf.head] = data;
   rbuf.head++;
   rbuf.head &= rbuf.size_mask;
-  return true;
 }
 
 /**
- * @brief Checks if the ring buffer is empty.
- * This function checks if the ring buffer is empty by comparing the head and tail indices.
- *
- * @return true if the ring buffer is empty, false otherwise.
+ * @brief Resets the ring buffer to empty state.
+ * 
+ * Clears all buffered data by resetting head and tail pointers to zero.
+ * This operation is NOT thread-safe and should only be called when:
+ * - During initialization (before IRQ is enabled)
+ * - When keyboard state machine enters reset/error state
+ * - When IRQs are temporarily disabled
+ * 
+ * WARNING: Do not call this function while IRQ handlers may be active,
+ * as it modifies both head and tail pointers without synchronization.
+ * 
+ * @note All buffered scancodes will be discarded
+ * @note Does not modify the buffer contents, only the pointers
  */
-bool ringbuf_is_empty() { return (rbuf.head == rbuf.tail); }
-
-/**
- * @brief Checks if the ring buffer is full.
- * This function checks whether the ring buffer is full by comparing the head and tail indices. If
- * the head index plus one (wrapped around by the size mask) is equal to the tail index, it means
- * the buffer is full.
- *
- * @return true if the ring buffer is full, false otherwise.
- */
-bool ringbuf_is_full() { return (((rbuf.head + 1) & rbuf.size_mask) == rbuf.tail); }
-
-/**
- * @brief Resets the ring buffer.
- * This function resets the head and tail pointers of the ring buffer to 0, effectively clearing the
- * buffer.
- */
-void ringbuf_reset() {
+void ringbuf_reset(void) {
   rbuf.head = 0;
   rbuf.tail = 0;
 }
