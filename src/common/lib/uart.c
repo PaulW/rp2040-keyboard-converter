@@ -329,7 +329,6 @@ void __isr dma_handler() {
     uint32_t mask = 1u << uart_dma_chan;
     if (dma_hw->ints0 & mask) {
         dma_hw->ints0 = mask;  // clear IRQ flag
-        dma_active = false;
 
         // Finished current entry → consume it
         uint8_t finished = q_tail;
@@ -338,6 +337,8 @@ void __isr dma_handler() {
         // Mark the slot as empty (len = 0) so a future start won’t arm early
         log_entry_t *done = &log_queue[finished];
         done->len = 0;
+
+        dma_active = false;
 
         // Start next if available
         start_next_dma_if_needed();
