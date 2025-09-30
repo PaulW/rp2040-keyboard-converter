@@ -21,9 +21,10 @@
 #ifndef WS2812_H
 #define WS2812_H
 
+#include <stdbool.h>
 #include "pico/stdlib.h"
 
-void ws2812_show(uint32_t led_color);
+bool ws2812_show(uint32_t led_color);
 void ws2812_setup(uint data_pin);
 
 #endif /* WS2812_H */

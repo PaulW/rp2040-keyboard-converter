@@ -87,17 +87,40 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
  */
 
 /**
- * @brief Illuminates the WS2812 LED strip with the specified color.
- * This function sets the color of a single LED in the WS2812 LED strip (where applicable). It is
- * called in a loop to update the entire LED strip for the total number of LEDs present. The assumed
- * color value sent to the LED should already be adjusted for brightness and color order (see
- * ws2812_set_color). Please refer to the datasheet for the WS2812 LED strip for more information on
- * timing requirements.
- *
- * @param led_color The color value to set for the LED.
+ * @brief Illuminates the WS2812 LED strip with the specified color
+ * 
+ * This function sets the color of a single LED in the WS2812 LED strip. It is
+ * called sequentially to update multiple LEDs in a chain, with data cascading
+ * through each LED to the next.
+ * 
+ * Non-Blocking Implementation:
+ * - Checks if PIO TX FIFO has space before writing
+ * - Returns false immediately if FIFO is full (no blocking)
+ * - Allows caller to defer update and retry later
+ * - Critical for preventing interference with time-sensitive protocol PIOs
+ * 
+ * WS2812 Timing:
+ * - Each LED requires 24 bits (GRB format) transmitted at 800kHz
+ * - Transmission takes ~30µs per LED
+ * - PIO autopull (shift=24) moves data from FIFO to OSR automatically
+ * - FIFO has 4-entry depth, but we check before each write for safety
+ * 
+ * @param led_color The color value to set for the LED (RGB format, 0x00RRGGBB)
+ * @return true if color was queued to PIO, false if FIFO was full
+ * 
+ * @note Caller should check return value and defer/retry if false
+ * @note Color is automatically converted to GRB and adjusted for brightness
  */
-void ws2812_show(uint32_t led_color) {
-  pio_sm_put_blocking(ws2812_pio, ws2812_sm, ws2812_set_color(led_color) << 8u);
+bool ws2812_show(uint32_t led_color) {
+  // Check if TX FIFO has space (non-blocking approach)
+  if (pio_sm_is_tx_fifo_full(ws2812_pio, ws2812_sm)) {
+    // FIFO full - return false so caller can defer update
+    return false;
+  }
+  
+  // FIFO has space - queue the LED data (non-blocking)
+  pio_sm_put(ws2812_pio, ws2812_sm, ws2812_set_color(led_color) << 8u);
+  return true;
 }
 
 /**
