@@ -78,34 +78,14 @@ static void hid_print_report(void* report, size_t size, const char* message) {
 }
 
 /**
- * @brief Adds a key to the HID keyboard report
- * 
- * This function adds a key to the current HID keyboard report structure.
- * The HID keyboard report maintains state for:
- * - 8 modifier keys (Shift, Ctrl, Alt, GUI) in a bit field
- * - Up to 6 simultaneous regular key presses (6-key rollover)
- * 
- * Modifier Key Handling:
- * - Modifier keys (0xE0-0xE7) set bits in the modifier field
- * - Each modifier has its own bit position (Ctrl=0, Shift=1, Alt=2, GUI=3)
- * - Left and right variants use separate bits (e.g., Left Ctrl vs Right Ctrl)
- * 
- * Regular Key Handling:
- * - Regular keys stored in 6-element keycode array
- * - Function searches for empty slot (value 0)
- * - Duplicate keys ignored (prevents multiple entries for same key)
- * - Returns false if all 6 slots are full (keyboard rollover limit)
- * 
- * 6-Key Rollover Limitation:
- * - USB HID boot protocol supports maximum 6 simultaneous keys
- * - 7th key press will be ignored (function returns false)
- * - Could implement NKRO (N-key rollover) with custom report descriptor
- * 
- * @param key The HID keycode to add (modifier or regular key)
- * @return true if key was added, false if already present or buffer full
- * 
- * @note This function is called from main task context only
- * @note Modifier check uses IS_MOD() macro (checks range 0xE0-0xE7)
+ * Add a HID keyboard key (modifier or regular) to the active keyboard report.
+ *
+ * Modifier keys (HID usages 0xE0–0xE7) set the corresponding bit in the report's modifier field;
+ * regular keys are placed into the first available slot of the 6-key array. Duplicate keys are ignored.
+ *
+ * @param key HID usage ID for the key (use 0xE0–0xE7 for modifiers)
+ * @returns `true` if the report changed (modifier bit set or key inserted), `false` if the key was already present or no slot was available
+ * @note Called from main task context only; not safe for use from interrupt context without external synchronization.
  */
 static bool hid_keyboard_add_key(uint8_t key) {
   if (IS_MOD(key)) {
@@ -127,32 +107,14 @@ static bool hid_keyboard_add_key(uint8_t key) {
 }
 
 /**
- * @brief Removes a key from the HID keyboard report when released
- * 
- * This function removes a key from the current HID keyboard report structure
- * when a key release event is detected. It handles both modifier keys and
- * regular keys appropriately.
- * 
- * Modifier Key Handling:
- * - Clears the corresponding bit in the modifier field
- * - Uses bitwise AND with inverted mask to clear specific bit
- * - Only clears if bit was set (returns false if already clear)
- * 
- * Regular Key Handling:
- * - Searches keycode array for matching key
- * - Sets matching entry to 0 (marks slot as empty)
- * - Subsequent keys can use freed slots
- * 
- * Report Optimization:
- * - Only returns true if report actually changed
- * - Prevents unnecessary USB HID report transmission
- * - Reduces USB bus traffic and improves performance
- * 
- * @param key The HID keycode to remove (modifier or regular key)
- * @return true if key was removed, false if key was not present
- * 
- * @note This function is called from main task context only
- * @note Pairs with hid_keyboard_add_key() for make/break handling
+ * Remove a HID keycode from the current keyboard report.
+ *
+ * Handles both modifier and regular keys and updates the in-memory keyboard
+ * report only when a change occurs.
+ *
+ * @param key HID keycode to remove (modifier or regular key)
+ * @return `true` if the keyboard report changed (key was removed), `false` if the key was not present
+ * @note Called from main task context only; not safe for interrupt context
  */
 static bool hid_keyboard_del_key(uint8_t key) {
   if (IS_MOD(key)) {
@@ -174,45 +136,22 @@ static bool hid_keyboard_del_key(uint8_t key) {
 }
 
 /**
- * @brief Handles input reports for keyboard and consumer control devices
- * 
- * This is the main entry point for processing translated scan codes and sending
- * USB HID reports to the host. It handles three types of HID reports:
- * 
- * 1. Keyboard Reports (Standard Keys and Modifiers):
- *    - Translates interface scan codes to HID keycodes via keymap lookup
- *    - Updates keyboard report structure (modifiers + 6-key array)
- *    - Only sends USB report if state changed (prevents duplicate reports)
- *    - Handles typematic prevention (host handles key repeat, not device)
- * 
- * 2. Consumer Control Reports (Multimedia Keys):
- *    - Media keys (play, pause, volume, etc.)
- *    - Uses separate USB HID interface for consumer controls
- *    - Single 16-bit usage code per report
- *    - Code 0 indicates "no keys pressed" for key release
- * 
- * 3. Macro System Integration:
- *    - Detects special key combinations (action key + modifier combo)
- *    - Bootloader entry: Action key held + special modifier + KC_BOOT
- *    - Flushes UART before bootloader to ensure debug output sent
- *    - Can be extended for additional macro functions
- * 
- * Report Deduplication:
- * - Uses report_modified flag to track actual state changes
- * - Some keyboards send typematic repeats (same key repeatedly)
- * - HID spec: host handles key repeat, device sends state changes only
- * - Prevents USB bus saturation from redundant reports
- * 
- * Error Handling:
- * - Logs failed USB transmissions with report contents
- * - Continues operation on failure (transient USB issues)
- * - Could be enhanced with retry queue for critical reports
- * 
- * @param code Interface scan code (protocol-normalized, not raw scan code)
- * @param make true for key press, false for key release
- * 
- * @note Called from main task context via process_scancode()
- * @note Thread-safe: no interrupt access to keyboard_report or mouse_report
+ * Process a translated scan code and update/send the corresponding HID report
+ * for keyboard or consumer-control interfaces.
+ *
+ * This function updates internal keyboard state (modifier bits and six-key array)
+ * or emits a 16-bit consumer-control usage, sends a USB HID report only when
+ * the reported state changes, and checks for configured action-key macros
+ * (for example: initiating a bootloader entry). When triggering bootloader
+ * entry it flushes UART output before resetting into the USB bootloader.
+ *
+ * @param code Interface-level scan code (protocol-normalized). The value will
+ *             be mapped to a HID usage before affecting reports.
+ * @param make true when the key is pressed, false when the key is released.
+ *
+ * @note Called from the main task context (e.g., via process_scancode()).
+ * @note Accesses shared keyboard/mouse report state only from non-interrupt
+ *       context; it is not safe to call from interrupt handlers.
  */
 void handle_keyboard_report(uint8_t code, bool make) {
   // Convert the Interface Scancode to a HID Keycode

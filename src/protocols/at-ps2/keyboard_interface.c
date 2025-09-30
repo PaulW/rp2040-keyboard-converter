@@ -140,35 +140,14 @@ static enum {
 } keyboard_state = UNINITIALISED;
 
 /**
- * @brief AT/PS2 Keyboard Command Handler
- * 
- * Transmits commands from host to keyboard using the AT/PS2 protocol. The function
- * handles the complete command transmission process including:
- * 
- * Command Processing:
- * - Calculates odd parity bit for the 8-bit command
- * - Constructs 16-bit transmission frame (command + parity)
- * - Queues data to PIO state machine for transmission
- * 
- * Protocol Compliance:
- * - Follows AT/PS2 host-to-keyboard transmission format
- * - Frame format: Start(0) + 8 data bits + Parity(odd) + Stop(1)
- * - Host controls transmission timing by pulling CLOCK low
- * - Automatic parity calculation ensures data integrity
- * 
- * Common Commands:
- * - 0xED: Set LED states (followed by LED bitmap)
- * - 0xF2: Read keyboard ID (returns 2-byte response)
- * - 0xF3: Set typematic rate/delay (followed by rate byte)
- * - 0xF4: Enable scanning (start sending scan codes)
- * - 0xF5: Disable scanning (stop sending scan codes)
- * - 0xFE: Resend last response (error recovery)
- * - 0xFF: Reset keyboard (triggers self-test sequence)
- * 
- * @param data_byte 8-bit command code to transmit to keyboard
- * 
- * @note Function executes synchronously - blocks until PIO accepts data
- * @note Keyboard responses handled by IRQ event handler
+ * Queue a host-to-keyboard command framed with odd parity for transmission over AT/PS/2.
+ *
+ * Formats the 8-bit command into the AT/PS/2 host-to-keyboard frame (data plus odd parity)
+ * and enqueues the resulting word to the PIO transmitter.
+ *
+ * @param data_byte Host command byte to send to the keyboard.
+ * @note Blocks until the PIO state machine accepts the frame.
+ * @note Keyboard responses are handled asynchronously by the input IRQ handler.
  */
 static void keyboard_command_handler(uint8_t data_byte) {
   uint16_t data_with_parity = (uint16_t)(data_byte + (interface_parity_table[data_byte] << 8));
@@ -176,39 +155,18 @@ static void keyboard_command_handler(uint8_t data_byte) {
 }
 
 /**
- * @brief AT/PS2 Keyboard Event Processor
- * 
- * Processes all data received from the keyboard and manages the complete initialization
- * and operational state machine. Handles the complex AT/PS2 protocol sequence:
- * 
- * Initialization States:
- * - UNINITIALISED: Power-on detection and initial reset command
- * - INIT_AWAIT_ACK: Waiting for command acknowledgment (0xFA)
- * - INIT_AWAIT_SELFTEST: Waiting for BAT completion (0xAA = pass, 0xFC = fail)
- * - INIT_READ_ID_1/2: Reading 2-byte keyboard identification code
- * - INIT_SETUP: Configuring scan code set and terminal keyboard options
- * - SET_LOCK_LEDS: Setting Caps/Num/Scroll Lock LED states
- * 
- * Operational State:
- * - INITIALISED: Normal scan code processing and LED management
- * 
- * Protocol Features Handled:
- * - Automatic retry logic for failed initialization steps
- * - Keyboard ID detection for terminal keyboards (Set 3 scan codes)
- * - Make/break code configuration for advanced keyboards  
- * - LED state synchronization with host lock key status
- * - Error recovery and state machine reset on protocol violations
- * 
- * Data Flow:
- * - Initialization responses trigger state transitions
- * - Scan codes queued to ring buffer for HID processing
- * - LED commands issued when host lock state changes
- * - Status updates for converter LED indicators
- * 
- * @param data_byte 8-bit response/scan code received from keyboard
- * 
- * @note Executes in interrupt context - keep processing efficient
- * @note State transitions logged for debugging initialization issues
+ * Process a single byte received from the AT/PS/2 keyboard and advance the interface state machine.
+ *
+ * Handles initialization sequencing (power-on self-test, ACK handling, 2‑byte ID reads, setup),
+ * LED synchronization, terminal-keyboard configuration, error recovery/retry logic, and normal
+ * scan-code queuing for HID processing.
+ *
+ * This function updates keyboard_state, issues host-to-keyboard commands as needed, and enqueues
+ * valid scan codes into the ring buffer; it also updates converter LED status when enabled.
+ *
+ * @param data_byte 8-bit value received from the keyboard (initialization response or scan code)
+ *
+ * @note Executes in interrupt context; keep processing efficient. 
  */
 static void keyboard_event_processor(uint8_t data_byte) {
   switch (keyboard_state) {
@@ -343,45 +301,15 @@ static void keyboard_event_processor(uint8_t data_byte) {
 }
 
 /**
- * @brief AT/PS2 Keyboard IRQ Event Handler
- * 
- * Interrupt service routine that processes raw data received from the AT/PS2 keyboard
- * via the PIO state machine. Implements complete frame validation and error recovery:
- * 
- * Frame Extraction:
- * - Reads 11-bit frame from PIO RX FIFO (Start + 8 Data + Parity + Stop)
- * - Extracts individual components: start bit, 8 data bits, parity bit, stop bit
- * - Reconstructs original 8-bit data byte from received frame
- * 
- * Protocol Validation:
- * - Start bit validation: Must be 0 (space condition)
- * - Parity validation: Calculated vs received odd parity bit
- * - Stop bit detection: Identifies keyboard compliance (high vs low)
- * - Frame integrity checks prevent processing corrupted data
- * 
- * Error Recovery:
- * - Invalid start bit: Triggers state machine reset and restart
- * - Parity mismatch: Issues resend command (0xFE) to keyboard
- * - Special case handling for power-on connection artifacts
- * - Automatic protocol restart on persistent errors
- * 
- * Stop Bit Compatibility:
- * - Dynamic detection of stop bit polarity (standard vs Z-150 style)
- * - Adapts to non-compliant keyboards automatically
- * - Logs stop bit state changes for diagnostic purposes
- * 
- * Data Flow:
- * - Valid frames passed to keyboard event processor
- * - Invalid frames rejected with appropriate error logging
- * - State machine restarts maintain protocol synchronization
- * 
- * Performance Considerations:
- * - Executes in interrupt context - minimal processing time
- * - Direct FIFO access for optimal throughput
- * - Efficient bit manipulation for frame parsing
- * 
- * @note ISR function - no blocking operations allowed
- * @note PIO FIFO automatically handles timing and bit synchronization
+ * Handle a single AT/PS/2 frame received from the PIO, validate it, and forward valid scancodes to the keyboard event processor.
+ *
+ * Validates start bit, odd parity, and stop-bit polarity; adapts stop-bit state for non‑standard keyboards.
+ * On parity mismatch issues an ATPS2 RESEND (0xFE) and aborts processing; on start-bit or other fatal frame errors
+ * resets the keyboard state machine and restarts the PIO. Detects a known power‑on connection artifact (0x54 with
+ * invalid parity) and treats it as a keyboard connection event by returning to UNINITIALISED and restarting the PIO.
+ *
+ * @note Executes in interrupt context; must not perform blocking operations.
+ * @note Reads raw 11-bit frames directly from the PIO RX FIFO (Start + 8 data bits + Parity + Stop).
  */
 static void __isr keyboard_input_event_handler() {
   io_ro_32 data_cast = keyboard_pio->rxf[keyboard_sm] >> 21;
@@ -429,51 +357,15 @@ static void __isr keyboard_input_event_handler() {
 }
 
 /**
- * @brief AT/PS2 Keyboard Interface Main Task
- * 
- * Main task function that coordinates all aspects of AT/PS2 keyboard communication
- * and protocol management. Handles both operational data flow and initialization:
- * 
- * Normal Operation (INITIALISED state):
- * - Processes scan codes from ring buffer when HID interface ready
- * - Manages LED state synchronization (Caps/Num/Scroll Lock)  
- * - Coordinates scan code translation and HID report generation
- * - Maintains optimal throughput while preventing report queue overflow
- * 
- * Initialization Management (Non-INITIALISED states):
- * - Monitors initialization timeouts and implements retry logic
- * - Detects keyboard presence via clock line monitoring
- * - Handles stalled initialization with automatic recovery
- * - Manages keyboard ID read timeouts with graceful fallback
- * - Coordinates LED setup timeout recovery
- * 
- * Timeout Handling:
- * - 200ms periodic checks for initialization progress
- * - 2-retry limit for keyboard ID operations before fallback
- * - 5-attempt detection cycle before reset request
- * - Automatic state machine recovery on persistent failures
- * 
- * LED Synchronization:
- * - Detects host lock key state changes
- * - Issues LED command sequence (0xED followed by LED bitmap)
- * - Handles LED command timeout and recovery
- * - Provides audio feedback on successful LED changes
- * 
- * Hardware Integration:
- * - Monitors GPIO clock line for keyboard presence detection
- * - Updates converter status LEDs based on initialization state
- * - Integrates with USB HID subsystem for optimal report timing
- * - Coordinates with ring buffer for efficient data flow
- * 
- * Performance Features:
- * - Non-blocking ring buffer processing
- * - HID-ready checking prevents report queue overflow
- * - Efficient state-based processing reduces CPU overhead
- * - Interrupt-driven data reception with task-level processing
- * 
- * @note Must be called periodically from main loop (typically 1-10ms intervals)
- * @note Function is non-blocking and maintains real-time responsiveness
- * @note Integrates with converter LED system when CONVERTER_LEDS enabled
+ * Coordinate AT/PS/2 keyboard initialization, LED synchronization, and scan-code processing.
+ *
+ * Handles the interface state machine: when INITIALISED it synchronizes lock LEDs
+ * and forwards scan codes from the ring buffer to HID when the HID layer is ready;
+ * when not INITIALISED it manages initialization timeouts, retry logic, keyboard
+ * presence detection, ID/read/LED setup timeouts, and state recovery.
+ *
+ * @note Call periodically from the main loop (recommended interval: 1–10 ms).
+ * @note Function is non-blocking and designed to avoid HID report queue overflow.
  */
 void keyboard_interface_task() {
   static uint8_t detect_stall_count = 0;
@@ -556,53 +448,14 @@ void keyboard_interface_task() {
 }
 
 /**
- * @brief AT/PS2 Keyboard Interface Initialization
- * 
- * Configures and initializes the complete AT/PS2 keyboard interface using RP2040 PIO
- * hardware for precise timing and protocol implementation. Sets up all hardware and
- * software components required for reliable keyboard communication:
- * 
- * Hardware Setup:
- * - Finds available PIO instance (PIO0 or PIO1) with sufficient program space
- * - Claims unused state machine and loads AT/PS2 protocol program
- * - Configures GPIO pins: DATA line and CLOCK line (DATA + 1)
- * - Sets up pull-up resistors for open-drain signaling
- * 
- * PIO Configuration:
- * - Calculates clock divider for 30µs minimum pulse width timing
- * - Configures state machine for bidirectional communication
- * - Sets up automatic frame reception and transmission
- * - Enables precise timing compliance with AT/PS2 specifications
- * 
- * Interrupt System:
- * - Configures PIO-specific IRQ (PIO0_IRQ_0 or PIO1_IRQ_0)
- * - Installs keyboard input event handler for frame processing
- * - Enables interrupt-driven data reception for optimal performance
- * - Links PIO RX FIFO to interrupt system
- * 
- * Software Initialization:
- * - Resets ring buffer to ensure clean startup state
- * - Initializes protocol state machine to UNINITIALISED
- * - Resets converter status LEDs when CONVERTER_LEDS enabled
- * - Clears all protocol state variables
- * 
- * Timing Calibration:
- * - Uses IBM PS/2 Technical Reference timing specifications
- * - 30µs minimum clock pulse width (per IBM 84F9735 document)
- * - Supports 10-16.7 kHz clock frequency range
- * - Accommodates both AT and PS/2 timing requirements
- * 
- * Error Handling:
- * - Validates PIO resource availability before configuration
- * - Reports initialization failures with detailed error messages
- * - Graceful failure if insufficient PIO resources available
- * - Logs successful initialization with configuration details
- * 
- * @param data_pin GPIO pin number for DATA line (CLOCK automatically assigned as data_pin + 1)
- * 
- * @note CLOCK pin must be DATA pin + 1 for hardware compatibility
- * @note Function blocks until hardware initialization complete
- * @note Call before any other keyboard interface operations
+ * Initialize the AT/PS/2 keyboard interface, configure PIO state machine, GPIOs, interrupts, and related software state for keyboard communication.
+ *
+ * Performs PIO selection and program loading, claims a state machine, configures DATA (and CLOCK = DATA+1) pins and pull-ups, sets timing for AT/PS/2 protocol, installs the PIO IRQ handler, and resets internal buffers and protocol state.
+ *
+ * @param data_pin GPIO pin number to use for the DATA line; the CLOCK line used by this interface is data_pin + 1.
+ *
+ * @note CLOCK pin must be DATA pin + 1.
+ * @note Call this before any other keyboard interface operations; the function completes hardware and software initialization before returning.
  */
 void keyboard_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS

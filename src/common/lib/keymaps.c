@@ -63,22 +63,18 @@ static uint8_t keymap_search_layers(uint8_t row, uint8_t col) {
 }
 
 /**
- * @brief Retrieves the key value at the specified position in the keymap.
- * This function takes a position value and a boolean indicating whether the key is being pressed or
- * released. It calculates the row and column values from the position and searches the keymap for
- * the corresponding key code.
+ * Resolve the key code for a key position by performing layer lookup and applying action-key
+ * substitution and numpad-flip conversion as required.
  *
- * If the key code is KC_FN, it sets the action_key_pressed flag and returns KC_NO. Otherwise, if
- * the action_key_pressed flag is set, it checks if there is an action key code at the specified
- * position in the action key map. If there is, it updates the key code with the action key code.
+ * When the resolved key is KC_FN this sets the global action_key_pressed flag to the value of
+ * `make` and returns KC_NO (no key emitted). If action_key_pressed is set and an action key code
+ * exists in keymap_actions[0] for the same position (not KC_TRNS), that action code replaces the
+ * resolved key. If the resulting key is KC_NFLP, the flip key is looked up and converted via
+ * numpad_flip_code().
  *
- * If the key code is KC_NFLP, it searches the keymap again to get the flip key code and converts it
- * to the corresponding numpad flip code. Finally, it returns the key code.
- *
- * @param pos  The position of the key in the keymap.
- * @param make A boolean indicating whether the key is being pressed (true) or released (false).
- *
- * @return The key code at the specified position in the keymap.
+ * @param pos  Encoded key position: high nibble = row, low nibble = column.
+ * @param make true if the key is being pressed, false if released.
+ * @return The resolved key code to emit, or KC_NO when no key should be emitted (e.g., for KC_FN).
  */
 uint8_t keymap_get_key_val(uint8_t pos, bool make) {
   const uint8_t row = (pos >> 4) & 0x0F;

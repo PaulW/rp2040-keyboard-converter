@@ -104,22 +104,12 @@ static volatile uint8_t model_retry_count = 0;      /**< Number of model command
 static volatile uint32_t last_response_time = 0;    /**< Timestamp of last keyboard response received */
 
 /**
- * @brief Sends a command byte to the Apple M0110 keyboard (internal function)
- * 
- * This function transmits an 8-bit command to the keyboard using the PIO state machine.
- * The command is sent according to the M0110 protocol timing requirements:
- * - Host pulls DATA low for 840µs (request-to-send)
- * - Keyboard starts clocking at ~2.5kHz
- * - Host places data bits on falling edges of clock
- * - MSB transmitted first (bit 7 → bit 0)
- * 
- * The PIO handles the low-level timing and bit transmission automatically.
- * 
- * @param command 8-bit command code to transmit to keyboard
- * @see M0110_CMD_INQUIRY, M0110_CMD_MODEL for common commands
- * 
- * @note If the TX FIFO is full, the command is dropped and logged.
- * @note This is an internal function - not exposed in keyboard_interface.h
+ * Transmit an 8-bit M0110 command to the keyboard using the configured PIO state machine.
+ *
+ * The command is sent MSB-first according to the M0110 wire protocol. If the PIO TX FIFO is full
+ * at the time of invocation, the command is dropped.
+ *
+ * @param command 8-bit M0110 command code to transmit (MSB transmitted first)
  */
 static void keyboard_command_handler(uint8_t command) {
   if (pio_sm_is_tx_fifo_full(keyboard_pio, keyboard_sm)) {
@@ -134,27 +124,17 @@ static void keyboard_command_handler(uint8_t command) {
 }
 
 /**
- * @brief Processes keyboard response data from Apple M0110
- * 
- * This function handles all incoming data from the keyboard, which can be:
- * - Model identification responses during initialization
- * - Key press/release scan codes during normal operation  
- * - NULL responses indicating no key activity
- * - Special responses (keypad detection, etc.)
- * 
- * The function operates in interrupt context (called from IRQ handler) so it
- * performs minimal processing and delegates complex operations to the main task.
- * 
- * Response Processing by State:
- * - INIT_MODEL_REQUEST: Process model ID and advance to INITIALISED state
- * - INITIALISED: Handle key data (store in ring buffer) or NULL responses
- * 
- * Timing Considerations:
- * - Updates response timestamp used by main task for optimized timeout detection
- * - Response timing enables wraparound-safe timeout calculations in main loop
- * - Key data buffered for main task processing when USB HID interface ready
- * 
- * @param data_byte 8-bit response received from keyboard (MSB-first)
+ * Process a single 8-bit response byte from the Apple M0110 keyboard and advance the protocol state.
+ *
+ * This function is called from interrupt context to perform minimal, observable processing of a keyboard
+ * response: it updates the last-response timestamp, advances initialization when a model response arrives,
+ * and handles normal polling responses. In the INIT_MODEL_REQUEST state it recognizes the M0110A model,
+ * transitions to INITIALISED and issues an inquiry. In the INITIALISED state a NULL response triggers another
+ * inquiry; other bytes are treated as scan codes or special responses and are enqueued for main-task
+ * processing (dropped if the ring buffer is full), followed by issuing another inquiry. Side effects include
+ * state transitions, enqueueing of scancodes, issuing commands to the keyboard, and updates to timing state.
+ *
+ * @param data_byte 8-bit response received from the keyboard (MSB-first)
  */
 static void keyboard_event_processor(uint8_t data_byte) {
   // printf("[DBG] M0110 received: 0x%02X\n", data_byte);
@@ -242,42 +222,14 @@ static void __isr keyboard_input_event_handler(void) {
 }
 
 /**
- * @brief Main task function for Apple M0110 keyboard protocol management
- * 
- * This function implements the main state machine for M0110 protocol operation.
- * It should be called regularly from the main application loop (typically every few ms).
- * 
- * State Machine Operation:
- * 
- * 1. UNINITIALISED (Startup Phase):
- *    - Waits for initial 1000ms delay to allow keyboard power-up
- *    - Uses command timing to track startup delay
- *    - Transitions to model identification phase when delay expires
- * 
- * 2. INIT_MODEL_REQUEST (Keyboard Detection):
- *    - Sends Model Number commands (0x16) every 500ms using command timing
- *    - Retries up to 5 times if no response received
- *    - Model command causes keyboard to reset and identify itself
- *    - Transitions to INITIALISED phase on successful response (handled by IRQ)
- * 
- * 3. INITIALISED (Normal Operation):
- *    - Monitors keyboard responses using response timing for 500ms timeout
- *    - Processes buffered key data when USB HID interface ready
- *    - Timeout detection triggers return to UNINITIALISED for recovery
- *    - Key data processing occurs via ring buffer from interrupt handler
- * 
- * Timing and Performance:
- * - Optimized timing calculations with single elapsed time computation
- * - Timer wraparound protection prevents false timeouts on system rollover
- * 
- * Error Recovery:
- * - Timeout detection triggers full protocol restart
- * - State machine reset returns to UNINITIALISED phase
- * - Maximum retry limits prevent infinite retry loops
- * 
- * @note This function manages protocol timing and state transitions
- * @note Actual data reception occurs in interrupt context
- * @note Timer calculations are optimized to handle uint32_t wraparound scenarios
+ * Drive the Apple M0110 keyboard protocol state machine, handling timing, retries, and delivery of scancodes to the HID layer.
+ *
+ * Call this from the main loop at regular intervals (typically every few milliseconds). It performs:
+ * - UNINITIALISED: waits the initial startup delay, then transitions to model-identification.
+ * - INIT_MODEL_REQUEST: sends the model-number command at fixed intervals and retries up to five times before restarting detection.
+ * - INITIALISED: monitors for response timeouts (triggers full reset on timeout) and forwards buffered scancodes to the USB HID layer when available.
+ *
+ * Reception of keyboard bytes is performed in interrupt context; this function manages high-level state, timeouts, retry limits, and ring-buffer consumption.
  */
 void keyboard_interface_task(void) {
   uint32_t current_time = board_millis();
@@ -344,41 +296,16 @@ void keyboard_interface_task(void) {
 }
 
 /**
- * @brief Initializes the Apple M0110 keyboard interface hardware and software
- * 
- * This function configures the RP2040 PIO system to handle the Apple M0110 protocol:
- * 
- * Hardware Configuration:
- * - Allocates and configures PIO state machine for M0110 timing
- * - Sets up GPIO pins with appropriate pull-ups for open-drain signaling
- * - Configures interrupt handling for received data
- * 
- * Protocol Setup:
- * - Calculates timing dividers for accurate bit-level timing
- * - Initializes PIO program for MSB-first transmission/reception
- * - Sets up FIFO buffers for asynchronous data handling
- * 
- * Pin Assignment:
- * - data_pin: Connected to keyboard DATA line
- * - data_pin + 1: Connected to keyboard CLOCK line (keyboard controlled)
- * 
- * Timing Calculation:
- * - Base timing uses 160µs as minimum reliable detection period
- * - PIO clock divider ensures proper sampling of keyboard signals
- * - Supports both keyboard TX (330µs cycles) and host TX (400µs cycles)
- * 
- * Error Handling:
- * - Validates PIO resource availability
- * - Graceful degradation if hardware resources unavailable
- * - Comprehensive logging for troubleshooting
- * 
- * @param data_pin GPIO pin number for DATA line (CLOCK will be data_pin + 1)
- *                 Must be even number to allow consecutive pin allocation
- *                 Recommended: Use pins with good signal integrity (avoid LED pins)
- * 
- * @note Call this function once during system initialization
- * @note Requires keyboard_interface_task() to be called regularly for operation
- * @see keyboard_interface_task() for ongoing protocol management
+ * Initialize hardware and software needed to communicate with an Apple M0110 keyboard.
+ *
+ * Configures PIO, state machine, pins, interrupts, and internal buffers so the driver can
+ * send commands and receive responses from the keyboard. After this call the interface
+ * is prepared to be driven by periodic calls to keyboard_interface_task().
+ *
+ * @param data_pin GPIO pin number connected to the keyboard DATA line. CLOCK is expected
+ *                 to be the next consecutive pin (data_pin + 1).
+ * @note Call once during system initialization.
+ * @see keyboard_interface_task()
  */
 void keyboard_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS

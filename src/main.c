@@ -49,6 +49,15 @@
 #include "ws2812/ws2812.h"
 #endif
 
+/**
+ * Program entry point that initializes hardware, optional peripherals, and USB/HID interfaces, then runs the device service loop.
+ *
+ * Performs system setup (HID device, UART DMA), obtains and prints the board unique ID and build time, initializes optional
+ * components (buzzer, WS2812 LEDs) and enabled interfaces (keyboard, mouse), and then continuously services enabled interface
+ * tasks and the TinyUSB device stack.
+ *
+ * @returns 0 on normal exit (function is intended to run indefinitely). 
+ */
 int main(void) {
   hid_device_setup();
   init_uart_dma();

@@ -87,29 +87,14 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
  */
 
 /**
- * @brief Illuminates the WS2812 LED strip with the specified color
- * 
- * This function sets the color of a single LED in the WS2812 LED strip. It is
- * called sequentially to update multiple LEDs in a chain, with data cascading
- * through each LED to the next.
- * 
- * Non-Blocking Implementation:
- * - Checks if PIO TX FIFO has space before writing
- * - Returns false immediately if FIFO is full (no blocking)
- * - Allows caller to defer update and retry later
- * - Critical for preventing interference with time-sensitive protocol PIOs
- * 
- * WS2812 Timing:
- * - Each LED requires 24 bits (GRB format) transmitted at 800kHz
- * - Transmission takes ~30µs per LED
- * - PIO autopull (shift=24) moves data from FIFO to OSR automatically
- * - FIFO has 4-entry depth, but we check before each write for safety
- * 
- * @param led_color The color value to set for the LED (RGB format, 0x00RRGGBB)
- * @return true if color was queued to PIO, false if FIFO was full
- * 
- * @note Caller should check return value and defer/retry if false
- * @note Color is automatically converted to GRB and adjusted for brightness
+ * Queue a single LED color update to the WS2812 PIO interface without blocking.
+ *
+ * Converts the provided 24-bit RGB color to the configured LED color order and
+ * brightness, then enqueues it to the PIO TX FIFO if space is available.
+ *
+ * @param led_color 24-bit color in RGB order (0x00RRGGBB).
+ * @return `true` if the color value was queued to the PIO FIFO, `false` if the
+ * FIFO was full and the caller should retry later.
  */
 bool ws2812_show(uint32_t led_color) {
   // Check if TX FIFO has space (non-blocking approach)

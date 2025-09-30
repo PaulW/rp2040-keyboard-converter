@@ -189,43 +189,29 @@ static volatile uint32_t stats_last_reported = 0; /**< Last reported drop count 
  */
 
 /**
- * @brief Check if the message queue is empty
- * 
- * @return true if queue is empty (head equals tail)
- * @return false if queue contains messages
+ * Check whether the UART DMA log queue has no pending entries.
+ *
+ * @return `true` if the queue contains no pending messages, `false` otherwise.
  */
 static inline bool queue_empty() {
     return q_head == q_tail;
 }
 
 /**
- * @brief Check if the message queue is full
- * 
- * Uses bitwise AND operation instead of modulo for performance.
- * This works because PRINTF_QUEUE_LEN is a power of 2.
- * 
- * @return true if queue is full (would overflow on next write)
- * @return false if queue has space for more messages
+ * Check whether the log queue has no free slots.
+ *
+ * @returns `true` if adding one more entry would overwrite unread entries, `false` otherwise.
  */
 static inline bool queue_full() {
     return ((q_head + 1) & (PRINTF_QUEUE_LEN - 1)) == q_tail;
 }
 
 /**
- * @brief IRQ Context Detection Helper
- * 
- * Determines if the current execution context is within an interrupt service
- * routine by checking the VECTACTIVE field of the Interrupt Control and State Register.
- * 
- * This function is used by the queue policy implementation to adapt behavior
- * in interrupt context, ensuring that potentially blocking operations (like
- * sleep_us or extended polling) are avoided when called from ISRs.
- * 
- * @return true if executing in interrupt/exception context
- * @return false if executing in thread mode
- * 
- * @note Uses ARM Cortex-M0+ ICSR register for reliable detection
- * @note Zero overhead inline function
+ * Detect whether the current core is executing inside an interrupt or exception.
+ *
+ * Used by queue policy code to avoid blocking operations when invoked from ISR context.
+ *
+ * @return `true` if executing in interrupt/exception context, `false` otherwise.
  */
 static inline bool in_irq(void) {
     return (scb_hw->icsr & M0PLUS_ICSR_VECTACTIVE_BITS) != 0;
@@ -270,26 +256,22 @@ static inline void report_drop_stats(void) {
 #endif
 
 /**
- * @brief Start next DMA transfer if conditions are met
- * 
- * This function initiates a DMA transfer for the next queued message if:
- * - No DMA transfer is currently active
- * - The message queue is not empty
- * 
- * The function sets up the DMA channel to transfer data from the queue entry
- * at the tail position to the UART hardware. It configures:
- * - Source address: Points to the message buffer in the queue
- * - Transfer count: Number of bytes to transfer (message length)
- * - DMA active flag: Marked true to prevent concurrent transfers
- * 
- * Design Notes:
- * - Producer functions (enqueuers) never modify q_tail
- * - Consumer (DMA IRQ handler) advances q_tail when transfer completes
- * - This separation ensures clean producer/consumer relationship
- * - Called from both enqueue functions and DMA completion handler
- * 
- * @note This function must be called with interrupts enabled
- * @note The q_tail index will be advanced by dma_handler() upon completion
+ * Initiates a DMA transmission for the next ready log entry if one is available.
+ *
+ * If the queue is non-empty, no DMA transfer is already active, and the DMA
+ * channel is not busy, this function marks the DMA as active and arms the DMA
+ * to transfer the published length of the message at the queue tail to the
+ * UART TX register. If the tail entry's `len` is zero (not yet published) or
+ * any precondition fails, the function returns without starting a transfer.
+ *
+ * Side effects:
+ * - sets `dma_active = true`
+ * - configures the DMA read address to the tail entry buffer and sets the
+ *   transfer count to the tail entry's length
+ *
+ * @note The queue tail (`q_tail`) is advanced and the entry cleared by the DMA
+ *       completion handler (dma_handler()) after the transfer finishes.
+ * @note This function must be called with interrupts enabled.
  */
 static void start_next_dma_if_needed() {
     // Check hardware busy as well as our flag to avoid races
@@ -314,18 +296,11 @@ static void start_next_dma_if_needed() {
 }
 
 /**
- * @brief DMA Transfer Complete Interrupt Handler
- * 
- * This interrupt handler is called when a DMA transfer to the UART completes.
- * It automatically starts the next queued message if available, providing
- * continuous output without CPU intervention.
- * 
- * The handler is designed to be as fast as possible to minimize interrupt
- * latency impact on real-time operations. It uses low-level register access
- * and efficient queue operations.
- * 
- * Handler Priority: Low (configured in init_uart_dma)
- * Execution Context: Interrupt (keep minimal and fast)
+ * Handle DMA TX completion for the UART: acknowledge the DMA interrupt,
+ * mark the current transfer as finished, consume the completed queue slot,
+ * and start the next queued message if one is available.
+ *
+ * @note Executed in interrupt context (ISR); must be fast and ISR-safe.
  */
 void __isr dma_handler() {
     uint32_t mask = 1u << uart_dma_chan;
@@ -370,7 +345,16 @@ void __isr dma_handler() {
  * @note Maximum wait time configured via UART_DMA_WAIT_US macro
  * @note Thread-safe: Uses atomic queue state checking
  */
-// --- Queue full policy handling ---
+/**
+ * Ensure there is space in the transmit queue using the compile-time queue-full policy.
+ *
+ * Depending on UART_DMA_POLICY this either returns immediately when the queue is full (DROP),
+ * blocks up to UART_DMA_WAIT_US while polling (WAIT_FIXED), or performs exponential backoff
+ * up to UART_DMA_WAIT_US before giving up (WAIT_EXP). When called from an interrupt context,
+ * wait policies behave like DROP and do not block.
+ *
+ * @returns `true` if a queue slot is available, `false` if the queue remained full (or a timeout/policy prevented waiting).
+ */
 static inline bool wait_for_queue_space(void) {
 #if UART_DMA_POLICY == UART_DMA_POLICY_DROP
     // Always drop if full
@@ -409,29 +393,18 @@ static inline bool wait_for_queue_space(void) {
 }
 
 /**
- * @brief Atomically reserve a queue slot for thread-safe operation
- * 
- * This function provides lock-free multi-producer safety by atomically
- * reserving a queue slot using compare-and-swap operations. It prevents
- * race conditions when multiple execution contexts (main thread + ISRs)
- * attempt to enqueue messages simultaneously.
- * 
- * Behavior:
- * - **Thread context**: Retries briefly on CAS contention to handle rare races
- * - **IRQ context**: Single attempt only to avoid spinning in interrupt handlers
- * - **Queue full**: Returns false immediately regardless of context
- * - **Success**: Returns the reserved slot index via out parameter
- * 
- * The function uses relaxed memory ordering for the CAS operation since the
- * RP2040's single-core nature and the queue's design make stronger ordering
- * unnecessary while still providing the required atomicity.
- * 
- * @param out_idx Pointer to store the reserved slot index on success
- * @return true if slot successfully reserved, false if queue full or contention (IRQ)
- * 
- * @note Uses __atomic_compare_exchange_n for lock-free operation
- * @note IRQ-safe: Never spins when called from interrupt context
- * @note Thread-safe: Handles concurrent access from multiple contexts
+ * Reserve the next available queue slot for enqueuing a message.
+ *
+ * Attempts a lock-free, atomic reservation of a single queue slot and writes
+ * the reserved slot index to `out_idx` on success.
+ *
+ * In interrupt context the function performs a single attempt and returns
+ * immediately on contention to avoid spinning. In non-interrupt (thread)
+ * context it may retry briefly on transient contention. If the queue is full
+ * or a reservation fails (in IRQ), the function returns `false`.
+ *
+ * @param out_idx Pointer to a uint8_t that will receive the reserved slot index on success.
+ * @return `true` if a slot was reserved and `out_idx` was set, `false` if the queue is full or reservation failed.
  */
 static inline bool try_reserve_slot(uint8_t *out_idx) {
     for (;;) {
@@ -454,39 +427,18 @@ static inline bool try_reserve_slot(uint8_t *out_idx) {
 }
 
 /**
- * @brief Raw message enqueue for pre-formatted strings
- * 
- * This function provides the core message enqueueing functionality for the
- * stdio integration path. It handles thread-safe slot reservation, message
- * copying, and DMA initiation with configurable queue policies.
- * 
- * Key Features:
- * - **Thread-safe operation**: Uses atomic slot reservation to prevent races
- * - **Configurable queue policies**: DROP/WAIT_FIXED/WAIT_EXP behavior selection
- * - **Input validation**: Length limiting and bounds checking
- * - **Publish-subscribe pattern**: Atomic length update signals message ready
- * - **Automatic DMA initiation**: Starts transmission when controller is idle
- * - **Statistics tracking**: Optional drop/enqueue counting (UART_DMA_DEBUG_STATS)
- * 
- * Message Flow:
- * 1. **Policy check**: wait_for_queue_space() applies configured behavior
- * 2. **Slot reservation**: try_reserve_slot() atomically claims queue entry  
- * 3. **Data copy**: memcpy() transfers pre-formatted message to queue buffer
- * 4. **Publish**: Atomic length store marks entry ready for DMA consumption
- * 5. **DMA start**: start_next_dma_if_needed() initiates transfer if idle
- * 6. **Stats update**: Track success/drops if debug stats enabled
- * 
- * The function uses acquire/release semantics for the length field to ensure
- * proper memory ordering between producers and the DMA consumer, guaranteeing
- * that DMA never reads partially written message data.
- * 
- * @param s Pointer to pre-formatted string buffer
- * @param len Length of string to enqueue (bytes)
- * 
- * @note Used internally by stdio integration - not for direct application calls  
- * @note Thread-safe: Safe to call from any context including interrupts
- * @note IRQ-aware: Adapts behavior based on execution context
- * @note Performance: Direct memcpy with atomic publish for efficiency
+ * Enqueues a preformatted string into the UART DMA transmit queue and triggers
+ * a DMA transfer if the transmitter is idle.
+ *
+ * If the queue is full the message may be dropped according to the configured
+ * queue policy; the provided length is clamped to the per-entry buffer size.
+ *
+ * @param s Pointer to the preformatted data to enqueue.
+ * @param len Number of bytes from `s` to enqueue; values greater than the
+ *            per-entry buffer size are limited to the buffer capacity minus one.
+ *
+ * Thread-safe and IRQ-safe: safe to call from any context, including interrupt
+ * handlers. Optional enqueue/drop statistics are updated when enabled.
  */
 static void uart_dma_write_raw(const char *s, int len) {
     if (len <= 0) return;
@@ -538,13 +490,9 @@ static void uart_dma_write_raw(const char *s, int len) {
  */
 
 /**
- * @brief stdio Output Character Hook
- * 
- * This function is called by the Pico SDK stdio system whenever characters
- * need to be output. It redirects all stdio output to our DMA-based printf.
- * 
- * @param s Pointer to character buffer to output
- * @param len Number of characters to output
+ * Redirect stdio output to the DMA-based UART logger.
+ * @param s Pointer to the buffer containing characters to output (not necessarily NUL-terminated).
+ * @param len Number of characters from `s` to output.
  */
 static void my_out_chars(const char *s, int len) {
     uart_dma_write_raw(s, len);
@@ -568,66 +516,23 @@ static stdio_driver_t dma_stdio_driver = {
 };
 
 /**
- * @brief Initialize DMA-Based UART Logging System
- * 
- * This function performs complete system initialization for the high-performance
- * DMA-based UART logging infrastructure. It configures hardware, allocates
- * resources, and integrates with the Pico SDK stdio system to provide
- * transparent, non-blocking debug output.
- * 
- * Initialization Sequence:
- * 1. **UART Hardware Setup**:
- *    - Initializes UART0 with configured baud rate (from config.h)
- *    - Configures GPIO pin for UART TX function
- *    - Sets up hardware FIFO and transmission parameters
- * 
- * 2. **DMA Channel Configuration**:
- *    - Claims unused DMA channel from hardware pool
- *    - Configures for 8-bit data transfers (character data)
- *    - Sets UART TX DREQ as transfer trigger signal
- *    - Points destination to UART hardware data register
- * 
- * 3. **Interrupt System Setup**:
- *    - Enables DMA completion interrupts for allocated channel
- *    - Registers dma_handler() as exclusive interrupt handler
- *    - Sets low priority to avoid interfering with real-time code
- *    - Enables interrupt in NVIC for DMA_IRQ_0
- * 
- * 4. **stdio Integration**:
- *    - Registers DMA-based driver with Pico SDK stdio system
- *    - Replaces standard blocking UART stdio completely
- *    - Enables automatic CRLF conversion for proper line endings
- * 
- * Configuration Sources:
- * All configuration parameters are read from config.h:
- * - UART_BAUD: Transmission baud rate (typically 115200)
- * - UART_TX_PIN: GPIO pin number for UART TX (typically GP0)
- * 
- * Hardware Resources Used:
- * - UART0: Primary UART peripheral for transmission
- * - 1x DMA Channel: Automatically claimed from available pool  
- * - 1x GPIO Pin: Configured for UART TX function
- * - DMA_IRQ_0: Interrupt vector for DMA completion handling
- * 
- * Memory Resources:
- * - 64 x 256 bytes = 16KB: Message queue buffer (static allocation)
- * - ~100 bytes: Control structures and state variables
- * 
- * Post-Initialization Behavior:
- * After this function completes successfully:
- * - All printf(), puts(), putchar() calls use DMA automatically
- * - System provides configurable non-blocking debug output behavior
- * - No code changes required for existing printf usage
- * - Queue policy determines behavior under load (drop/wait/backoff)
- * 
- * @note **CRITICAL**: Must be called once during system initialization
- * @note **TIMING**: Call before any printf/logging operations
- * @note **SAFETY**: Safe to call multiple times (subsequent calls ignored)
- * @note **RESOURCES**: Claims hardware resources that remain allocated
- * @note **INTEGRATION**: Completely replaces standard Pico SDK UART stdio
- * 
- * @warning Calling printf() before this function results in no output
- * @warning Do not call from interrupt context during initialization
+ * Initialize the DMA-driven UART logging subsystem and register it as the system stdio driver.
+ *
+ * Sets up UART0, configures a DMA channel for UART TX, installs the DMA completion IRQ
+ * handler, and replaces the Pico SDK stdio driver so printf/puts/putchar route through
+ * the DMA-based logger.
+ *
+ * Notes:
+ * - Configuration values (baud rate, TX pin, buffer and queue sizes, queue policy) are
+ *   read from config.h at compile time.
+ * - This function is idempotent: subsequent calls have no effect after the first successful
+ *   initialization.
+ * - Hardware resources (UART0, one DMA channel, and the TX GPIO) are claimed and remain
+ *   allocated for the lifetime of the program.
+ *
+ * Warning:
+ * - Call this during system initialization before any printf/logging calls for reliable output.
+ * - Do not call from an interrupt context while initialization is in progress.
  */
 void init_uart_dma() {
     if (uart_dma_inited) return;
@@ -670,32 +575,15 @@ void init_uart_dma() {
 }
 
 /**
- * @brief Flush all pending UART messages
- * 
- * This function blocks until all queued messages have been transmitted via DMA.
- * It's designed for clean shutdown scenarios where you need to ensure all log
- * messages are output before transitioning to a different state (e.g., bootloader).
- * 
- * The function polls the queue state and waits for the DMA controller to finish
- * all pending transfers. It uses a tight polling loop for maximum responsiveness
- * while still allowing other interrupts to run.
- * 
- * Use Cases:
- * - Before entering bootloader mode
- * - Before system reset or power-down
- * - When ensuring critical log messages are output
- * 
- * Performance:
- * - Blocking time depends on queue depth and UART baud rate
- * - At 115200 baud: ~87µs per character, ~22ms per 256-byte message
- * - 64-entry full queue: up to ~1.4 seconds worst case
- * 
- * @note This function blocks until queue is empty - use sparingly
- * @note Safe to call from main context only (not from ISR)
- * @note Will wait indefinitely if new messages keep being enqueued
- * 
- * @warning Do not call from interrupt context
- * @warning May block for extended periods if queue is full
+ * Block until all queued UART log messages have been transmitted.
+ *
+ * Waits for the software queue to be empty, for any in-progress DMA transfer to
+ * complete, and for the UART TX FIFO to be drained before returning.
+ *
+ * @note This function blocks and should be called from thread/main context only.
+ * @note If producers continue to enqueue messages, this function may wait
+ *       indefinitely.
+ * @warning Do not call from interrupt context.
  */
 void uart_dma_flush(void) {
     // Wait for all queued messages to be transmitted

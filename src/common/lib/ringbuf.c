@@ -60,32 +60,22 @@ bool ringbuf_is_empty(void) {
 }
 
 /**
- * @brief Checks if the ring buffer is full.
- * 
- * Thread-safe read operation using volatile head/tail pointers.
- * Can be called from both IRQ and main loop contexts.
- * 
- * The buffer is considered full when the next head position would equal tail.
- * This design sacrifices one buffer slot to distinguish full from empty state
- * (effective capacity: BUF_SIZE - 1).
- * 
- * @return true if the ring buffer is full, false otherwise.
+ * Determine whether the ring buffer is full.
+ *
+ * The buffer reserves one slot to distinguish full from empty (effective capacity: BUF_SIZE - 1).
+ *
+ * @return `true` if the ring buffer is full, `false` otherwise.
  */
 bool ringbuf_is_full(void) { 
   return (((rbuf.head + 1) & rbuf.size_mask) == rbuf.tail); 
 }
 
 /**
- * @brief Retrieves the next element from the ring buffer.
- * 
- * CRITICAL: Caller MUST check ringbuf_is_empty() before calling this function.
- * This function assumes the buffer is not empty and does NOT perform redundant checks.
- * 
- * Thread-safety: Safe when called from main loop while IRQ modifies head pointer.
- * The volatile qualifier ensures tail writes are visible to IRQ context.
- * 
- * @return The next element from the ring buffer (0-255).
- * @note Returns 0 if buffer is empty (undefined behavior - caller's responsibility)
+ * Retrieve the next byte from the ring buffer.
+ *
+ * Caller must ensure the buffer is not empty before calling; behavior is undefined if invoked when empty.
+ *
+ * @returns The next byte from the buffer (0–255).
  */
 uint8_t ringbuf_get(void) {
   uint8_t data = rbuf.buffer[rbuf.tail];
@@ -95,19 +85,13 @@ uint8_t ringbuf_get(void) {
 }
 
 /**
- * @brief Puts a byte of data into the ring buffer.
- * 
- * CRITICAL: Caller MUST check ringbuf_is_full() before calling this function.
- * This function assumes the buffer has space and does NOT perform redundant checks.
- * 
- * Overflow Protection:
- * Defensive check logs error if called when buffer is full (API contract violation).
- * This should never happen if caller follows protocol, but provides safety net.
- * 
- * Thread-safety: Safe when called from IRQ while main loop modifies tail pointer.
- * The volatile qualifier ensures head writes are visible to main loop.
- * 
- * @param data The byte of data to be put into the ring buffer.
+ * Insert a byte into the ring buffer and advance the head index.
+ *
+ * The caller must ensure the buffer has space before calling; if the buffer is
+ * full this function logs an error and discards the provided byte. Safe to
+ * call from an interrupt context while the main loop modifies the tail.
+ *
+ * @param data Byte to store in the buffer.
  */
 void ringbuf_put(uint8_t data) {
   // Defensive check: should never trigger if caller checks is_full() first
@@ -122,19 +106,15 @@ void ringbuf_put(uint8_t data) {
 }
 
 /**
- * @brief Resets the ring buffer to empty state.
- * 
- * Clears all buffered data by resetting head and tail pointers to zero.
- * This operation is NOT thread-safe and should only be called when:
- * - During initialization (before IRQ is enabled)
- * - When keyboard state machine enters reset/error state
- * - When IRQs are temporarily disabled
- * 
- * WARNING: Do not call this function while IRQ handlers may be active,
- * as it modifies both head and tail pointers without synchronization.
- * 
- * @note All buffered scancodes will be discarded
- * @note Does not modify the buffer contents, only the pointers
+ * Reset the ring buffer to an empty state.
+ *
+ * Sets the head and tail indices to zero, discarding any buffered data.
+ * This operation is not thread-safe and must only be called when interrupts
+ * that may access the buffer are disabled (for example during initialization,
+ * explicit reset/error handling, or when IRQs are temporarily disabled).
+ *
+ * @note All buffered data is discarded.
+ * @note The underlying buffer contents are not modified; only the indices are reset.
  */
 void ringbuf_reset(void) {
   rbuf.head = 0;

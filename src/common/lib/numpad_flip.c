@@ -93,35 +93,12 @@ static const uint8_t numpad_flip_table[256] = {
 };
 
 /**
- * @brief Flips numpad keycodes to/from navigation keys for Num Lock emulation
- * 
- * This function provides Mac-style Num Lock behavior by mapping between
- * numpad keys (KC_P0-KC_P9) and navigation keys (KC_HOME, KC_END, arrows, etc.).
- * 
- * The mapping is bidirectional:
- * - Numpad keys flip to navigation keys (e.g., KC_P7 → KC_HOME)
- * - Navigation keys flip to numpad keys (e.g., KC_HOME → KC_P7)
- * 
- * This allows the same function to handle both directions, simplifying
- * the implementation of Num Lock toggle functionality.
- * 
- * Future Implementation Note:
- * When implementing proper Num Lock emulation (KC_NFLP), the caller will
- * maintain a numlock_state flag and call this function conditionally:
- * 
- * Example usage:
- * ```c
- * if (numlock_state == NUMLOCK_OFF) {
- *   key = numpad_flip_code(key);  // Convert numpad to navigation
- * }
- * ```
- * 
- * @param key The keycode to flip (typically from keymap)
- * @return The flipped keycode if mapping exists, original key otherwise
- * 
- * @note Returns original key if no mapping exists in the table
- * @note O(1) constant-time lookup performance
- * @note Thread-safe (read-only const table)
+ * Flip between numpad and navigation keycodes for Mac-style Num Lock emulation.
+ *
+ * Performs a bidirectional lookup and returns the mapped keycode when a mapping exists.
+ *
+ * @param key Keycode to flip (0–255).
+ * @return The mapped keycode if a mapping exists, otherwise the original keycode.
  */
 uint8_t numpad_flip_code(uint8_t key) {
     uint8_t flipped = numpad_flip_table[key];

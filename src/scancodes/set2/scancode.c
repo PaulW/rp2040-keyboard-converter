@@ -92,66 +92,29 @@ static const uint8_t e0_code_translation[256] = {
 };
 
 /**
- * @brief Translates E0-prefixed scan codes to interface codes
- * 
- * Performs a fast lookup in the translation table for E0-prefixed codes.
- * Returns 0 for unmapped codes or fake shifts (which should be ignored by caller).
- * 
- * @param code The E0-prefixed scan code to translate
- * @return Translated interface code, or 0 if code should be ignored
+ * Translate an E0-prefixed Set 2 scan code to the converter's interface code.
+ *
+ * Looks up the provided E0-prefixed scan code in the E0 translation table.
+ *
+ * @param code E0-prefixed scan code to translate.
+ * @return Translated interface code, or `0` if the code is unmapped or should be ignored (e.g., fake-shift codes).
  */
 static inline uint8_t switch_e0_code(uint8_t code) {
     return e0_code_translation[code];
 }
 
 /**
- * @brief Process Keyboard Input (Scancode Set 2) Data
- * 
- * This function processes scan codes from AT/PS2 keyboards using Scan Code Set 2.
- * Set 2 is the default for PS/2 keyboards and is the most commonly used scan code set.
- * 
- * Protocol Overview:
- * - Make codes: 0x01-0x83 (key press)
- * - Break codes: F0 followed by make code (key release, e.g., F0 1C = key 0x1C released)
- * - Multi-byte sequences: E0-prefixed (2-3 bytes) and E1-prefixed (8 bytes)
- * 
- * State Machine:
- * 
- *     INIT ──[F0]──> F0 ──[code]──> INIT (process break code)
- *       │
- *       ├──[E0]──> E0 ──[F0]──> E0_F0 ──[code]──> INIT (E0-prefixed break)
- *       │           │
- *       │           └──[12,59]──> INIT (ignore fake shifts)
- *       │           │
- *       │           └──[code]──> INIT (process E0-prefixed make)
- *       │
- *       ├──[E1]──> E1 ──[14]──> E1_14 ──[77]──> INIT (Pause make)
- *       │           │
- *       │           └──[F0]──> E1_F0 ──[14]──> E1_F0_14 ──[F0]──> E1_F0_14_F0 ──[77]──> INIT (Pause break)
- *       │
- *       ├──[83]──> INIT (F7 special handling)
- *       ├──[84]──> INIT (SysReq/Alt+PrtScn)
- *       └──[code]──> INIT (process normal make code)
- * 
- * Multi-byte Sequence Examples:
- * - Normal key press:     1C (A key make)
- * - Normal key release:   F0 1C (A key break)
- * - Right Ctrl press:     E0 14 (make)
- * - Right Ctrl release:   E0 F0 14 (break)
- * - Pause press:          E1 14 77 E1 F0 14 F0 77 (make and break together)
- * - Print Screen:         E0 7C (make), E0 F0 7C (break)
- * 
- * Special Handling:
- * - E0 12, E0 59: Fake shifts (ignored, sent by some keyboards with certain keys)
- * - 83: F7 key (special code)
- * - 84: SysReq / Alt+PrintScreen (special code)
- * - E1 sequences: Only used for Pause/Break key (complex 8-byte sequence)
- * - Multimedia keys: Translated to F13-F24 range for compatibility
- * 
- * @param code The keycode to process.
+ * Process a single PS/2 Scan Code Set 2 byte and emit corresponding HID reports.
  *
- * @note This function is called from the keyboard_interface_task() in main task context
- * @note handle_keyboard_report() translates scan codes to HID keycodes via keymap lookup
+ * Interprets Set 2 scan-code bytes (including multi-byte E0 and E1 sequences and F0 break prefixes),
+ * maintains the internal state machine for make/break and special sequences (Pause, Print Screen, Right
+ * Ctrl/Alt, fake-shifts 0x12/0x59, etc.), and calls handle_keyboard_report() for translated make/break events.
+ *
+ * @param code Single byte received from the PS/2 keyboard (Scan Code Set 2).
+ *
+ * @note This function is called from keyboard_interface_task() in the main task context.
+ * @note HID events are emitted by calling handle_keyboard_report(code, make) after translation;
+ *       unmapped or ignored E0-derived codes (including fake-shift bytes 0x12 and 0x59) do not generate reports.
  */
 void process_scancode(uint8_t code) {
   // clang-format off

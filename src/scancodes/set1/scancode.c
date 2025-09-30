@@ -80,43 +80,16 @@ static inline uint8_t switch_e0_code(uint8_t code) {
 }
 
 /**
- * @brief Process Keyboard Input (Scancode Set 1) Data
- * 
- * This function processes scan codes from XT and AT keyboards using Scan Code Set 1.
- * Set 1 is the original IBM PC/XT scan code set, still widely used for compatibility.
- * 
- * Protocol Overview:
- * - Make codes: 0x01-0x53 (key press)
- * - Break codes: Make code + 0x80 (key release, e.g., 0x81 = key 0x01 released)
- * - Multi-byte sequences: E0-prefixed (2 bytes) and E1-prefixed (3-6 bytes)
- * 
- * State Machine:
- * 
- *     INIT ──[E0]──> E0 ──[code]──> INIT (process E0-prefixed code)
- *       │            │
- *       │            └──[2A,AA,36,B6]──> INIT (ignore fake shifts)
- *       │
- *       ├──[E1]──> E1 ──[1D]──> E1_1D ──[45]──> INIT (Pause press)
- *       │           │
- *       │           └──[9D]──> E1_9D ──[C5]──> INIT (Pause release)
- *       │
- *       └──[code]──> INIT (process normal code)
- * 
- * Multi-byte Sequence Examples:
- * - Print Screen: E0 37 (make), E0 B7 (break)
- * - Pause/Break:  E1 1D 45 (make), E1 9D C5 (break)
- * - Right Ctrl:   E0 1D (make), E0 9D (break)
- * - Keypad Enter: E0 1C (make), E0 9C (break)
- * 
- * Special Handling:
- * - E0 2A, E0 AA, E0 36, E0 B6: Fake shifts (ignored, some keyboards send these)
- * - E1 sequences: Only used for Pause/Break key
- * - Codes >= 0x80: Break codes (key release)
- * 
- * @param code The keycode to process.
+ * Process a single Scancode Set 1 byte, updating internal prefix state and emitting
+ * key make/release reports via handle_keyboard_report.
  *
- * @note This function is called from the keyboard_interface_task() in main task context
- * @note handle_keyboard_report() translates scan codes to HID keycodes via keymap lookup
+ * The function implements a small state machine to handle single-byte make/break codes
+ * and multi-byte E0/E1 prefixed sequences. E0-prefixed codes are translated using the
+ * E0 translation table; certain fake-shift E0 codes are ignored. E1 sequences are used
+ * only to synthesize the Pause/Break make and break (0x55).
+ *
+ * @param code Scancode byte received from the keyboard (may be a make, a break (make|0x80),
+ *             or a prefix byte 0xE0 / 0xE1).
  */
 void process_scancode(uint8_t code) {
   // clang-format off

@@ -40,40 +40,17 @@ static bool led_update_pending = false;
 #endif
 
 /**
- * @brief Updates the LEDs on the converter based on the current state
- * 
- * This function updates WS2812 RGB LEDs to reflect the converter's operational state.
- * The status LED shows different colors for different states:
- * - Firmware flash mode: Magenta (bootloader active)
- * - Ready (KB + Mouse): Green (all devices initialized)
- * - Not ready: Orange (waiting for device initialization)
- * 
- * If CONVERTER_LOCK_LEDS is defined, additional LEDs show lock key states
- * (Num Lock, Caps Lock, Scroll Lock).
- * 
- * WS2812 Protocol Implementation:
- * - Data cascades through LED chain (first LED receives all data, passes remainder)
- * - Each ws2812_show() call sends 24 bits (GRB) to next LED in chain
- * - After all LEDs are updated, a ≥50µs reset pulse latches all colors simultaneously
- * - Uses non-blocking timing check to enforce minimum 60µs between update cycles
- * 
- * Non-Blocking Approach with Multiple Safeguards:
- * 1. Timing Check: Ensures ≥60µs elapsed since last update (WS2812 reset requirement)
- * 2. FIFO Check: ws2812_show() checks PIO TX FIFO before writing (prevents blocking)
- * 3. Deferred Updates: Sets pending flag if either check fails, retry on next call
- * 4. Atomic Updates: All LEDs must succeed or entire update is deferred for consistency
- * 
- * Critical for Protocol Timing:
- * - Keyboard/mouse protocols use PIO with strict timing requirements
- * - Any blocking in WS2812 updates could cause protocol bit errors
- * - Non-blocking at both timing AND PIO FIFO levels prevents interference
- * - Typical update latency: <10µs when FIFO has space, zero blocking ever
- * 
- * @return true if all LEDs were updated, false if update was deferred
- * 
- * @note Fully non-blocking: never blocks on timing OR PIO FIFO
- * @note Thread-safe: Uses atomic time operations from pico SDK
- * @note Caller should retry if returns false (handled automatically by wrapper)
+ * Update the converter's WS2812 LEDs to reflect the current operational state.
+ *
+ * The status LED shows one of: magenta for firmware-flash mode, green when both
+ * keyboard and mouse are ready, or orange when not ready. If CONVERTER_LOCK_LEDS
+ * is defined, additional LEDs represent Num Lock, Caps Lock, and Scroll Lock.
+ *
+ * This function attempts a non-blocking LED update; callers should retry when
+ * the update is deferred.
+ *
+ * @return `true` if the LED update was successfully queued/applied, `false` if
+ * the update was deferred and should be retried later.
  */
 bool update_converter_leds(void) {
 #ifdef CONVERTER_LEDS
@@ -124,28 +101,11 @@ bool update_converter_leds(void) {
 }
 
 /**
- * @brief Wrapper function to update converter status LEDs efficiently
- * 
- * This function implements change detection to prevent unnecessary LED updates.
- * WS2812 LED updates are relatively expensive operations (PIO state machine),
- * so we only update when the state actually changes OR when a previous update
- * was deferred due to timing constraints.
- * 
- * Benefits:
- * - Prevents LED flickering from repeated identical updates
- * - Reduces PIO bus traffic and CPU overhead
- * - Improves overall system responsiveness
- * - Ensures deferred updates eventually get applied
- * 
- * Change Detection with Deferred Update Handling:
- * - Uses static variable to cache previous state
- * - Compares full state byte (union value) for efficiency
- * - Single byte comparison vs multiple bitfield checks
- * - Retries if previous update was deferred (led_update_pending flag)
- * 
- * @note Called frequently from protocol tasks
- * @note Only updates LEDs when state changes or retry needed
- * @note Non-blocking: deferred updates handled in next call iteration
+ * Trigger LED updates for the converter only when the converter state changes or a previous update was deferred.
+ *
+ * Caches the last applied converter state to avoid redundant WS2812 updates and retries any deferred update on subsequent calls so pending LED changes are eventually applied.
+ *
+ * @note Intended to be called frequently from protocol tasks; inexpensive when no change is detected.
  */
 void update_converter_status(void) {
   static uint8_t status;
@@ -165,26 +125,18 @@ void update_converter_status(void) {
 }
 
 /**
- * @brief Sets the lock values for the keyboard LEDs based on the given HID lock value
- * 
- * This function updates the lock values for the keyboard LEDs (num lock, caps lock, and scroll
- * lock) based on the given HID lock value. The lock values are stored in the `lock_leds` structure.
- * 
- * USB HID Context:
- * - Called from tud_hid_set_report_cb() in USB interrupt context
- * - Lock key changes are rare (user presses Caps Lock, Num Lock, etc.)
- * - Immediate LED feedback is important for user experience
- * 
- * Bounded Wait Strategy:
- * - Uses bounded wait (max 60µs) to ensure LED update completes
- * - 60µs is negligible in USB context (USB frames are 1000µs)
- * - Retries update_converter_leds() until success or max iterations reached
- * - Prevents deferred updates for lock key changes where immediate feedback matters
- * 
- * @param lock_val The HID lock value (bit 0: Num Lock, bit 1: Caps Lock, bit 2: Scroll Lock)
- * 
- * @note Called from USB interrupt context - 60µs bounded wait is acceptable here
- * @note Most calls succeed immediately; wait only occurs if called within 60µs of previous update
+ * Update lock LED state from a HID lock bitmap.
+ *
+ * Sets numLock, capsLock, and scrollLock in the global lock_leds structure from the
+ * corresponding bits of lock_val and attempts to apply the change to the physical LEDs.
+ * When LED support is enabled, this function will perform a bounded retry loop (up to
+ * 10 attempts, ~60 µs total) to provide immediate visual feedback when invoked from
+ * USB HID interrupt context.
+ *
+ * @param lock_val HID lock bitmap: bit 0 = Num Lock, bit 1 = Caps Lock, bit 2 = Scroll Lock.
+ *
+ * @note Called from USB HID interrupt context; the bounded retry is intended to remain short
+ *       and predictable to preserve USB timing. 
  */
 void set_lock_values_from_hid(uint8_t lock_val) {
   lock_leds.keys.numLock = (unsigned char)(lock_val & 0x01);

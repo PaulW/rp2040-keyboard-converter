@@ -78,15 +78,13 @@ static void mouse_command_handler(uint8_t data_byte) {
 }
 
 /**
- * @brief Calculates the XY movement based on the given position and sign bit.
- * This function takes a position value and a sign bit and calculates the XY movement.
- * If the sign bit is set and the position is non-zero, the position is decremented by 0x100.
- * The resulting position is then clamped between -127 and 127.
+ * Interpret a raw mouse packet position byte together with its sign flag and
+ * produce a signed X/Y displacement clamped to the range -127 to 127.
  *
- * @param pos      The position value.
- * @param sign_bit The sign bit.
+ * @param pos      Raw position byte from the mouse packet.
+ * @param sign_bit Non-zero if the sign flag is set (indicates negative movement).
  *
- * @return The calculated XY movement as an int8_t value.
+ * @returns Signed displacement in the range -127 to 127.
  */
 int8_t get_xy_movement(uint8_t pos, int sign_bit) {
   int16_t new_pos = pos;
@@ -98,14 +96,13 @@ int8_t get_xy_movement(uint8_t pos, int sign_bit) {
 }
 
 /**
- * @brief Retrieves the Z-axis movement from the given position.
- * This function extracts the Z-axis movement from the given position byte.
- * The position byte is expected to be in the format: [0 | 0 | 0 | 0 | Z3 | Z2 | Z1 | Z0],
- * where Z3-Z0 represent the Z-axis movement.
+ * Extracts the Z-axis (scroll) movement encoded in the low 4 bits of a PS/2 position byte.
  *
- * @param pos The position byte from which to extract the Z-axis movement.
+ * The function returns the signed Z movement in the range -8 to 7: when `pos` is 0 the result is 0;
+ * otherwise the low 4 bits are interpreted and 8 is subtracted to produce a signed value.
  *
- * @return The Z-axis movement as a signed 8-bit integer.
+ * @param pos Position byte containing Z movement in its lower 4 bits.
+ * @returns The Z-axis movement as an `int8_t` in the range -8 to 7.
  */
 int8_t get_z_movement(uint8_t pos) {
   int8_t z_pos = pos & 0x0F;
@@ -117,16 +114,17 @@ int8_t get_z_movement(uint8_t pos) {
 }
 
 /**
- * @brief Process the mouse event data.
- * This function is responsible for processing mouse events and updating the mouse state
- * accordingly. It handles various stages of mouse initialisation, including self-test, mouse type
- * detection, and configuration.  If the mouse is initialised, it processes the mouse data and sends
- * it to the HID interface.
+ * Process a single PS/2 mouse data byte and advance the mouse interface state machine.
  *
- * @param data_byte The data byte received from the mouse.
+ * Handles initialization sequences (self-test, ID/type detection, configuration) by issuing
+ * appropriate PS/2 commands and updating interface state. Once the device is INITIALISED,
+ * assembles incoming bytes into complete mouse packets, converts them to button/XY/Z values,
+ * and forwards the report to the HID/reporting layer.
  *
- * @note Unlike the keyboard interface, the mouse interface does not utilise a ring buffer, and
- * instead sends data directly to the HID interface.
+ * @param data_byte The raw PS/2 data byte received from the mouse.
+ *
+ * Side effects: may modify global mouse_state and mouse_id, call mouse_command_handler to send
+ * PS/2 commands, and call handle_mouse_report to deliver completed HID reports.
  */
 void mouse_event_processor(uint8_t data_byte) {
   static uint8_t mouse_type_detect_sequence = 0;
@@ -353,15 +351,12 @@ void mouse_event_processor(uint8_t data_byte) {
 }
 
 /**
- * @brief IRQ Event Handler used to read data from the AT/PS2 Mouse.
- * This function is responsible for handling the interrupt request (IRQ) event that occurs when data
- * is received from the AT/PS2 Mouse.
- * - It extracts the start bit, parity bit, stop bit, and data byte from the received data.
- * - It then performs validation checks on the start bit, parity bit, and stop bit.
- * - If any of the validation checks fail, error messages are printed and appropriate actions are
- * taken.
- * - If all the validation checks pass, the data byte is processed by the mouse_event_processor()
- * function.
+ * Handle a mouse PIO IRQ by validating and dispatching a received PS/2 data byte.
+ *
+ * Reads a value from the mouse PIO RX FIFO, validates the PS/2 framing (start, parity, stop)
+ * and takes corrective action for errors: on parity mismatch requests a resend from the device,
+ * on framing errors resets the mouse state and restarts the PIO state machine. When the byte
+ * passes validation it is forwarded to mouse_event_processor().
  */
 void mouse_input_event_handler() {
   io_ro_32 data_cast = mouse_pio->rxf[mouse_sm] >> 21;
@@ -393,11 +388,18 @@ void mouse_input_event_handler() {
 }
 
 /**
- * @brief Task function for the mouse interface.
- * This function simply assists with the initialisation of the mouse interface and handles timeout
- * events.
+ * Assist mouse interface initialization and handle initialization-timeout events.
  *
- * @note This function should be called periodically in the main loop, or within a task scheduler.
+ * When the mouse is not yet INITIALISED, this function periodically checks for activity and
+ * enforces a timeout sequence: if the mouse clock line remains idle for a sustained period
+ * (~1 second), the function resets the detected mouse ID to ATPS2_MOUSE_ID_UNKNOWN, moves the
+ * state machine to INIT_AWAIT_ACK, and issues an ATPS2_CMD_RESET to restart mouse initialization.
+ *
+ * The function also clears the internal stall counter when the clock is low and the interface is
+ * UNINITIALISED, and (when compiled with CONVERTER_LEDS) updates converter LED/state indicators.
+ *
+ * This function has no parameters and no return value; it is intended to be called periodically
+ * from the main loop or a scheduler.
  */
 void mouse_interface_task() {
   // Mouse Interface Initialisation helper
@@ -435,19 +437,13 @@ void mouse_interface_task() {
 }
 
 /**
- * @brief Initializes the AT/PS2 PIO interface for the mouse.
- * This function initializes the AT/PS2 PIO interface for the mouse by performing the following
- * steps:
- * 1. Resets the converter status if CONVERTER_LEDS is defined.
- * 2. Finds an available PIO to use for the keyboard interface program.
- * 3. Claims the PIO and loads the program.
- * 4. Sets up the IRQ for the PIO state machine.
- * 5. Defines the polling interval and cycles per clock for the state machine.
- * 6. Gets the base clock speed of the RP2040.
- * 7. Initializes the PIO interface program.
- * 8. Sets the IRQ handler and enables the IRQ.
+ * Initialize the AT/PS2 mouse interface on a chosen PIO and configure its state machine and IRQ.
  *
- * @param data_pin The data pin to be used for the mouse interface.
+ * Configures and claims an available PIO/SM, loads the mouse PIO program, initializes the
+ * PIO state machine with the appropriate clock divider for AT/PS2 timings, and registers
+ * the IRQ handler used to receive mouse input.
+ *
+ * @param data_pin GPIO pin number to use as the PS/2 data line for the mouse interface.
  */
 void mouse_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
