@@ -98,8 +98,8 @@ uint keyboard_data_pin;            /**< GPIO pin for DATA line (CLOCK = DATA + 1
 #define CODESET_3 (strcmp(KEYBOARD_CODESET, "set3") == 0)
 
 /* Protocol State and Configuration Variables */
-static uint8_t keyboard_lock_leds = 0;     /**< Current LED state (Caps/Num/Scroll Lock) */
-static bool id_retry = false;              /**< Flag indicating ID read retry attempt */
+static volatile uint8_t keyboard_lock_leds = 0;     /**< Current LED state (Caps/Num/Scroll Lock) */
+static bool id_retry = false;                       /**< Flag indicating ID read retry attempt */
 
 /**
  * @brief Stop Bit Compliance Detection
