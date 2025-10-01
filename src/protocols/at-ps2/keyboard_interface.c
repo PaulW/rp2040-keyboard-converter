@@ -18,6 +18,55 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file keyboard_interface.c
+ * @brief AT/PS2 Keyboard Protocol Implementation
+ * 
+ * This implementation handles the AT and PS/2 keyboard protocols used by IBM PC
+ * compatible systems from the 1980s onwards. The protocols feature:
+ * 
+ * Physical Interface:
+ * - 2-wire synchronous serial communication (DATA + CLOCK)
+ * - Open-drain signals with pull-up resistors
+ * - 5V TTL logic levels (AT) or 5V/3.3V (PS/2)
+ * - DIN connector (AT) or mini-DIN connector (PS/2)
+ * 
+ * Communication Protocol:
+ * - LSB-first bit transmission (bit 0 → bit 7)
+ * - Frame format: Start(0) + 8 data bits + Parity(odd) + Stop(1)
+ * - Keyboard controls clock for transmission to host
+ * - Host can inhibit by pulling CLOCK low
+ * - Bidirectional with command/response capability
+ * 
+ * Timing Characteristics:
+ * - Clock frequency: 10-16.7 kHz (typical 10-15 kHz)
+ * - Clock pulse width: minimum 30µs low, 30µs high
+ * - Data setup time: minimum 5µs before clock falling edge
+ * - Data hold time: minimum 5µs after clock falling edge
+ * - Inhibit time: minimum 100µs CLOCK low stops transmission
+ * 
+ * State Machine:
+ * 1. UNINITIALISED → Reset keyboard and wait for self-test
+ * 2. INIT_AWAIT_SELFTEST → Wait for 0xAA (BAT completion)
+ * 3. INIT_READ_ID → Request and read 2-byte keyboard ID
+ * 4. INIT_SETUP → Configure scan code set and keyboard parameters
+ * 5. SET_LOCK_LEDS → Initialize LED states
+ * 6. INITIALISED → Normal operation with scan code processing
+ * 
+ * Special Features:
+ * - Multiple scan code set support (Sets 1, 2, 3)
+ * - LED control (Caps/Num/Scroll Lock)
+ * - Typematic repeat rate configuration
+ * - Z-150 keyboard compatibility (non-standard stop bit)
+ * - Terminal keyboard support (Set 3 scan codes)
+ * 
+ * Error Handling:
+ * - Automatic retry for failed commands
+ * - Timeout detection with state machine reset
+ * - Parity error detection and recovery
+ * - Graceful handling of non-standard keyboards
+ */
+
 #include "keyboard_interface.h"
 
 #include <math.h>
@@ -32,49 +81,94 @@
 #include "ringbuf.h"
 #include "scancode.h"
 
-uint keyboard_sm = 0;
-uint keyboard_offset = 0;
-PIO keyboard_pio;
-uint16_t keyboard_id = 0xFFFF;
-uint keyboard_data_pin;
+/* PIO State Machine Configuration */
+uint keyboard_sm = 0;              /**< PIO state machine number */
+uint keyboard_offset = 0;          /**< PIO program memory offset */
+PIO keyboard_pio;                  /**< PIO instance (pio0 or pio1) */
+uint16_t keyboard_id = ATPS2_KEYBOARD_ID_UNKNOWN;     /**< Keyboard identification code (2 bytes) */
+uint keyboard_data_pin;            /**< GPIO pin for DATA line (CLOCK = DATA + 1) */
 
-// Check if we are a Terminal Keyboard (Keyboards utilising Set 3 Scancodes).
-// This is used to determine if we should perform the additional steps required for Terminal
-// Keyboards.
+/**
+ * @brief Terminal Keyboard Detection Macro
+ * 
+ * Determines if the configured keyboard uses Scan Code Set 3, which indicates
+ * a terminal keyboard requiring special initialization and handling procedures.
+ * Terminal keyboards often have different capabilities and command sets.
+ */
 #define CODESET_3 (strcmp(KEYBOARD_CODESET, "set3") == 0)
 
-static uint8_t keyboard_lock_leds = 0;
-static bool id_retry =
-    false;  // Used to determine whether we've already retried reading the Keyboard ID.
+/* Protocol State and Configuration Variables */
+static volatile uint8_t keyboard_lock_leds = 0;     /**< Current LED state (Caps/Num/Scroll Lock) */
+static bool id_retry = false;                       /**< Flag indicating ID read retry attempt */
 
-// Define the Stop Bit State.  This will help to determine if we are compliant with the AT/PS2 protocol, or whether we are likely a Z-150 or similar keyboard.
-// By default, the Stop Bit should be HIGH following the Parity Bit.  If the Stop Bit is LOW, then we could be dealing with a Z-150 or similar keyboard.
-// Please refer to the interface.pio file for more information on the signalling.
+/**
+ * @brief Stop Bit Compliance Detection
+ * 
+ * AT/PS2 protocol specifies stop bit should be HIGH (1) after parity bit.
+ * Some non-standard keyboards (like Zenith Z-150) use LOW (0) stop bit.
+ * This detection helps identify and accommodate non-compliant keyboards.
+ * 
+ * @see interface.pio for detailed signal timing implementation
+ */
 static enum {
-  STOP_BIT_LOW,
-  STOP_BIT_HIGH
+  STOP_BIT_LOW,     /**< Non-standard stop bit (Z-150 style keyboards) */
+  STOP_BIT_HIGH     /**< Standard AT/PS2 stop bit (compliant keyboards) */
 } stop_bit_state = STOP_BIT_HIGH;
 
-// Define overall Keyboard State
+/**
+ * @brief AT/PS2 Protocol State Machine
+ * 
+ * Manages the complete initialization and operational phases:
+ * - UNINITIALISED: System startup, sending reset command
+ * - INIT_AWAIT_ACK: Waiting for acknowledge to reset command  
+ * - INIT_AWAIT_SELFTEST: Waiting for Basic Assurance Test (BAT) completion (0xAA)
+ * - INIT_READ_ID_1: Reading first byte of keyboard identification
+ * - INIT_READ_ID_2: Reading second byte of keyboard identification  
+ * - INIT_SETUP: Configuring scan code set and keyboard parameters
+ * - SET_LOCK_LEDS: Setting initial LED states
+ * - INITIALISED: Normal operation, processing scan codes
+ */
 static enum {
-  UNINITIALISED,
-  INIT_AWAIT_ACK,
-  INIT_AWAIT_SELFTEST,
-  INIT_READ_ID_1,
-  INIT_READ_ID_2,
-  INIT_SETUP,
-  SET_LOCK_LEDS,
-  INITIALISED,
+  UNINITIALISED,        /**< Initial state, sending keyboard reset */
+  INIT_AWAIT_ACK,       /**< Waiting for reset command acknowledgment */
+  INIT_AWAIT_SELFTEST,  /**< Waiting for self-test completion (0xAA) */
+  INIT_READ_ID_1,       /**< Reading first byte of keyboard ID */
+  INIT_READ_ID_2,       /**< Reading second byte of keyboard ID */
+  INIT_SETUP,           /**< Configuring scan code set and options */
+  SET_LOCK_LEDS,        /**< Setting LED states */
+  INITIALISED,          /**< Normal operation, processing scan codes */
 } keyboard_state = UNINITIALISED;
 
 /**
- * @brief Command Handler function to issue commands to the attached AT/PS2 Keyboard.
- * This function is responsible for handling commands to be sent to the AT/PS2 Keyboard. It takes a
- * single parameter, `data_byte`, which represents the command to be issued. The function calculates
- * the parity of the data byte and combines it with the data byte to form a 16-bit value. This value
- * is then sent to the peripheral using the PIO state machine.
- *
- * @param data_byte The data byte to be sent to the keyboard.
+ * @brief AT/PS2 Keyboard Command Handler
+ * 
+ * Transmits commands from host to keyboard using the AT/PS2 protocol. The function
+ * handles the complete command transmission process including:
+ * 
+ * Command Processing:
+ * - Calculates odd parity bit for the 8-bit command
+ * - Constructs 16-bit transmission frame (command + parity)
+ * - Queues data to PIO state machine for transmission
+ * 
+ * Protocol Compliance:
+ * - Follows AT/PS2 host-to-keyboard transmission format
+ * - Frame format: Start(0) + 8 data bits + Parity(odd) + Stop(1)
+ * - Host controls transmission timing by pulling CLOCK low
+ * - Automatic parity calculation ensures data integrity
+ * 
+ * Common Commands:
+ * - 0xED: Set LED states (followed by LED bitmap)
+ * - 0xF2: Read keyboard ID (returns 2-byte response)
+ * - 0xF3: Set typematic rate/delay (followed by rate byte)
+ * - 0xF4: Enable scanning (start sending scan codes)
+ * - 0xF5: Disable scanning (stop sending scan codes)
+ * - 0xFE: Resend last response (error recovery)
+ * - 0xFF: Reset keyboard (triggers self-test sequence)
+ * 
+ * @param data_byte 8-bit command code to transmit to keyboard
+ * 
+ * @note Function executes synchronously - blocks until PIO accepts data
+ * @note Keyboard responses handled by IRQ event handler
  */
 static void keyboard_command_handler(uint8_t data_byte) {
   uint16_t data_with_parity = (uint16_t)(data_byte + (interface_parity_table[data_byte] << 8));
@@ -82,23 +176,49 @@ static void keyboard_command_handler(uint8_t data_byte) {
 }
 
 /**
- * @brief Processes keyboard event data.
- * This function is responsible for processing keyboard events and updating the keyboard state
- * accordingly. It handles various stages of keyboard initialization, including self-test, reading
- * the keyboard ID, setting up make/break codes, and handling LED events. If the keyboard is
- * initialized, it puts the received keycode into the ring buffer for further processing.
- *
- * @param data_byte The data byte received from the keyboard.
+ * @brief AT/PS2 Keyboard Event Processor
+ * 
+ * Processes all data received from the keyboard and manages the complete initialization
+ * and operational state machine. Handles the complex AT/PS2 protocol sequence:
+ * 
+ * Initialization States:
+ * - UNINITIALISED: Power-on detection and initial reset command
+ * - INIT_AWAIT_ACK: Waiting for command acknowledgment (0xFA)
+ * - INIT_AWAIT_SELFTEST: Waiting for BAT completion (0xAA = pass, 0xFC = fail)
+ * - INIT_READ_ID_1/2: Reading 2-byte keyboard identification code
+ * - INIT_SETUP: Configuring scan code set and terminal keyboard options
+ * - SET_LOCK_LEDS: Setting Caps/Num/Scroll Lock LED states
+ * 
+ * Operational State:
+ * - INITIALISED: Normal scan code processing and LED management
+ * 
+ * Protocol Features Handled:
+ * - Automatic retry logic for failed initialization steps
+ * - Keyboard ID detection for terminal keyboards (Set 3 scan codes)
+ * - Make/break code configuration for advanced keyboards  
+ * - LED state synchronization with host lock key status
+ * - Error recovery and state machine reset on protocol violations
+ * 
+ * Data Flow:
+ * - Initialization responses trigger state transitions
+ * - Scan codes queued to ring buffer for HID processing
+ * - LED commands issued when host lock state changes
+ * - Status updates for converter LED indicators
+ * 
+ * @param data_byte 8-bit response/scan code received from keyboard
+ * 
+ * @note Executes in interrupt context - keep processing efficient
+ * @note State transitions logged for debugging initialization issues
  */
 static void keyboard_event_processor(uint8_t data_byte) {
   switch (keyboard_state) {
     case UNINITIALISED:
-      id_retry = false;      // Reset the id_retry flag as we are uninitialised.
-      keyboard_id = 0xFFFF;  // Reset the keyboard_id as we are uninitialised.
+      id_retry = false;      // Clear retry flag - starting fresh initialization sequence
+      keyboard_id = ATPS2_KEYBOARD_ID_UNKNOWN;  // Reset keyboard ID to unknown state during initialization
       switch (data_byte) {
-        case 0xAA:
-          // Likely we are powering on for the first time and initialising. Keyboard sends 0xAA on
-          // power on following successful BAT
+        case ATPS2_RESP_BAT_PASSED:
+          // Power-on self-test completed successfully (Basic Assurance Test)
+          // Keyboard passed internal diagnostics and is ready
           printf("[DBG] Keyboard Self Test OK!\n");
           buzzer_play_sound_sequence_non_blocking(READY_SEQUENCE);
           keyboard_lock_leds = 0;
@@ -106,31 +226,31 @@ static void keyboard_event_processor(uint8_t data_byte) {
           keyboard_state = INIT_READ_ID_1;
           break;
         default:
-          // This event is reached if we receieve any other event before intiiialisation.  This may
-          // be an unsuccesful BAT or just weird power-on state.
+          // Unexpected response during initialization - could be failed BAT (0xFC)
+          // or other power-on state requiring explicit reset command
           printf("[DBG] Asking Keyboard to Reset\n");
           keyboard_state = INIT_AWAIT_ACK;
-          keyboard_command_handler(0xFF);
+          keyboard_command_handler(ATPS2_CMD_RESET);
       }
       break;
     case INIT_AWAIT_ACK:
       switch (data_byte) {
-        case 0xFA:
+        case ATPS2_RESP_ACK:
           printf("[DBG] ACK Received after Reset\n");
           keyboard_state = INIT_AWAIT_SELFTEST;
           break;
         default:
           printf("[DBG] Unknown ACK Response (0x%02X).  Asking again to Reset...\n", data_byte);
-          keyboard_command_handler(0xFF);
+          keyboard_command_handler(ATPS2_CMD_RESET);
       }
       break;
     case INIT_AWAIT_SELFTEST:
       switch (data_byte) {
-        case 0xAA:
+        case ATPS2_RESP_BAT_PASSED:
           printf("[DBG] Keyboard Self Test OK!\n");
           buzzer_play_sound_sequence_non_blocking(READY_SEQUENCE);
           keyboard_lock_leds = 0;
-          // Move on to attempting to read the Keyboard ID.
+          // Proceed to keyboard identification phase for terminal keyboard detection
           printf("[DBG] Waiting for Keyboard ID...\n");
           keyboard_state = INIT_READ_ID_1;
           break;
@@ -138,37 +258,36 @@ static void keyboard_event_processor(uint8_t data_byte) {
           printf("[DBG] Self-Test invalid response (0x%02X).  Asking again to Reset...\n",
                  data_byte);
           keyboard_state = INIT_AWAIT_ACK;
-          keyboard_command_handler(0xFF);
+          keyboard_command_handler(ATPS2_CMD_RESET);
       }
       break;
 
-    // If we are a Terminal Keyboard, then we should receive 2 more responses which will be the ID
-    // of the keyboard. This will timeout after 500ms if no response is received, and this is
-    // handled within the keyboard_interface_task function.
+    // Terminal keyboards respond with 2-byte ID after 0xF2 command
+    // Timeout handling (500ms) managed by main task function if no response received
     case INIT_READ_ID_1:
       switch (data_byte) {
-        case 0xFA:
+        case ATPS2_RESP_ACK:
           printf("[DBG] ACK Keyboard ID Request\n");
           printf("[DBG] Waiting for Keyboard ID...\n");
           break;
         default:
           printf("[DBG] Keyboard First ID Byte read as 0x%02X\n", data_byte);
-          keyboard_id &= 0x00FF;
+          keyboard_id &= ATPS2_KEYBOARD_ID_LOW_MASK;
           keyboard_id |= (uint16_t)data_byte << 8;
           keyboard_state = INIT_READ_ID_2;
       }
       break;
     case INIT_READ_ID_2:
       printf("[DBG] Keyboard Second ID Byte read as 0x%02X\n", data_byte);
-      keyboard_id &= 0xFF00;
+      keyboard_id &= ATPS2_KEYBOARD_ID_HIGH_MASK;
       keyboard_id |= (uint16_t)data_byte;
       printf("[DBG] Keyboard ID: 0x%04X\n", keyboard_id);
-      // Handle Make/Break Setup for Terminal Keyboards
+      // Configure terminal keyboards for proper operation
       if (CODESET_3) {
-        // We then want to ensure we set all keys to Make/Break if we're a Terminal Keyboard
-        // (Keyboards utilising Set 3 Scancodes)
+        // Terminal keyboards (Set 3) require explicit make/break mode configuration
+        // Command enables both key press and release events for all keys
         printf("[DBG] Setting all Keys to Make/Break\n");
-        keyboard_command_handler(0xF8);
+        keyboard_command_handler(ATPS2_KEYBOARD_CMD_SET_ALL_MAKEBREAK);
         keyboard_state = INIT_SETUP;
       } else {
         printf("[DBG] Keyboard Initialised!\n");
@@ -176,23 +295,23 @@ static void keyboard_event_processor(uint8_t data_byte) {
       }
       break;
     case INIT_SETUP:
-      // We want to ensure we set Make/Break
+      // Process acknowledgment for make/break configuration command
       switch (data_byte) {
-        case 0xFA:
+        case ATPS2_RESP_ACK:
           printf("[DBG] Keyboard Initialised!\n");
           keyboard_state = INITIALISED;
           break;
         default:
           printf("[DBG] Unknown Response (0x%02X).  Continuing...\n", data_byte);
-          keyboard_id = 0xFFFF;
+          keyboard_id = ATPS2_KEYBOARD_ID_UNKNOWN;
           printf("[DBG] Keyboard Initialised!\n");
           keyboard_state = INITIALISED;
       }
       break;
 
-    // Handle LED Events.
+    // Handle LED state synchronization with host lock key status
     case SET_LOCK_LEDS:
-      // We likely need to check for a F0 event (key-up) but I think we should be OK?
+      // Process LED command sequence responses (0xED command followed by LED bitmap)
       switch (data_byte) {
         case 0xFA:
           if (lock_leds.value != keyboard_lock_leds) {
@@ -201,7 +320,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
                                                (lock_leds.keys.numLock << 1) |
                                                lock_leds.keys.scrollLock));
           } else {
-            // We've received the ACK for setting the Lock LEDs, so we can move on.
+            // LED command sequence completed successfully - return to normal operation
             buzzer_play_sound_sequence_non_blocking(LOCK_LED);
             keyboard_state = INITIALISED;
           }
@@ -213,7 +332,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
       }
       break;
 
-    // If we are initialised, then we should process the keycodes.
+    // Normal operation: queue scan codes for HID processing
     case INITIALISED:
       if (!ringbuf_is_full()) ringbuf_put(data_byte);
   }
@@ -224,28 +343,58 @@ static void keyboard_event_processor(uint8_t data_byte) {
 }
 
 /**
- * @brief IRQ Event Handler used to read keycode data from the AT/PS2 Keyboard.
- * This function is responsible for handling the interrupt request (IRQ) event that occurs when data
- * is received from the AT/PS2 Keyboard.
- * - It extracts the start bit, parity bit, stop bit, and data byte from the received data.
- * - It then performs validation checks on the start bit, parity bit, and stop bit.
- * - If any of the validation checks fail, error messages are printed and appropriate actions are
- * taken.
- * - If all the validation checks pass, the data byte is processed by the keyboard_event_processor()
- * function.
+ * @brief AT/PS2 Keyboard IRQ Event Handler
+ * 
+ * Interrupt service routine that processes raw data received from the AT/PS2 keyboard
+ * via the PIO state machine. Implements complete frame validation and error recovery:
+ * 
+ * Frame Extraction:
+ * - Reads 11-bit frame from PIO RX FIFO (Start + 8 Data + Parity + Stop)
+ * - Extracts individual components: start bit, 8 data bits, parity bit, stop bit
+ * - Reconstructs original 8-bit data byte from received frame
+ * 
+ * Protocol Validation:
+ * - Start bit validation: Must be 0 (space condition)
+ * - Parity validation: Calculated vs received odd parity bit
+ * - Stop bit detection: Identifies keyboard compliance (high vs low)
+ * - Frame integrity checks prevent processing corrupted data
+ * 
+ * Error Recovery:
+ * - Invalid start bit: Triggers state machine reset and restart
+ * - Parity mismatch: Issues resend command (0xFE) to keyboard
+ * - Special case handling for power-on connection artifacts
+ * - Automatic protocol restart on persistent errors
+ * 
+ * Stop Bit Compatibility:
+ * - Dynamic detection of stop bit polarity (standard vs Z-150 style)
+ * - Adapts to non-compliant keyboards automatically
+ * - Logs stop bit state changes for diagnostic purposes
+ * 
+ * Data Flow:
+ * - Valid frames passed to keyboard event processor
+ * - Invalid frames rejected with appropriate error logging
+ * - State machine restarts maintain protocol synchronization
+ * 
+ * Performance Considerations:
+ * - Executes in interrupt context - minimal processing time
+ * - Direct FIFO access for optimal throughput
+ * - Efficient bit manipulation for frame parsing
+ * 
+ * @note ISR function - no blocking operations allowed
+ * @note PIO FIFO automatically handles timing and bit synchronization
  */
 static void __isr keyboard_input_event_handler() {
   io_ro_32 data_cast = keyboard_pio->rxf[keyboard_sm] >> 21;
   uint16_t data = (uint16_t)data_cast;
 
-  // Extract the Start Bit, Parity Bit and Stop Bit.
+  // Parse AT/PS2 frame components from 11-bit PIO data
   uint8_t start_bit = data & 0x1;
   uint8_t parity_bit = (data >> 9) & 0x1;
   uint8_t stop_bit = (data >> 10) & 0x1;
   uint8_t data_byte = (uint8_t)((data_cast >> 1) & 0xFF);
   uint8_t parity_bit_check = interface_parity_table[data_byte];
 
-  // Determine Stop Bit State and update if necessary.
+  // Detect and adapt to non-standard stop bit behavior (Z-150 compatibility)
   if (stop_bit_state != (stop_bit ? STOP_BIT_HIGH : STOP_BIT_LOW)) {
     stop_bit_state = stop_bit ? STOP_BIT_HIGH : STOP_BIT_LOW;
     printf("[DBG] Stop Bit %s Detected\n", stop_bit ? "High" : "Low");
@@ -257,21 +406,19 @@ static void __isr keyboard_input_event_handler() {
       printf("[ERR] Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check,
              parity_bit);
       if (data_byte == 0x54 && parity_bit == 1) {
-        // Likely we are powering on, or initialising. Keyboard sends 0xAA on power on following
-        // successful BAT however, it also drops clock & data low briefly during initial power on,
-        // and as such, causes an extra bit to be read so shifts data in fifo to change from 0xAA to
-        // 0x54 with invalid parity. This has been fixed, but left here for reference (or if it
-        // breaks again!)
+        // Power-on connection artifact: keyboard briefly pulls lines low during startup
+        // This causes bit shift in FIFO changing 0xAA to 0x54 with invalid parity
+        // Historical fix preserved for reference - indicates keyboard connection event
         printf("[DBG] Likely Keyboard Connect Event detected.\n");
         keyboard_state = UNINITIALISED;
         id_retry = false;
         pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
       }
-      // Ask Keyboard to re-send the data.
-      keyboard_command_handler(0xFE);
-      return;  // We don't want to process this event any further.
+      // Request data retransmission on parity error
+      keyboard_command_handler(ATPS2_CMD_RESEND);
+      return;  // Abort processing - wait for retransmitted data
     }
-    // We should reset/restart the State Machine
+    // Frame validation failed - restart protocol state machine for clean recovery
     keyboard_state = UNINITIALISED;
     id_retry = false;
     pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
@@ -282,64 +429,93 @@ static void __isr keyboard_input_event_handler() {
 }
 
 /**
- * @brief Task function for the keyboard interface.
- * This function handles the initialization and communication with the keyboard.
- * It is responsible for processing stored keypresses which are held within the ring buffer, and
- * then sends it to the relevant scancode processing function to be processed.  It also handles the
- * initialisation of the keyboard, including self-test and reading the keyboard ID, handling events
- * if certain conditions are not met within a certain time frame.
- *
- * @note This function should be called periodically in the main loop, or within a task scheduler.
+ * @brief AT/PS2 Keyboard Interface Main Task
+ * 
+ * Main task function that coordinates all aspects of AT/PS2 keyboard communication
+ * and protocol management. Handles both operational data flow and initialization:
+ * 
+ * Normal Operation (INITIALISED state):
+ * - Processes scan codes from ring buffer when HID interface ready
+ * - Manages LED state synchronization (Caps/Num/Scroll Lock)  
+ * - Coordinates scan code translation and HID report generation
+ * - Maintains optimal throughput while preventing report queue overflow
+ * 
+ * Initialization Management (Non-INITIALISED states):
+ * - Monitors initialization timeouts and implements retry logic
+ * - Detects keyboard presence via clock line monitoring
+ * - Handles stalled initialization with automatic recovery
+ * - Manages keyboard ID read timeouts with graceful fallback
+ * - Coordinates LED setup timeout recovery
+ * 
+ * Timeout Handling:
+ * - 200ms periodic checks for initialization progress
+ * - 2-retry limit for keyboard ID operations before fallback
+ * - 5-attempt detection cycle before reset request
+ * - Automatic state machine recovery on persistent failures
+ * 
+ * LED Synchronization:
+ * - Detects host lock key state changes
+ * - Issues LED command sequence (0xED followed by LED bitmap)
+ * - Handles LED command timeout and recovery
+ * - Provides audio feedback on successful LED changes
+ * 
+ * Hardware Integration:
+ * - Monitors GPIO clock line for keyboard presence detection
+ * - Updates converter status LEDs based on initialization state
+ * - Integrates with USB HID subsystem for optimal report timing
+ * - Coordinates with ring buffer for efficient data flow
+ * 
+ * Performance Features:
+ * - Non-blocking ring buffer processing
+ * - HID-ready checking prevents report queue overflow
+ * - Efficient state-based processing reduces CPU overhead
+ * - Interrupt-driven data reception with task-level processing
+ * 
+ * @note Must be called periodically from main loop (typically 1-10ms intervals)
+ * @note Function is non-blocking and maintains real-time responsiveness
+ * @note Integrates with converter LED system when CONVERTER_LEDS enabled
  */
 void keyboard_interface_task() {
   static uint8_t detect_stall_count = 0;
 
   if (keyboard_state == INITIALISED) {
-    // Handle further initialization steps now, this is more for terminal keyboard support.
-    // This portion helps with Lock LED changes.  We only get here once the keyboard has
-    // initialised.
-    detect_stall_count = 0;  // Reset the detect_stall_count as we are initialised.
+    // Normal operation: process scan codes and manage LED synchronization
+    // LED state changes and terminal keyboard features handled here
+    detect_stall_count = 0;  // Clear timeout counter - keyboard is operational
     if (lock_leds.value != keyboard_lock_leds) {
       keyboard_state = SET_LOCK_LEDS;
-      keyboard_command_handler(0xED);
+      keyboard_command_handler(ATPS2_KEYBOARD_CMD_SET_LEDS);
     } else {
       if (!ringbuf_is_empty() && tud_hid_ready()) {
-        // We only process the ringbuffer if it's not empty and we're ready to send a HID report.
-        // If we don't check for HID ready, we can end up having reports fail to send.
-
-        // Previously we would pause all interrupts while reading the ringbuffer.
-        // However, this didn't seem to do anything other than cause latency for keypresses.
-        // We may need to revisit this if we encounter issues.
-        int c = ringbuf_get();  // Pull from the ringbuffer
-        if (c != -1) process_scancode((uint8_t)c);
+        // Process scan codes only when HID interface ready to prevent report queue overflow
+        // Historical note: interrupt disabling during ring buffer read was tested
+        // but provided no benefit and increased input latency - removed for performance
+        uint8_t scancode = ringbuf_get();  // Retrieve next scan code from interrupt-filled buffer
+        process_scancode(scancode);
       }
     }
   } else {
-    // This portion helps with initialisation of the keyboard.
-    // Here we handle Timeout events.  If we don't receive a response from the keyboard when in an
-    // alternate state, then we will reset the keyboard and try again.  This is to handle the case
-    // where the keyboard is not responding.
+    // Initialization timeout management and keyboard detection logic
     static uint32_t detect_ms = 0;
     if (board_millis() - detect_ms > 200) {
       detect_ms = board_millis();
       if (gpio_get(keyboard_data_pin + 1) == 1) {
-        // Only perform timeout checks if the clock is HIGH (Keyboard Detected).
-        detect_stall_count++;  // Always increment the detect_stall_count if we have a HIGH clock
-                               // and not in INITIALISED state.
+        // Monitor initialization progress when keyboard detected (CLOCK line high)
+        detect_stall_count++;  // Increment timeout counter for initialization state monitoring
         switch (keyboard_state) {
           case INIT_READ_ID_1 ... INIT_SETUP:
             if (detect_stall_count > 2) {
-              // Stall Detected during Reading of Keyboard ID or Setup Process
+              // Initialization timeout detected during ID read or setup phase
               if (!id_retry) {
-                // We've not tried re-requesting the ID, let's do that first...
+                // First timeout - retry keyboard ID request before giving up
                 printf("[DBG] Keyboard ID/Setup Timeout, retrying...\n");
                 id_retry = true;
-                keyboard_state = INIT_READ_ID_1;  // Set State to Reading of Keyboard ID
-                keyboard_command_handler(0xF2);   // Request Keyboard ID
-                detect_stall_count = 0;  // Reset the detect_stall_count as we are retrying.
+                keyboard_state = INIT_READ_ID_1;  // Return to ID read state for retry
+                keyboard_command_handler(ATPS2_CMD_GET_ID);   // Send keyboard identification request
+                detect_stall_count = 0;  // Reset timeout counter for retry attempt
               } else {
                 printf("[DBG] Keyboard Read ID/Setup Timed out again, continuing with defaults.\n");
-                keyboard_id = 0xFFFF;
+                keyboard_id = ATPS2_KEYBOARD_ID_UNKNOWN;
                 printf("[DBG] Keyboard Initialised!\n");
                 keyboard_state = INITIALISED;
                 detect_stall_count = 0;
@@ -348,7 +524,7 @@ void keyboard_interface_task() {
             break;
           case SET_LOCK_LEDS:
             if (detect_stall_count > 2) {
-              // Stall Detected during Setting of Lock LEDs
+              // LED command timeout - continue without LED synchronization
               printf("[DBG] Timeout while setting keyboard lock LEDs, continuing.\n");
               keyboard_state = INITIALISED;
               detect_stall_count = 0;
@@ -362,13 +538,13 @@ void keyboard_interface_task() {
               printf("[DBG] Requesting keyboard reset\n");
               keyboard_state = INIT_AWAIT_ACK;
               detect_stall_count = 0;
-              keyboard_command_handler(0xFF);
+              keyboard_command_handler(ATPS2_CMD_RESET);
             }
             break;
         }
       } else if (keyboard_state == UNINITIALISED) {
         printf("[DBG] Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
-        // Reset the detect_stall_count as we are waiting for the clock to go HIGH.
+        // Clear timeout counter while waiting for keyboard connection
         detect_stall_count = 0;
       }
 #ifdef CONVERTER_LEDS
@@ -380,36 +556,65 @@ void keyboard_interface_task() {
 }
 
 /**
- * @brief Initializes the AT/PS2 PIO interface for the keyboard.
- * This function initializes the AT/PS2 PIO interface for the keyboard by performing the following
- * steps:
- * 1. Resets the converter status if CONVERTER_LEDS is defined.
- * 2. Resets the ring buffer.
- * 3. Finds an available PIO to use for the keyboard interface program.
- * 4. Claims the PIO and loads the program.
- * 5. Sets up the IRQ for the PIO state machine.
- * 6. Defines the polling interval and cycles per clock for the state machine.
- * 7. Gets the base clock speed of the RP2040.
- * 8. Initializes the PIO interface program.
- * 9. Sets the IRQ handler and enables the IRQ.
- *
- * @param data_pin The data pin to be used for the keyboard interface.
+ * @brief AT/PS2 Keyboard Interface Initialization
+ * 
+ * Configures and initializes the complete AT/PS2 keyboard interface using RP2040 PIO
+ * hardware for precise timing and protocol implementation. Sets up all hardware and
+ * software components required for reliable keyboard communication:
+ * 
+ * Hardware Setup:
+ * - Finds available PIO instance (PIO0 or PIO1) with sufficient program space
+ * - Claims unused state machine and loads AT/PS2 protocol program
+ * - Configures GPIO pins: DATA line and CLOCK line (DATA + 1)
+ * - Sets up pull-up resistors for open-drain signaling
+ * 
+ * PIO Configuration:
+ * - Calculates clock divider for 30µs minimum pulse width timing
+ * - Configures state machine for bidirectional communication
+ * - Sets up automatic frame reception and transmission
+ * - Enables precise timing compliance with AT/PS2 specifications
+ * 
+ * Interrupt System:
+ * - Configures PIO-specific IRQ (PIO0_IRQ_0 or PIO1_IRQ_0)
+ * - Installs keyboard input event handler for frame processing
+ * - Enables interrupt-driven data reception for optimal performance
+ * - Links PIO RX FIFO to interrupt system
+ * 
+ * Software Initialization:
+ * - Resets ring buffer to ensure clean startup state
+ * - Initializes protocol state machine to UNINITIALISED
+ * - Resets converter status LEDs when CONVERTER_LEDS enabled
+ * - Clears all protocol state variables
+ * 
+ * Timing Calibration:
+ * - Uses IBM PS/2 Technical Reference timing specifications
+ * - 30µs minimum clock pulse width (per IBM 84F9735 document)
+ * - Supports 10-16.7 kHz clock frequency range
+ * - Accommodates both AT and PS/2 timing requirements
+ * 
+ * Error Handling:
+ * - Validates PIO resource availability before configuration
+ * - Reports initialization failures with detailed error messages
+ * - Graceful failure if insufficient PIO resources available
+ * - Logs successful initialization with configuration details
+ * 
+ * @param data_pin GPIO pin number for DATA line (CLOCK automatically assigned as data_pin + 1)
+ * 
+ * @note CLOCK pin must be DATA pin + 1 for hardware compatibility
+ * @note Function blocks until hardware initialization complete
+ * @note Call before any other keyboard interface operations
  */
 void keyboard_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
   converter.state.kb_ready = 0;
-  update_converter_status();  // Always reset Converter Status here
+  update_converter_status();  // Initialize converter status LEDs to "not ready" state
 #endif
 
-  ringbuf_reset();  // Even though Ringbuf is statically initialised, we reset it here to be sure
-                    // it's empty.
+  ringbuf_reset();  // Ensure clean startup state despite static initialization
 
-  // First we need to determine which PIO to use for the Keyboard Interface.
-  // To do this, we check each PIO to see if there is space to load the Keyboard Interface program.
-  // If there is space, we claim the PIO and load the program.  If not, we continue to the next PIO.
-  // We can call `pio_can_add_program` to check if there is space for the program.
-  // `find_available_pio` is a helper function that will check both PIO0 and PIO1 for space.
-  // If the function returns NULL, then there is no space available, and we should return.
+  // Locate available PIO instance with sufficient program memory space
+  // find_available_pio() searches PIO0 and PIO1 for program capacity
+  // Returns NULL if neither PIO has space for keyboard interface program
 
   keyboard_pio = find_available_pio(&pio_interface_program);
   if (keyboard_pio == NULL) {
@@ -417,26 +622,23 @@ void keyboard_interface_setup(uint data_pin) {
     return;
   }
 
-  // Now we can claim the PIO and load the program.
+  // Allocate PIO resources and load AT/PS2 protocol program
   keyboard_sm = (uint)pio_claim_unused_sm(keyboard_pio, true);
   keyboard_offset = pio_add_program(keyboard_pio, &pio_interface_program);
   keyboard_data_pin = data_pin;
 
-  // Define the IRQ for the PIO State Machine.
-  // This should either be set to PIO0_IRQ_0 or PIO1_IRQ_0 depending on the PIO used.
+  // Configure PIO interrupt based on allocated instance (PIO0_IRQ_0 or PIO1_IRQ_0)
   uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
 
-  // Define the polling interval and cycles per clock for the state machine.
-  // This is determined from the shortest clock pulse width of the AT/PS2 protocol.
-  // According to the 84F9735 PS2 Hardware Interface Technical Reference from IBM:
-  //    https://archive.org/details/bitsavers_ibmpcps284erfaceTechnicalReferenceCommonInterfaces_39004874/page/n229/mode/2up?q=keyboard
-  // Clock Pulse Width can be anywhere between 30us and 50us.
-  float clock_div = calculate_clock_divider(30);  // 30us minimum clock pulse width
+  // AT/PS2 timing: 30µs minimum pulse width per IBM Technical Reference
+  // Reference: IBM 84F9735 PS/2 Hardware Interface Technical Reference
+  float clock_div = calculate_clock_divider(ATPS2_TIMING_CLOCK_MIN_US);
 
   pio_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin, clock_div);
 
   irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
   irq_set_enabled(pio_irq, true);
+  irq_set_priority(pio_irq, 0);
 
   printf("[INFO] PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
          (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);

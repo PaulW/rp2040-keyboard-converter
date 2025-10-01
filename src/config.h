@@ -24,6 +24,67 @@
 // Turn off clang-format for this file as we want to keep the formatting as is
 // clang-format off
 
+// --- UART Hardware Configuration ---
+#define UART_TX_PIN 0       // GPIO pin for UART transmission (typically GP0)
+#define UART_BAUD   115200  // UART transmission baud rate
+
+// --- UART DMA Buffer Configuration ---
+// Controls memory allocation for the DMA-based UART logging system.
+//
+// UART_DMA_BUFFER_SIZE: Maximum length of a single log message (bytes)
+//   - Typical: 256 bytes (sufficient for most log messages)
+//   - Memory impact: BUFFER_SIZE × QUEUE_SIZE total RAM usage
+//   - Messages longer than this will be truncated
+//
+// UART_DMA_QUEUE_SIZE: Number of messages that can be queued
+//   - Must be a power of 2 (enforced by compile-time check)
+//   - Typical: 64 entries (handles initialization bursts)
+//   - Memory usage: 256 × 64 = 16KB (current configuration)
+//   - Larger queue = more burst tolerance but more RAM usage
+//
+#define UART_DMA_BUFFER_SIZE 256  // Size of each message buffer in bytes (max message length)
+#define UART_DMA_QUEUE_SIZE  64   // Number of queued messages (must be power of 2)
+
+// --- UART DMA Debug Statistics ---
+// Uncomment to enable drop statistics tracking and reporting.
+// When enabled, the system tracks and reports when messages are dropped due to queue full.
+// Statistics are reported automatically when drops occur (event-triggered, non-interactive).
+//
+// Memory overhead: ~12 bytes (counters)
+// CPU overhead: One atomic increment per drop + occasional printf
+//
+// #define UART_DMA_DEBUG_STATS
+
+// --- UART DMA Queue Policy Configuration ---
+// Controls behavior when the message queue becomes full during logging bursts.
+// The policy is selected at compile time for zero runtime overhead.
+
+#define UART_DMA_WAIT_US 5000  // Maximum wait time in microseconds (applies to WAIT policies)
+
+// UART DMA Policy Constants - do not modify these values
+#define UART_DMA_POLICY_DROP        0  // Immediately drop messages if queue is full
+#define UART_DMA_POLICY_WAIT_FIXED  1  // Wait up to UART_DMA_WAIT_US with tight polling
+#define UART_DMA_POLICY_WAIT_EXP    2  // Exponential backoff delays (CPU-friendly)
+
+// Define the UART DMA Policy - choose ONE of the following:
+//
+// UART_DMA_POLICY_DROP:       Immediately drop messages if queue is full
+//                              * Real-time safe (never blocks)
+//                              * Recommended for keyboard converter application
+//                              * May lose messages under extreme load
+//
+// UART_DMA_POLICY_WAIT_FIXED: Wait up to UART_DMA_WAIT_US with tight polling
+//                              * Better message preservation
+//                              * CPU intensive during waits
+//                              * May cause timing issues in real-time code
+//
+// UART_DMA_POLICY_WAIT_EXP:    Exponential backoff delays (1μs, 2μs, 4μs, ...)
+//                              * CPU-friendly waiting with progressive delays
+//                              * Good balance of message preservation and performance
+//                              * Delays capped at 1024μs per step
+//
+#define UART_DMA_POLICY UART_DMA_POLICY_DROP
+
 // Include some common type definitions for this config.h file
 #include "types.h"
 
@@ -41,10 +102,10 @@
 #define CONVERTER_LOCK_LEDS_COLOR 0x00FF00              // Color of Lock Light LEDs
 
 // Define the GPIO Pins for the Keyboard Converter.
-#define KEYBOARD_DATA_PIN 6  // This is the starting pin for the connected Keyboard.  Depending on the keyboard, we may use 2, 3 or more pins.
-#define MOUSE_DATA_PIN 3     // This is the starting pin for the connected Mouse.  Depending on the mouse, we may use 2, 3 or more pins.
+#define KEYBOARD_DATA_PIN 2  // This is the starting pin for the connected Keyboard.  Depending on the keyboard, we may use 2, 3 or more pins.
+#define MOUSE_DATA_PIN 6     // This is the starting pin for the connected Mouse.  Depending on the mouse, we may use 2, 3 or more pins.
 #define PIEZO_PIN 11         // Piezo Buzzer GPIO Pin.  Only required if CONVERTER_PIEZO is defined
-#define LED_PIN 5            // LED GPIO Pin.  If using WS2812 LEDs, this is the GPIO Pin for the Data Line, otherwise we require 4 total GPIO for individual LED connections
+#define LED_PIN 29           // LED GPIO Pin.  If using WS2812 LEDs, this is the GPIO Pin for the Data Line, otherwise we require 4 total GPIO for individual LED connections
 
 // Define some Compile Time variables.  Do not modify below this line
 #define BUILD_TIME _BUILD_TIME

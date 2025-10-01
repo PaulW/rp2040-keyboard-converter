@@ -24,67 +24,134 @@
 
 #include "hid_interface.h"
 
-// clang-format off
-// AT Keyboards use EO-prefixed codes for some keys.
-// This macro translates these codes.
-#define SWITCH_E0_CODE(code) \
-  (code == 0x11 ? 0x0F : /* Right Alt */ \
-  (code == 0x14 ? 0x19 : /* Right Ctrl */ \
-  (code == 0x1F ? 0x17 : /* Left GUI */ \
-  (code == 0x27 ? 0x1F : /* Right GUI */ \
-  (code == 0x2F ? 0x27 : /* Menu/App */ \
-  (code == 0x4A ? 0x60 : /* Keypad / */ \
-  (code == 0x5A ? 0x62 : /* Keypad Enter */ \
-  (code == 0x69 ? 0x5C : /* End */ \
-  (code == 0x6B ? 0x53 : /* Cursor Left */ \
-  (code == 0x6C ? 0x2F : /* Home */ \
-  (code == 0x70 ? 0x39 : /* Insert */ \
-  (code == 0x71 ? 0x37 : /* Delete */ \
-  (code == 0x72 ? 0x3F : /* Cursor Down */ \
-  (code == 0x74 ? 0x47 : /* Cursor Right */ \
-  (code == 0x75 ? 0x4F : /* Cursor Up */ \
-  (code == 0x77 ? 0x00 : /* Unicomp New Model M Pause/Break key fix */ \
-  (code == 0x7A ? 0x56 : /* Page Down */ \
-  (code == 0x7D ? 0x5E : /* Page Up */ \
-  (code == 0x7C ? 0x7F : /* Print Screen */ \
-  (code == 0x7E ? 0x00 : /* Control'd Pause */ \
-  (code == 0x21 ? 0x65 : /* Volume Down */ \
-  (code == 0x32 ? 0x6E : /* Volume Up */ \
-  (code == 0x23 ? 0x6F : /* Mute */ \
-  (code == 0x10 ? 0x08 : /* WWW Search -> F13 */ \
-  (code == 0x18 ? 0x10 : /* WWW Favourites -> F14 */ \
-  (code == 0x20 ? 0x18 : /* WWW Refresh -> F15 */ \
-  (code == 0x28 ? 0x20 : /* WWW Stop -> F16 */ \
-  (code == 0x30 ? 0x28 : /* WWW Forward -> F17 */ \
-  (code == 0x38 ? 0x30 : /* WWW Back -> F18 */ \
-  (code == 0x3A ? 0x38 : /* WWW Home -> F19 */ \
-  (code == 0x40 ? 0x40 : /* My Computer -> F20 */ \
-  (code == 0x48 ? 0x48 : /* Email -> F21 */ \
-  (code == 0x2B ? 0x50 : /* Calculator -> F22 */ \
-  (code == 0x34 ? 0x08 : /* Play/Pause -> F13 */ \
-  (code == 0x3B ? 0x10 : /* Stop -> F14 */ \
-  (code == 0x15 ? 0x18 : /* Previous Track -> F15 */ \
-  (code == 0x4D ? 0x20 : /* Next Track -> F16 */ \
-  (code == 0x50 ? 0x28 : /* Media Select -> F17 */ \
-  (code == 0x5E ? 0x50 : /* ACPI Wake -> F22 */ \
-  (code == 0x3F ? 0x57 : /* ACPI Sleep -> F23 */ \
-  (code == 0x37 ? 0x5F : /* ACPI Power -> F24 */ \
-  0)))))))))))))))))))))))))))))))))))))))))
-// clang-format on
+/**
+ * @brief E0-Prefixed Scancode Translation Table for AT/PS2 Set 2 Protocol
+ * 
+ * AT/PS2 keyboards use E0-prefixed codes extensively for extended functionality.
+ * This lookup table translates E0-prefixed Set 2 scan codes to normalized interface
+ * codes used throughout the converter.
+ * 
+ * The table is sparse (most entries are 0) to allow direct indexing by scan code.
+ * A return value of 0 indicates the code should be ignored or is unmapped.
+ * 
+ * Protocol Reference:
+ * - E0 prefix indicates extended key codes in AT/PS2 Set 2 protocol
+ * - Used for navigation keys (arrows, home, end, page up/down, insert, delete)
+ * - Used for special keys (Right Alt, Right Ctrl, GUI/Windows keys, Menu/App key)
+ * - Used for multimedia and ACPI keys (volume, media control, power management)
+ * - Some multimedia keys mapped to F13-F24 for compatibility
+ * 
+ * Note: Code 0x12 and 0x59 are fake shifts and should be ignored (mapped to 0).
+ */
+static const uint8_t e0_code_translation[256] = {
+    [0x10] = 0x08,  // WWW Search -> F13
+    [0x11] = 0x0F,  // Right Alt
+    [0x14] = 0x19,  // Right Ctrl
+    [0x15] = 0x18,  // Previous Track -> F15
+    [0x18] = 0x10,  // WWW Favourites -> F14
+    [0x1F] = 0x17,  // Left GUI (Windows key)
+    [0x20] = 0x18,  // WWW Refresh -> F15
+    [0x21] = 0x65,  // Volume Down
+    [0x23] = 0x6F,  // Mute
+    [0x27] = 0x1F,  // Right GUI (Windows key)
+    [0x28] = 0x20,  // WWW Stop -> F16
+    [0x2B] = 0x50,  // Calculator -> F22
+    [0x2F] = 0x27,  // Menu/App (Application key)
+    [0x30] = 0x28,  // WWW Forward -> F17
+    [0x32] = 0x6E,  // Volume Up
+    [0x34] = 0x08,  // Play/Pause -> F13
+    [0x37] = 0x5F,  // ACPI Power -> F24
+    [0x38] = 0x30,  // WWW Back -> F18
+    [0x3A] = 0x38,  // WWW Home -> F19
+    [0x3B] = 0x10,  // Stop -> F14
+    [0x3F] = 0x57,  // ACPI Sleep -> F23
+    [0x40] = 0x40,  // My Computer -> F20
+    [0x48] = 0x48,  // Email -> F21
+    [0x4A] = 0x60,  // Keypad / (Slash)
+    [0x4D] = 0x20,  // Next Track -> F16
+    [0x50] = 0x28,  // Media Select -> F17
+    [0x5A] = 0x62,  // Keypad Enter
+    [0x5E] = 0x50,  // ACPI Wake -> F22
+    [0x69] = 0x5C,  // End
+    [0x6B] = 0x53,  // Cursor Left
+    [0x6C] = 0x2F,  // Home
+    [0x70] = 0x39,  // Insert
+    [0x71] = 0x37,  // Delete
+    [0x72] = 0x3F,  // Cursor Down
+    [0x74] = 0x47,  // Cursor Right
+    [0x75] = 0x4F,  // Cursor Up
+    [0x7A] = 0x56,  // Page Down
+    [0x7C] = 0x7F,  // Print Screen
+    [0x7D] = 0x5E,  // Page Up
+    // Special codes that should be ignored:
+    [0x12] = 0x00,  // Fake shift (ignore)
+    [0x59] = 0x00,  // Fake shift (ignore)
+    [0x77] = 0x00,  // Unicomp New Model M Pause/Break key fix (ignore)
+    [0x7E] = 0x00,  // Control'd Pause (ignore)
+    // All other entries implicitly 0 (unmapped/ignore)
+};
+
+/**
+ * @brief Translates E0-prefixed scan codes to interface codes
+ * 
+ * Performs a fast lookup in the translation table for E0-prefixed codes.
+ * Returns 0 for unmapped codes or fake shifts (which should be ignored by caller).
+ * 
+ * @param code The E0-prefixed scan code to translate
+ * @return Translated interface code, or 0 if code should be ignored
+ */
+static inline uint8_t switch_e0_code(uint8_t code) {
+    return e0_code_translation[code];
+}
 
 /**
  * @brief Process Keyboard Input (Scancode Set 2) Data
- * This function is called from the keyboard_interface_task() function whenever there is data in the
- * ringbuffer.  It will then process the relevant scancode, handling any special cases such as E0
- * and E1 prefixed codes, and then call handle_keyboard_report() to send the relevant HID report
- * to the host.  Key press and release events are also determined here depending on the scancode
- * sequence relating to any received Break code (0xF0).
- *
+ * 
+ * This function processes scan codes from AT/PS2 keyboards using Scan Code Set 2.
+ * Set 2 is the default for PS/2 keyboards and is the most commonly used scan code set.
+ * 
+ * Protocol Overview:
+ * - Make codes: 0x01-0x83 (key press)
+ * - Break codes: F0 followed by make code (key release, e.g., F0 1C = key 0x1C released)
+ * - Multi-byte sequences: E0-prefixed (2-3 bytes) and E1-prefixed (8 bytes)
+ * 
+ * State Machine:
+ * 
+ *     INIT ──[F0]──> F0 ──[code]──> INIT (process break code)
+ *       │
+ *       ├──[E0]──> E0 ──[F0]──> E0_F0 ──[code]──> INIT (E0-prefixed break)
+ *       │           │
+ *       │           └──[12,59]──> INIT (ignore fake shifts)
+ *       │           │
+ *       │           └──[code]──> INIT (process E0-prefixed make)
+ *       │
+ *       ├──[E1]──> E1 ──[14]──> E1_14 ──[77]──> INIT (Pause make)
+ *       │           │
+ *       │           └──[F0]──> E1_F0 ──[14]──> E1_F0_14 ──[F0]──> E1_F0_14_F0 ──[77]──> INIT (Pause break)
+ *       │
+ *       ├──[83]──> INIT (F7 special handling)
+ *       ├──[84]──> INIT (SysReq/Alt+PrtScn)
+ *       └──[code]──> INIT (process normal make code)
+ * 
+ * Multi-byte Sequence Examples:
+ * - Normal key press:     1C (A key make)
+ * - Normal key release:   F0 1C (A key break)
+ * - Right Ctrl press:     E0 14 (make)
+ * - Right Ctrl release:   E0 F0 14 (break)
+ * - Pause press:          E1 14 77 E1 F0 14 F0 77 (make and break together)
+ * - Print Screen:         E0 7C (make), E0 F0 7C (break)
+ * 
+ * Special Handling:
+ * - E0 12, E0 59: Fake shifts (ignored, sent by some keyboards with certain keys)
+ * - 83: F7 key (special code)
+ * - 84: SysReq / Alt+PrintScreen (special code)
+ * - E1 sequences: Only used for Pause/Break key (complex 8-byte sequence)
+ * - Multimedia keys: Translated to F13-F24 range for compatibility
+ * 
  * @param code The keycode to process.
  *
- * @note handle_keyboard_report() function directly handles translation from scancode to HID report.
- * It used a lookup against the relevant keyboard configuration to determine the associated Keycode,
- * and then sends the relevant HID report to the host.
+ * @note This function is called from the keyboard_interface_task() in main task context
+ * @note handle_keyboard_report() translates scan codes to HID keycodes via keymap lookup
  */
 void process_scancode(uint8_t code) {
   // clang-format off
@@ -161,7 +228,10 @@ void process_scancode(uint8_t code) {
         default:
           state = INIT;
           if (code < 0x80) {
-            handle_keyboard_report(SWITCH_E0_CODE(code), true);
+            uint8_t translated = switch_e0_code(code);
+            if (translated) {
+              handle_keyboard_report(translated, true);
+            }
           } else {
             printf("[DBG] !E0! (0x%02X)\n", code);
           }
@@ -176,7 +246,10 @@ void process_scancode(uint8_t code) {
           break;
         default:
           if (code < 0x80) {
-            handle_keyboard_report(SWITCH_E0_CODE(code), false);
+            uint8_t translated = switch_e0_code(code);
+            if (translated) {
+              handle_keyboard_report(translated, false);
+            }
           } else {
             printf("!E0_F0! (0x%02X)\n", code);
           }
@@ -201,7 +274,12 @@ void process_scancode(uint8_t code) {
       state = INIT;
       switch (code) {
         case 0x77:  // Pause
-          handle_keyboard_report(SWITCH_E0_CODE(code), true);
+          {
+            uint8_t translated = switch_e0_code(code);
+            if (translated) {
+              handle_keyboard_report(translated, true);
+            }
+          }
           break;
         default:
           printf("[DBG] !E1_14! (0x%02X)\n", code);
@@ -234,7 +312,12 @@ void process_scancode(uint8_t code) {
       state = INIT;
       switch (code) {
         case 0x77:  // Pause
-          handle_keyboard_report(SWITCH_E0_CODE(code), false);
+          {
+            uint8_t translated = switch_e0_code(code);
+            if (translated) {
+              handle_keyboard_report(translated, false);
+            }
+          }
           break;
         default:
           printf("[DBG] !E1_F0_14_F0! (0x%02X)\n", code);

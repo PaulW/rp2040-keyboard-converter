@@ -30,6 +30,7 @@
 #include "hid_interface.h"
 #include "pico/unique_id.h"
 #include "tusb.h"
+#include "uart.h"
 
 #if KEYBOARD_ENABLED
 #include "keyboard.h"
@@ -50,6 +51,7 @@
 
 int main(void) {
   hid_device_setup();
+  init_uart_dma();
   char pico_unique_id[32];
   pico_get_unique_board_id_string(pico_unique_id, sizeof(pico_unique_id));
   printf("--------------------------------\n");

@@ -33,10 +33,50 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-int16_t ringbuf_get();
-bool ringbuf_put(uint8_t data);
-bool ringbuf_is_empty();
-bool ringbuf_is_full();
-void ringbuf_reset();
+/**
+ * @brief Ring buffer for interrupt-safe scancode queueing.
+ * 
+ * This ring buffer implementation provides lock-free communication between
+ * IRQ context (producer) and main loop (consumer) for keyboard scancode buffering.
+ * 
+ * Buffer Sizing:
+ * - Capacity: 32 bytes (31 usable due to full/empty distinction)
+ * - Sized for worst-case burst scenarios and fast typing
+ * 
+ * Thread Safety Model:
+ * - Producer (IRQ): Writes to head pointer, reads tail pointer
+ * - Consumer (main): Writes to tail pointer, reads head pointer
+ * - Volatile qualifiers ensure visibility across contexts
+ * - No locks needed due to single-producer/single-consumer design
+ * 
+ * Performance Optimizations:
+ * - Inline functions for zero-overhead abstraction
+ * - Power-of-2 size enables fast masking (AND) instead of modulo
+ * - Caller-checked guards eliminate redundant conditional branches
+ * - Direct uint8_t return (no int16_t conversion overhead)
+ * 
+ * Overflow Handling:
+ * - Defensive check in ringbuf_put() logs error if called when full
+ * - Simple logging - no counters or statistics tracking
+ * - Data discarded when buffer full (IRQ cannot block)
+ * 
+ * Usage Pattern:
+ * ```c
+ * // Producer (IRQ context):
+ * if (!ringbuf_is_full()) ringbuf_put(scancode);
+ * 
+ * // Consumer (main loop):
+ * if (!ringbuf_is_empty()) {
+ *     uint8_t scancode = ringbuf_get();
+ *     process_scancode(scancode);
+ * }
+ * ```
+ */
+
+uint8_t ringbuf_get(void);
+void ringbuf_put(uint8_t data);
+bool ringbuf_is_empty(void);
+bool ringbuf_is_full(void);
+void ringbuf_reset(void);
 
 #endif /* RINGBUF_H */

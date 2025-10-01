@@ -60,6 +60,20 @@ pico_sdk_init()
 
 add_executable(${PROJECT_NAME})
 
+# Disable default UART and USB stdio
+# We will initialize our own stack which will be more efficient.
+# The default stdio causes delays and jitter which is not acceptable
+# when using PIO for device interfacing.  As such, as we log to UART,
+# we see timing issues with the PIO state machines.
+# We will use a DMA-driven UART TX implementation which is much more
+# efficient and should not cause timing issues.
+pico_enable_stdio_uart(${PROJECT_NAME} 0)
+
+# Disable USB stdio - we don't need it
+pico_enable_stdio_usb(${PROJECT_NAME} 0)
+
+pico_add_extra_outputs(${PROJECT_NAME})
+
 # Ensure program executes from RAM for faster performance
 # This way we don't need to set any function or variable declarators.
 pico_set_binary_type(${PROJECT_NAME} copy_to_ram)

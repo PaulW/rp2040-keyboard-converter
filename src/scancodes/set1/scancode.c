@@ -24,49 +24,99 @@
 
 #include "hid_interface.h"
 
-// clang-format off
-// Some XT Keyboards use EO-prefixed codes for some keys.
-// This macro translates these codes.
-#define SWITCH_E0_CODE(code) \
-  (code == 0x37 ? 0x54 : /* Print Screen */ \
-  (code == 0x46 ? 0x55 : /* Pause / Break */ \
-  (code == 0x5E ? 0x70 : /* Power */ \
-  (code == 0x5F ? 0x79 : /* Sleep */ \
-  (code == 0x63 ? 0x7B : /* Wake */ \
-  (code == 0x52 ? 0x71 : /* Insert */ \
-  (code == 0x47 ? 0x74 : /* Home */ \
-  (code == 0x49 ? 0x77 : /* Page Up */ \
-  (code == 0x35 ? 0x7F : /* Keypad Slash */ \
-  (code == 0x53 ? 0x72 : /* Delete */ \
-  (code == 0x4F ? 0x75 : /* End */ \
-  (code == 0x51 ? 0x78 : /* Page Down */ \
-  (code == 0x48 ? 0x60 : /* Up Arrow */ \
-  (code == 0x1C ? 0x6F : /* Keypad Enter */ \
-  (code == 0x5B ? 0x5A : /* Left GUI */ \
-  (code == 0x38 ? 0x7C : /* Right Alt */ \
-  (code == 0x5C ? 0x5B : /* Right GUI */ \
-  (code == 0x5D ? 0x5C : /* Application */ \
-  (code == 0x1D ? 0x7A : /* Right Control */ \
-  (code == 0x4B ? 0x61 : /* Left Arrow */ \
-  (code == 0x50 ? 0x62 : /* Down Arrow */ \
-  (code == 0x4D ? 0x63 : /* Right Arrow */ \
-  0))))))))))))))))))))))
-// clang-format on
+/**
+ * @brief E0-Prefixed Scancode Translation Table for XT/Set 1 Protocol
+ * 
+ * Some XT keyboards use E0-prefixed codes for extended keys (arrows, function keys,
+ * multimedia keys, etc.). This lookup table translates E0-prefixed scan codes to
+ * their normalized interface codes used throughout the converter.
+ * 
+ * The table is sparse (most entries are 0) to allow direct indexing by scan code.
+ * A return value of 0 indicates the code should be ignored (e.g., fake shifts).
+ * 
+ * Protocol Reference:
+ * - E0 prefix indicates extended key codes in XT/Set 1 protocol
+ * - Used for navigation keys (arrows, home, end, page up/down)
+ * - Used for special keys (Windows/GUI keys, application key)
+ * - Used for multimedia keys (power, sleep, wake)
+ */
+static const uint8_t e0_code_translation[256] = {
+    [0x1C] = 0x6F,  // Keypad Enter
+    [0x1D] = 0x7A,  // Right Control
+    [0x35] = 0x7F,  // Keypad Slash (/)
+    [0x37] = 0x54,  // Print Screen
+    [0x38] = 0x7C,  // Right Alt
+    [0x46] = 0x55,  // Pause / Break
+    [0x47] = 0x74,  // Home
+    [0x48] = 0x60,  // Up Arrow
+    [0x49] = 0x77,  // Page Up
+    [0x4B] = 0x61,  // Left Arrow
+    [0x4D] = 0x63,  // Right Arrow
+    [0x4F] = 0x75,  // End
+    [0x50] = 0x62,  // Down Arrow
+    [0x51] = 0x78,  // Page Down
+    [0x52] = 0x71,  // Insert
+    [0x53] = 0x72,  // Delete
+    [0x5B] = 0x5A,  // Left GUI (Windows key)
+    [0x5C] = 0x5B,  // Right GUI (Windows key)
+    [0x5D] = 0x5C,  // Application (Menu key)
+    [0x5E] = 0x70,  // Power
+    [0x5F] = 0x79,  // Sleep
+    [0x63] = 0x7B,  // Wake
+    // All other entries implicitly 0 (unmapped/ignore)
+};
+
+/**
+ * @brief Translates E0-prefixed scan codes to interface codes
+ * 
+ * Performs a fast lookup in the translation table for E0-prefixed codes.
+ * Returns 0 for unmapped codes (which should be ignored by caller).
+ * 
+ * @param code The E0-prefixed scan code to translate
+ * @return Translated interface code, or 0 if code should be ignored
+ */
+static inline uint8_t switch_e0_code(uint8_t code) {
+    return e0_code_translation[code];
+}
 
 /**
  * @brief Process Keyboard Input (Scancode Set 1) Data
- * This function is called from the keyboard_interface_task() function whenever there is data in the
- * ringbuffer.  It will then process the relevant scancode, handling any special cases such as E0
- * and E1 prefixed codes, and then call handle_keyboard_report() to send the relevant HID report
- * to the host.  Key press and release events are also determined here depending on the scancode
- * value received.  Any value above 0x80 is considered a key release event and processed as value
- * `code & 0x7F`.
- *
+ * 
+ * This function processes scan codes from XT and AT keyboards using Scan Code Set 1.
+ * Set 1 is the original IBM PC/XT scan code set, still widely used for compatibility.
+ * 
+ * Protocol Overview:
+ * - Make codes: 0x01-0x53 (key press)
+ * - Break codes: Make code + 0x80 (key release, e.g., 0x81 = key 0x01 released)
+ * - Multi-byte sequences: E0-prefixed (2 bytes) and E1-prefixed (3-6 bytes)
+ * 
+ * State Machine:
+ * 
+ *     INIT ──[E0]──> E0 ──[code]──> INIT (process E0-prefixed code)
+ *       │            │
+ *       │            └──[2A,AA,36,B6]──> INIT (ignore fake shifts)
+ *       │
+ *       ├──[E1]──> E1 ──[1D]──> E1_1D ──[45]──> INIT (Pause press)
+ *       │           │
+ *       │           └──[9D]──> E1_9D ──[C5]──> INIT (Pause release)
+ *       │
+ *       └──[code]──> INIT (process normal code)
+ * 
+ * Multi-byte Sequence Examples:
+ * - Print Screen: E0 37 (make), E0 B7 (break)
+ * - Pause/Break:  E1 1D 45 (make), E1 9D C5 (break)
+ * - Right Ctrl:   E0 1D (make), E0 9D (break)
+ * - Keypad Enter: E0 1C (make), E0 9C (break)
+ * 
+ * Special Handling:
+ * - E0 2A, E0 AA, E0 36, E0 B6: Fake shifts (ignored, some keyboards send these)
+ * - E1 sequences: Only used for Pause/Break key
+ * - Codes >= 0x80: Break codes (key release)
+ * 
  * @param code The keycode to process.
  *
- * @note handle_keyboard_report() function directly handles translation from scancode to HID report.
- * It used a lookup against the relevant keyboard configuration to determine the associated Keycode,
- * and then sends the relevant HID report to the host.
+ * @note This function is called from the keyboard_interface_task() in main task context
+ * @note handle_keyboard_report() translates scan codes to HID keycodes via keymap lookup
  */
 void process_scancode(uint8_t code) {
   // clang-format off
@@ -109,10 +159,11 @@ void process_scancode(uint8_t code) {
           break;
         default:
           state = INIT;
-          if (code < 0x80) {
-            handle_keyboard_report(SWITCH_E0_CODE(code), true);
-          } else {
-            handle_keyboard_report(SWITCH_E0_CODE((code & 0x7F)), false);
+          {
+            uint8_t translated = switch_e0_code(code < 0x80 ? code : (code & 0x7F));
+            if (translated) {
+              handle_keyboard_report(translated, code < 0x80);
+            }
           }
       }
       break;

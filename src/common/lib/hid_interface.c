@@ -29,13 +29,32 @@
 #include "led_helper.h"
 #include "pico/bootrom.h"
 #include "tusb.h"
+#include "uart.h"
 #include "usb_descriptors.h"
 
+/**
+ * @brief HID Interface Usage Pages
+ * 
+ * USB HID defines different "usage pages" for different types of input devices.
+ * These constants identify the usage page in HID reports.
+ */
 enum {
-  USAGE_PAGE_KEYBOARD = 0x0,
-  USAGE_PAGE_CONSUMER = 0xC,
+  USAGE_PAGE_KEYBOARD = 0x0,   /**< Standard keyboard usage page */
+  USAGE_PAGE_CONSUMER = 0xC,   /**< Consumer control usage page (multimedia keys) */
 };
 
+/**
+ * @brief HID Report Structures
+ * 
+ * These static variables maintain the current state of HID reports.
+ * They are only accessed from the main task context, so no volatile
+ * qualification or synchronization is needed.
+ * 
+ * Threading Model:
+ * - All HID report functions called from main task context
+ * - Ring buffer provides thread-safe boundary from interrupt handlers
+ * - No direct interrupt access to these structures
+ */
 static hid_keyboard_report_t keyboard_report;
 static hid_mouse_report_t mouse_report;
 
@@ -59,19 +78,34 @@ static void hid_print_report(void* report, size_t size, const char* message) {
 }
 
 /**
- * @brief Adds a key to the HID keyboard report.
- * This function is responsible for adding a key to the HID keyboard report. The HID keyboard report
- * is a data structure that represents the state of the keyboard, including pressed keys and
- * modifier keys (e.g., Shift, Ctrl, Alt). The function first checks if the key is a modifier key.
- *
- * If it is, it checks if the modifier key is already pressed. If not, it sets the corresponding bit
- * in the modifier field of the keyboard report. If the key is not a modifier key, it searches for
- * an empty slot in the keycode array of the keyboard report and adds the key to that slot. The
- * function returns true if the key was successfully added, and false otherwise.
- *
- * @param key The key to be added.
- *
- * @return True if the key was successfully added, false otherwise.
+ * @brief Adds a key to the HID keyboard report
+ * 
+ * This function adds a key to the current HID keyboard report structure.
+ * The HID keyboard report maintains state for:
+ * - 8 modifier keys (Shift, Ctrl, Alt, GUI) in a bit field
+ * - Up to 6 simultaneous regular key presses (6-key rollover)
+ * 
+ * Modifier Key Handling:
+ * - Modifier keys (0xE0-0xE7) set bits in the modifier field
+ * - Each modifier has its own bit position (Ctrl=0, Shift=1, Alt=2, GUI=3)
+ * - Left and right variants use separate bits (e.g., Left Ctrl vs Right Ctrl)
+ * 
+ * Regular Key Handling:
+ * - Regular keys stored in 6-element keycode array
+ * - Function searches for empty slot (value 0)
+ * - Duplicate keys ignored (prevents multiple entries for same key)
+ * - Returns false if all 6 slots are full (keyboard rollover limit)
+ * 
+ * 6-Key Rollover Limitation:
+ * - USB HID boot protocol supports maximum 6 simultaneous keys
+ * - 7th key press will be ignored (function returns false)
+ * - Could implement NKRO (N-key rollover) with custom report descriptor
+ * 
+ * @param key The HID keycode to add (modifier or regular key)
+ * @return true if key was added, false if already present or buffer full
+ * 
+ * @note This function is called from main task context only
+ * @note Modifier check uses IS_MOD() macro (checks range 0xE0-0xE7)
  */
 static bool hid_keyboard_add_key(uint8_t key) {
   if (IS_MOD(key)) {
@@ -93,14 +127,32 @@ static bool hid_keyboard_add_key(uint8_t key) {
 }
 
 /**
- * @brief Removes a keycode from the HID report when a key is released.
- * This function checks if the given key is a modifier key. If it is, the corresponding modifier bit
- * is cleared in the keyboard report. If the key is not a modifier key, it is searched for in the
- * keycode array of the keyboard report and removed if found.
- *
- * @param key The keycode to be removed.
- *
- * @return true if the keycode was successfully removed, false otherwise.
+ * @brief Removes a key from the HID keyboard report when released
+ * 
+ * This function removes a key from the current HID keyboard report structure
+ * when a key release event is detected. It handles both modifier keys and
+ * regular keys appropriately.
+ * 
+ * Modifier Key Handling:
+ * - Clears the corresponding bit in the modifier field
+ * - Uses bitwise AND with inverted mask to clear specific bit
+ * - Only clears if bit was set (returns false if already clear)
+ * 
+ * Regular Key Handling:
+ * - Searches keycode array for matching key
+ * - Sets matching entry to 0 (marks slot as empty)
+ * - Subsequent keys can use freed slots
+ * 
+ * Report Optimization:
+ * - Only returns true if report actually changed
+ * - Prevents unnecessary USB HID report transmission
+ * - Reduces USB bus traffic and improves performance
+ * 
+ * @param key The HID keycode to remove (modifier or regular key)
+ * @return true if key was removed, false if key was not present
+ * 
+ * @note This function is called from main task context only
+ * @note Pairs with hid_keyboard_add_key() for make/break handling
  */
 static bool hid_keyboard_del_key(uint8_t key) {
   if (IS_MOD(key)) {
@@ -122,14 +174,45 @@ static bool hid_keyboard_del_key(uint8_t key) {
 }
 
 /**
- * @brief Handles input reports for the keyboard usage page.
- * Only if the Keyboard Report changes do we then call `hid_send_report_with_retry`. Some PS2
- * Keyboards and other types send typematic key presses repetitively, yet with HID devices, we only
- * want to send a report for each Key Press/Release Event. The host will handle all typematic events
- * itself.
- *
- * @param code The interface scancode of the key.
- * @param make A boolean indicating whether the key is being pressed (true) or released (false).
+ * @brief Handles input reports for keyboard and consumer control devices
+ * 
+ * This is the main entry point for processing translated scan codes and sending
+ * USB HID reports to the host. It handles three types of HID reports:
+ * 
+ * 1. Keyboard Reports (Standard Keys and Modifiers):
+ *    - Translates interface scan codes to HID keycodes via keymap lookup
+ *    - Updates keyboard report structure (modifiers + 6-key array)
+ *    - Only sends USB report if state changed (prevents duplicate reports)
+ *    - Handles typematic prevention (host handles key repeat, not device)
+ * 
+ * 2. Consumer Control Reports (Multimedia Keys):
+ *    - Media keys (play, pause, volume, etc.)
+ *    - Uses separate USB HID interface for consumer controls
+ *    - Single 16-bit usage code per report
+ *    - Code 0 indicates "no keys pressed" for key release
+ * 
+ * 3. Macro System Integration:
+ *    - Detects special key combinations (action key + modifier combo)
+ *    - Bootloader entry: Action key held + special modifier + KC_BOOT
+ *    - Flushes UART before bootloader to ensure debug output sent
+ *    - Can be extended for additional macro functions
+ * 
+ * Report Deduplication:
+ * - Uses report_modified flag to track actual state changes
+ * - Some keyboards send typematic repeats (same key repeatedly)
+ * - HID spec: host handles key repeat, device sends state changes only
+ * - Prevents USB bus saturation from redundant reports
+ * 
+ * Error Handling:
+ * - Logs failed USB transmissions with report contents
+ * - Continues operation on failure (transient USB issues)
+ * - Could be enhanced with retry queue for critical reports
+ * 
+ * @param code Interface scan code (protocol-normalized, not raw scan code)
+ * @param make true for key press, false for key release
+ * 
+ * @note Called from main task context via process_scancode()
+ * @note Thread-safe: no interrupt access to keyboard_report or mouse_report
  */
 void handle_keyboard_report(uint8_t code, bool make) {
   // Convert the Interface Scancode to a HID Keycode
@@ -155,6 +238,9 @@ void handle_keyboard_report(uint8_t code, bool make) {
           converter.state.fw_flash = 1;
           update_converter_status();
 #endif
+          // Flush all pending UART messages before bootloader transition
+          uart_dma_flush();
+          
           // Reboot into Bootloader
           reset_usb_boot(0, 0);
         }

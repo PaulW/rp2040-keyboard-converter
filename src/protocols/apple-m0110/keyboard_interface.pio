@@ -1,0 +1,121 @@
+.program keyboard_interface
+.wrap_target
+
+; Pins: 0 = data, 1 = clock
+
+init:
+    ; Wait until both CLK and DATA are high before we continue.
+    ; This normally signifies an Idle state on the keyboard.
+    wait 1 pin 0
+    wait 1 pin 1
+
+check:
+    ; Wait for incoming data, but jump to the Output loop if the Output Shif Register has data.
+    jmp !OSRE, bitLoopOut
+    jmp pin, check ; Loop back if CLOCK is HIGH (keyboard idle)
+
+    ; Receiving Data
+    ;
+    ;        ___ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _____
+    ;    CLK    \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
+    ;        ___ ___ ___ ___ ___ ___ ___ ___ ___ ___
+    ;    DAT    \___X___X___X___X___X___X___X___/
+    ;             7   6   5   4   3   2   1   0
+    ;
+    ; Host reads DATA on Rising Edge of CLOCK.
+    ; Clock is brought LOW for 160us, and HIGH for 170us during pulses.
+
+   ; Loop to receive 7 bits (MSB first), and then manually read in the final bit.
+    set x, 6
+    
+bitLoopIn:
+    ; Wait for CLOCK rising edge to read data bit
+    wait 1 pin 1
+    ; Read DATA pin on rising edge
+    in pins, 1    
+    ; Wait for CLOCK falling edge for next bit
+    wait 0 pin 1
+    ; Decrement x and jump back to bitLoopIn if it's not zero
+    jmp x--, bitLoopIn
+    
+    ; Wait for CLOCK rising edge before reading final bit
+    wait 1 pin 1
+    ; Read in last bit
+    in pins, 1
+
+    ; Jump back to check now all data read
+    jmp check
+
+bitLoopOut:
+    ; Sending Data
+    ;
+    ;        _______ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _____
+    ;    CLK        \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
+    ;        ___     ___ ___ ___ ___ ___ ___ ___ ___ ___
+    ;    DAT    \___/___X___X___X___X___X___X___X___/
+    ;             *   7   6   5   4   3   2   1   0
+    ;
+    ; * Host initiates by pulling DATA LOW
+    ; Keyboard detects this, and then starts pulsing CLOCK (approx. 840us after host brings DATA LOW)
+    ; Clock is brought LOW for 180us, and HIGH for 220us during pulses.
+    ; Host needs to hold DATA (last bit) for approx, 80us after rising edge of CLOCK
+
+    ; Set data pin low and configure pins
+    set pins, 0        ; Pull DATA low to request send
+    set pindirs 1  [1] ; Set CLOCK to Input, and DATA to Output
+
+    ; Now send 8 bits, MSB first
+    set x, 7            ; Prepare to send 8 bits
+    
+bitLoopOutLoop:
+    ; Wait for clock to go low
+    wait 0 pin 1 [1]
+    ; Place data bit on DATA line on falling edge
+    out pins, 1
+    ; Wait for CLOCK rising edge
+    wait 1 pin 1
+    jmp x--, bitLoopOutLoop
+    
+    ; Hold DATA for ~80µs to allow Keyboard to read final bit
+    nop [16]
+
+    ; Now set DATA HIGH (transmission end so put back to Idle)
+    set pins, 0
+    ; Release DATA line back to input for keyboard response
+    set pindirs, 0
+
+    ; Wait to confirm IDLE
+    wait 1 pin 0 [1]
+
+% c-sdk {
+static inline void keyboard_interface_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 2, false);
+    
+    pio_gpio_init(pio, pin);
+    pio_gpio_init(pio, pin + 1);
+    
+    // Set pullups for open-drain protocol
+    gpio_pull_up(pin);      // DATA
+    gpio_pull_up(pin + 1);  // CLOCK (keyboard controlled)
+    
+    pio_sm_config c = keyboard_interface_program_get_default_config(offset);
+    
+    sm_config_set_set_pins(&c, pin, 2);
+
+    sm_config_set_jmp_pin(&c, pin + 1);  // CLOCK pin for jump
+    
+    sm_config_set_in_pins(&c, pin);      // DATA pin for input
+    sm_config_set_in_shift(&c, false, true, 8);   // Shift left (MSB first), autopush at 8 bits
+
+    sm_config_set_out_pins(&c, pin, 1);  // Only DATA pin for output (CLOCK is keyboard controlled)
+    sm_config_set_out_shift(&c, false, true, 8);  // Shift right (MSB first), autopull at 8 bits
+    
+    sm_config_set_clkdiv(&c, div);
+    
+    pio_set_irq0_source_enabled(pio, pis_sm0_rx_fifo_not_empty + sm, true);
+    
+    pio_sm_init(pio, sm, offset, &c);
+
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}

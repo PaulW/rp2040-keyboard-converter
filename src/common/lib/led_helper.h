@@ -25,27 +25,60 @@
 
 #include "config.h"
 
-// Define Converter State
+/**
+ * @brief Converter State Structure
+ * 
+ * Tracks the operational state of the keyboard converter hardware.
+ * Used to control status LED indicators.
+ */
 typedef struct converter_state {
-  unsigned char kb_ready : 1;
-  unsigned char mouse_ready : 1;
-  unsigned char fw_flash : 1;
+  unsigned char kb_ready : 1;     /**< Keyboard initialized and ready */
+  unsigned char mouse_ready : 1;  /**< Mouse initialized and ready */
+  unsigned char fw_flash : 1;     /**< Firmware flash mode (bootloader) */
 } converter_state;
 
+/**
+ * @brief Converter State Union
+ * 
+ * Allows both bitfield access (for setting individual states) and
+ * atomic value access (for efficient change detection).
+ * 
+ * Threading Model:
+ * - Written from protocol tasks (keyboard_interface_task, mouse_interface_task)
+ * - Read from update_converter_status() in main task context
+ * - Value is volatile to ensure visibility across different execution contexts
+ * - Union allows efficient change detection via single byte comparison
+ */
 typedef union converter_state_union {
   converter_state state;
-  unsigned char value;
+  volatile unsigned char value;  /**< Volatile for cross-context visibility */
 } converter_state_union;
 
 extern converter_state_union converter;
 
-// Define the LED Locklight Indicators
+/**
+ * @brief Lock Key State Structure
+ * 
+ * Tracks the state of keyboard lock indicators (Num Lock, Caps Lock, Scroll Lock).
+ * Synchronized with host operating system lock key states via USB HID reports.
+ */
 typedef struct lock_keys {
-  unsigned char numLock : 1;
-  unsigned char capsLock : 1;
-  unsigned char scrollLock : 1;
+  unsigned char numLock : 1;     /**< Num Lock state */
+  unsigned char capsLock : 1;    /**< Caps Lock state */
+  unsigned char scrollLock : 1;  /**< Scroll Lock state */
 } lock_keys;
 
+/**
+ * @brief Lock Key State Union
+ * 
+ * Allows both bitfield access (for individual lock states) and
+ * byte access (for efficient operations and LED updates).
+ * 
+ * Threading Model:
+ * - Updated from HID callback (tud_hid_set_report_cb) in USB context
+ * - Read from protocol tasks for keyboard LED updates
+ * - Read from update_converter_leds() for visual indicators
+ */
 typedef union lock_keys_union {
   lock_keys keys;
   unsigned char value;

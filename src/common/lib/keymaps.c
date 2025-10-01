@@ -24,6 +24,7 @@
 #include <stdio.h>
 
 #include "hid_keycodes.h"
+#include "numpad_flip.h"
 
 static int keymap_layer = 0; /* TO-DO Add full Layer Switching Support */
 static bool action_key_pressed = false;
@@ -98,7 +99,7 @@ uint8_t keymap_get_key_val(uint8_t pos, bool make) {
 
     if (key_code == KC_NFLP) {
       const uint8_t flip_key_code = keymap_search_layers(row, col);
-      key_code = NUMPAD_FLIP_CODE(flip_key_code);
+      key_code = numpad_flip_code(flip_key_code);
     }
 
     return key_code;
