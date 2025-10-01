@@ -245,22 +245,26 @@ static inline bool in_irq(void) {
  * - Enqueued: Total successful enqueue operations
  * - Drop rate: Percentage of messages dropped
  * 
- * Recursion Protection and Delivery Guarantee:
- * - Uses static flag to prevent recursive calls
- * - When queue is saturated, stats printf may itself drop
- * - Only updates stats_last_reported if message successfully enqueued
- * - Tracks enqueue count before/after printf to verify delivery
+ * Delivery Guarantee Strategy:
+ * - Formats stats message to local buffer using snprintf()
+ * - Manually reserves queue slot via try_reserve_slot()
+ * - Only updates stats_last_reported on confirmed enqueue
+ * - Uses direct queue access to avoid stdio recursion issues
  * - Ensures stats are eventually reported when queue has space
+ * 
+ * This approach guarantees accurate delivery confirmation because it directly
+ * reserves a queue slot rather than relying on stats_enqueued counter changes,
+ * which could be affected by other concurrent producers.
  * 
  * @note Called automatically from uart_dma_write_raw() when drops occur
  * @note Uses static tracking to avoid reporting unchanged statistics
- * @note Recursion-safe via in_report flag (prevents infinite loops)
- * @note Delivery-aware: Only advances last_reported on successful enqueue
+ * @note Non-blocking: Uses direct slot reservation without waiting
+ * @note Delivery-aware: Only advances last_reported on successful reservation
  */
 static inline void report_drop_stats(void) {
-    static bool in_report = false;  // Prevent recursion if stats printf itself drops
+    static bool in_report = false;  // Prevent recursion
     
-    // Skip if already reporting (prevents recursion when queue is saturated)
+    // Skip if already reporting (shouldn't happen with direct enqueue, but safety first)
     if (in_report) {
         return;
     }
@@ -272,25 +276,41 @@ static inline void report_drop_stats(void) {
         uint32_t total = stats_enqueued + stats_dropped;
         uint32_t drop_pct = (total > 0) ? (stats_dropped * 100 / total) : 0;
         
-        // Snapshot enqueue count before printf to detect if stats message was delivered
-        uint32_t enqueued_before = stats_enqueued;
+        // Format stats message to local buffer
+        char stats_msg[UART_DMA_BUFFER_SIZE];
+        int len = snprintf(stats_msg, sizeof(stats_msg),
+                          "[UART Stats] Dropped: %lu, Enqueued: %lu, Drop rate: %lu%%\n",
+                          (unsigned long)stats_dropped,
+                          (unsigned long)stats_enqueued,
+                          (unsigned long)drop_pct);
         
-        in_report = true;  // Set flag before printf
-        printf("[UART Stats] Dropped: %lu, Enqueued: %lu, Drop rate: %lu%%\n",
-               (unsigned long)stats_dropped,
-               (unsigned long)stats_enqueued, 
-               (unsigned long)drop_pct);
-        in_report = false;  // Clear flag after printf
-        
-        // Only advance last_reported if the stats message was successfully enqueued
-        // This ensures we retry reporting until successful delivery
-        uint32_t enqueued_after = stats_enqueued;
-        if (enqueued_after > enqueued_before) {
-            // Stats message was successfully enqueued
-            stats_last_reported = current_drops;
+        if (len <= 0 || len >= (int)sizeof(stats_msg)) {
+            // Formatting error or truncation - skip this report
+            return;
         }
-        // If enqueued_after == enqueued_before, stats message was dropped
-        // We'll retry on the next call when queue has space
+        
+        // Try to reserve a slot directly (non-blocking)
+        uint8_t idx;
+        in_report = true;  // Set flag to prevent any nested calls
+        
+        if (try_reserve_slot(&idx)) {
+            // Successfully reserved slot - publish the stats message
+            log_entry_t *entry = &log_queue[idx];
+            memcpy(entry->buf, stats_msg, len);
+            __atomic_store_n(&entry->len, (uint16_t)len, __ATOMIC_RELEASE);
+            
+            // Start DMA if needed
+            start_next_dma_if_needed();
+            
+            // Update last_reported only on successful enqueue
+            stats_last_reported = current_drops;
+            
+            // Don't increment stats_enqueued here - it's for normal messages
+            // Stats messages are meta-data about the queue, not user data
+        }
+        // If try_reserve_slot fails, we'll retry on next call
+        
+        in_report = false;
     }
 }
 #endif
