@@ -245,14 +245,17 @@ static inline bool in_irq(void) {
  * - Enqueued: Total successful enqueue operations
  * - Drop rate: Percentage of messages dropped
  * 
- * Recursion Protection:
+ * Recursion Protection and Delivery Guarantee:
  * - Uses static flag to prevent recursive calls
  * - When queue is saturated, stats printf may itself drop
- * - Flag ensures we only skip the stats message, not corrupt state
+ * - Only updates stats_last_reported if message successfully enqueued
+ * - Tracks enqueue count before/after printf to verify delivery
+ * - Ensures stats are eventually reported when queue has space
  * 
  * @note Called automatically from uart_dma_write_raw() when drops occur
  * @note Uses static tracking to avoid reporting unchanged statistics
  * @note Recursion-safe via in_report flag (prevents infinite loops)
+ * @note Delivery-aware: Only advances last_reported on successful enqueue
  */
 static inline void report_drop_stats(void) {
     static bool in_report = false;  // Prevent recursion if stats printf itself drops
@@ -269,6 +272,9 @@ static inline void report_drop_stats(void) {
         uint32_t total = stats_enqueued + stats_dropped;
         uint32_t drop_pct = (total > 0) ? (stats_dropped * 100 / total) : 0;
         
+        // Snapshot enqueue count before printf to detect if stats message was delivered
+        uint32_t enqueued_before = stats_enqueued;
+        
         in_report = true;  // Set flag before printf
         printf("[UART Stats] Dropped: %lu, Enqueued: %lu, Drop rate: %lu%%\n",
                (unsigned long)stats_dropped,
@@ -276,7 +282,15 @@ static inline void report_drop_stats(void) {
                (unsigned long)drop_pct);
         in_report = false;  // Clear flag after printf
         
-        stats_last_reported = current_drops;
+        // Only advance last_reported if the stats message was successfully enqueued
+        // This ensures we retry reporting until successful delivery
+        uint32_t enqueued_after = stats_enqueued;
+        if (enqueued_after > enqueued_before) {
+            // Stats message was successfully enqueued
+            stats_last_reported = current_drops;
+        }
+        // If enqueued_after == enqueued_before, stats message was dropped
+        // We'll retry on the next call when queue has space
     }
 }
 #endif
