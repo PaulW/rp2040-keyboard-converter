@@ -78,12 +78,19 @@ static volatile bool led_update_pending = false;
  */
 bool update_converter_leds(void) {
 #ifdef CONVERTER_LEDS
-  // WS2812 requires ≥50µs reset time between updates
-  // Check if enough time has elapsed since last update (non-blocking)
+  // WS2812 requires ≥50µs reset time AFTER transmission completes
+  // Calculate minimum interval: transmission time + reset time
+  // Each LED takes ~30µs to transmit (24 bits × 1.25µs per bit)
   uint32_t now_us = to_us_since_boot(get_absolute_time());
+#ifdef CONVERTER_LOCK_LEDS
+  const uint32_t led_count = 4u;  // status + Num/Caps/Scroll
+#else
+  const uint32_t led_count = 1u;  // status only
+#endif
+  const uint32_t min_interval_us = 60u + (led_count * 30u);  // ≥50µs reset + frame time
   uint32_t elapsed_us = now_us - last_led_update_time_us;
   
-  if (elapsed_us < 60) {
+  if (elapsed_us < min_interval_us) {
     // Not enough time has passed, mark update as pending
     led_update_pending = true;
     return false;

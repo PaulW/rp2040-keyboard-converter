@@ -41,6 +41,8 @@
  * Timing Characteristics:
  * - Keyboard-controlled timing: ~10 kHz bit rate
  * - Clock pulse: ~40µs low, ~60µs high (~100µs total)
+ * - PIO sampling: 10µs interval for double-start-bit detection
+ * - IBM XT sends two start bits, clones send one (differentiation required)
  * - No host flow control or inhibit capability
  * - Immediate transmission when keys pressed/released
  * 
@@ -436,7 +438,11 @@ void keyboard_interface_setup(uint data_pin) {
   // Configure PIO interrupt based on allocated instance (PIO0_IRQ_0 or PIO1_IRQ_0)
   uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
 
-  // XT timing: ~10µs minimum pulse width for reliable signal detection)
+  // XT timing: ~10µs sampling interval for reliable double-start-bit detection
+  // IBM XT keyboards send two start bits (~40µs each), clone keyboards send one (~40µs)
+  // 10µs sampling ensures we capture both start bits within the 40µs window
+  // (4 samples per start bit allows reliable detection of the double-start-bit sequence)
+  // This is critical for distinguishing genuine IBM XT from clone keyboards
   float clock_div = calculate_clock_divider(10);
 
   keyboard_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin, clock_div);
