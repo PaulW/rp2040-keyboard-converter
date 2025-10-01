@@ -229,6 +229,10 @@ static inline bool in_irq(void) {
     return (scb_hw->icsr & M0PLUS_ICSR_VECTACTIVE_BITS) != 0;
 }
 
+// Forward declarations for functions used in debug stats reporting
+static inline bool try_reserve_slot(uint8_t *out_idx);
+static void start_next_dma_if_needed(void);
+
 #ifdef UART_DMA_DEBUG_STATS
 /**
  * @brief Report drop statistics when threshold reached
@@ -537,7 +541,7 @@ static inline bool try_reserve_slot(uint8_t *out_idx) {
  */
 static void uart_dma_write_raw(const char *s, int len) {
     if (len <= 0) return;
-    if (len >= UART_DMA_BUFFER_SIZE) len = UART_DMA_BUFFER_SIZE - 1;
+    if (len > UART_DMA_BUFFER_SIZE) len = UART_DMA_BUFFER_SIZE;
 
     // Apply configurable queue policy for stdio output
     if (!wait_for_queue_space()) {
