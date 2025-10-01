@@ -245,11 +245,23 @@ static inline bool in_irq(void) {
  * - Enqueued: Total successful enqueue operations
  * - Drop rate: Percentage of messages dropped
  * 
+ * Recursion Protection:
+ * - Uses static flag to prevent recursive calls
+ * - When queue is saturated, stats printf may itself drop
+ * - Flag ensures we only skip the stats message, not corrupt state
+ * 
  * @note Called automatically from uart_dma_write_raw() when drops occur
  * @note Uses static tracking to avoid reporting unchanged statistics
- * @note Safe to call from any context (uses existing printf infrastructure)
+ * @note Recursion-safe via in_report flag (prevents infinite loops)
  */
 static inline void report_drop_stats(void) {
+    static bool in_report = false;  // Prevent recursion if stats printf itself drops
+    
+    // Skip if already reporting (prevents recursion when queue is saturated)
+    if (in_report) {
+        return;
+    }
+    
     uint32_t current_drops = stats_dropped;
     
     // Report every 10 drops to balance visibility vs log spam
@@ -257,10 +269,12 @@ static inline void report_drop_stats(void) {
         uint32_t total = stats_enqueued + stats_dropped;
         uint32_t drop_pct = (total > 0) ? (stats_dropped * 100 / total) : 0;
         
+        in_report = true;  // Set flag before printf
         printf("[UART Stats] Dropped: %lu, Enqueued: %lu, Drop rate: %lu%%\n",
                (unsigned long)stats_dropped,
                (unsigned long)stats_enqueued, 
                (unsigned long)drop_pct);
+        in_report = false;  // Clear flag after printf
         
         stats_last_reported = current_drops;
     }

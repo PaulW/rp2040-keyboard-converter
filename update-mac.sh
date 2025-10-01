@@ -23,7 +23,7 @@ echo -ne "Waiting for ${DEVICE_NAME} to enter bootloader mode."
 for ((i = 0; i < ${LOOP_CHECK}; i++)); do
     if mount | grep -q " ${RP2040_MOUNTPOINT} "; then
         echo "*"
-        echo "${DEVICE_NAME} is mounted! Waiting 5 seconds to stabalise..."
+        echo "${DEVICE_NAME} is mounted! Waiting 5 seconds to stabilize..."
         sleep 5
         RP2040_MOUNTED=true
         break
