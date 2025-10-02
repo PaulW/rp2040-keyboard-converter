@@ -232,7 +232,7 @@ Set 3 supports all AT/PS2 commands:
 | **Enable** | `0xF4` | Enable scanning |
 | **Disable** | `0xF5` | Disable scanning |
 | **Set Default** | `0xF6` | Reset to defaults |
-| **Set All Keys Make/Break** | `0xFA` | **Essential for Set 3!** |
+| **Set All Keys Make/Break** | `0xF8` | **Essential for Set 3!** |
 | **Reset** | `0xFF` | Self-test and reset |
 
 ## Key Layout
@@ -302,7 +302,7 @@ Terminal keyboards identify with specific ID ranges (based on tmk reference):
 
 Keyboards with terminal IDs should:
 1. Be configured for Set 3
-2. Receive `0xFA` command (Set All Keys Make/Break)
+2. Receive `0xF8` command (Set All Keys Make/Break)
 3. Process single-byte scancodes without E0/E1 logic
 
 ## Keyboard Identification
@@ -363,7 +363,7 @@ Proper Set 3 initialization:
 4. If ID is terminal (0xAB86-0xAB92, 0xBFxx, or 0x7Fxx):
    - Send 0xF0 0x03 (switch to Set 3)
    - Wait for ACK (0xFA)
-   - Send 0xFA (Set All Keys Make/Break)
+   - Send 0xF8 (Set All Keys Make/Break)
    - Wait for ACK (0xFA)
 5. Keyboard is ready
 ```
