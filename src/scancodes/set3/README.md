@@ -167,12 +167,6 @@ Break Press:     62    (Ctrl+Pause, same key)
 Break Release:   F0 62
 ```
 
-### Windows Key (single byte)
-```
-Left Win Press:   8B
-Left Win Release: F0 8B
-```
-
 ## Implementation Notes
 
 ### Processing Algorithm
