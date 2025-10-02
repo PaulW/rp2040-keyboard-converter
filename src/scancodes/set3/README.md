@@ -126,9 +126,9 @@ That's it. No complex sequences, no special cases.
 | Code | Description |
 |------|-------------|
 | `0x00` | Reserved/Error |
-| `0x7C` | Keypad Comma (international) |
+| `0x7C` | Reserved/unused Set-3 position |
 | `0x83` | F7 key |
-| `0x84` | Keypad Plus/Equal (some keyboards) |
+| `0x84` | System Request (SysRq) |
 | `0xAA` | Self-test passed (BAT) |
 | `0xF0` | Break (release) prefix |
 | `0xFA` | Acknowledge (ACK) |
@@ -262,12 +262,14 @@ Up: 63       Down: 60   Left: 61   Right: 6A
 
 ### Numeric Keypad
 ```
-NumLock: 76   /: 77    *: 7E    -: 84
-7: 6C         8: 75    9: 7D    +: 7C
+NumLock: 76   /: 77    *: 7E    -: 7C
+7: 6C         8: 75    9: 7D    +: 79
 4: 6B         5: 73    6: 74
 1: 69         2: 72    3: 7A    Enter: 79
 0: 70                  .: 71
 ```
+
+**Note**: Keypad layout may vary by keyboard model. The mappings above reflect common terminal keyboard configurations.
 
 ## Performance Characteristics
 
@@ -355,18 +357,20 @@ Set 3 keyboards respond to `0xF2` (Identify) command with 2-byte ID.
 
 ### Initialization Sequence
 
-Proper Set 3 initialization:
+Generic Set 3 initialization procedure:
 ```
 1. Wait for self-test (0xAA)
 2. Send 0xF2 (Identify)
 3. Read 2-byte ID
 4. If ID is terminal (0xAB86-0xAB92, 0xBFxx, or 0x7Fxx):
-   - Send 0xF0 0x03 (switch to Set 3)
-   - Wait for ACK (0xFA)
+   - [Optional] Send 0xF0 0x03 (switch to Set 3)
+   - [Optional] Wait for ACK (0xFA)
    - Send 0xF8 (Set All Keys Make/Break)
    - Wait for ACK (0xFA)
 5. Keyboard is ready
 ```
+
+**Note about this converter**: This implementation **auto-detects** the keyboard's current scancode set based on its ID and does NOT send the `F0 03` command to force-switch scancode sets. Keyboards with IDs 0xBFxx and 0x7Fxx default to Set 3 at power-up, while 0xAB86-0xAB92 keyboards boot in Set 2. The converter configures itself to match the keyboard's native set, eliminating the need for set-switching commands.
 
 ### Typematic Control
 
