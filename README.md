@@ -100,11 +100,11 @@ The converter translates between different scancode sets:
 
 | Scancode Set | Used By | Description |
 |--------------|---------|-------------|
-| **Set 1** | XT | Simple make/break codes |
-| **Set 2** | AT/PS2 (most common) | Extended codes with 0xE0 prefix |
+| **Set 1** | XT, AT/PS2 | Original IBM PC/XT codes (make code + 0x80 for break) |
+| **Set 2** | AT/PS2 (default) | Most common, uses F0 prefix for break codes |
 | **Set 3** | AT/PS2 (rare) | Uniform make/break structure |
 
-See [Scancodes Documentation](src/scancodes/) for complete tables and translation logic.
+**Implementation:** Sets 1, 2, and 3 are handled by a unified, configuration-driven processor (`src/scancodes/set123/scancode.{h,c}`) that consolidates common XT/AT protocol logic while maintaining per-set behavior. See [Scancodes Documentation](src/scancodes/) for complete tables.
 
 ## Building Firmware
 
@@ -171,6 +171,26 @@ Once flashed, the converter provides a macro to enter bootloader mode without ph
 **Press and hold in sequence**: **Fn** + **Left Shift** + **Right Shift** + **B**
 
 **Note**: This macro is only available when the firmware includes keyboard support. Mouse-only builds require manual bootloader entry (hold BOOT during power-on or reset).
+
+## Important Usage Notes
+
+### ⚠️ Hot-Swapping Keyboards Not Really Supported
+
+**Do NOT connect or disconnect keyboards while the converter is powered on.**
+
+While AT/PS2 and XT keyboards may be electrically compatible with hot-plugging, the protocol's state machine is not designed for mid-operation keyboard changes. Hot-swapping can cause:
+
+- Key misinterpretation for several keypresses after swap
+- State machine stuck in incomplete multi-byte sequences (E0, E1, F0 prefixes)
+- Debug messages like `[DBG] !INIT!` appearing in console output, and the converter then getting into a hung state
+- Incorrect keyboard identification if swap occurs during initialization
+
+**Why This Matters:**
+- The protocol layer handles keyboard initialization (self-test, ID detection)
+- The scancode processor maintains persistent state across multi-byte sequences
+- Configuration is determined once during initialization based on keyboard ID
+- No automatic state cleanup occurs when a keyboard is disconnected
+- Any layout changes (switching from 101-key to 122-key for example) would cause keymapping assignment issues when built against the wrong layout
 
 ## Architecture & Data Flow
 

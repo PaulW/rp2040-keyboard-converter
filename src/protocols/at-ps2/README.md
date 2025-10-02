@@ -329,5 +329,3 @@ float clock_div = calculate_clock_divider(ATPS2_TIMING_CLOCK_MIN_US);
 3. **Microsoft PS/2 Mouse Programmer's Reference**: Mouse protocol details
 4. **Intel 8042 Controller Datasheet**: Keyboard controller implementation
 5. **Modern Implementations**: USB-PS/2 adapters and converters
-
----

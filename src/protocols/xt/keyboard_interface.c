@@ -80,7 +80,17 @@
 #include "led_helper.h"
 #include "pio_helper.h"
 #include "ringbuf.h"
-#include "scancode.h"
+
+// Include appropriate scancode header
+// Try unified processor first (set123), fall back to legacy
+#if __has_include("scancode_config.h")
+  #include "scancode.h"
+  #include "scancode_config.h"
+  #define USING_SET123 1
+#else
+  #include "scancode.h"
+  #define USING_SET123 0
+#endif
 
 /* PIO State Machine Configuration */
 uint keyboard_sm = 0;              /**< PIO state machine number */
@@ -164,6 +174,8 @@ static void keyboard_event_processor(uint8_t data_byte) {
       }
       break;
     case INITIALISED:
+      // Always queue to ring buffer - processing happens in main task loop
+      // This ensures HID reports are sent from the correct context
       if (!ringbuf_is_full()) ringbuf_put(data_byte);
   }
 #ifdef CONVERTER_LEDS
@@ -314,7 +326,11 @@ void keyboard_interface_task() {
       // Historical note: interrupt disabling during ring buffer read was tested
       // but provided no benefit and increased input latency - removed for performance
       uint8_t scancode = ringbuf_get();  // Retrieve next scan code from interrupt-filled buffer
-      process_scancode(scancode);
+#if USING_SET123
+      process_scancode_ct(scancode);  // Unified processor with compile-time Set 1
+#else
+      process_scancode(scancode);  // Legacy per-set processor
+#endif
     }
   } else {
     // Keyboard detection and initialization management

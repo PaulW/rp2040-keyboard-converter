@@ -97,8 +97,9 @@ file(GLOB SRC_KEYBOARD_PROTOCOL CMAKE_CONFIGURE_DEPENDS
   ${CMAKE_SOURCE_DIR}/protocols/${KEYBOARD_PROTOCOL}/keyboard_*.c
 )
 
+# Link scancode processor files
 file(GLOB SRC_KEYBOARD_SCANCODE CMAKE_CONFIGURE_DEPENDS
-${CMAKE_SOURCE_DIR}/scancodes/${KEYBOARD_CODESET}/*.c
+  ${CMAKE_SOURCE_DIR}/scancodes/${KEYBOARD_CODESET}/*.c
 )
 
 # Define list of State Machine PIO files for compilation.
