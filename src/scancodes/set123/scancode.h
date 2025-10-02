@@ -34,7 +34,7 @@
  * 
  * | Feature          | Set 1 (XT)      | Set 2 (AT/PS2)  | Set 3 (Terminal) |
  * |------------------|-----------------|-----------------|------------------|
- * | Break Encoding   | code \| 0x80    | F0 + code       | F0 + code        |
+ * | Break Encoding   | `code | 0x80`   | F0 + code       | F0 + code        |
  * | E0 Prefix        | Yes (extended)  | Yes (extended)  | No               |
  * | E1 Prefix        | Yes (Pause)     | Yes (Pause)     | No               |
  * | Fake Shifts      | 2A,AA,36,B6     | 12,59           | None             |

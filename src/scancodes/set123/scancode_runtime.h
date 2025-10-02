@@ -207,20 +207,18 @@
  */
 static inline const scancode_config_t *scancode_config_from_keyboard_id(uint16_t keyboard_id) {
     uint8_t high_byte = (keyboard_id >> 8) & 0xFF;
-    uint8_t low_byte = keyboard_id & 0xFF;
     
-    // Terminal keyboards that default to or support Set 3 (based on tmk's wiki):
+    // Terminal keyboards that default to Set 3 (based on tmk's wiki):
     // Source: https://github.com/tmk/tmk_keyboard/wiki/IBM-PC-AT-Keyboard-Protocol#keyboard-id
-    // - 0xAB86-0xAB92: Keyboards that support Set 3 (Cherry G80-2551, IBM 1397000, IBM 5576 series)
-    //   Note: These keyboards typically default to Set 2 and CAN be switched to Set 3
-    //   via F0 03 command, but this converter does NOT send switching commands.
     // - 0xBF00-0xBFFF: Terminal keyboards that default to Set 3 (IBM 1390876, 6110344, RT keyboards)
     // - 0x7F00-0x7FFF: Terminal keyboards that always use Set 3 (IBM 1394204)
-    if ((high_byte == 0xAB && low_byte >= 0x86 && low_byte <= 0x92) ||  // 0xAB86-0xAB92
-        high_byte == 0xBF ||  // 0xBFxx
-        high_byte == 0x7F) {  // 0x7Fxx
+    if (high_byte == 0xBF || high_byte == 0x7F) {
         return &SCANCODE_CONFIG_SET3;
     }
+    
+    // Note: 0xAB86-0xAB92 keyboards (Cherry G80-2551, IBM 1397000, IBM 5576 series)
+    // boot in Set 2 by default. They CAN be switched to Set 3 via F0 03 command,
+    // but this converter does NOT send switching commands, so we treat them as Set 2.
     
     // All other PS/2 keyboards default to Set 2
     // (This is the most common configuration)

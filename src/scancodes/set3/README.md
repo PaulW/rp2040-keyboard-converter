@@ -209,10 +209,10 @@ Set 3 requires a translation table to map scancodes to HID usage codes, but:
 
 **Critical**: Terminal keyboards must be explicitly set to make/break mode!
 
-By default, terminal keyboards operate in "make-only" mode (only send key press events). The host must send command `0xFA` to enable full make/break operation:
+By default, terminal keyboards operate in "make-only" mode (only send key press events). The host must send command `0xF8` to enable full make/break operation:
 
 ```
-Host sends: FA  (Set All Keys to Make/Break)
+Host sends: F8  (Set All Keys to Make/Break)
 Keyboard ACKs: FA
 ```
 

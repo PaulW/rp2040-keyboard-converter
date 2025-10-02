@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with RP2040 Keyboard Converter.
- * If not, see <https://www.gnu.org/licenses/\>.
+ * If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SCANCODE_CONFIG_H
@@ -33,7 +33,7 @@
  * 
  * Usage (XT Protocol Only):
  * -------------------------
- * \`\`\`c
+ * ```c
  * #include "scancode_config.h"
  * 
  * void keyboard_interface_task(void) {
@@ -42,7 +42,7 @@
  *         process_scancode_ct(code);  // Compile-time Set 1
  *     }
  * }
- * \`\`\`
+ * ```
  * 
  * Benefits:
  * ---------

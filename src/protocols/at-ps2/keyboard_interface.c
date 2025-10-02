@@ -299,6 +299,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
 #if USING_SET123
       // Using unified processor - auto-detect scancode set from keyboard ID
       g_scancode_config = scancode_config_from_keyboard_id(keyboard_id);
+      reset_scancode_state();  // Reset state machine when switching configs
       printf("[INFO] Auto-detected Scancode Set: %s\n",
              g_scancode_config == &SCANCODE_CONFIG_SET1 ? "Set 1" :
              g_scancode_config == &SCANCODE_CONFIG_SET2 ? "Set 2" : "Set 3");
@@ -562,6 +563,7 @@ void keyboard_interface_task() {
 #if USING_SET123
                 // Timeout - use default configuration for keyboards that don't respond to ID command
                 g_scancode_config = scancode_config_from_keyboard_id(keyboard_id);
+                reset_scancode_state();  // Reset state machine when switching configs
                 printf("[INFO] No ID response - defaulting to Scancode Set: %s\n",
                        g_scancode_config == &SCANCODE_CONFIG_SET1 ? "Set 1" :
                        g_scancode_config == &SCANCODE_CONFIG_SET2 ? "Set 2" : "Set 3");

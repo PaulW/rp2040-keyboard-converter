@@ -453,10 +453,8 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
         case E1_14:
             // Set 2: E1 14 77 (Pause make)
             if (code == 0x77) {
-                uint8_t translated = translate_e0_code(code, config);
-                if (translated) {
-                    handle_keyboard_report(translated, true);
-                }
+                // Pause key uses direct HID code 0x55, not E0 translation
+                handle_keyboard_report(0x55, true);
             } else {
                 printf("[DBG] !E1_14! (0x%02X)\n", code);
             }
@@ -486,10 +484,8 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
         case E1_F0_14_F0:
             // Set 2: E1 F0 14 F0 77 (Pause break)
             if (code == 0x77) {
-                uint8_t translated = translate_e0_code(code, config);
-                if (translated) {
-                    handle_keyboard_report(translated, false);
-                }
+                // Pause key uses direct HID code 0x55, not E0 translation
+                handle_keyboard_report(0x55, false);
             } else {
                 printf("[DBG] !E1_F0_14_F0! (0x%02X)\n", code);
             }
