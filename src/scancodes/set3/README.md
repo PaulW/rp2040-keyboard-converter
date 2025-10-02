@@ -43,7 +43,6 @@ All keys, including those that require E0 in Sets 1 and 2, have direct single-by
 - Right Alt: `39` (not `E0 11`)
 - Right Control: `58` (not `E0 14`)
 - Arrow keys: Dedicated single-byte codes
-- Windows keys: Dedicated single-byte codes
 - All keys: Single unique scancode
 
 ### Pause/Break Key
@@ -126,9 +125,9 @@ That's it. No complex sequences, no special cases.
 | Code | Description |
 |------|-------------|
 | `0x00` | Reserved/Error |
-| `0x7C` | Reserved/unused Set-3 position |
+| `0x7C` | Keypad Comma (122-key terminals) |
 | `0x83` | F7 key |
-| `0x84` | System Request (SysRq) |
+| `0x84` | Keypad Plus (122-key terminals) / SysRq on early 84-key AT |
 | `0xAA` | Self-test passed (BAT) |
 | `0xF0` | Break (release) prefix |
 | `0xFA` | Acknowledge (ACK) |
