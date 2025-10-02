@@ -79,7 +79,20 @@
 #include "led_helper.h"
 #include "pio_helper.h"
 #include "ringbuf.h"
-#include "scancode.h"
+
+// Include appropriate scancode header
+// Try unified processor first (set123), fall back to legacy
+#if __has_include("scancode_runtime.h")
+  #include "scancode.h"
+  #include "scancode_runtime.h"
+  #define USING_SET123 1
+  
+  // Global scancode configuration (set during keyboard initialization)
+  static const scancode_config_t *g_scancode_config = NULL;
+#else
+  #include "scancode.h"
+  #define USING_SET123 0
+#endif
 
 /* PIO State Machine Configuration */
 uint keyboard_sm = 0;              /**< PIO state machine number */
@@ -282,6 +295,28 @@ static void keyboard_event_processor(uint8_t data_byte) {
       keyboard_id &= ATPS2_KEYBOARD_ID_HIGH_MASK;
       keyboard_id |= (uint16_t)data_byte;
       printf("[DBG] Keyboard ID: 0x%04X\n", keyboard_id);
+      
+#if USING_SET123
+      // Using unified processor - auto-detect scancode set from keyboard ID
+      g_scancode_config = scancode_config_from_keyboard_id(keyboard_id);
+      reset_scancode_state();  // Reset state machine when switching configs
+      printf("[INFO] Auto-detected Scancode Set: %s\n",
+             g_scancode_config == &SCANCODE_CONFIG_SET1 ? "Set 1" :
+             g_scancode_config == &SCANCODE_CONFIG_SET2 ? "Set 2" : "Set 3");
+      
+      // Configure terminal keyboards for proper operation
+      if (g_scancode_config == &SCANCODE_CONFIG_SET3) {
+        // Terminal keyboards (Set 3) require explicit make/break mode configuration
+        // Command enables both key press and release events for all keys
+        printf("[DBG] Setting all Keys to Make/Break\n");
+        keyboard_command_handler(ATPS2_KEYBOARD_CMD_SET_ALL_MAKEBREAK);
+        keyboard_state = INIT_SETUP;
+      } else {
+        printf("[DBG] Keyboard Initialised!\n");
+        keyboard_state = INITIALISED;
+      }
+#else
+      // Using legacy per-set file - check compile-time CODESET
       // Configure terminal keyboards for proper operation
       if (CODESET_3) {
         // Terminal keyboards (Set 3) require explicit make/break mode configuration
@@ -293,6 +328,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
         printf("[DBG] Keyboard Initialised!\n");
         keyboard_state = INITIALISED;
       }
+#endif
       break;
     case INIT_SETUP:
       // Process acknowledgment for make/break configuration command
@@ -334,6 +370,8 @@ static void keyboard_event_processor(uint8_t data_byte) {
 
     // Normal operation: queue scan codes for HID processing
     case INITIALISED:
+      // Always queue to ring buffer - processing happens in main task loop
+      // This ensures HID reports are sent from the correct context
       if (!ringbuf_is_full()) ringbuf_put(data_byte);
   }
 #ifdef CONVERTER_LEDS
@@ -491,7 +529,13 @@ void keyboard_interface_task() {
         // Historical note: interrupt disabling during ring buffer read was tested
         // but provided no benefit and increased input latency - removed for performance
         uint8_t scancode = ringbuf_get();  // Retrieve next scan code from interrupt-filled buffer
+#if USING_SET123
+        // Using unified processor - call with detected configuration
+        process_scancode(scancode, g_scancode_config);
+#else
+        // Using legacy per-set file - call legacy function
         process_scancode(scancode);
+#endif
       }
     }
   } else {
@@ -516,6 +560,14 @@ void keyboard_interface_task() {
               } else {
                 printf("[DBG] Keyboard Read ID/Setup Timed out again, continuing with defaults.\n");
                 keyboard_id = ATPS2_KEYBOARD_ID_UNKNOWN;
+#if USING_SET123
+                // Timeout - use default configuration for keyboards that don't respond to ID command
+                g_scancode_config = scancode_config_from_keyboard_id(keyboard_id);
+                reset_scancode_state();  // Reset state machine when switching configs
+                printf("[INFO] No ID response - defaulting to Scancode Set: %s\n",
+                       g_scancode_config == &SCANCODE_CONFIG_SET1 ? "Set 1" :
+                       g_scancode_config == &SCANCODE_CONFIG_SET2 ? "Set 2" : "Set 3");
+#endif
                 printf("[DBG] Keyboard Initialised!\n");
                 keyboard_state = INITIALISED;
                 detect_stall_count = 0;

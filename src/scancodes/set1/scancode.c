@@ -112,6 +112,7 @@ static inline uint8_t switch_e0_code(uint8_t code) {
  * - E0 2A, E0 AA, E0 36, E0 B6: Fake shifts (ignored, some keyboards send these)
  * - E1 sequences: Only used for Pause/Break key
  * - Codes >= 0x80: Break codes (key release)
+ * - Self-test codes (0xAA, 0xFC) are handled by protocol layer during initialization
  * 
  * @param code The keycode to process.
  *

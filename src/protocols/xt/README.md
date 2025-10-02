@@ -372,5 +372,3 @@ void xt_soft_reset(uint data_pin, uint clock_pin) {
 3. **IBM Hardware Maintenance Service Manual**: Keyboard diagnostic procedures
 4. **Microcontroller Application Notes**: Modern implementation examples
 5. **TMK Keyboard Firmware**: Reference converter implementations
-
----
