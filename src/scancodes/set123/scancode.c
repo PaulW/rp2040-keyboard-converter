@@ -245,10 +245,6 @@ static inline bool is_fake_shift(uint8_t code, const scancode_config_t *config) 
  * @param config Pointer to scancode configuration
  */
 static void process_normal_code(uint8_t code, const scancode_config_t *config) {
-    // Handle self-test codes (common across all sets)
-    if (code == 0xAA || code == 0xFC) {
-        return; // Self-test passed/failed, ignore
-    }
 
     // Set-specific special codes
     switch (config->set) {
