@@ -70,7 +70,7 @@
  *         g_scancode_config = &SCANCODE_CONFIG_SET3;
  *         
  *         // Terminal keyboards need make/break mode
- *         send_command(0xFA);  // Set all keys to make/break
+ *         send_command(0xF8);  // Set all keys to make/break
  *     } else {
  *         // Standard PS/2 keyboards default to Set 2
  *         printf("[INFO] Standard keyboard detected, using Set 2\n");

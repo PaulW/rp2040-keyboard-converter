@@ -352,7 +352,6 @@ Keyboards that support multiple scancode sets can be switched manually by the ho
 Host sends: F0 01  (switch to Set 1)
 Host sends: F0 02  (switch to Set 2)
 Host sends: F0 03  (switch to Set 3)
-Host sends: F0 00  (query current set)
 ```
 
 **Note**: These are commands available to the host system. This converter does NOT send these commands automatically - it detects the keyboard's current scancode set based on the keyboard ID.
