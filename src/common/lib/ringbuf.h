@@ -137,8 +137,8 @@ static inline bool ringbuf_is_full(void) {
  */
 __force_inline static uint8_t ringbuf_get(void) {
   uint8_t data = rbuf.buffer[rbuf.tail];
+  __dmb();  // Data Memory Barrier - ensure data read completes before tail update
   rbuf.tail = (rbuf.tail + 1) & rbuf.size_mask;
-  __dmb();  // Data Memory Barrier - ensure tail update is visible after data consumption
   return data;
 }
 
