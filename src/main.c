@@ -92,7 +92,7 @@ int main(void) {
   printf("[INFO] Mouse Support Disabled\n");
 #endif
 
-  // These tasks run on Core 0, regardless of whether multicore is enabled.
+  // Main loop: run interface tasks and USB stack continuously.
   while (1) {
 #if KEYBOARD_ENABLED
     keyboard_interface_task();  // Keyboard interface task.
