@@ -164,8 +164,8 @@ __force_inline static uint8_t ringbuf_get(void) {
  */
 __force_inline static void ringbuf_put(uint8_t data) {
   rbuf.buffer[rbuf.head] = data;
+  __dmb();  // Data Memory Barrier - ensure data write is committed before head update
   rbuf.head = (rbuf.head + 1) & rbuf.size_mask;
-  __dmb();  // Data Memory Barrier - ensure head update is visible after data write
 }
 
 void ringbuf_reset(void);
