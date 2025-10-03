@@ -119,9 +119,8 @@ static inline bool ringbuf_is_full(void) {
 /**
  * @brief Retrieves a single byte from the ring buffer.
  * 
- * Reads and removes the oldest byte from the ring buffer. The tail pointer is
- * incremented after the read, with a memory barrier to ensure the update is
- * visible to the producer.
+ * Reads and removes the oldest byte from the ring buffer using a double-barrier
+ * pattern for maximum correctness on ARM's weakly-ordered memory model.
  * 
  * IMPORTANT: Caller MUST check ringbuf_is_empty() first. Calling this function
  * on an empty buffer will return stale data from the last buffer position.
@@ -132,12 +131,14 @@ static inline bool ringbuf_is_full(void) {
  * @note Uses __force_inline for zero-overhead abstraction
  * 
  * Thread-safety: Safe when called from main loop while IRQ modifies head pointer.
- * The volatile qualifier ensures tail reads see latest head value.
- * Memory barrier ensures tail update is visible to producer after data consumption.
+ * Double memory barrier pattern ensures:
+ * 1. Acquire barrier: See all producer writes before reading data
+ * 2. Release barrier: Data read completes before tail update visible to producer
  */
 __force_inline static uint8_t ringbuf_get(void) {
+  __dmb();  // Acquire: synchronize with producer's writes
   uint8_t data = rbuf.buffer[rbuf.tail];
-  __dmb();  // Data Memory Barrier - ensure data read completes before tail update
+  __dmb();  // Release: ensure data read completes before tail update visible
   rbuf.tail = (rbuf.tail + 1) & rbuf.size_mask;
   return data;
 }
@@ -154,7 +155,7 @@ __force_inline static uint8_t ringbuf_get(void) {
  * 
  * @param data The byte of data to be put into the ring buffer.
  * 
- * @warning No bounds checking - overwrites oldest data if buffer is full
+ * @warning No bounds checking - ovgiterwrites oldest data if buffer is full
  * @note Uses __force_inline for zero-overhead abstraction
  * @note Typically called from IRQ context - must be fast
  * 
