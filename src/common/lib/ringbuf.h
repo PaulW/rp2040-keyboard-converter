@@ -32,6 +32,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
+#include "hardware/sync.h"
 
 /**
  * @brief Ring buffer for interrupt-safe scancode queueing.
@@ -47,6 +49,7 @@
  * - Producer (IRQ): Writes to head pointer, reads tail pointer
  * - Consumer (main): Writes to tail pointer, reads head pointer
  * - Volatile qualifiers ensure visibility across contexts
+ * - Memory barriers (DMB) provide explicit synchronization guarantees
  * - No locks needed due to single-producer/single-consumer design
  * 
  * Performance Optimizations:
@@ -54,6 +57,7 @@
  * - Power-of-2 size enables fast masking (AND) instead of modulo
  * - Caller-checked guards eliminate redundant conditional branches
  * - Direct uint8_t return (no int16_t conversion overhead)
+ * - Memory barriers ensure correctness with minimal overhead (+1 cycle)
  * 
  * Overflow Handling:
  * - Defensive check in ringbuf_put() logs error if called when full
@@ -73,10 +77,94 @@
  * ```
  */
 
-uint8_t ringbuf_get(void);
-void ringbuf_put(uint8_t data);
-bool ringbuf_is_empty(void);
-bool ringbuf_is_full(void);
+#define RINGBUF_SIZE 32  // Power-of-2 for efficient masking
+
+typedef struct {
+  uint8_t *buffer;
+  volatile uint8_t head;  // Modified by IRQ, read by main loop - must be volatile
+  volatile uint8_t tail;  // Modified by main loop, read by IRQ - must be volatile
+  uint8_t size_mask;      // Constant after initialization - no volatile needed
+} ringbuf_t;
+
+// External access to ring buffer structure (defined in ringbuf.c)
+extern ringbuf_t rbuf;
+
+/**
+ * @brief Checks if the ring buffer is empty.
+ * 
+ * Thread-safe read operation using volatile head/tail pointers.
+ * Can be called from both IRQ and main loop contexts.
+ * 
+ * @return true if the ring buffer is empty, false otherwise.
+ */
+static inline bool ringbuf_is_empty(void) { 
+  return (rbuf.head == rbuf.tail); 
+}
+
+/**
+ * @brief Checks if the ring buffer is full.
+ * 
+ * Thread-safe read operation using volatile head/tail pointers.
+ * Can be called from both IRQ and main loop contexts.
+ * 
+ * The buffer is considered full when the next head position would equal tail.
+ * This design sacrifices one buffer slot to distinguish full from empty state
+ * (effective capacity: RINGBUF_SIZE - 1).
+ * 
+ * @return true if the ring buffer is full, false otherwise.
+ */
+static inline bool ringbuf_is_full(void) { 
+  return (((rbuf.head + 1) & rbuf.size_mask) == rbuf.tail); 
+}
+
+/**
+ * @brief Retrieves the next element from the ring buffer.
+ * 
+ * CRITICAL: Caller MUST check ringbuf_is_empty() before calling this function.
+ * This function assumes the buffer is not empty and does NOT perform redundant checks.
+ * 
+ * Thread-safety: Safe when called from main loop while IRQ modifies head pointer.
+ * The volatile qualifier ensures tail writes are visible to IRQ context.
+ * Memory barrier ensures read completes before tail pointer update.
+ * 
+ * @return The next element from the ring buffer (0-255).
+ * @note Returns 0 if buffer is empty (undefined behavior - caller's responsibility)
+ */
+__force_inline static uint8_t ringbuf_get(void) {
+  uint8_t data = rbuf.buffer[rbuf.tail];
+  __dmb();  // Data Memory Barrier - ensure read completes before updating tail
+  rbuf.tail = (rbuf.tail + 1) & rbuf.size_mask;
+  return data;
+}
+
+/**
+ * @brief Puts a byte of data into the ring buffer.
+ * 
+ * CRITICAL: Caller MUST check ringbuf_is_full() before calling this function.
+ * This function assumes the buffer has space and does NOT perform redundant checks.
+ * 
+ * Overflow Protection:
+ * Defensive check logs error if called when buffer is full (API contract violation).
+ * This should never happen if caller follows protocol, but provides safety net.
+ * 
+ * Thread-safety: Safe when called from IRQ while main loop modifies tail pointer.
+ * The volatile qualifier ensures head writes are visible to main loop.
+ * Memory barrier ensures write completes before head pointer update.
+ * 
+ * @param data The byte of data to be put into the ring buffer.
+ */
+__force_inline static void ringbuf_put(uint8_t data) {
+  // Defensive check: should never trigger if caller checks is_full() first
+  if (ringbuf_is_full()) {
+    printf("[ERR] Ring buffer overflow! Lost scancode: 0x%02X\n", data);
+    return;  // Discard data - buffer is full
+  }
+  
+  rbuf.buffer[rbuf.head] = data;
+  __dmb();  // Data Memory Barrier - ensure write completes before updating head
+  rbuf.head = (rbuf.head + 1) & rbuf.size_mask;
+}
+
 void ringbuf_reset(void);
 
 #endif /* RINGBUF_H */
