@@ -155,7 +155,7 @@ __force_inline static uint8_t ringbuf_get(void) {
  * 
  * @param data The byte of data to be put into the ring buffer.
  * 
- * @warning No bounds checking - ovgiterwrites oldest data if buffer is full
+ * @warning No bounds checking - overwrites oldest data if buffer is full
  * @note Uses __force_inline for zero-overhead abstraction
  * @note Typically called from IRQ context - must be fast
  * 
