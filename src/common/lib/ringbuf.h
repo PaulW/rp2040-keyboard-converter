@@ -32,7 +32,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include "hardware/sync.h"
 
 /**
@@ -118,51 +117,55 @@ static inline bool ringbuf_is_full(void) {
 }
 
 /**
- * @brief Retrieves the next element from the ring buffer.
+ * @brief Retrieves a single byte from the ring buffer.
  * 
- * CRITICAL: Caller MUST check ringbuf_is_empty() before calling this function.
- * This function assumes the buffer is not empty and does NOT perform redundant checks.
+ * Reads and removes the oldest byte from the ring buffer. The tail pointer is
+ * incremented after the read, with a memory barrier to ensure the update is
+ * visible to the producer.
+ * 
+ * IMPORTANT: Caller MUST check ringbuf_is_empty() first. Calling this function
+ * on an empty buffer will return stale data from the last buffer position.
+ * 
+ * @return The oldest byte in the ring buffer (undefined if buffer is empty)
+ * 
+ * @warning No bounds checking - returns stale data if buffer is empty
+ * @note Uses __force_inline for zero-overhead abstraction
  * 
  * Thread-safety: Safe when called from main loop while IRQ modifies head pointer.
- * The volatile qualifier ensures tail writes are visible to IRQ context.
- * Memory barrier ensures read completes before tail pointer update.
- * 
- * @return The next element from the ring buffer (0-255).
- * @note Returns 0 if buffer is empty (undefined behavior - caller's responsibility)
+ * The volatile qualifier ensures tail reads see latest head value.
+ * Memory barrier ensures tail update is visible to producer after data consumption.
  */
 __force_inline static uint8_t ringbuf_get(void) {
   uint8_t data = rbuf.buffer[rbuf.tail];
-  __dmb();  // Data Memory Barrier - ensure read completes before updating tail
   rbuf.tail = (rbuf.tail + 1) & rbuf.size_mask;
+  __dmb();  // Data Memory Barrier - ensure tail update is visible after data consumption
   return data;
 }
 
 /**
- * @brief Puts a byte of data into the ring buffer.
+ * @brief Inserts a single byte into the ring buffer.
  * 
- * CRITICAL: Caller MUST check ringbuf_is_full() before calling this function.
- * This function assumes the buffer has space and does NOT perform redundant checks.
+ * Writes a byte to the ring buffer at the current head position and increments
+ * the head pointer. A memory barrier ensures the data write completes before
+ * the head pointer update is visible to the consumer.
  * 
- * Overflow Protection:
- * Defensive check logs error if called when buffer is full (API contract violation).
- * This should never happen if caller follows protocol, but provides safety net.
+ * IMPORTANT: Caller MUST check ringbuf_is_full() first. Calling this function
+ * on a full buffer will overwrite the oldest unread data, causing data loss.
+ * 
+ * @param data The byte of data to be put into the ring buffer.
+ * 
+ * @warning No bounds checking - overwrites oldest data if buffer is full
+ * @note Uses __force_inline for zero-overhead abstraction
+ * @note Typically called from IRQ context - must be fast
  * 
  * Thread-safety: Safe when called from IRQ while main loop modifies tail pointer.
  * The volatile qualifier ensures head writes are visible to main loop.
- * Memory barrier ensures write completes before head pointer update.
- * 
- * @param data The byte of data to be put into the ring buffer.
+ * Memory barrier ensures head update is visible after data write completes.
  */
 __force_inline static void ringbuf_put(uint8_t data) {
-  // Defensive check: should never trigger if caller checks is_full() first
-  if (ringbuf_is_full()) {
-    printf("[ERR] Ring buffer overflow! Lost scancode: 0x%02X\n", data);
-    return;  // Discard data - buffer is full
-  }
-  
   rbuf.buffer[rbuf.head] = data;
-  __dmb();  // Data Memory Barrier - ensure write completes before updating head
   rbuf.head = (rbuf.head + 1) & rbuf.size_mask;
+  __dmb();  // Data Memory Barrier - ensure head update is visible after data write
 }
 
 void ringbuf_reset(void);
