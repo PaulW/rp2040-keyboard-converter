@@ -98,4 +98,10 @@ const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS] = {
  * - No separate numeric keypad Enter (shares main Enter)
  * - Unique Clear key on keypad
  * - Different modifier key placement (Option where Alt would be)
+ * 
+ * Command Mode Override:
+ * This keyboard has only one physical shift key (both physical keys return the 
+ * same scancode 0x71), so the default Command Mode activation (Left Shift + 
+ * Right Shift) is impossible. Instead, Command Mode uses Shift + Option (Alt).
+ * See keyboard.h for the CMD_MODE_KEY1/KEY2 definitions.
  */

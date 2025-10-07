@@ -21,6 +21,18 @@
 #ifndef KEYMAP_H
 #define KEYMAP_H
 
+// ============================================================================
+// Command Mode Configuration
+// ============================================================================
+// Apple M0110A has only one shift key (both physical keys return the same 
+// scancode 0x71), so the default Command Mode activation (Left Shift + Right 
+// Shift) won't work. Use Shift + Option (Alt) instead.
+//
+// Activation: Hold Left Shift + Left Alt for 3 seconds to enter Command Mode.
+#define CMD_MODE_KEY1 KC_LSHIFT
+#define CMD_MODE_KEY2 KC_LALT
+// ============================================================================
+
 #include "hid_keycodes.h"
 
 // clang-format off

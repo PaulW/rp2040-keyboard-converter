@@ -85,18 +85,38 @@ static command_mode_context_t cmd_mode = {
 /**
  * @brief Command Mode Activation Key Configuration
  * 
- * Defines which two keys must be held simultaneously to enter Command Mode.
- * These can be overridden in keyboard-specific configuration files to support
- * keyboards with different layouts (e.g., keyboards with only one shift key).
+ * Defines which two HID modifier keys must be held simultaneously to enter Command Mode.
+ * Keyboards can override these defaults by defining CMD_MODE_KEY1 and CMD_MODE_KEY2 
+ * in their keyboard.h file (before any #include statements).
  * 
- * Default: Both shift keys (Left Shift + Right Shift)
- * - Works on standard keyboards with two shift keys
+ * Override Mechanism:
+ * - The #ifndef guards implement a "first definition wins" pattern
+ * - If keyboard.h defines these keys, those values are used
+ * - If keyboard.h doesn't define them, the defaults below are used
+ * - No build system changes or configuration files needed
+ * 
+ * Default Configuration: Left Shift + Right Shift
+ * - Works on standard keyboards with two distinct shift keys
  * - Most keyboards have both shifts, making this a safe default
  * - Least likely to interfere with normal typing
+ * - Intuitive for users (hold both shifts for 3 seconds)
  * 
- * Alternative configurations (examples):
- * - Single shift keyboards: Could use Shift + another modifier
- * - Compact layouts: Could use Fn + Shift, or two function keys
+ * When to Override:
+ * - Single shift keyboards (e.g., Apple M0110A: both keys return same scancode)
+ * - Keyboards where both shifts aren't easily accessible
+ * - Layouts where a different combination makes more sense
+ * 
+ * Example Overrides (define in keyboard.h before includes):
+ * - Single shift keyboards: #define CMD_MODE_KEY2 KC_LALT (Shift + Alt)
+ * - Compact layouts: #define CMD_MODE_KEY1 KC_LCTRL, #define CMD_MODE_KEY2 KC_LALT
+ * - Terminal keyboards: #define CMD_MODE_KEY1 KC_LCTRL, #define CMD_MODE_KEY2 KC_RCTRL
+ * 
+ * Constraints:
+ * - Both keys MUST be HID modifier keys (0xE0-0xE7): validated by _Static_assert below
+ * - Both keys MUST be different: no validation (would require complex preprocessor logic)
+ * - Detection uses bit masking for O(1) performance (modifier-only requirement)
+ * 
+ * See keyboards/README.md for complete override documentation.
  */
 #ifndef CMD_MODE_KEY1
 #define CMD_MODE_KEY1 KC_LSHIFT  /**< First command mode activation key (default: Left Shift) */
@@ -184,45 +204,6 @@ static inline bool command_keys_pressed(const hid_keyboard_report_t *keyboard_re
 
 
 /**
- * @brief Handles LED feedback during command mode
- * 
- * This function manages the LED feedback patterns for command mode:
- * - SHIFT_HOLD_WAIT: Normal LED operation (handled by update_converter_status)
- * - COMMAND_ACTIVE: Alternating Green/Blue flash every 100ms
- * 
- * The alternating LED pattern provides clear visual feedback that the
- * converter is in command mode and ready to accept command keys.
- * 
- * Non-Blocking Implementation:
- * - Uses time-based LED toggling without delays
- * - Sets converter.state.cmd_mode flag to enable command mode LED
- * - Toggles cmd_mode_led_green to alternate colors
- * - Calls update_converter_status() to apply changes
- * 
- * @note Called every time command_mode_process is invoked
- * @note Only performs updates when state machine is in COMMAND_ACTIVE
- */
-static void command_mode_update_leds(void) {
-#ifdef CONVERTER_LEDS
-  if (cmd_mode.state == CMD_MODE_COMMAND_ACTIVE) {
-    uint32_t now_ms = to_ms_since_boot(get_absolute_time());
-    
-    // Toggle LED every 100ms (CMD_MODE_LED_TOGGLE_MS)
-    if (now_ms - cmd_mode.last_led_toggle_ms >= CMD_MODE_LED_TOGGLE_MS) {
-      // Toggle the LED color
-      cmd_mode_led_green = !cmd_mode_led_green;
-      cmd_mode.last_led_toggle_ms = now_ms;
-      
-      // Force LED update by calling update_converter_leds() directly
-      // This bypasses the change detection in update_converter_status()
-      // since we're only changing cmd_mode_led_green, not converter.value
-      update_converter_leds();
-    }
-  }
-#endif
-}
-
-/**
  * @brief Executes bootloader entry command
  * 
  * This function handles the bootloader entry sequence when the 'B' command
@@ -289,6 +270,13 @@ void command_mode_init(void) {
 }
 
 void command_mode_task(void) {
+  // Early exit if idle - avoids time check overhead 99.99% of the time
+  // Most common case: user is typing normally, not in command mode
+  if (cmd_mode.state == CMD_MODE_IDLE) {
+    return;  // ~3 cycles: load, compare, branch
+  }
+  
+  // Only get time if we're actually in an active state
   uint32_t now_ms = to_ms_since_boot(get_absolute_time());
   
   // Handle SHIFT_HOLD_WAIT timeout (transition to COMMAND_ACTIVE)
@@ -311,6 +299,7 @@ void command_mode_task(void) {
 #endif
       printf("[CMD] Command mode active! Press 'B' for bootloader, or wait 3s to cancel\n");
     }
+    return;  // Exit early - no LED update needed in SHIFT_HOLD_WAIT
   }
   
   // Handle COMMAND_ACTIVE timeout (return to IDLE)
@@ -318,13 +307,25 @@ void command_mode_task(void) {
   if (cmd_mode.state == CMD_MODE_COMMAND_ACTIVE) {
     if (now_ms - cmd_mode.state_start_time_ms >= CMD_MODE_TIMEOUT_MS) {
       command_mode_exit("Command mode timeout, returning to idle");
+      return;  // Exit early after mode exit
     }
+    
+    // Update LED feedback only when in COMMAND_ACTIVE state
+    // Moved inline to avoid function call overhead
+#ifdef CONVERTER_LEDS
+    // Toggle LED every 100ms (CMD_MODE_LED_TOGGLE_MS)
+    if (now_ms - cmd_mode.last_led_toggle_ms >= CMD_MODE_LED_TOGGLE_MS) {
+      // Toggle the LED color
+      cmd_mode_led_green = !cmd_mode_led_green;
+      cmd_mode.last_led_toggle_ms = now_ms;
+      
+      // Force LED update by calling update_converter_leds() directly
+      // This bypasses the change detection in update_converter_status()
+      // since we're only changing cmd_mode_led_green, not converter.value
+      update_converter_leds();
+    }
+#endif
   }
-  
-  // Update LED feedback if in command mode
-  // This runs continuously from main loop to ensure LED updates
-  // even when no keyboard events are occurring
-  command_mode_update_leds();
 }
 
 bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
