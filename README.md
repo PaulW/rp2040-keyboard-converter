@@ -191,7 +191,7 @@ The Status LED provides feedback during the Command Mode sequence:
 |-------|-------------|-------------|
 | **Waiting** | Normal (Green if ready, Orange if not) | Holding shifts, waiting for 3 seconds |
 | **Command Mode Active** | Flashing Green/Blue (100ms) | Ready to accept commands, 3 second timeout |
-| **Bootloader Mode** | Solid Purple | Bootloader active, ready for firmware update |
+| **Bootloader Mode** | Solid Magenta | Bootloader active, ready for firmware update |
 
 #### Design Rationale
 

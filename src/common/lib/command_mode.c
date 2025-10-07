@@ -20,6 +20,7 @@
 
 #include "command_mode.h"
 
+#include <assert.h>
 #include <stdio.h>
 
 #include "config.h"
@@ -131,6 +132,19 @@ static command_mode_context_t cmd_mode = {
 #define CMD_MODE_KEYS_MASK ((1 << (CMD_MODE_KEY1 & 0x7)) | (1 << (CMD_MODE_KEY2 & 0x7)))
 
 /**
+ * @brief Compile-time validation of command mode activation keys
+ * 
+ * Static assertions ensure that CMD_MODE_KEY1 and CMD_MODE_KEY2 are HID modifier
+ * keys (0xE0-0xE7). The bit mask calculation and command_keys_pressed() function
+ * only work for modifier keys. If regular keys are needed, the detection logic
+ * must be completely redesigned to check the keycode array instead.
+ */
+_Static_assert(CMD_MODE_KEY1 >= 0xE0 && CMD_MODE_KEY1 <= 0xE7, 
+               "CMD_MODE_KEY1 must be a HID modifier key (0xE0-0xE7)");
+_Static_assert(CMD_MODE_KEY2 >= 0xE0 && CMD_MODE_KEY2 <= 0xE7, 
+               "CMD_MODE_KEY2 must be a HID modifier key (0xE0-0xE7)");
+
+/**
  * @brief Checks if ONLY the command mode activation keys are pressed
  * 
  * This function verifies that both configured command mode keys are pressed
@@ -214,25 +228,25 @@ static void command_mode_update_leds(void) {
  * 
  * This function handles the bootloader entry sequence when the 'B' command
  * key is pressed in command mode:
- * 1. Sets firmware flash LED indicator (magenta)
- * 2. Flushes UART to ensure debug messages are sent
- * 3. Resets into BOOTSEL mode for firmware update
+ * 1. Clears all LED states except Status LED
+ * 2. Sets firmware flash LED indicator (magenta)
+ * 3. Flushes UART to ensure debug messages are sent
+ * 4. Resets into BOOTSEL mode for firmware update
  * 
- * @note This function never returns (device resets)
+ * @note This function never returns (device resets via reset_usb_boot)
  * @note Called from command_mode_process when 'B' is detected
  */
 static void command_execute_bootloader(void) {
   printf("[CMD] Bootloader command received\n");
-  cmd_mode.state = CMD_MODE_IDLE;
   
   // Initiate Bootloader
   printf("[INFO] Initiate Bootloader\n");
 #ifdef CONVERTER_LEDS
-  // Clear all LED states so only the Status LED (purple) is lit
+  // Clear all LED states so only the Status LED (magenta) is lit
   lock_leds.value = 0;  // Clear all lock LED states (Num/Caps/Scroll)
   converter.state.cmd_mode = 0;  // Clear command mode flag
   
-  // Set Status LED to purple to indicate Bootloader Mode
+  // Set Status LED to magenta to indicate Bootloader Mode
   converter.state.fw_flash = 1;
   update_converter_status();
 #endif
@@ -315,14 +329,12 @@ void command_mode_task(void) {
 }
 
 bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
-  uint32_t now_ms = to_ms_since_boot(get_absolute_time());
-  
   switch (cmd_mode.state) {
     case CMD_MODE_IDLE:
       // Check if ONLY the command keys are pressed (no other keys) to enter hold-wait state
       if (command_keys_pressed(keyboard_report)) {
         cmd_mode.state = CMD_MODE_SHIFT_HOLD_WAIT;
-        cmd_mode.state_start_time_ms = now_ms;
+        cmd_mode.state_start_time_ms = to_ms_since_boot(get_absolute_time());
         printf("[CMD] Command keys hold detected, waiting for 3 second hold...\n");
       }
       // Normal keyboard processing continues
