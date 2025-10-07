@@ -78,55 +78,84 @@ static command_mode_context_t cmd_mode = {
 };
 
 /** Command mode timing constants (milliseconds) */
-#define CMD_MODE_HOLD_TIME_MS 3000      /**< Time to hold both shifts to enter command mode */
+#define CMD_MODE_HOLD_TIME_MS 3000      /**< Time to hold command keys to enter command mode */
 #define CMD_MODE_TIMEOUT_MS 3000        /**< Timeout for command mode before returning to idle */
 #define CMD_MODE_LED_TOGGLE_MS 100      /**< LED toggle interval in command mode */
 
 /**
- * @brief Checks if both shift keys are currently pressed
+ * @brief Command Mode Activation Key Configuration
  * 
- * This function examines the keyboard HID report modifier byte to determine
- * if both Left Shift and Right Shift keys are currently pressed. Used by
- * the command mode system to detect the entry trigger.
+ * Defines which two keys must be held simultaneously to enter Command Mode.
+ * These can be overridden in keyboard-specific configuration files to support
+ * keyboards with different layouts (e.g., keyboards with only one shift key).
  * 
- * Modifier Bit Layout (keyboard_report->modifier):
- * - Bit 1: Left Shift (KC_LSHIFT)
- * - Bit 5: Right Shift (KC_RSHIFT)
+ * Default: Both shift keys (Left Shift + Right Shift)
+ * - Works on standard keyboards with two shift keys
+ * - Most keyboards have both shifts, making this a safe default
+ * - Least likely to interfere with normal typing
  * 
- * @param keyboard_report Pointer to keyboard HID report structure
- * @return true if both shift keys are pressed, false otherwise
- * 
- * @note This function only checks the current report state
- * @note Does not check for any other keys being pressed
+ * Alternative configurations (examples):
+ * - Single shift keyboards: Could use Shift + another modifier
+ * - Compact layouts: Could use Fn + Shift, or two function keys
  */
-static inline bool both_shifts_pressed(const hid_keyboard_report_t *keyboard_report) {
-  const uint8_t both_shifts = (1 << (KC_LSHIFT & 0x7)) | (1 << (KC_RSHIFT & 0x7));
-  return (keyboard_report->modifier & both_shifts) == both_shifts;
-}
+#ifndef CMD_MODE_KEY1
+#define CMD_MODE_KEY1 KC_LSHIFT  /**< First command mode activation key (default: Left Shift) */
+#endif
+
+#ifndef CMD_MODE_KEY2
+#define CMD_MODE_KEY2 KC_RSHIFT  /**< Second command mode activation key (default: Right Shift) */
+#endif
 
 /**
- * @brief Checks if ONLY the two shift keys are pressed (no other keys)
+ * @brief Modifier byte mask for command mode activation keys
  * 
- * This function verifies that both shift keys are pressed AND no other keys
- * are present in the report. This is used to ensure command mode is only
- * entered when the user is intentionally pressing just the two shift keys,
- * preventing accidental activation during normal typing.
+ * HID modifier byte layout (each modifier is one bit):
+ * - Bit 0: Left Control  (KC_LCTRL  = 0xE0)
+ * - Bit 1: Left Shift    (KC_LSHIFT = 0xE1)
+ * - Bit 2: Left Alt      (KC_LALT   = 0xE2)
+ * - Bit 3: Left GUI      (KC_LGUI   = 0xE3)
+ * - Bit 4: Right Control (KC_RCTRL  = 0xE4)
+ * - Bit 5: Right Shift   (KC_RSHIFT = 0xE5)
+ * - Bit 6: Right Alt     (KC_RALT   = 0xE6)
+ * - Bit 7: Right GUI     (KC_RGUI   = 0xE7)
+ * 
+ * The calculation (keycode & 0x7) extracts the lower 3 bits to get the bit position:
+ * - KC_LSHIFT (0xE1) & 0x7 = 1 → Bit 1
+ * - KC_RSHIFT (0xE5) & 0x7 = 5 → Bit 5
+ * 
+ * This pattern matches the existing SUPER_MACRO_INIT macro in hid_keycodes.h.
+ * 
+ * @note Only works for modifier keys (0xE0-0xE7)
+ * @note If CMD_MODE_KEY1/KEY2 are changed to non-modifiers, this logic must be updated
+ */
+#define CMD_MODE_KEYS_MASK ((1 << (CMD_MODE_KEY1 & 0x7)) | (1 << (CMD_MODE_KEY2 & 0x7)))
+
+/**
+ * @brief Checks if ONLY the command mode activation keys are pressed
+ * 
+ * This function verifies that both configured command mode keys are pressed
+ * AND no other keys are present in the report. This ensures command mode is
+ * only entered when the user is intentionally pressing just the two activation
+ * keys, preventing accidental activation during normal typing.
+ * 
+ * By default, the activation keys are Left Shift + Right Shift, but this can
+ * be customized per keyboard by defining CMD_MODE_KEY1 and CMD_MODE_KEY2.
  * 
  * @param keyboard_report Pointer to keyboard HID report structure
- * @return true if only both shifts are pressed, false if other keys present
+ * @return true if only the command keys are pressed, false if other keys present
  * 
- * @note Returns false if other modifiers (Ctrl, Alt, etc.) are pressed
+ * @note Returns false if other modifiers are pressed
  * @note Returns false if any regular keys are in the keycode array
+ * @note This is the ONLY validation function needed for command mode entry
  */
-static inline bool only_shifts_pressed(const hid_keyboard_report_t *keyboard_report) {
-  // Check that both shifts are pressed
-  const uint8_t both_shifts = (1 << (KC_LSHIFT & 0x7)) | (1 << (KC_RSHIFT & 0x7));
-  if ((keyboard_report->modifier & both_shifts) != both_shifts) {
+static inline bool command_keys_pressed(const hid_keyboard_report_t *keyboard_report) {
+  // Check that both command mode keys are pressed
+  if ((keyboard_report->modifier & CMD_MODE_KEYS_MASK) != CMD_MODE_KEYS_MASK) {
     return false;
   }
   
-  // Check that no other modifiers are pressed (only the shift bits should be set)
-  if ((keyboard_report->modifier & ~both_shifts) != 0) {
+  // Check that no other modifiers are pressed (only the command key bits should be set)
+  if ((keyboard_report->modifier & ~CMD_MODE_KEYS_MASK) != 0) {
     return false;
   }
   
@@ -290,34 +319,28 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
   
   switch (cmd_mode.state) {
     case CMD_MODE_IDLE:
-      // Check if ONLY both shifts are pressed (no other keys) to enter hold-wait state
-      if (only_shifts_pressed(keyboard_report)) {
+      // Check if ONLY the command keys are pressed (no other keys) to enter hold-wait state
+      if (command_keys_pressed(keyboard_report)) {
         cmd_mode.state = CMD_MODE_SHIFT_HOLD_WAIT;
         cmd_mode.state_start_time_ms = now_ms;
-        printf("[CMD] Shift hold detected, waiting for 3 second hold...\n");
+        printf("[CMD] Command keys hold detected, waiting for 3 second hold...\n");
       }
       // Normal keyboard processing continues
       return true;
       
     case CMD_MODE_SHIFT_HOLD_WAIT:
-      // Check if shifts were released early
-      if (!both_shifts_pressed(keyboard_report)) {
-        printf("[CMD] Shifts released early, returning to idle\n");
-        cmd_mode.state = CMD_MODE_IDLE;
-        return true;
-      }
-      
-      // Check if any other keys were pressed - abort command mode entry
-      if (!only_shifts_pressed(keyboard_report)) {
-        printf("[CMD] Other keys pressed, aborting command mode entry\n");
+      // Check if command keys were released early OR if any other keys were pressed
+      // Using command_keys_pressed() for both checks ensures strict validation
+      if (!command_keys_pressed(keyboard_report)) {
+        printf("[CMD] Command keys released or other keys pressed, aborting\n");
         cmd_mode.state = CMD_MODE_IDLE;
         return true;
       }
       
       // Note: Transition to COMMAND_ACTIVE after 3 seconds is handled in command_mode_task()
-      // This ensures it works even when no keyboard events occur (user just holds shifts)
+      // This ensures it works even when no keyboard events occur (user just holds keys)
       
-      // Allow normal keyboard reports during wait (shifts are being sent normally)
+      // Allow normal keyboard reports during wait (command keys are being sent normally)
       return true;
       
     case CMD_MODE_COMMAND_ACTIVE:

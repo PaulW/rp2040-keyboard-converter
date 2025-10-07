@@ -38,11 +38,22 @@
  * Design Philosophy:
  * - Sequential key detection instead of simultaneous press
  * - Visual feedback via LED to indicate mode state
- * - Safe from accidental activation (requires ONLY two shifts, 3 second hold)
+ * - Safe from accidental activation (requires ONLY two specific keys, 3 second hold)
  * - Extensible for future commands beyond bootloader entry
+ * - Configurable activation keys per keyboard layout
+ * 
+ * Activation Key Configuration:
+ * By default, Command Mode is activated by holding Left Shift + Right Shift.
+ * This can be customized for keyboards with different layouts by defining
+ * CMD_MODE_KEY1 and CMD_MODE_KEY2 in the keyboard's configuration file.
+ * 
+ * Example configurations:
+ * - Standard keyboards: Left Shift + Right Shift (default)
+ * - Single-shift keyboards: Shift + another modifier (e.g., Shift + Ctrl)
+ * - Compact layouts: Two function keys or Fn + modifier
  * 
  * User Experience:
- * 1. Press and hold ONLY Left Shift + Right Shift (no other keys)
+ * 1. Press and hold ONLY the two configured command keys (default: both shifts, no other keys)
  * 2. Hold for 3 seconds (normal HID reports sent during wait)
  * 3. LED flashes Green/Blue alternating every 100ms
  * 4. Press 'B' to enter bootloader, or wait 3s for auto-exit
@@ -50,7 +61,7 @@
  * 
  * State Machine:
  * - IDLE: Normal operation
- * - SHIFT_HOLD_WAIT: Both shifts held, counting 3 seconds, HID reports active
+ * - SHIFT_HOLD_WAIT: Command keys held, counting 3 seconds, HID reports active
  * - COMMAND_ACTIVE: Command mode active, LED flashing, HID reports suppressed
  * 
  * Threading Model:
