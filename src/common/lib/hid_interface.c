@@ -23,13 +23,12 @@
 #include <stdio.h>
 
 #include "bsp/board.h"
+#include "command_mode.h"
 #include "config.h"
 #include "hid_keycodes.h"
 #include "keymaps.h"
 #include "led_helper.h"
-#include "pico/bootrom.h"
 #include "tusb.h"
-#include "uart.h"
 #include "usb_descriptors.h"
 
 /**
@@ -191,11 +190,19 @@ static bool hid_keyboard_del_key(uint8_t key) {
  *    - Single 16-bit usage code per report
  *    - Code 0 indicates "no keys pressed" for key release
  * 
- * 3. Macro System Integration:
- *    - Detects special key combinations (action key + modifier combo)
- *    - Bootloader entry: Action key held + special modifier + KC_BOOT
- *    - Flushes UART before bootloader to ensure debug output sent
- *    - Can be extended for additional macro functions
+ * 3. Command Mode System:
+ *    - Time-based special function access for 2KRO keyboards
+ *    - Hold both shifts for 3 seconds to enter command mode
+ *    - LED provides visual feedback (Green/Blue alternating flash)
+ *    - Press 'B' for bootloader entry (other commands can be added)
+ *    - 3 second timeout or shift release exits command mode
+ *    - Keyboard reports suppressed during command mode operation
+ * 
+ * Command Mode vs. Legacy Macro System:
+ * - Old: Action key + both shifts + 'B' (simultaneous press - fails on 2KRO)
+ * - New: Hold both shifts 3s, then press 'B' (sequential - works on 2KRO)
+ * - Legacy macro system (keymap_is_action_key_pressed) removed
+ * - Command mode provides better UX with LED feedback
  * 
  * Report Deduplication:
  * - Uses report_modified flag to track actual state changes
@@ -225,26 +232,14 @@ void handle_keyboard_report(uint8_t code, bool make) {
       report_modified = hid_keyboard_del_key(code);
     }
 
-    // Check for any Macro Combinations here
-    if (keymap_is_action_key_pressed()) {
-      if (SUPER_MACRO_INIT(keyboard_report.modifier)) {
-        printf("[DBG] Macro Modifiers HOLD\n");
-        uint8_t macro_key = MACRO_KEY_CODE(code);
-        if (macro_key == KC_BOOT) {
-          // Initiate Bootloader
-          printf("[INFO] Initiate Bootloader\n");
-#ifdef CONVERTER_LEDS
-          // Set Status LED to indicate Bootloader Mode
-          converter.state.fw_flash = 1;
-          update_converter_status();
-#endif
-          // Flush all pending UART messages before bootloader transition
-          uart_dma_flush();
-          
-          // Reboot into Bootloader
-          reset_usb_boot(0, 0);
-        }
-      }
+    // Process command mode state machine
+    // Returns false if keyboard report should be suppressed (command mode active)
+    bool allow_normal_processing = command_mode_process(&keyboard_report);
+    
+    if (!allow_normal_processing) {
+      // Command mode is active, suppress normal keyboard reports
+      // This prevents shift keys and command keys from being sent to host
+      return;
     }
 
     if (report_modified) {
@@ -267,6 +262,38 @@ void handle_keyboard_report(uint8_t code, bool make) {
     if (!res) {
       printf("[ERR] Consumer HID Report Failed: 0x%04X\n", usage);
     }
+  }
+}
+
+/**
+ * @brief Sends an empty keyboard report to release all keys
+ * 
+ * This function sends a HID keyboard report with no keys pressed and no
+ * modifiers active. Used by command mode when transitioning from
+ * SHIFT_HOLD_WAIT to COMMAND_ACTIVE to ensure that the shift keys are
+ * released from the host's perspective.
+ * 
+ * Report Structure:
+ * - modifier: 0x00 (no modifiers)
+ * - reserved: 0x00
+ * - keycode[0-5]: all 0x00 (no keys pressed)
+ * 
+ * @note Called from command mode when entering COMMAND_ACTIVE state
+ * @note Does not modify the internal keyboard_report state
+ */
+void send_empty_keyboard_report(void) {
+  hid_keyboard_report_t empty_report = {
+    .modifier = 0,
+    .reserved = 0,
+    .keycode = {0, 0, 0, 0, 0, 0}
+  };
+  
+  bool res = tud_hid_n_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &empty_report,
+                              sizeof(empty_report));
+  if (!res) {
+    printf("[ERR] Empty keyboard report failed\n");
+  } else {
+    printf("[CMD] Sent empty keyboard report (all keys released)\n");
   }
 }
 

@@ -38,6 +38,13 @@ lock_keys_union lock_leds;
 static volatile uint32_t last_led_update_time_us = 0;
 // Track if an update is pending due to timing constraints
 static volatile bool led_update_pending = false;
+
+// Track which LED color to display during command mode (green or blue)
+volatile bool cmd_mode_led_green = true;
+
+// Command mode LED colors
+#define CMD_MODE_LED_GREEN 0x00FF00     /**< Green LED for command mode phase 1 */
+#define CMD_MODE_LED_BLUE 0x0000FF    /**< Blue LED for command mode phase 2 */
 #endif
 
 /**
@@ -100,6 +107,9 @@ bool update_converter_leds(void) {
   uint32_t status_color;
   if (converter.state.fw_flash) {
     status_color = CONVERTER_LEDS_STATUS_FWFLASH_COLOR;
+  } else if (converter.state.cmd_mode) {
+    // Command mode active - alternate between green and blue
+    status_color = cmd_mode_led_green ? CMD_MODE_LED_GREEN : CMD_MODE_LED_BLUE;
   } else if (converter.state.kb_ready && converter.state.mouse_ready) {
     status_color = CONVERTER_LEDS_STATUS_READY_COLOR;
   } else {

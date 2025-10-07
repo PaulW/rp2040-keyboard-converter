@@ -166,11 +166,42 @@ See [Keyboards README](src/keyboards/README.md) for adding new keyboard configur
 
 ### Firmware Updates (Keyboard Build Only)
 
-Once flashed, the converter provides a macro to enter bootloader mode without physical access:
+Once flashed, the converter provides **Command Mode** to enter bootloader mode without physical access to the RP2040 board.
 
-**Press and hold in sequence**: **Fn** + **Left Shift** + **Right Shift** + **B**
+#### Entering Command Mode
 
-**Note**: This macro is only available when the firmware includes keyboard support. Mouse-only builds require manual bootloader entry (hold BOOT during power-on or reset).
+To enter Command Mode, press and hold **ONLY** both shift keys (Left Shift + Right Shift) simultaneously:
+
+1. **Press and hold both shift keys** - Hold for 3 seconds
+   - Normal typing continues during this time
+   - No other keys must be pressed (including Function keys, modifiers, etc.)
+2. **Command Mode activated** - Status LED flashes Green/Blue rapidly (100ms intervals)
+   - All keys are released from the host's perspective
+   - You can now release the shift keys
+   - Mode automatically times out after 3 seconds of inactivity
+3. **Execute command** - Press a command key:
+   - **B** = Enter Bootloader Mode (for firmware updates)
+   - More commands may be added in future updates
+
+#### Visual Feedback
+
+The Status LED provides feedback during the Command Mode sequence:
+
+| State | LED Behavior | Description |
+|-------|-------------|-------------|
+| **Waiting** | Normal (Green if ready, Orange if not) | Holding shifts, waiting for 3 seconds |
+| **Command Mode Active** | Flashing Green/Blue (100ms) | Ready to accept commands, 3 second timeout |
+| **Bootloader Mode** | Solid Purple | Bootloader active, ready for firmware update |
+
+#### Design Rationale
+
+Command Mode was designed to work with 2-key rollover (2KRO) keyboards, which cannot detect 3+ simultaneous keypresses. The time-based approach ensures:
+- Compatible with all keyboard types (2KRO, 6KRO, NKRO)
+- Prevents accidental activation (requires deliberate 3-second hold)
+- Works without Function key layer support
+- Strict entry requirement (only shifts, no other keys) prevents false triggers during normal typing
+
+**Note**: Command Mode is only available when the firmware includes keyboard support. Mouse-only builds require manual bootloader entry (hold BOOT during power-on or reset).
 
 ## Important Usage Notes
 
