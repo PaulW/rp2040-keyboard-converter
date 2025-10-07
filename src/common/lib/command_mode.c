@@ -20,7 +20,6 @@
 
 #include "command_mode.h"
 
-#include <assert.h>
 #include <stdio.h>
 
 #include "config.h"
