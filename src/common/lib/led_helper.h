@@ -21,6 +21,7 @@
 #ifndef LED_HELPER_H
 #define LED_HELPER_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "config.h"
@@ -35,6 +36,7 @@ typedef struct converter_state {
   unsigned char kb_ready : 1;     /**< Keyboard initialized and ready */
   unsigned char mouse_ready : 1;  /**< Mouse initialized and ready */
   unsigned char fw_flash : 1;     /**< Firmware flash mode (bootloader) */
+  unsigned char cmd_mode : 1;     /**< Command mode active (for LED feedback) */
 } converter_state;
 
 /**
@@ -55,6 +57,21 @@ typedef union converter_state_union {
 } converter_state_union;
 
 extern converter_state_union converter;
+
+#ifdef CONVERTER_LEDS
+/**
+ * @brief Command Mode LED State
+ * 
+ * Tracks which LED color to display during command mode (alternates between
+ * green and blue). This is separate from converter.state to avoid polluting
+ * the state byte with rapidly changing LED toggle information.
+ * 
+ * Threading Model:
+ * - Only accessed from main task context (command mode processing)
+ * - No synchronization needed
+ */
+extern volatile bool cmd_mode_led_green;
+#endif
 
 /**
  * @brief Lock Key State Structure
@@ -88,5 +105,6 @@ extern lock_keys_union lock_leds;
 
 void set_lock_values_from_hid(uint8_t lock_val);
 void update_converter_status(void);
+bool update_converter_leds(void);
 
 #endif /* LED_HELPER_H */

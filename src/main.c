@@ -26,6 +26,7 @@
 #include <stdlib.h>
 
 #include "bsp/board.h"
+#include "command_mode.h"
 #include "config.h"
 #include "hid_interface.h"
 #include "pico/unique_id.h"
@@ -52,6 +53,7 @@
 int main(void) {
   hid_device_setup();
   init_uart_dma();
+  command_mode_init();  // Initialize command mode system
   char pico_unique_id[32];
   pico_get_unique_board_id_string(pico_unique_id, sizeof(pico_unique_id));
   printf("--------------------------------\n");
@@ -100,6 +102,7 @@ int main(void) {
 #if MOUSE_ENABLED
     mouse_interface_task();  // Mouse interface task.
 #endif
+    command_mode_task();  // Command mode LED updates and timeout handling
     tud_task();  // TinyUSB device task.
   }
 
