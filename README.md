@@ -166,7 +166,7 @@ See [Keyboards README](src/keyboards/README.md) for adding new keyboard configur
 
 ### Firmware Updates (Keyboard Build Only)
 
-Once flashed, the converter provides **Command Mode** to enter bootloader mode without physical access to the RP2040 board.
+Once flashed, the converter provides **Command Mode** to access special functions without physical access to the RP2040 board.
 
 #### Entering Command Mode
 
@@ -181,7 +181,34 @@ To enter Command Mode, press and hold **ONLY** both shift keys (Left Shift + Rig
    - Mode automatically times out after 3 seconds of inactivity
 3. **Execute command** - Press a command key:
    - **B** = Enter Bootloader Mode (for firmware updates)
-   - More commands may be added in future updates
+   - **D** = Log Level Selection (for debugging - see below)
+
+#### Command: Bootloader Mode ('B' key)
+
+Press 'B' in Command Mode to enter bootloader mode for firmware updates without physical access to the BOOT button.
+
+#### Command: Log Level Selection ('D' key)
+
+Press 'D' in Command Mode to change the UART debug output level:
+
+1. **Press 'D' in Command Mode**
+   - Status LED changes to Green/Pink flashing
+   - UART shows: `[INFO] Log level selection: Press 1=ERROR, 2=INFO, 3=DEBUG`
+2. **Select level:**
+   - **'1'** = ERROR only (critical errors)
+   - **'2'** = INFO (default - startup info + errors)
+   - **'3'** = DEBUG (all messages - verbose)
+3. **Confirmation:**
+   - Command mode exits automatically
+   - UART shows confirmation message
+   - New level takes effect immediately
+
+**Log Level Details:**
+- **ERROR (1):** Critical failures only - minimal output
+- **INFO (2):** Normal operation - initialization and state changes (default)
+- **DEBUG (3):** Verbose - all protocol details, scancode processing (for troubleshooting)
+
+This feature is useful for field debugging without reflashing firmware. Connect a UART adapter to see diagnostic output at the selected level.
 
 #### Visual Feedback
 
@@ -190,7 +217,8 @@ The Status LED provides feedback during the Command Mode sequence:
 | State | LED Behavior | Description |
 |-------|-------------|-------------|
 | **Waiting** | Normal (Green if ready, Orange if not) | Holding shifts, waiting for 3 seconds |
-| **Command Mode Active** | Flashing Green/Blue (100ms) | Ready to accept commands, 3 second timeout |
+| **Command Mode Active** | Flashing Green/Blue (100ms) | Ready to accept command keys (B/D), 3 second timeout |
+| **Log Level Selection** | Flashing Green/Pink (100ms) | Waiting for level selection (1/2/3), 3 second timeout |
 | **Bootloader Mode** | Solid Magenta | Bootloader active, ready for firmware update |
 
 #### Design Rationale
