@@ -82,6 +82,19 @@
 #include "ringbuf.h"
 
 // Include appropriate scancode header
+#include "keyboard_interface.h"
+
+#include <math.h>
+
+#include "bsp/board.h"
+#include "hardware/clocks.h"
+#include "keyboard_interface.pio.h"
+#include "led_helper.h"
+#include "log.h"
+#include "pio_helper.h"
+#include "ringbuf.h"
+
+// Include appropriate scancode header
 // Try unified processor first (set123), fall back to legacy
 #if __has_include("scancode_config.h")
   #include "scancode.h"
