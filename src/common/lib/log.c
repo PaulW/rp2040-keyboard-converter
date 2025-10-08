@@ -111,11 +111,8 @@ static volatile uint8_t current_log_level = LOG_LEVEL_DEFAULT;
  * // Enable verbose debugging
  * log_set_level(LOG_LEVEL_DEBUG);
  * 
- * // Only show critical errors
+ * // Only show critical errors and warnings
  * log_set_level(LOG_LEVEL_ERROR);
- * 
- * // Disable all logging
- * log_set_level(LOG_LEVEL_SILENT);
  * ```
  */
 void log_set_level(log_level_t level) {

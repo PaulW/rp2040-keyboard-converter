@@ -35,10 +35,9 @@
  * 
  * **Log Levels:**
  * ```
- * LOG_LEVEL_ERROR (0)   - Critical errors only              [ERR]
- * LOG_LEVEL_INFO  (1)   - Errors + informational messages   [ERR] [INFO]
- * LOG_LEVEL_DEBUG (2)   - All messages (errors, info, debug) [ERR] [INFO] [DBG]
- * LOG_LEVEL_SILENT (3)  - No output (all logging disabled)
+ * LOG_LEVEL_ERROR (0)   - Critical errors and warnings      [ERR] [WARN]
+ * LOG_LEVEL_INFO  (1)   - Errors + informational messages   [ERR] [WARN] [INFO]
+ * LOG_LEVEL_DEBUG (2)   - All messages (errors, info, debug) [ERR] [WARN] [INFO] [DBG]
  * ```
  * 
  * **Configuration:**
@@ -46,7 +45,7 @@
  * Set in `config.h`:
  * ```c
  * // Runtime default level (can be changed at runtime)
- * #define LOG_LEVEL_DEFAULT LOG_LEVEL_INFO   // Default to ERROR + INFO
+ * #define LOG_LEVEL_DEFAULT LOG_LEVEL_INFO   // Default to ERROR + WARN + INFO
  * ```
  * 
  * **Usage Examples:**
@@ -54,11 +53,12 @@
  * ```c
  * // Standard usage (recommended):
  * LOG_ERROR("Failed to initialize: code=0x%02X\n", error_code);
+ * LOG_WARN("PIO0 full, falling back to PIO1\n");
  * LOG_INFO("Device initialized successfully\n");
  * LOG_DEBUG("Scancode received: 0x%02X\n", scancode);
  * 
  * // Runtime level changes (programmatically):
- * log_set_level(LOG_LEVEL_ERROR);  // Only show errors
+ * log_set_level(LOG_LEVEL_ERROR);  // Only show errors and warnings
  * log_set_level(LOG_LEVEL_DEBUG);  // Show everything
  * 
  * // Runtime level changes (command mode):
@@ -117,10 +117,9 @@
  * @brief Log level type
  * 
  * Log levels are defined in config.h as compile-time constants:
- * - LOG_LEVEL_ERROR  (0) - Critical errors only [ERR]
- * - LOG_LEVEL_INFO   (1) - Errors + informational messages [ERR] [INFO]
- * - LOG_LEVEL_DEBUG  (2) - All messages [ERR] [INFO] [DBG]
- * - LOG_LEVEL_SILENT (3) - No output (all logging disabled)
+ * - LOG_LEVEL_ERROR  (0) - Critical errors and warnings [ERR] [WARN]
+ * - LOG_LEVEL_INFO   (1) - Errors + informational messages [ERR] [WARN] [INFO]
+ * - LOG_LEVEL_DEBUG  (2) - All messages [ERR] [WARN] [INFO] [DBG]
  * 
  * Lower numeric values represent higher priority messages.
  */
@@ -140,7 +139,7 @@ typedef uint8_t log_level_t;
  * - Changes take effect immediately for subsequent log calls
  * - No synchronization needed
  * 
- * @param level New minimum log level (LOG_LEVEL_ERROR, LOG_LEVEL_INFO, LOG_LEVEL_DEBUG, or LOG_LEVEL_SILENT)
+ * @param level New minimum log level (LOG_LEVEL_ERROR, LOG_LEVEL_INFO, or LOG_LEVEL_DEBUG)
  * 
  * @note Changes affect all subsequent LOG_* macro calls
  * @note Thread-safe and can be called from IRQ context
@@ -148,10 +147,9 @@ typedef uint8_t log_level_t;
  * 
  * Examples:
  * ```c
- * log_set_level(LOG_LEVEL_ERROR);  // Only show errors
- * log_set_level(LOG_LEVEL_INFO);   // Show errors and info (default)
+ * log_set_level(LOG_LEVEL_ERROR);  // Only show errors and warnings
+ * log_set_level(LOG_LEVEL_INFO);   // Show errors, warnings, and info (default)
  * log_set_level(LOG_LEVEL_DEBUG);  // Show everything
- * log_set_level(LOG_LEVEL_SILENT); // Disable all logging
  * ```
  */
 void log_set_level(log_level_t level);
@@ -162,7 +160,7 @@ void log_set_level(log_level_t level);
  * Returns the current minimum log level that will be output. This is the
  * value previously set by log_set_level() or the default value from config.h.
  * 
- * @return Current log level (LOG_LEVEL_ERROR, LOG_LEVEL_INFO, LOG_LEVEL_DEBUG, or LOG_LEVEL_SILENT)
+ * @return Current log level (LOG_LEVEL_ERROR, LOG_LEVEL_INFO, or LOG_LEVEL_DEBUG)
  * 
  * @note Thread-safe (atomic uint8_t read)
  * @note Can be called from any context
@@ -207,10 +205,10 @@ void log_init(void);
 // --- Runtime Logging Macros ---
 
 /**
- * @brief Log error message (always high priority)
+ * @brief Log error message
  * 
- * Outputs a message prefixed with [ERR]. Error messages are the highest
- * priority and are typically only suppressed when LOG_LEVEL_SILENT is set.
+ * Outputs a message prefixed with [ERR]. Error messages are for critical
+ * failures that prevent normal operation.
  * 
  * Performance:
  * - Runtime disabled: ~5-10 cycles (single comparison)
@@ -228,6 +226,31 @@ void log_init(void);
     do { \
         if (log_get_level() >= LOG_LEVEL_ERROR) { \
             printf("[ERR] " fmt, ##__VA_ARGS__); \
+        } \
+    } while(0)
+
+/**
+ * @brief Log warning message
+ * 
+ * Outputs a message prefixed with [WARN]. Warning messages are for recoverable
+ * issues or unexpected conditions that don't prevent operation.
+ * 
+ * Performance:
+ * - Runtime disabled: ~5-10 cycles (single comparison)
+ * - Runtime enabled: same as printf() (~20µs total with DMA)
+ * 
+ * @param fmt printf-style format string
+ * @param ... Variable arguments for format string
+ * 
+ * Example:
+ * ```c
+ * LOG_WARN("PIO0 full, falling back to PIO1\n");
+ * ```
+ */
+#define LOG_WARN(fmt, ...) \
+    do { \
+        if (log_get_level() >= LOG_LEVEL_ERROR) { \
+            printf("[WARN] " fmt, ##__VA_ARGS__); \
         } \
     } while(0)
 

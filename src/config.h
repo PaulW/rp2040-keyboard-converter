@@ -89,10 +89,9 @@
 // Controls runtime filtering of log messages for debugging and diagnostics.
 //
 // Log Level Constants:
-//   LOG_LEVEL_ERROR  (0) - Critical errors only [ERR]
-//   LOG_LEVEL_INFO   (1) - Errors + informational messages [ERR] [INFO]
-//   LOG_LEVEL_DEBUG  (2) - All messages [ERR] [INFO] [DBG]
-//   LOG_LEVEL_SILENT (3) - No output (all logging disabled)
+//   LOG_LEVEL_ERROR  (0) - Critical errors and warnings only [ERR] [WARN]
+//   LOG_LEVEL_INFO   (1) - Errors + informational messages [ERR] [WARN] [INFO]
+//   LOG_LEVEL_DEBUG  (2) - All messages [ERR] [WARN] [INFO] [DBG]
 //
 // LOG_LEVEL_DEFAULT: Runtime default log level at startup
 //   - Can be changed at runtime with log_set_level()
@@ -109,7 +108,6 @@
 #define LOG_LEVEL_ERROR  0
 #define LOG_LEVEL_INFO   1
 #define LOG_LEVEL_DEBUG  2
-#define LOG_LEVEL_SILENT 3
 
 #define LOG_LEVEL_DEFAULT LOG_LEVEL_INFO   // Default to INFO level at startup
 

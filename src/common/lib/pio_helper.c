@@ -54,7 +54,7 @@ _Static_assert(1, "PIO helper basic sanity check");  // Always true, validates _
  */
 PIO find_available_pio(const pio_program_t *program) {
   if (!pio_can_add_program(pio0, program)) {
-    LOG_ERROR("PIO0 has no space for PIO Program\nChecking to see if we can load into PIO1\n");
+    LOG_WARN("PIO0 has no space for PIO Program. Checking to see if we can load into PIO1\n");
     if (!pio_can_add_program(pio1, program)) {
       LOG_ERROR("PIO1 has no space for PIO Program\n");
       return NULL;
