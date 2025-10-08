@@ -28,6 +28,7 @@
 #include "hid_interface.h"
 #include "interface.pio.h"
 #include "led_helper.h"
+#include "log.h"
 #include "pio_helper.h"
 
 uint mouse_sm = 0;
@@ -136,14 +137,14 @@ void mouse_event_processor(uint8_t data_byte) {
     case UNINITIALISED:
       switch (data_byte) {
         case ATPS2_RESP_BAT_PASSED:  // Self Test Passed
-          printf("[INFO] Mouse Self Test Passed\n");
-          printf("[INFO] Detecting Mouse Type\n");
+          LOG_INFO("Mouse Self Test Passed\n");
+          LOG_INFO("Detecting Mouse Type\n");
           mouse_id = ATPS2_MOUSE_ID_UNKNOWN;  // Reset Mouse ID
           mouse_state = INIT_AWAIT_ID;
           break;
         default:
           // If we hit this, then either the self test failed, or we have an error.
-          printf("[ERR] Asking Mouse to Reset\n");
+          LOG_ERROR("Asking Mouse to Reset\n");
           mouse_state = INIT_AWAIT_ACK;
           mouse_command_handler(ATPS2_CMD_RESET);
       }
@@ -151,24 +152,24 @@ void mouse_event_processor(uint8_t data_byte) {
     case INIT_AWAIT_ACK:
       switch (data_byte) {
         case ATPS2_RESP_ACK:  // Acknowledged
-          printf("[INFO] ACK Received after Reset\n");
+          LOG_INFO("ACK Received after Reset\n");
           mouse_state = INIT_AWAIT_SELFTEST;
           break;
         default:
-          printf("[DBG] Unknown ACK Response (0x%02X).  Asking again to Reset...\n", data_byte);
+          LOG_DEBUG("Unknown ACK Response (0x%02X).  Asking again to Reset...\n", data_byte);
           mouse_command_handler(ATPS2_CMD_RESET);
       }
       break;
     case INIT_AWAIT_SELFTEST:
       switch (data_byte) {
         case ATPS2_RESP_BAT_PASSED:  // Self Test Passed
-          printf("[INFO] Mouse Self Test Passed\n");
-          printf("[INFO] Detecting Mouse Type\n");
+          LOG_INFO("Mouse Self Test Passed\n");
+          LOG_INFO("Detecting Mouse Type\n");
           mouse_id = ATPS2_MOUSE_ID_UNKNOWN;  // Reset Mouse ID
           mouse_state = INIT_AWAIT_ID;
           break;
         default:
-          printf("[DBG] Self-Test invalid response (0x%02X).  Asking again to Reset...\n",
+          LOG_DEBUG("Self-Test invalid response (0x%02X).  Asking again to Reset...\n",
                  data_byte);
           mouse_state = INIT_AWAIT_ACK;
           mouse_command_handler(ATPS2_CMD_RESET);
@@ -186,7 +187,7 @@ void mouse_event_processor(uint8_t data_byte) {
             mouse_state = INIT_DETECT_MOUSE_TYPE;
             mouse_command_handler(ATPS2_MOUSE_CMD_SET_SAMPLE_RATE);
           } else {
-            printf("[INFO] Mouse Type: Standard PS/2 Mouse\n");
+            LOG_INFO("Mouse Type: Standard PS/2 Mouse\n");
             mouse_max_packets = ATPS2_MOUSE_PACKET_STANDARD_SIZE;
             mouse_state = INIT_SET_CONFIG;
             mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
@@ -198,21 +199,21 @@ void mouse_event_processor(uint8_t data_byte) {
             mouse_state = INIT_DETECT_MOUSE_TYPE;
             mouse_command_handler(ATPS2_MOUSE_CMD_SET_SAMPLE_RATE);
           } else {
-            printf("[INFO] Mouse Type: Mouse with Scroll Wheel\n");
+            LOG_INFO("Mouse Type: Mouse with Scroll Wheel\n");
             mouse_max_packets = ATPS2_MOUSE_PACKET_EXTENDED_SIZE;
             mouse_state = INIT_SET_CONFIG;
             mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
           }
           break;
         case ATPS2_MOUSE_ID_INTELLIMOUSE_EXPLORER:
-          printf("[INFO] Mouse Type: 5 Button Mouse\n");
+          LOG_INFO("Mouse Type: 5 Button Mouse\n");
           mouse_max_packets = ATPS2_MOUSE_PACKET_EXTENDED_SIZE;
           mouse_id = ATPS2_MOUSE_ID_INTELLIMOUSE_EXPLORER;
           mouse_state = INIT_SET_CONFIG;
           mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
           break;
         default:
-          printf("[ERR] Unknown Mouse Type (0x%02X), Asking again to Reset...\n", data_byte);
+          LOG_ERROR("Unknown Mouse Type (0x%02X), Asking again to Reset...\n", data_byte);
           mouse_state = INIT_AWAIT_ACK;
           mouse_command_handler(ATPS2_CMD_RESET);
           break;
@@ -258,7 +259,7 @@ void mouse_event_processor(uint8_t data_byte) {
           }
           break;
         default:
-          printf("[DBG] Unhandled Response Received (0x%02X)\n", data_byte);
+          LOG_DEBUG("Unhandled Response Received (0x%02X)\n", data_byte);
           mouse_type_detect_sequence = 0;
           mouse_id = ATPS2_MOUSE_ID_STANDARD;
           mouse_state = INIT_SET_CONFIG;
@@ -283,7 +284,7 @@ void mouse_event_processor(uint8_t data_byte) {
         if (mouse_config_sequence == sizeof(config_sequence) / sizeof(config_sequence[0])) {
           mouse_config_sequence = 0;
           mouse_state = INITIALISED;
-          printf("[INFO] Mouse Initialisation Complete\n");
+          LOG_INFO("Mouse Initialisation Complete\n");
         } else {
           mouse_command_handler(config_sequence[mouse_config_sequence]);
           mouse_config_sequence++;
@@ -375,10 +376,10 @@ void mouse_input_event_handler() {
   uint8_t parity_bit_check = interface_parity_table[data_byte];
 
   if (start_bit != 0 || parity_bit != parity_bit_check || stop_bit != 1) {
-    if (start_bit != 0) printf("[ERR] Start Bit Validation Failed: start_bit=%i\n", start_bit);
-    if (stop_bit != 1) printf("[ERR] Stop Bit Validation Failed: stop_bit=%i\n", stop_bit);
+    if (start_bit != 0) LOG_ERROR("Start Bit Validation Failed: start_bit=%i\n", start_bit);
+    if (stop_bit != 1) LOG_ERROR("Stop Bit Validation Failed: stop_bit=%i\n", stop_bit);
     if (parity_bit != parity_bit_check) {
-      printf("[ERR] Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check,
+      LOG_ERROR("Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check,
              parity_bit);
       mouse_command_handler(ATPS2_CMD_RESEND);  // Request Resend
       return;
@@ -415,14 +416,14 @@ void mouse_interface_task() {
         detect_stall_count++;
         if (detect_stall_count > 5) {
           // Reset Mouse as we have not received any data for 1 second.
-          printf("[ERR] Mouse Interface Timeout.  Resetting Mouse...\n");
+          LOG_ERROR("Mouse Interface Timeout.  Resetting Mouse...\n");
           mouse_id = ATPS2_MOUSE_ID_UNKNOWN;               // Reset Mouse ID
           mouse_state = INIT_AWAIT_ACK;  // Set State to Await Acknowledgement
           detect_stall_count = 0;        // Reset Stall Counter
           mouse_command_handler(ATPS2_CMD_RESET);   // Send Reset Command
         }
       } else if (mouse_state == UNINITIALISED) {
-        printf("[DBG] Awaiting mouse detection. Please ensure a mouse is connected.\n");
+        LOG_DEBUG("Awaiting mouse detection. Please ensure a mouse is connected.\n");
         detect_stall_count =
             0;  // Reset the detect_stall_count as we are waiting for the clock to go HIGH.
       }
@@ -463,7 +464,7 @@ void mouse_interface_setup(uint data_pin) {
   // mouse_state = INITIALISED;
   mouse_pio = find_available_pio(&pio_interface_program);
   if (mouse_pio == NULL) {
-    printf("[ERR] No PIO available for Mouse Interface Program\n");
+    LOG_ERROR("No PIO available for Mouse Interface Program\n");
     return;
   }
 

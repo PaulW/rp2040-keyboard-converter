@@ -21,6 +21,7 @@
 #include "hid_interface.h"
 
 #include <stdio.h>
+#include "log.h"
 
 #include "bsp/board.h"
 #include "command_mode.h"
@@ -68,7 +69,7 @@ static hid_mouse_report_t mouse_report;
  * @param message  Message to be printed before the HID report.
  */
 static void hid_print_report(void* report, size_t size, const char* message) {
-  printf("[%s-HID-REPORT] ", message);
+  LOG_DEBUG("[%s-HID-REPORT] ", message);
   uint8_t* p = (uint8_t*)report;
   for (size_t i = 0; i < size; i++) {
     printf("%02X ", *p++);
@@ -246,7 +247,7 @@ void handle_keyboard_report(uint8_t code, bool make) {
       bool res = tud_hid_n_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &keyboard_report,
                                   sizeof(keyboard_report));
       if (!res) {
-        printf("[ERR] Keyboard HID Report Failed:\n");
+        LOG_ERROR("Keyboard HID Report Failed:\n");
         hid_print_report(&keyboard_report, sizeof(keyboard_report), "handle_keyboard_report");
       }
     }
@@ -260,7 +261,7 @@ void handle_keyboard_report(uint8_t code, bool make) {
     bool res = tud_hid_n_report(ITF_NUM_CONSUMER_CONTROL, REPORT_ID_CONSUMER_CONTROL, &usage,
                                 sizeof(usage));
     if (!res) {
-      printf("[ERR] Consumer HID Report Failed: 0x%04X\n", usage);
+      LOG_ERROR("Consumer HID Report Failed: 0x%04X\n", usage);
     }
   }
 }
@@ -291,9 +292,9 @@ void send_empty_keyboard_report(void) {
   bool res = tud_hid_n_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &empty_report,
                               sizeof(empty_report));
   if (!res) {
-    printf("[ERR] Empty keyboard report failed\n");
+    LOG_ERROR("Empty keyboard report failed\n");
   } else {
-    printf("[CMD] Sent empty keyboard report (all keys released)\n");
+    LOG_INFO("Sent empty keyboard report (all keys released)\n");
   }
 }
 
@@ -317,7 +318,7 @@ void handle_mouse_report(const uint8_t buttons[5], int8_t pos[3]) {
   bool res = tud_hid_n_report(KEYBOARD_ENABLED ? ITF_NUM_MOUSE : ITF_NUM_KEYBOARD, REPORT_ID_MOUSE,
                               &mouse_report, sizeof(mouse_report));
   if (!res) {
-    printf("[ERR] Mouse HID Report Failed:\n");
+    LOG_ERROR("Mouse HID Report Failed:\n");
     hid_print_report(&mouse_report, sizeof(mouse_report), "handle_mouse_report");
   }
 }

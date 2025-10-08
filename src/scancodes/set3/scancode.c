@@ -23,6 +23,7 @@
 #include <stdio.h>
 
 #include "hid_interface.h"
+#include "log.h"
 
 /**
  * @brief Process Keyboard Input (Scancode Set 3) Data
@@ -96,7 +97,7 @@ void process_scancode(uint8_t code) {
           if (code < 0x80) {
             handle_keyboard_report(code, true);
           } else {
-            printf("[DBG] !INIT! (0x%02X)\n", code);
+            LOG_DEBUG("!INIT! (0x%02X)\n", code);
           }
       }
       break;
@@ -120,7 +121,7 @@ void process_scancode(uint8_t code) {
           if (code < 0x80) {
             handle_keyboard_report(code, false);
           } else {
-            printf("[DBG] !F0! (0x%02X)\n", code);
+            LOG_DEBUG("!F0! (0x%02X)\n", code);
           }
       }
       break;

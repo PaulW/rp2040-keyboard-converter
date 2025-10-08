@@ -29,6 +29,7 @@
 #include "command_mode.h"
 #include "config.h"
 #include "hid_interface.h"
+#include "log.h"
 #include "pico/unique_id.h"
 #include "tusb.h"
 #include "uart.h"
@@ -57,9 +58,9 @@ int main(void) {
   char pico_unique_id[32];
   pico_get_unique_board_id_string(pico_unique_id, sizeof(pico_unique_id));
   printf("--------------------------------\n");
-  printf("[INFO] RP2040 Device Converter\n");
-  printf("[INFO] RP2040 Serial ID: %s\n", pico_unique_id);
-  printf("[INFO] Build Time: %s\n", BUILD_TIME);
+  LOG_INFO("RP2040 Device Converter\n");
+  LOG_INFO("RP2040 Serial ID: %s\n", pico_unique_id);
+  LOG_INFO("Build Time: %s\n", BUILD_TIME);
   printf("--------------------------------\n");
 
   // Initialise Optional Components
@@ -73,25 +74,25 @@ int main(void) {
 
   // Initialise aspects of the Interface.
 #if KEYBOARD_ENABLED
-  printf("[INFO] Keyboard Support Enabled\n");
-  printf("[INFO] Keyboard Make: %s\n", KEYBOARD_MAKE);
-  printf("[INFO] Keyboard Model: %s\n", KEYBOARD_MODEL);
-  printf("[INFO] Keyboard Description: %s\n", KEYBOARD_DESCRIPTION);
-  printf("[INFO] Keyboard Protocol: %s\n", KEYBOARD_PROTOCOL);
-  printf("[INFO] Keyboard Scancode Set: %s\n", KEYBOARD_CODESET);
+  LOG_INFO("Keyboard Support Enabled\n");
+  LOG_INFO("Keyboard Make: %s\n", KEYBOARD_MAKE);
+  LOG_INFO("Keyboard Model: %s\n", KEYBOARD_MODEL);
+  LOG_INFO("Keyboard Description: %s\n", KEYBOARD_DESCRIPTION);
+  LOG_INFO("Keyboard Protocol: %s\n", KEYBOARD_PROTOCOL);
+  LOG_INFO("Keyboard Scancode Set: %s\n", KEYBOARD_CODESET);
   printf("--------------------------------\n");
   keyboard_interface_setup(KEYBOARD_DATA_PIN);  // Setup the keyboard interface.
 #else
-  printf("[INFO] Keyboard Support Disabled\n");
+  LOG_INFO("Keyboard Support Disabled\n");
 #endif
 
 #if MOUSE_ENABLED
-  printf("[INFO] Mouse Support Enabled\n");
-  printf("[INFO] Mouse Protocol: %s\n", MOUSE_PROTOCOL);
+  LOG_INFO("Mouse Support Enabled\n");
+  LOG_INFO("Mouse Protocol: %s\n", MOUSE_PROTOCOL);
   printf("--------------------------------\n");
   mouse_interface_setup(MOUSE_DATA_PIN);  // Setup the mouse interface.
 #else
-  printf("[INFO] Mouse Support Disabled\n");
+  LOG_INFO("Mouse Support Disabled\n");
 #endif
 
   // Main loop: run interface tasks and USB stack continuously.

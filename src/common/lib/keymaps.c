@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include "log.h"
 
 #include "hid_keycodes.h"
 #include "numpad_flip.h"
@@ -55,7 +56,7 @@ static uint8_t keymap_search_layers(uint8_t row, uint8_t col) {
     }
     if (key_code == KC_TRNS) {
       /* This shouldn't happen! */
-      printf("[ERR] KC_TRNS Detected as far as Base Layer!\n");
+      LOG_ERROR("KC_TRNS Detected as far as Base Layer!\n");
       key_code = KC_NO;
     }
   }

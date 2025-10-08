@@ -165,10 +165,10 @@ static void keyboard_event_processor(uint8_t data_byte) {
   switch (keyboard_state) {
     case UNINITIALISED:
       if (data_byte == XT_RESP_BAT_PASSED) {
-        printf("[DBG] Keyboard Self-Test Passed\n");
+        LOG_DEBUG("Keyboard Self-Test Passed\n");
         keyboard_state = INITIALISED;
       } else {
-        printf("[ERR] Keyboard Self-Test Failed: 0x%02X\n", data_byte);
+        LOG_ERROR("Keyboard Self-Test Failed: 0x%02X\n", data_byte);
         keyboard_state = UNINITIALISED;
         pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
       }
@@ -247,7 +247,7 @@ static void __isr keyboard_input_event_handler() {
   uint8_t data_byte = (uint8_t)((data_cast >> 1) & 0xFF);
 
   if (start_bit != 1) {
-    printf("[ERR] Start Bit Validation Failed: start_bit=%i\n", start_bit);
+    LOG_ERROR("Start Bit Validation Failed: start_bit=%i\n", start_bit);
     keyboard_state = UNINITIALISED;
     pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
     return;
@@ -346,16 +346,16 @@ void keyboard_interface_task() {
       if (gpio_get(keyboard_data_pin + 1) == 1) {
         if (detect_stall_count < 5) {
           detect_stall_count++;
-          printf("[DBG] Keyboard detected, awaiting ACK (%i/5 attempts)\n", detect_stall_count);
+          LOG_DEBUG("Keyboard detected, awaiting ACK (%i/5 attempts)\n", detect_stall_count);
         } else {
-          printf("[DBG] Keyboard detected, but no ACK received!\n");
-          printf("[DBG] Requesting keyboard reset\n");
+          LOG_DEBUG("Keyboard detected, but no ACK received!\n");
+          LOG_DEBUG("Requesting keyboard reset\n");
           keyboard_state = UNINITIALISED;
           pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
           detect_stall_count = 0;
         }
       } else if (keyboard_state == UNINITIALISED) {
-        printf("[DBG] Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
+        LOG_DEBUG("Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
         detect_stall_count = 0;
       }
 #ifdef CONVERTER_LEDS
@@ -442,7 +442,7 @@ void keyboard_interface_setup(uint data_pin) {
 
   keyboard_pio = find_available_pio(&keyboard_interface_program);
   if (keyboard_pio == NULL) {
-    printf("[ERR] No PIO available for Keyboard Interface Program\n");
+    LOG_ERROR("No PIO available for Keyboard Interface Program\n");
     return;
   }
 
@@ -467,6 +467,6 @@ void keyboard_interface_setup(uint data_pin) {
   irq_set_enabled(pio_irq, true);
   irq_set_priority(pio_irq, 0);
 
-  printf("[INFO] PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
+  LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
          (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
 }
