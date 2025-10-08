@@ -77,6 +77,7 @@
 #include "hardware/clocks.h"
 #include "interface.pio.h"
 #include "led_helper.h"
+#include "log.h"
 #include "pio_helper.h"
 #include "ringbuf.h"
 
@@ -232,16 +233,16 @@ static void keyboard_event_processor(uint8_t data_byte) {
         case ATPS2_RESP_BAT_PASSED:
           // Power-on self-test completed successfully (Basic Assurance Test)
           // Keyboard passed internal diagnostics and is ready
-          printf("[DBG] Keyboard Self Test OK!\n");
+          LOG_DEBUG("Keyboard Self Test OK!\n");
           buzzer_play_sound_sequence_non_blocking(READY_SEQUENCE);
           keyboard_lock_leds = 0;
-          printf("[DBG] Waiting for Keyboard ID...\n");
+          LOG_DEBUG("Waiting for Keyboard ID...\n");
           keyboard_state = INIT_READ_ID_1;
           break;
         default:
           // Unexpected response during initialization - could be failed BAT (0xFC)
           // or other power-on state requiring explicit reset command
-          printf("[DBG] Asking Keyboard to Reset\n");
+          LOG_DEBUG("Asking Keyboard to Reset\n");
           keyboard_state = INIT_AWAIT_ACK;
           keyboard_command_handler(ATPS2_CMD_RESET);
       }
@@ -249,26 +250,26 @@ static void keyboard_event_processor(uint8_t data_byte) {
     case INIT_AWAIT_ACK:
       switch (data_byte) {
         case ATPS2_RESP_ACK:
-          printf("[DBG] ACK Received after Reset\n");
+          LOG_DEBUG("ACK Received after Reset\n");
           keyboard_state = INIT_AWAIT_SELFTEST;
           break;
         default:
-          printf("[DBG] Unknown ACK Response (0x%02X).  Asking again to Reset...\n", data_byte);
+          LOG_DEBUG("Unknown ACK Response (0x%02X).  Asking again to Reset...\n", data_byte);
           keyboard_command_handler(ATPS2_CMD_RESET);
       }
       break;
     case INIT_AWAIT_SELFTEST:
       switch (data_byte) {
         case ATPS2_RESP_BAT_PASSED:
-          printf("[DBG] Keyboard Self Test OK!\n");
+          LOG_DEBUG("Keyboard Self Test OK!\n");
           buzzer_play_sound_sequence_non_blocking(READY_SEQUENCE);
           keyboard_lock_leds = 0;
           // Proceed to keyboard identification phase for terminal keyboard detection
-          printf("[DBG] Waiting for Keyboard ID...\n");
+          LOG_DEBUG("Waiting for Keyboard ID...\n");
           keyboard_state = INIT_READ_ID_1;
           break;
         default:
-          printf("[DBG] Self-Test invalid response (0x%02X).  Asking again to Reset...\n",
+          LOG_DEBUG("Self-Test invalid response (0x%02X).  Asking again to Reset...\n",
                  data_byte);
           keyboard_state = INIT_AWAIT_ACK;
           keyboard_command_handler(ATPS2_CMD_RESET);
@@ -280,27 +281,27 @@ static void keyboard_event_processor(uint8_t data_byte) {
     case INIT_READ_ID_1:
       switch (data_byte) {
         case ATPS2_RESP_ACK:
-          printf("[DBG] ACK Keyboard ID Request\n");
-          printf("[DBG] Waiting for Keyboard ID...\n");
+          LOG_DEBUG("ACK Keyboard ID Request\n");
+          LOG_DEBUG("Waiting for Keyboard ID...\n");
           break;
         default:
-          printf("[DBG] Keyboard First ID Byte read as 0x%02X\n", data_byte);
+          LOG_DEBUG("Keyboard First ID Byte read as 0x%02X\n", data_byte);
           keyboard_id &= ATPS2_KEYBOARD_ID_LOW_MASK;
           keyboard_id |= (uint16_t)data_byte << 8;
           keyboard_state = INIT_READ_ID_2;
       }
       break;
     case INIT_READ_ID_2:
-      printf("[DBG] Keyboard Second ID Byte read as 0x%02X\n", data_byte);
+      LOG_DEBUG("Keyboard Second ID Byte read as 0x%02X\n", data_byte);
       keyboard_id &= ATPS2_KEYBOARD_ID_HIGH_MASK;
       keyboard_id |= (uint16_t)data_byte;
-      printf("[DBG] Keyboard ID: 0x%04X\n", keyboard_id);
+      LOG_DEBUG("Keyboard ID: 0x%04X\n", keyboard_id);
       
 #if USING_SET123
       // Using unified processor - auto-detect scancode set from keyboard ID
       g_scancode_config = scancode_config_from_keyboard_id(keyboard_id);
       reset_scancode_state();  // Reset state machine when switching configs
-      printf("[INFO] Auto-detected Scancode Set: %s\n",
+      LOG_INFO("Auto-detected Scancode Set: %s\n",
              g_scancode_config == &SCANCODE_CONFIG_SET1 ? "Set 1" :
              g_scancode_config == &SCANCODE_CONFIG_SET2 ? "Set 2" : "Set 3");
       
@@ -308,11 +309,11 @@ static void keyboard_event_processor(uint8_t data_byte) {
       if (g_scancode_config == &SCANCODE_CONFIG_SET3) {
         // Terminal keyboards (Set 3) require explicit make/break mode configuration
         // Command enables both key press and release events for all keys
-        printf("[DBG] Setting all Keys to Make/Break\n");
+        LOG_DEBUG("Setting all Keys to Make/Break\n");
         keyboard_command_handler(ATPS2_KEYBOARD_CMD_SET_ALL_MAKEBREAK);
         keyboard_state = INIT_SETUP;
       } else {
-        printf("[DBG] Keyboard Initialised!\n");
+        LOG_DEBUG("Keyboard Initialised!\n");
         keyboard_state = INITIALISED;
       }
 #else
@@ -321,11 +322,11 @@ static void keyboard_event_processor(uint8_t data_byte) {
       if (CODESET_3) {
         // Terminal keyboards (Set 3) require explicit make/break mode configuration
         // Command enables both key press and release events for all keys
-        printf("[DBG] Setting all Keys to Make/Break\n");
+        LOG_DEBUG("Setting all Keys to Make/Break\n");
         keyboard_command_handler(ATPS2_KEYBOARD_CMD_SET_ALL_MAKEBREAK);
         keyboard_state = INIT_SETUP;
       } else {
-        printf("[DBG] Keyboard Initialised!\n");
+        LOG_DEBUG("Keyboard Initialised!\n");
         keyboard_state = INITIALISED;
       }
 #endif
@@ -334,13 +335,13 @@ static void keyboard_event_processor(uint8_t data_byte) {
       // Process acknowledgment for make/break configuration command
       switch (data_byte) {
         case ATPS2_RESP_ACK:
-          printf("[DBG] Keyboard Initialised!\n");
+          LOG_DEBUG("Keyboard Initialised!\n");
           keyboard_state = INITIALISED;
           break;
         default:
-          printf("[DBG] Unknown Response (0x%02X).  Continuing...\n", data_byte);
+          LOG_DEBUG("Unknown Response (0x%02X).  Continuing...\n", data_byte);
           keyboard_id = ATPS2_KEYBOARD_ID_UNKNOWN;
-          printf("[DBG] Keyboard Initialised!\n");
+          LOG_DEBUG("Keyboard Initialised!\n");
           keyboard_state = INITIALISED;
       }
       break;
@@ -362,7 +363,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
           }
           break;
         default:
-          printf("[DBG] SET_LOCK_LED FAILED (0x%02X)\n", data_byte);
+          LOG_DEBUG("SET_LOCK_LED FAILED (0x%02X)\n", data_byte);
           keyboard_lock_leds = lock_leds.value;
           keyboard_state = INITIALISED;
       }
@@ -435,19 +436,19 @@ static void __isr keyboard_input_event_handler() {
   // Detect and adapt to non-standard stop bit behavior (Z-150 compatibility)
   if (stop_bit_state != (stop_bit ? STOP_BIT_HIGH : STOP_BIT_LOW)) {
     stop_bit_state = stop_bit ? STOP_BIT_HIGH : STOP_BIT_LOW;
-    printf("[DBG] Stop Bit %s Detected\n", stop_bit ? "High" : "Low");
+    LOG_DEBUG("Stop Bit %s Detected\n", stop_bit ? "High" : "Low");
   }
 
   if (start_bit != 0 || parity_bit != parity_bit_check) {
-    if (start_bit != 0) printf("[ERR] Start Bit Validation Failed: start_bit=%i\n", start_bit);
+    if (start_bit != 0) LOG_ERROR("Start Bit Validation Failed: start_bit=%i\n", start_bit);
     if (parity_bit != parity_bit_check) {
-      printf("[ERR] Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check,
+      LOG_ERROR("Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check,
              parity_bit);
       if (data_byte == 0x54 && parity_bit == 1) {
         // Power-on connection artifact: keyboard briefly pulls lines low during startup
         // This causes bit shift in FIFO changing 0xAA to 0x54 with invalid parity
         // Historical fix preserved for reference - indicates keyboard connection event
-        printf("[DBG] Likely Keyboard Connect Event detected.\n");
+        LOG_DEBUG("Likely Keyboard Connect Event detected.\n");
         keyboard_state = UNINITIALISED;
         id_retry = false;
         pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
@@ -552,23 +553,23 @@ void keyboard_interface_task() {
               // Initialization timeout detected during ID read or setup phase
               if (!id_retry) {
                 // First timeout - retry keyboard ID request before giving up
-                printf("[DBG] Keyboard ID/Setup Timeout, retrying...\n");
+                LOG_DEBUG("Keyboard ID/Setup Timeout, retrying...\n");
                 id_retry = true;
                 keyboard_state = INIT_READ_ID_1;  // Return to ID read state for retry
                 keyboard_command_handler(ATPS2_CMD_GET_ID);   // Send keyboard identification request
                 detect_stall_count = 0;  // Reset timeout counter for retry attempt
               } else {
-                printf("[DBG] Keyboard Read ID/Setup Timed out again, continuing with defaults.\n");
+                LOG_DEBUG("Keyboard Read ID/Setup Timed out again, continuing with defaults.\n");
                 keyboard_id = ATPS2_KEYBOARD_ID_UNKNOWN;
 #if USING_SET123
                 // Timeout - use default configuration for keyboards that don't respond to ID command
                 g_scancode_config = scancode_config_from_keyboard_id(keyboard_id);
                 reset_scancode_state();  // Reset state machine when switching configs
-                printf("[INFO] No ID response - defaulting to Scancode Set: %s\n",
+                LOG_INFO("No ID response - defaulting to Scancode Set: %s\n",
                        g_scancode_config == &SCANCODE_CONFIG_SET1 ? "Set 1" :
                        g_scancode_config == &SCANCODE_CONFIG_SET2 ? "Set 2" : "Set 3");
 #endif
-                printf("[DBG] Keyboard Initialised!\n");
+                LOG_DEBUG("Keyboard Initialised!\n");
                 keyboard_state = INITIALISED;
                 detect_stall_count = 0;
               }
@@ -577,17 +578,17 @@ void keyboard_interface_task() {
           case SET_LOCK_LEDS:
             if (detect_stall_count > 2) {
               // LED command timeout - continue without LED synchronization
-              printf("[DBG] Timeout while setting keyboard lock LEDs, continuing.\n");
+              LOG_DEBUG("Timeout while setting keyboard lock LEDs, continuing.\n");
               keyboard_state = INITIALISED;
               detect_stall_count = 0;
             }
             break;
           default:
             if (detect_stall_count < 5) {
-              printf("[DBG] Keyboard detected, awaiting ACK (%i/5 attempts)\n", detect_stall_count);
+              LOG_DEBUG("Keyboard detected, awaiting ACK (%i/5 attempts)\n", detect_stall_count);
             } else {
-              printf("[DBG] Keyboard detected, but no ACK received!\n");
-              printf("[DBG] Requesting keyboard reset\n");
+              LOG_DEBUG("Keyboard detected, but no ACK received!\n");
+              LOG_DEBUG("Requesting keyboard reset\n");
               keyboard_state = INIT_AWAIT_ACK;
               detect_stall_count = 0;
               keyboard_command_handler(ATPS2_CMD_RESET);
@@ -595,7 +596,7 @@ void keyboard_interface_task() {
             break;
         }
       } else if (keyboard_state == UNINITIALISED) {
-        printf("[DBG] Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
+        LOG_DEBUG("Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
         // Clear timeout counter while waiting for keyboard connection
         detect_stall_count = 0;
       }
@@ -670,7 +671,7 @@ void keyboard_interface_setup(uint data_pin) {
 
   keyboard_pio = find_available_pio(&pio_interface_program);
   if (keyboard_pio == NULL) {
-    printf("[ERR] No PIO available for Keyboard Interface Program\n");
+    LOG_ERROR("No PIO available for Keyboard Interface Program\n");
     return;
   }
 
@@ -692,6 +693,6 @@ void keyboard_interface_setup(uint data_pin) {
   irq_set_enabled(pio_irq, true);
   irq_set_priority(pio_irq, 0);
 
-  printf("[INFO] PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
+  LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
          (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
 }

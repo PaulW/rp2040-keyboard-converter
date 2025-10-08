@@ -123,11 +123,11 @@ static volatile uint32_t last_response_time = 0;    /**< Timestamp of last keybo
  */
 static void keyboard_command_handler(uint8_t command) {
   if (pio_sm_is_tx_fifo_full(keyboard_pio, keyboard_sm)) {
-    printf("[WARN] M0110 TX FIFO full, command 0x%02X dropped\n", command);
+    LOG_ERROR("M0110 TX FIFO full, command 0x%02X dropped\n", command);
     return;
   }
 
-  // printf("[DBG] M0110 sending command: 0x%02X\n", command);
+  // LOG_DEBUG("M0110 sending command: 0x%02X\n", command);
   // M0110 protocol uses MSB-first transmission - position command in upper byte
   // PIO automatically handles MSB-first bit order during transmission
   pio_sm_put(keyboard_pio, keyboard_sm, (uint32_t)command << 24);
@@ -157,22 +157,22 @@ static void keyboard_command_handler(uint8_t command) {
  * @param data_byte 8-bit response received from keyboard (MSB-first)
  */
 static void keyboard_event_processor(uint8_t data_byte) {
-  // printf("[DBG] M0110 received: 0x%02X\n", data_byte);
+  // LOG_DEBUG("M0110 received: 0x%02X\n", data_byte);
   last_response_time = board_millis(); // Record response time for timeout management
   
   switch (keyboard_state) {
     case UNINITIALISED:
       // Should not receive data in UNINITIALISED state - ignore
-      printf("[WARN] M0110 received data in UNINITIALISED state: 0x%02X\n", data_byte);
+      LOG_ERROR("M0110 received data in UNINITIALISED state: 0x%02X\n", data_byte);
       break;
     case INIT_MODEL_REQUEST:
       // Handle model number response during initialization phase
       switch (data_byte) {
         case M0110_RESP_MODEL_M0110A:
-          printf("[INFO] Apple M0110 Keyboard Model: M0110A - keyboard reset and ready\n");
+          LOG_INFO("Apple M0110 Keyboard Model: M0110A - keyboard reset and ready\n");
           break;
         default:
-          printf("[DBG] Unknown model response: 0x%02X - proceeding with initialization\n", data_byte);
+          LOG_DEBUG("Unknown model response: 0x%02X - proceeding with initialization\n", data_byte);
           break;
       }
       keyboard_state = INITIALISED;
@@ -194,7 +194,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
           if (!ringbuf_is_full()) {
             ringbuf_put(data_byte);
           } else {
-            printf("[ERR] Ring buffer full! Scancode 0x%02X lost\n", data_byte);
+            LOG_ERROR("Ring buffer full! Scancode 0x%02X lost\n", data_byte);
           }
           
           // Send next inquiry to continue polling - critical for responsiveness
@@ -292,7 +292,7 @@ void keyboard_interface_task(void) {
     case UNINITIALISED:
       // Wait for keyboard power-up and internal initialization
       if (command_elapsed_valid && elapsed_since_command > M0110_INITIALIZATION_DELAY_MS) {
-        printf("[INFO] Attempting to determine which M0110 keyboard model is connected...\n");
+        LOG_INFO("Attempting to determine which M0110 keyboard model is connected...\n");
         keyboard_state = INIT_MODEL_REQUEST;
         keyboard_command_handler(M0110_CMD_MODEL);
         last_command_time = current_time;
@@ -305,14 +305,14 @@ void keyboard_interface_task(void) {
       // Apple spec requires 500ms intervals between retry attempts
       if (command_elapsed_valid && elapsed_since_command > M0110_MODEL_RETRY_INTERVAL_MS) {
         if (model_retry_count < 5) {
-          printf("[DBG] Keyboard detected, retrying Model Number command (%d/5)\n", model_retry_count + 1);
+          LOG_DEBUG("Keyboard detected, retrying Model Number command (%d/5)\n", model_retry_count + 1);
           keyboard_command_handler(M0110_CMD_MODEL);
           last_command_time = current_time;
           model_retry_count++;
         } else {
           // Maximum retries exceeded - keyboard may be disconnected or incompatible
-          printf("[ERR] Apple M0110 keyboard not responding to Model Number command after 5 attempts\n");
-          printf("[DBG] Restarting detection sequence\n");
+          LOG_ERROR("Apple M0110 keyboard not responding to Model Number command after 5 attempts\n");
+          LOG_DEBUG("Restarting detection sequence\n");
           keyboard_state = UNINITIALISED;
           last_command_time = current_time;
         }
@@ -323,7 +323,7 @@ void keyboard_interface_task(void) {
       // Check for keyboard timeout first - if no response in 500ms, assume keyboard failure
       // The keyboard should ALWAYS respond, so timeout indicates a problem
       if (response_elapsed_valid && elapsed_since_response > M0110_RESPONSE_TIMEOUT_MS) {
-        printf("[WARN] No response from keyboard within 1/2 second - keyboard not behaving, reinitializing\n");
+        LOG_ERROR("No response from keyboard within 1/2 second - keyboard not behaving, reinitializing\n");
         ringbuf_reset();  // Clear any stale buffered data
         keyboard_state = UNINITIALISED;
         last_command_time = current_time;
@@ -333,7 +333,7 @@ void keyboard_interface_task(void) {
       // Process buffered key data (only reached if keyboard is responding normally)
       if (!ringbuf_is_empty() && tud_hid_ready()) {
         uint8_t scancode = ringbuf_get();
-        printf("[DBG] Processing scancode: 0x%02X\n", scancode);
+        LOG_DEBUG("Processing scancode: 0x%02X\n", scancode);
         process_scancode(scancode);
       }
       break;
@@ -393,14 +393,14 @@ void keyboard_interface_setup(uint data_pin) {
   // Find and allocate available PIO instance for M0110 protocol handling
   keyboard_pio = find_available_pio(&keyboard_interface_program);
   if (keyboard_pio == NULL) {
-    printf("[ERR] No PIO available for Apple M0110 Interface Program\n");
+    LOG_ERROR("No PIO available for Apple M0110 Interface Program\n");
     return;
   }
   
   // Claim PIO resources for exclusive use by M0110 protocol
   int sm = pio_claim_unused_sm(keyboard_pio, false);  // Don't panic on failure
   if (sm < 0) {
-    printf("[ERR] No PIO state machine available for Apple M0110 Interface\n");
+    LOG_ERROR("No PIO state machine available for Apple M0110 Interface\n");
     return;
   }
   keyboard_sm = (unsigned int)sm;
@@ -429,6 +429,6 @@ void keyboard_interface_setup(uint data_pin) {
   irq_set_enabled(pio_irq, true);
   irq_set_priority(pio_irq, 0);
   
-  printf("[INFO] PIO%d SM%u Apple M0110 Interface program loaded at offset %u with clock divider of %.2f\n",
+  LOG_INFO("PIO%d SM%u Apple M0110 Interface program loaded at offset %u with clock divider of %.2f\n",
          (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
 }

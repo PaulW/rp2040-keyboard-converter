@@ -23,6 +23,7 @@
 #include <stdio.h>
 
 #include "hid_interface.h"
+#include "log.h"
 
 /**
  * @brief E0-Prefixed Scancode Translation Table for AT/PS2 Set 2 Protocol
@@ -193,7 +194,7 @@ void process_scancode(uint8_t code) {
           if (code < 0x80) {
             handle_keyboard_report(code, true);
           } else {
-            printf("[DBG] !INIT! (0x%02X)\n", code);
+            LOG_DEBUG("!INIT! (0x%02X)\n", code);
           }
       }
       break;
@@ -211,7 +212,7 @@ void process_scancode(uint8_t code) {
           if (code < 0x80) {
             handle_keyboard_report(code, false);
           } else {
-            printf("[DBG] !F0! (0x%02X)\n", code);
+            LOG_DEBUG("!F0! (0x%02X)\n", code);
           }
       }
       break;
@@ -233,7 +234,7 @@ void process_scancode(uint8_t code) {
               handle_keyboard_report(translated, true);
             }
           } else {
-            printf("[DBG] !E0! (0x%02X)\n", code);
+            LOG_DEBUG("!E0! (0x%02X)\n", code);
           }
       }
       break;
@@ -251,7 +252,7 @@ void process_scancode(uint8_t code) {
               handle_keyboard_report(translated, false);
             }
           } else {
-            printf("!E0_F0! (0x%02X)\n", code);
+            LOG_DEBUG("!E0_F0! (0x%02X)\n", code);
           }
       }
       break;
@@ -266,7 +267,7 @@ void process_scancode(uint8_t code) {
           break;
         default:
           state = INIT;
-          printf("[DBG] !E1! (0x%02X)\n", code);
+          LOG_DEBUG("!E1! (0x%02X)\n", code);
       }
       break;
 
@@ -282,7 +283,7 @@ void process_scancode(uint8_t code) {
           }
           break;
         default:
-          printf("[DBG] !E1_14! (0x%02X)\n", code);
+          LOG_DEBUG("!E1_14! (0x%02X)\n", code);
       }
       break;
 
@@ -293,7 +294,7 @@ void process_scancode(uint8_t code) {
           break;
         default:
           state = INIT;
-          printf("[DBG] !E1_F0! (0x%02X)\n", code);
+          LOG_DEBUG("!E1_F0! (0x%02X)\n", code);
       }
       break;
 
@@ -304,7 +305,7 @@ void process_scancode(uint8_t code) {
           break;
         default:
           state = INIT;
-          printf("[DBG] !E1_F0_14! (0x%02X)\n", code);
+          LOG_DEBUG("!E1_F0_14! (0x%02X)\n", code);
       }
       break;
 
@@ -320,7 +321,7 @@ void process_scancode(uint8_t code) {
           }
           break;
         default:
-          printf("[DBG] !E1_F0_14_F0! (0x%02X)\n", code);
+          LOG_DEBUG("!E1_F0_14_F0! (0x%02X)\n", code);
       }
       break;
 

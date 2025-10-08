@@ -23,6 +23,7 @@
 #include <stdio.h>
 
 #include "hid_interface.h"
+#include "log.h"
 
 /**
  * @brief E0-Prefixed Scancode Translation Table for XT/Set 1 Protocol
@@ -191,7 +192,7 @@ void process_scancode(uint8_t code) {
           break;
         default:
           state = INIT;
-          printf("[DBG] !E1_1D! (0x%02X)\n", code);
+          LOG_DEBUG("!E1_1D! (0x%02X)\n", code);
       }
       break;
 
@@ -203,7 +204,7 @@ void process_scancode(uint8_t code) {
           break;
         default:
           state = INIT;
-          printf("[DBG] !E1_9D! (0x%02X)\n", code);
+          LOG_DEBUG("!E1_9D! (0x%02X)\n", code);
       }
       break;
 

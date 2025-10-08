@@ -22,6 +22,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include "log.h"
 #include <stdlib.h>
 
 #include "bsp/board.h"
@@ -320,7 +321,7 @@ bool ws2812_show(uint32_t led_color) {
 void ws2812_setup(uint led_pin) {
   ws2812_pio = find_available_pio(&ws2812_program);
   if (ws2812_pio == NULL) {
-    printf("[ERR] No PIO available for WS2812 Program\n");
+    LOG_ERROR("No PIO available for WS2812 Program\n");
     return;
   }
 
@@ -330,7 +331,7 @@ void ws2812_setup(uint led_pin) {
   float rp_clock_khz = 0.001 * clock_get_hz(clk_sys);
   float clock_div = roundf(rp_clock_khz / (800 * 10));
 
-  printf("[INFO] Effective SM Clock Speed: %.2fkHz\n", (float)(rp_clock_khz / clock_div));
+  LOG_INFO("Effective SM Clock Speed: %.2fkHz\n", (float)(rp_clock_khz / clock_div));
 
   ws2812_program_init(ws2812_pio, ws2812_sm, ws2812_offset, led_pin, clock_div);
 

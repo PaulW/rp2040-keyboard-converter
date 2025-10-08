@@ -60,13 +60,19 @@
  * 1. Press and hold ONLY the two configured command keys (default: both shifts, no other keys)
  * 2. Hold for 3 seconds (normal HID reports sent during wait)
  * 3. LED flashes Green/Blue alternating every 100ms
- * 4. Press 'B' to enter bootloader, or wait 3s for auto-exit
- * 5. If any other key is pressed during hold, command mode entry is aborted
+ * 4. Press 'B' to enter bootloader, 'D' to change log level, or wait 3s for auto-exit
+ * 5. If 'D' pressed: Press '1' (ERROR), '2' (INFO), or '3' (DEBUG) to set log level
+ * 6. If any other key is pressed during hold, command mode entry is aborted
+ * 
+ * Available Commands:
+ * - 'B': Enter bootloader (BOOTSEL mode for firmware update)
+ * - 'D': Change log level (then press 1/2/3 for ERROR/INFO/DEBUG)
  * 
  * State Machine:
  * - IDLE: Normal operation
  * - SHIFT_HOLD_WAIT: Command keys held, counting 3 seconds, HID reports active
  * - COMMAND_ACTIVE: Command mode active, LED flashing, HID reports suppressed
+ * - LOG_LEVEL_SELECT: Waiting for log level selection (1/2/3)
  * 
  * Threading Model:
  * - All functions called from main task context only

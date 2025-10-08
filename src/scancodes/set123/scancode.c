@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "hid_interface.h"
+#include "log.h"
 
 // ============================================================================
 // E0-Prefix Translation Tables
@@ -270,7 +271,7 @@ static void process_normal_code(uint8_t code, const scancode_config_t *config) {
             } else if (code < 0x80) {
                 handle_keyboard_report(code, true);
             } else {
-                printf("[DBG] !INIT! (0x%02X)\n", code);
+                LOG_DEBUG("!INIT! (0x%02X)\n", code);
             }
             break;
 
@@ -285,7 +286,7 @@ static void process_normal_code(uint8_t code, const scancode_config_t *config) {
             } else if (code < 0x80) {
                 handle_keyboard_report(code, true);
             } else {
-                printf("[DBG] !INIT! (0x%02X)\n", code);
+                LOG_DEBUG("!INIT! (0x%02X)\n", code);
             }
             break;
     }
@@ -308,7 +309,7 @@ static void process_break_code(uint8_t code, const scancode_config_t *config) {
             } else if (code < 0x80) {
                 handle_keyboard_report(code, false);
             } else {
-                printf("[DBG] !F0! (0x%02X)\n", code);
+                LOG_DEBUG("!F0! (0x%02X)\n", code);
             }
             break;
 
@@ -323,12 +324,12 @@ static void process_break_code(uint8_t code, const scancode_config_t *config) {
             } else if (code < 0x80) {
                 handle_keyboard_report(code, false);
             } else {
-                printf("[DBG] !F0! (0x%02X)\n", code);
+                LOG_DEBUG("!F0! (0x%02X)\n", code);
             }
             break;
 
         default:
-            printf("[DBG] !F0! unexpected for Set %d\n", config->set);
+            LOG_DEBUG("!F0! unexpected for Set %d\n", config->set);
             break;
     }
 }
@@ -380,7 +381,7 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
                         handle_keyboard_report(translated, is_make);
                     }
                 } else {
-                    printf("[DBG] !E0! (0x%02X)\n", code);
+                    LOG_DEBUG("!E0! (0x%02X)\n", code);
                 }
             }
             break;
@@ -398,7 +399,7 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
                         handle_keyboard_report(translated, false);
                     }
                 } else {
-                    printf("[DBG] !E0_F0! (0x%02X)\n", code);
+                    LOG_DEBUG("!E0_F0! (0x%02X)\n", code);
                 }
             }
             break;
@@ -413,7 +414,7 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
                     state = E1_9D;
                 } else {
                     state = INIT;
-                    printf("[DBG] !E1! (0x%02X)\n", code);
+                    LOG_DEBUG("!E1! (0x%02X)\n", code);
                 }
             } else if (config->set == SCANCODE_SET2) {
                 // Set 2: E1 14 77 (make) or E1 F0 14 F0 77 (break)
@@ -423,7 +424,7 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
                     state = E1_F0;
                 } else {
                     state = INIT;
-                    printf("[DBG] !E1! (0x%02X)\n", code);
+                    LOG_DEBUG("!E1! (0x%02X)\n", code);
                 }
             } else {
                 state = INIT;
@@ -435,7 +436,7 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
             if (code == 0x45) {
                 handle_keyboard_report(0x55, true);
             } else {
-                printf("[DBG] !E1_1D! (0x%02X)\n", code);
+                LOG_DEBUG("!E1_1D! (0x%02X)\n", code);
             }
             state = INIT;
             break;
@@ -445,7 +446,7 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
             if (code == 0xC5) {
                 handle_keyboard_report(0x55, false);
             } else {
-                printf("[DBG] !E1_9D! (0x%02X)\n", code);
+                LOG_DEBUG("!E1_9D! (0x%02X)\n", code);
             }
             state = INIT;
             break;
@@ -456,7 +457,7 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
                 // Pause key uses direct HID code 0x55, not E0 translation
                 handle_keyboard_report(0x55, true);
             } else {
-                printf("[DBG] !E1_14! (0x%02X)\n", code);
+                LOG_DEBUG("!E1_14! (0x%02X)\n", code);
             }
             state = INIT;
             break;
@@ -467,7 +468,7 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
                 state = E1_F0_14;
             } else {
                 state = INIT;
-                printf("[DBG] !E1_F0! (0x%02X)\n", code);
+                LOG_DEBUG("!E1_F0! (0x%02X)\n", code);
             }
             break;
 
@@ -477,7 +478,7 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
                 state = E1_F0_14_F0;
             } else {
                 state = INIT;
-                printf("[DBG] !E1_F0_14! (0x%02X)\n", code);
+                LOG_DEBUG("!E1_F0_14! (0x%02X)\n", code);
             }
             break;
 
@@ -487,7 +488,7 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
                 // Pause key uses direct HID code 0x55, not E0 translation
                 handle_keyboard_report(0x55, false);
             } else {
-                printf("[DBG] !E1_F0_14_F0! (0x%02X)\n", code);
+                LOG_DEBUG("!E1_F0_14_F0! (0x%02X)\n", code);
             }
             state = INIT;
             break;

@@ -105,6 +105,7 @@
 #include "pico/time.h"
 
 #include "uart.h"
+#include "log.h"  // Log level filtering system
 
 #include <stdio.h>
 #include <string.h>
@@ -718,6 +719,9 @@ void init_uart_dma() {
     // Register this implementation as the system stdio driver
     // This replaces the standard Pico SDK UART stdio functionality
     stdio_set_driver_enabled(&dma_stdio_driver, true);
+    
+    // Initialize log level filtering system
+    log_init();
 }
 
 /**

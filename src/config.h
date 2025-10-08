@@ -85,6 +85,32 @@
 //
 #define UART_DMA_POLICY UART_DMA_POLICY_DROP
 
+// --- Log Level Configuration ---
+// Controls runtime filtering of log messages for debugging and diagnostics.
+//
+// Log Level Constants:
+//   LOG_LEVEL_ERROR  (0) - Critical errors and warnings only [ERR] [WARN]
+//   LOG_LEVEL_INFO   (1) - Errors + informational messages [ERR] [WARN] [INFO]
+//   LOG_LEVEL_DEBUG  (2) - All messages [ERR] [WARN] [INFO] [DBG]
+//
+// LOG_LEVEL_DEFAULT: Runtime default log level at startup
+//   - Can be changed at runtime with log_set_level()
+//   - Can be changed via command mode: Hold Shift+Shift → Press 'D' → Press 1/2/3
+//
+// Performance Impact:
+//   - Runtime disabled: ~5-10 cycles (single comparison + branch)
+//   - Enabled: same as printf() (~20µs total with DMA)
+//
+// Recommended Settings:
+//   - Development: LOG_LEVEL_DEFAULT=LOG_LEVEL_DEBUG  (show all messages)
+//   - Production:  LOG_LEVEL_DEFAULT=LOG_LEVEL_INFO   (show errors + info)
+//
+#define LOG_LEVEL_ERROR  0
+#define LOG_LEVEL_INFO   1
+#define LOG_LEVEL_DEBUG  2
+
+#define LOG_LEVEL_DEFAULT LOG_LEVEL_INFO   // Default to INFO level at startup
+
 // Include some common type definitions for this config.h file
 #include "types.h"
 

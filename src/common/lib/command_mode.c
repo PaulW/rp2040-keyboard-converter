@@ -21,6 +21,7 @@
 #include "command_mode.h"
 
 #include <stdio.h>
+#include "log.h"
 
 #include "config.h"
 #include "hid_interface.h"
@@ -29,6 +30,9 @@
 #include "pico/bootrom.h"
 #include "pico/time.h"
 #include "uart.h"
+
+// External flag from led_helper.c to control LED colors during log level selection
+extern volatile bool log_level_selection_mode;
 
 /**
  * @brief Command Mode State Machine States
@@ -43,17 +47,25 @@
  *                      └─> IDLE (any other key pressed - abort)
  * 
  *   COMMAND_ACTIVE ──┬─> Bootloader (command 'B' executed - device resets)
+ *                     ├─> LOG_LEVEL_SELECT (command 'D' for debug level)
  *                     └─> IDLE (3 second timeout)
+ * 
+ *   LOG_LEVEL_SELECT ──┬─> IDLE (key '1' = ERROR level)
+ *                       ├─> IDLE (key '2' = INFO level)
+ *                       ├─> IDLE (key '3' = DEBUG level)
+ *                       └─> IDLE (3 second timeout)
  * 
  * HID Report Behavior:
  * - IDLE: Normal HID reports sent to host
  * - SHIFT_HOLD_WAIT: Normal HID reports sent (shifts visible to host)
  * - COMMAND_ACTIVE: ALL HID reports suppressed (empty report sent on entry)
+ * - LOG_LEVEL_SELECT: ALL HID reports suppressed (waiting for level choice)
  */
 typedef enum {
   CMD_MODE_IDLE,              /**< Normal operation, no command mode active */
   CMD_MODE_SHIFT_HOLD_WAIT,   /**< Both shifts held, waiting for 3 second hold */
   CMD_MODE_COMMAND_ACTIVE,    /**< Command mode active, waiting for command key */
+  CMD_MODE_LOG_LEVEL_SELECT,  /**< Waiting for log level selection (1/2/3) */
 } command_mode_state_t;
 
 /**
@@ -79,7 +91,7 @@ static command_mode_context_t cmd_mode = {
 
 /** Command mode timing constants (milliseconds) */
 #define CMD_MODE_HOLD_TIME_MS 3000      /**< Time to hold command keys to enter command mode */
-#define CMD_MODE_TIMEOUT_MS 3000        /**< Timeout for command mode before returning to idle */
+#define CMD_MODE_TIMEOUT_MS 3000        /**< Timeout for all command mode states before returning to idle */
 #define CMD_MODE_LED_TOGGLE_MS 100      /**< LED toggle interval in command mode */
 
 /**
@@ -164,6 +176,50 @@ _Static_assert(CMD_MODE_KEY2 >= 0xE0 && CMD_MODE_KEY2 <= 0xE7,
                "CMD_MODE_KEY2 must be a HID modifier key (0xE0-0xE7)");
 
 /**
+ * @brief Checks if any key is pressed in keyboard report
+ * 
+ * Scans the 6-key rollover array to see if any key is pressed.
+ * Used for validating "only modifiers pressed" condition.
+ * 
+ * @param keyboard_report Pointer to keyboard HID report
+ * @return true if any key is pressed, false if array is empty
+ * 
+ * @note Compiler likely inlines this (10-15 cycles)
+ * @note Returns on first non-zero key (early exit optimization)
+ */
+static inline bool any_key_pressed(const hid_keyboard_report_t *keyboard_report) {
+  for (int i = 0; i < 6; i++) {
+    if (keyboard_report->keycode[i] != 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * @brief Checks if a specific key is present in keyboard report
+ * 
+ * Scans the 6-key rollover array for a specific keycode.
+ * Optimized for the common case where the key is not found.
+ * 
+ * @param keyboard_report Pointer to keyboard HID report
+ * @param keycode HID keycode to search for (KC_* constants)
+ * @return true if key is pressed, false otherwise
+ * 
+ * @note Compiler likely inlines this (10-15 cycles)
+ * @note Returns on first match (early exit optimization)
+ */
+static inline bool is_key_pressed(const hid_keyboard_report_t *keyboard_report, 
+                                   uint8_t keycode) {
+  for (int i = 0; i < 6; i++) {
+    if (keyboard_report->keycode[i] == keycode) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * @brief Checks if ONLY the command mode activation keys are pressed
  * 
  * This function verifies that both configured command mode keys are pressed
@@ -193,10 +249,8 @@ static inline bool command_keys_pressed(const hid_keyboard_report_t *keyboard_re
   }
   
   // Check that no regular keys are pressed
-  for (int i = 0; i < 6; i++) {
-    if (keyboard_report->keycode[i] != 0) {
-      return false;
-    }
+  if (any_key_pressed(keyboard_report)) {
+    return false;
   }
   
   return true;
@@ -217,10 +271,10 @@ static inline bool command_keys_pressed(const hid_keyboard_report_t *keyboard_re
  * @note Called from command_mode_process when 'B' is detected
  */
 static void command_execute_bootloader(void) {
-  printf("[CMD] Bootloader command received\n");
+  LOG_INFO("Bootloader command received\n");
   
   // Initiate Bootloader
-  printf("[INFO] Initiate Bootloader\n");
+  LOG_INFO("Initiate Bootloader\n");
 #ifdef CONVERTER_LEDS
   // Clear all LED states so only the Status LED (magenta) is lit
   lock_leds.value = 0;  // Clear all lock LED states (Num/Caps/Scroll)
@@ -253,8 +307,9 @@ static void command_execute_bootloader(void) {
  * @note Safe to call multiple times (idempotent)
  */
 static void command_mode_exit(const char *reason) {
-  printf("[CMD] %s\n", reason);
+  LOG_INFO("%s\n", reason);
   cmd_mode.state = CMD_MODE_IDLE;
+  log_level_selection_mode = false;  // Reset LED colors to GREEN/BLUE
 #ifdef CONVERTER_LEDS
   // Disable command mode LED and restore normal LED operation
   converter.state.cmd_mode = 0;
@@ -297,20 +352,28 @@ void command_mode_task(void) {
       cmd_mode_led_green = true;
       update_converter_status();
 #endif
-      printf("[CMD] Command mode active! Press 'B' for bootloader, or wait 3s to cancel\n");
+      LOG_INFO("Command mode active! Press 'B' for bootloader, or wait 3s to cancel\n");
     }
     return;  // Exit early - no LED update needed in SHIFT_HOLD_WAIT
   }
   
-  // Handle COMMAND_ACTIVE timeout (return to IDLE)
-  // This ensures timeout works even without keyboard activity
-  if (cmd_mode.state == CMD_MODE_COMMAND_ACTIVE) {
+  // Handle COMMAND_ACTIVE and LOG_LEVEL_SELECT timeout (return to IDLE)
+  // Both states use the same timeout value and transition logic
+  if (cmd_mode.state == CMD_MODE_COMMAND_ACTIVE || 
+      cmd_mode.state == CMD_MODE_LOG_LEVEL_SELECT) {
     if (now_ms - cmd_mode.state_start_time_ms >= CMD_MODE_TIMEOUT_MS) {
-      command_mode_exit("Command mode timeout, returning to idle");
+      // Use different log messages for debugging clarity
+      const char *reason = (cmd_mode.state == CMD_MODE_COMMAND_ACTIVE)
+        ? "Command mode timeout, returning to idle"
+        : "Log level selection timeout, returning to idle";
+      command_mode_exit(reason);
       return;  // Exit early after mode exit
     }
-    
-    // Update LED feedback only when in COMMAND_ACTIVE state
+  }
+  
+  // Update LED feedback when in COMMAND_ACTIVE or LOG_LEVEL_SELECT state
+  if (cmd_mode.state == CMD_MODE_COMMAND_ACTIVE || cmd_mode.state == CMD_MODE_LOG_LEVEL_SELECT) {
+    // Update LED feedback only when in COMMAND_ACTIVE or LOG_LEVEL_SELECT state
     // Moved inline to avoid function call overhead
 #ifdef CONVERTER_LEDS
     // Toggle LED every 100ms (CMD_MODE_LED_TOGGLE_MS)
@@ -335,7 +398,7 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
       if (command_keys_pressed(keyboard_report)) {
         cmd_mode.state = CMD_MODE_SHIFT_HOLD_WAIT;
         cmd_mode.state_start_time_ms = to_ms_since_boot(get_absolute_time());
-        printf("[CMD] Command keys hold detected, waiting for 3 second hold...\n");
+        LOG_INFO("Command keys hold detected, waiting for 3 second hold...\n");
       }
       // Normal keyboard processing continues
       return true;
@@ -344,7 +407,7 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
       // Check if command keys were released early OR if any other keys were pressed
       // Using command_keys_pressed() for both checks ensures strict validation
       if (!command_keys_pressed(keyboard_report)) {
-        printf("[CMD] Command keys released or other keys pressed, aborting\n");
+        LOG_INFO("Command keys released or other keys pressed, aborting\n");
         cmd_mode.state = CMD_MODE_IDLE;
         return true;
       }
@@ -357,25 +420,60 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
       
     case CMD_MODE_COMMAND_ACTIVE:
       // Note: User can release shifts once command mode is active
-      // We only care about command key presses (e.g., 'B' for bootloader)
+      // We only care about command key presses (e.g., 'B' for bootloader, 'D' for debug level)
       
       // Note: Timeout check is handled in command_mode_task() which runs from main loop
       // This ensures timeout works even when no keyboard events are occurring
       
-      // Check for command keys (only process key presses, not releases)
-      // We detect the 'B' key in the keycode array
-      for (int i = 0; i < 6; i++) {
-        if (keyboard_report->keycode[i] == KC_B) {
-          command_execute_bootloader();
-          // Never returns, but return false to suppress keyboard report
-          return false;
-        }
+      // Check for bootloader command
+      if (is_key_pressed(keyboard_report, KC_B)) {
+        command_execute_bootloader();
+        // Never returns, but return false to suppress keyboard report
+        return false;
+      }
+      
+      // Check for log level selection command
+      if (is_key_pressed(keyboard_report, KC_D)) {
+        cmd_mode.state = CMD_MODE_LOG_LEVEL_SELECT;
+        cmd_mode.state_start_time_ms = to_ms_since_boot(get_absolute_time());
+        log_level_selection_mode = true;  // Change LED colors to GREEN/PINK
+        LOG_INFO("Log level selection: Press 1=ERROR, 2=INFO, 3=DEBUG\n");
+        return false;
       }
       
       // Note: LED update is handled in command_mode_task() which runs from main loop
       // This ensures smooth LED flashing even when no keys are being pressed
       
       // Suppress ALL keyboard reports while in command mode
+      return false;
+      
+    case CMD_MODE_LOG_LEVEL_SELECT:
+      // Wait for user to press 1, 2, or 3 to select log level
+      if (is_key_pressed(keyboard_report, KC_1)) {
+        // Set log level to ERROR (only errors visible)
+        log_set_level(LOG_LEVEL_ERROR);
+        LOG_ERROR("Log level set to ERROR (0)\n");
+        command_mode_exit("Log level changed to ERROR");
+        return false;
+      }
+      
+      if (is_key_pressed(keyboard_report, KC_2)) {
+        // Set log level to INFO (info + error visible, debug hidden)
+        log_set_level(LOG_LEVEL_INFO);
+        LOG_INFO("Log level set to INFO (1)\n");
+        command_mode_exit("Log level changed to INFO");
+        return false;
+      }
+      
+      if (is_key_pressed(keyboard_report, KC_3)) {
+        // Set log level to DEBUG (all messages visible)
+        log_set_level(LOG_LEVEL_DEBUG);
+        LOG_DEBUG("Log level set to DEBUG (2)\n");
+        command_mode_exit("Log level changed to DEBUG");
+        return false;
+      }
+      
+      // Suppress ALL keyboard reports while waiting for level selection
       return false;
   }
   

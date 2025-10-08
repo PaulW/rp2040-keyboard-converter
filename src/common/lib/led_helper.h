@@ -63,14 +63,28 @@ extern converter_state_union converter;
  * @brief Command Mode LED State
  * 
  * Tracks which LED color to display during command mode (alternates between
- * green and blue). This is separate from converter.state to avoid polluting
- * the state byte with rapidly changing LED toggle information.
+ * green and blue for command active, green and pink for log level selection).
+ * This is separate from converter.state to avoid polluting the state byte
+ * with rapidly changing LED toggle information.
  * 
  * Threading Model:
  * - Only accessed from main task context (command mode processing)
  * - No synchronization needed
  */
 extern volatile bool cmd_mode_led_green;
+
+/**
+ * @brief Log Level Selection Mode Flag
+ * 
+ * When true, command mode uses GREEN/PINK alternating colors instead of
+ * GREEN/BLUE. This provides visual distinction between command mode active
+ * (waiting for command key) and log level selection mode (waiting for 1/2/3).
+ * 
+ * Threading Model:
+ * - Only accessed from main task context (command mode processing)
+ * - No synchronization needed
+ */
+extern volatile bool log_level_selection_mode;
 #endif
 
 /**

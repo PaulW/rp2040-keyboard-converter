@@ -22,6 +22,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include "log.h"
 
 #include "hardware/clocks.h"
 
@@ -53,9 +54,9 @@ _Static_assert(1, "PIO helper basic sanity check");  // Always true, validates _
  */
 PIO find_available_pio(const pio_program_t *program) {
   if (!pio_can_add_program(pio0, program)) {
-    printf("[WARN] PIO0 has no space for PIO Program\nChecking to see if we can load into PIO1\n");
+    LOG_WARN("PIO0 has no space for PIO Program. Checking to see if we can load into PIO1\n");
     if (!pio_can_add_program(pio1, program)) {
-      printf("[ERR] PIO1 has no space for PIO Program\n");
+      LOG_ERROR("PIO1 has no space for PIO Program\n");
       return NULL;
     }
     return pio1;
@@ -102,12 +103,12 @@ PIO find_available_pio(const pio_program_t *program) {
  */
 void pio_restart(PIO pio, uint sm, uint offset) {
   // Restart the PIO State Machine
-  printf("[DBG] Resetting State Machine and re-initialising at offset: 0x%02X...\n", offset);
+  LOG_DEBUG("Resetting State Machine and re-initialising at offset: 0x%02X...\n", offset);
   pio_sm_drain_tx_fifo(pio, sm);
   pio_sm_clear_fifos(pio, sm);
   pio_sm_restart(pio, sm);
   pio_sm_exec(pio, sm, pio_encode_jmp(offset));
-  printf("[DBG] State Machine Restarted\n");
+  LOG_DEBUG("State Machine Restarted\n");
 }
 
 /**
@@ -169,7 +170,7 @@ float calculate_clock_divider(int min_clock_pulse_width_us) {
 
   // Get the system clock frequency in kHz
   float rp_clock_khz = 0.001 * clock_get_hz(clk_sys);
-  printf("[INFO] RP2040 Clock Speed: %.0fKHz\n", rp_clock_khz);
+  LOG_INFO("RP2040 Clock Speed: %.0fKHz\n", rp_clock_khz);
 
     // Calculate the frequency of the shortest pulse.
   float shortest_pulse_khz = 1000.0 / (float)min_clock_pulse_width_us;
@@ -177,20 +178,20 @@ float calculate_clock_divider(int min_clock_pulse_width_us) {
   // Calculate the desired PIO sampling rate.
   float target_sampling_khz = shortest_pulse_khz * samples_per_pulse;
   
-  printf("[INFO] Desired PIO Sampling Rate: %.2fKHz\n", target_sampling_khz);
+  LOG_INFO("Desired PIO Sampling Rate: %.2fKHz\n", target_sampling_khz);
 
   // Calculate the clock divider.
   float clock_div = roundf(rp_clock_khz / target_sampling_khz);
   
-  printf("[INFO] Calculated Clock Divider: %.0f\n", clock_div);
+  LOG_INFO("Calculated Clock Divider: %.0f\n", clock_div);
   
   // Calculate the actual effective PIO clock speed.
   float effective_pio_khz = rp_clock_khz / clock_div;
-  printf("[INFO] Effective PIO Clock Speed: %.2fKHz\n", effective_pio_khz);
+  LOG_INFO("Effective PIO Clock Speed: %.2fKHz\n", effective_pio_khz);
   
   // Calculate and print the sample interval.
   float sample_interval_us = (1.0 / effective_pio_khz) * 1000.0;
-  printf("[INFO] Effective Sample Interval: %.2fus\n", sample_interval_us);
+  LOG_INFO("Effective Sample Interval: %.2fus\n", sample_interval_us);
 
   return clock_div;
 
