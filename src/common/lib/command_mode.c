@@ -462,6 +462,7 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
         uart_dma_flush();
         
         // Reboot device using watchdog (cleanest reboot method)
+        // Parameters: delay_ms=0 (immediate), scratch0=0, scratch1=0 (no custom values)
         watchdog_reboot(0, 0, 0);
         
         // Never returns

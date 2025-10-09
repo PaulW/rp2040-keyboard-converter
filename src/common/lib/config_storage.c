@@ -61,18 +61,22 @@ static bool g_initialized = false;
 // --- CRC-16/CCITT Implementation ---
 
 /**
- * @brief Calculate CRC-16/CCITT
+ * @brief Update CRC-16/CCITT with new data
+ * 
+ * Continues a CRC-16/CCITT calculation over additional data. This allows
+ * computing a CRC over non-contiguous memory regions while maintaining
+ * proper algorithm integrity.
  * 
  * Uses polynomial 0x1021 (x^16 + x^12 + x^5 + 1) for error detection.
  * This is a standard CRC used in many protocols.
  * 
+ * @param crc Current CRC value (use 0xFFFF to start)
  * @param data Pointer to data
  * @param length Number of bytes
- * @return 16-bit CRC value
+ * @return Updated 16-bit CRC value
  */
-static uint16_t calculate_crc16(const void *data, size_t length) {
+static uint16_t crc16_update(uint16_t crc, const void *data, size_t length) {
     const uint8_t *bytes = (const uint8_t *)data;
-    uint16_t crc = 0xFFFF;
     
     for (size_t i = 0; i < length; i++) {
         crc ^= (uint16_t)bytes[i] << 8;
@@ -91,22 +95,23 @@ static uint16_t calculate_crc16(const void *data, size_t length) {
 /**
  * @brief Calculate CRC for config structure
  * 
- * CRC covers everything except the crc16 field itself.
+ * CRC covers everything except the crc16 field itself. This is computed
+ * as a continuous CRC over two memory regions (before and after the crc16
+ * field) to properly detect multi-bit corruptions.
  * 
  * @param cfg Config structure
  * @return 16-bit CRC value
  */
 static uint16_t config_calculate_crc(const config_data_t *cfg) {
-    // CRC of everything except crc16 field
-    uint16_t crc = 0;
+    // Calculate offsets for the two regions around crc16 field
+    size_t before_crc = offsetof(config_data_t, crc16);
+    size_t after_crc = before_crc + sizeof(cfg->crc16);
+    size_t tail_len = sizeof(config_data_t) - after_crc;
     
-    // Hash header before crc16 field
-    crc = calculate_crc16(cfg, offsetof(config_data_t, crc16));
-    
-    // Hash everything after crc16 field
-    const uint8_t *after_crc = (const uint8_t *)cfg + offsetof(config_data_t, crc16) + sizeof(cfg->crc16);
-    size_t remaining = sizeof(config_data_t) - offsetof(config_data_t, crc16) - sizeof(cfg->crc16);
-    crc ^= calculate_crc16(after_crc, remaining);
+    // Compute continuous CRC over both regions
+    uint16_t crc = 0xFFFF;  // Start with standard seed
+    crc = crc16_update(crc, cfg, before_crc);  // Hash everything before crc16
+    crc = crc16_update(crc, (const uint8_t *)cfg + after_crc, tail_len);  // Continue with everything after crc16
     
     return crc;
 }
@@ -313,16 +318,18 @@ bool config_save(void) {
     
     LOG_INFO("Saving config to flash...\n");
     
-    // Update metadata for new config
-    g_config.sequence++;
-    g_config.crc16 = config_calculate_crc(&g_config);
+    // Prepare a clean copy for writing (dirty flag must be 0 in persisted copy)
+    config_data_t write_config = g_config;
+    write_config.flags.dirty = 0;
+    write_config.sequence++;
+    write_config.crc16 = config_calculate_crc(&write_config);
     
     // Determine which copy to write (alternating A/B for wear leveling)
-    uint8_t new_copy_index = (g_config.sequence & 1);
+    uint8_t new_copy_index = (write_config.sequence & 1);
     uint8_t old_copy_index = 1 - new_copy_index;
     
     LOG_INFO("Writing to copy %c (seq=%u)\n", 
-             new_copy_index ? 'B' : 'A', (unsigned int)g_config.sequence);
+             new_copy_index ? 'B' : 'A', (unsigned int)write_config.sequence);
     
     // Prepare buffer with both copies (4KB sector)
     // Must preserve both copies because erase wipes entire sector
@@ -338,7 +345,7 @@ bool config_save(void) {
                old_copy, sizeof(config_data_t));
     } else {
         // Old copy invalid, write current config with decremented sequence as backup
-        config_data_t backup = g_config;
+        config_data_t backup = write_config;
         backup.sequence--;
         backup.crc16 = config_calculate_crc(&backup);
         memcpy(sector_buffer + (old_copy_index * CONFIG_COPY_SIZE), 
@@ -347,7 +354,7 @@ bool config_save(void) {
     
     // Copy new config to buffer
     memcpy(sector_buffer + (new_copy_index * CONFIG_COPY_SIZE), 
-           &g_config, sizeof(config_data_t));
+           &write_config, sizeof(config_data_t));
     
     // Flash write requires interrupts disabled
     uint32_t ints = save_and_disable_interrupts();
@@ -361,7 +368,8 @@ bool config_save(void) {
     // Re-enable interrupts
     restore_interrupts(ints);
     
-    g_config.flags.dirty = 0;  // Mark as saved
+    // Update RAM copy with the clean version that was written
+    g_config = write_config;
     
     LOG_INFO("Config saved successfully\n");
     return true;
