@@ -189,7 +189,6 @@ void update_converter_status(void) {
   }
 #else
   // No LEDs configured - this function is a no-op
-  (void)0;  // Suppress empty function warning
 #endif
 }
 
@@ -277,16 +276,11 @@ void set_lock_values_from_hid(uint8_t lock_val) {
   lock_leds.keys.scrollLock = (unsigned char)((lock_val >> 2) & 0x01);
 
 #ifdef CONVERTER_LEDS
-  // Retry LED update with bounded wait (max ~60µs total)
-  // Lock key changes are rare, so bounded wait is acceptable for immediate feedback
-  for (int retry = 0; retry < 10; retry++) {
-    if (update_converter_leds()) {
-      // Update succeeded
-      break;
-    }
-    // Wait a bit before retry (total max wait: ~60µs)
-    // This only happens if called within 60µs of previous update (rare)
-    sleep_us(6);
+  // Update lock LEDs immediately if possible, otherwise defer to main loop
+  // This function is called from USB ISR context, so no blocking operations allowed
+  if (!update_converter_leds()) {
+    // Update failed (timing constraint), set flag for main loop retry
+    led_update_pending = true;
   }
 #endif
 }

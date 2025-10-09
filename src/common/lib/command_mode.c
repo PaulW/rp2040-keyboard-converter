@@ -590,7 +590,7 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
 #ifdef CONVERTER_LEDS
     case CMD_MODE_BRIGHTNESS_SELECT:
       // Wait for user to press + or - to adjust brightness
-      // '+' key (with or without shift)
+      // KC_EQUAL is the physical '=' key which produces '+' when shifted
       if (is_key_pressed(keyboard_report, KC_EQUAL) || is_key_pressed(keyboard_report, KC_KP_PLUS)) {
         uint8_t current = ws2812_get_brightness();
         if (current < 10) {
