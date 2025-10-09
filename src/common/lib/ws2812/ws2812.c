@@ -136,10 +136,12 @@ static const uint8_t BRIGHTNESS_LUT[11] = {
  * @note May be overridden in main.c from config_get_led_brightness()
  * @note Modified by ws2812_set_brightness() during user adjustment
  */
+#ifdef CONVERTER_LEDS
 #ifndef CONVERTER_LEDS_BRIGHTNESS
 #error "CONVERTER_LEDS_BRIGHTNESS must be defined in config.h"
 #endif
 static uint8_t g_led_brightness = CONVERTER_LEDS_BRIGHTNESS;
+#endif
 
 /**
  * @brief Applies gamma-corrected brightness and color order to LED color value
