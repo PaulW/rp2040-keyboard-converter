@@ -102,6 +102,7 @@ PIO ws2812_pio = NULL;
  * @note Static storage in flash (const) - no RAM consumption
  * @note Compiler may optimize away unused table entries if brightness is compile-time constant
  */
+#ifdef CONVERTER_LEDS
 static const uint8_t BRIGHTNESS_LUT[11] = {
     0,   // Index 0: Unused (brightness levels start at 1)
     2,   // Level 1: Very dim    (  0.8% electrical = ~10% perceived)
@@ -115,6 +116,34 @@ static const uint8_t BRIGHTNESS_LUT[11] = {
     190, // Level 9: Very bright ( 74.5% electrical = ~90% perceived)
     255  // Level 10: Maximum    (100.0% electrical = 100% perceived)
 };
+#endif
+
+/**
+ * @brief Runtime LED brightness level (0-10)
+ * 
+ * Global variable to track current LED brightness setting. This allows runtime
+ * adjustment of brightness without recompiling firmware.
+ * 
+ * - Range: 0-10 (0=off, 10=max)
+ * - Default: From CONVERTER_LEDS_BRIGHTNESS in config.h (compile-time)
+ * - Thread-safety: All access from main loop context only
+ * - Used by ws2812_set_color() to look up multiplier from BRIGHTNESS_LUT
+ * 
+ * Initialization:
+ * - Starts with compile-time default from config.h
+ * - Can be overridden at runtime from persistent config (see main.c)
+ * - Similar pattern to log level: compile-time default, runtime override
+ * 
+ * @note Initialized here with compile-time default
+ * @note May be overridden in main.c from config_get_led_brightness()
+ * @note Modified by ws2812_set_brightness() during user adjustment
+ */
+#ifdef CONVERTER_LEDS
+#ifndef CONVERTER_LEDS_BRIGHTNESS
+#error "CONVERTER_LEDS_BRIGHTNESS must be defined in config.h"
+#endif
+static uint8_t g_led_brightness = CONVERTER_LEDS_BRIGHTNESS;
+#endif
 
 /**
  * @brief Applies gamma-corrected brightness and color order to LED color value
@@ -214,24 +243,32 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
   uint8_t g = (led_color >> 8) & 0xFF;   // Extract green: (value >> 8) & 0xFF
   uint8_t b = led_color & 0xFF;          // Extract blue:   value & 0xFF
 
-#ifdef CONVERTER_LEDS_BRIGHTNESS
-  // Apply gamma-corrected brightness scaling
-  // Lookup perceptually-linear multiplier from calibrated table
-  // BRIGHTNESS_LUT[1..10] contains values 2..255 for smooth perceived brightness
-  const uint8_t multiplier = BRIGHTNESS_LUT[CONVERTER_LEDS_BRIGHTNESS];
-  
-  // Scale each color component by multiplier, normalize back to 8-bit range
-  // Formula: output = (input × multiplier) ÷ 255
+  // Apply gamma-corrected brightness scaling using runtime brightness level
+  // Uses g_led_brightness (0-10) to look up multiplier from BRIGHTNESS_LUT
+  // This allows runtime brightness adjustment without recompiling firmware
   // 
-  // Performance notes:
-  // - Multiplication is fast on Cortex-M0+ (1-2 cycles for 8-bit×8-bit)
-  // - Division by 255 may be optimized by compiler to multiply + shift
-  // - Alternative: (x * multiplier * 257) >> 16 (faster but less accurate)
-  // - Current approach prioritizes accuracy over marginal speed gain
-  r = (uint8_t)((r * multiplier) / 255);
-  g = (uint8_t)((g * multiplier) / 255);
-  b = (uint8_t)((b * multiplier) / 255);
+  // Brightness level 0 special case:
+  // - When g_led_brightness = 0, BRIGHTNESS_LUT[0] = 0
+  // - All color components are multiplied by 0 → LED is off
+  // - This is intentional: level 0 = LEDs off, level 1 = dimmest visible setting
+#ifdef CONVERTER_LEDS
+  if (g_led_brightness <= 10) {
+    const uint8_t multiplier = BRIGHTNESS_LUT[g_led_brightness];
+    
+    // Scale each color component by multiplier, normalize back to 8-bit range
+    // Formula: output = (input × multiplier) ÷ 255
+    // 
+    // Performance notes:
+    // - Multiplication is fast on Cortex-M0+ (1-2 cycles for 8-bit×8-bit)
+    // - Division by 255 may be optimized by compiler to multiply + shift
+    // - Alternative: (x * multiplier * 257) >> 16 (faster but less accurate)
+    // - Current approach prioritizes accuracy over marginal speed gain
+    r = (uint8_t)((r * multiplier) / 255);
+    g = (uint8_t)((g * multiplier) / 255);
+    b = (uint8_t)((b * multiplier) / 255);
+  }
 #endif
+  // If g_led_brightness > 10, use original colors unchanged (shouldn't happen, but safe fallback)
 
 #ifdef CONVERTER_LEDS_TYPE
   // Apply color order based on LED chip variant
@@ -339,3 +376,64 @@ void ws2812_setup(uint led_pin) {
       "PIO%d SM%d WS2812 Interface program loaded at offset %d with clock divider of %.2f\n",
       ws2812_pio == pio0 ? 0 : 1, ws2812_sm, ws2812_offset, clock_div);
 }
+
+/**
+ * @brief Set LED brightness level
+ * 
+ * Updates the runtime LED brightness level. The new brightness takes effect
+ * immediately on the next LED update (ws2812_show() call).
+ * 
+ * **Usage:**
+ * - Range: 0-10 (0=off, 10=maximum brightness)
+ * - Values outside range are automatically clamped
+ * - Gamma correction applied via BRIGHTNESS_LUT
+ * - Non-blocking operation (just updates variable)
+ * 
+ * **Thread Safety:**
+ * - Call from main loop context only
+ * - Not thread-safe (but not needed - single-threaded design)
+ * 
+ * @param level Brightness level (0-10, will be clamped to valid range)
+ * 
+ * @note Takes effect on next ws2812_show() call
+ * @note Does not trigger LED update automatically
+ * 
+ * Example:
+ * ```c
+ * ws2812_set_brightness(7);  // Set to bright
+ * ws2812_show(0xFF0000);     // Red at 70% perceived brightness
+ * ```
+ */
+#ifdef CONVERTER_LEDS
+void ws2812_set_brightness(uint8_t level) {
+    // Clamp to valid range [0-10]
+    if (level > 10) {
+        level = 10;
+    }
+    
+    g_led_brightness = level;
+    LOG_DEBUG("LED brightness set to %d\n", level);
+}
+
+/**
+ * @brief Get current LED brightness level
+ * 
+ * Returns the current runtime LED brightness setting.
+ * 
+ * @return Current brightness level (0-10)
+ * 
+ * @note Returns value from RAM (fast, no hardware access)
+ * @note Thread-safe for reads
+ * 
+ * Example:
+ * ```c
+ * uint8_t current = ws2812_get_brightness();
+ * if (current < 10) {
+ *     ws2812_set_brightness(current + 1);  // Increment
+ * }
+ * ```
+ */
+uint8_t ws2812_get_brightness(void) {
+    return g_led_brightness;
+}
+#endif

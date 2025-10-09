@@ -33,8 +33,14 @@
 #include "uart.h"
 #include "hardware/watchdog.h"
 
+#ifdef CONVERTER_LEDS
+#include "ws2812/ws2812.h"
+#endif
+
+#ifdef CONVERTER_LEDS
 // External flag from led_helper.c to control LED colors during log level selection
 extern volatile bool log_level_selection_mode;
+#endif
 
 /**
  * @brief Command Mode State Machine States
@@ -63,12 +69,16 @@ extern volatile bool log_level_selection_mode;
  * - SHIFT_HOLD_WAIT: Normal HID reports sent (shifts visible to host)
  * - COMMAND_ACTIVE: ALL HID reports suppressed (empty report sent on entry)
  * - LOG_LEVEL_SELECT: ALL HID reports suppressed (waiting for level choice)
+ * - BRIGHTNESS_SELECT: ALL HID reports suppressed (waiting for +/- keys, LED cycling)
  */
 typedef enum {
-  CMD_MODE_IDLE,              /**< Normal operation, no command mode active */
-  CMD_MODE_SHIFT_HOLD_WAIT,   /**< Both shifts held, waiting for 3 second hold */
-  CMD_MODE_COMMAND_ACTIVE,    /**< Command mode active, waiting for command key */
-  CMD_MODE_LOG_LEVEL_SELECT,  /**< Waiting for log level selection (1/2/3) */
+  CMD_MODE_IDLE,                  /**< Normal operation, no command mode active */
+  CMD_MODE_SHIFT_HOLD_WAIT,       /**< Both shifts held, waiting for 3 second hold */
+  CMD_MODE_COMMAND_ACTIVE,        /**< Command mode active, waiting for command key */
+  CMD_MODE_LOG_LEVEL_SELECT,      /**< Waiting for log level selection (1/2/3) */
+#ifdef CONVERTER_LEDS
+  CMD_MODE_BRIGHTNESS_SELECT,     /**< Waiting for LED brightness adjustment (+/-) */
+#endif
 } command_mode_state_t;
 
 /**
@@ -91,6 +101,12 @@ static command_mode_context_t cmd_mode = {
   .state_start_time_ms = 0,
   .last_led_toggle_ms = 0
 };
+
+#ifdef CONVERTER_LEDS
+/** Brightness selection state tracking */
+static uint8_t brightness_original_value = 0;    /**< Original brightness when entering selection mode */
+static uint16_t brightness_rainbow_hue = 0;      /**< Current rainbow hue (0-359) for visual feedback */
+#endif
 
 /** Command mode timing constants (milliseconds) */
 #define CMD_MODE_HOLD_TIME_MS 3000      /**< Time to hold command keys to enter command mode */
@@ -312,8 +328,8 @@ static void command_execute_bootloader(void) {
 static void command_mode_exit(const char *reason) {
   LOG_INFO("%s\n", reason);
   cmd_mode.state = CMD_MODE_IDLE;
-  log_level_selection_mode = false;  // Reset LED colors to GREEN/BLUE
 #ifdef CONVERTER_LEDS
+  log_level_selection_mode = false;  // Reset LED colors to GREEN/BLUE
   // Disable command mode LED and restore normal LED operation
   converter.state.cmd_mode = 0;
 #endif
@@ -355,20 +371,42 @@ void command_mode_task(void) {
       cmd_mode_led_green = true;
       update_converter_status();
 #endif
-      LOG_INFO("Command mode active! Press 'B'=bootloader, 'D'=log level, 'F'=factory reset, or wait 3s to cancel\n");
+      LOG_INFO("Command mode active! Press 'B'=bootloader, 'D'=log level, 'F'=factory reset, 'L'=LED brightness, or wait 3s to cancel\n");
     }
     return;  // Exit early - no LED update needed in SHIFT_HOLD_WAIT
   }
   
-  // Handle COMMAND_ACTIVE and LOG_LEVEL_SELECT timeout (return to IDLE)
-  // Both states use the same timeout value and transition logic
+  // Handle COMMAND_ACTIVE, LOG_LEVEL_SELECT, and BRIGHTNESS_SELECT timeout (return to IDLE)
+  // All states use the same timeout value and transition logic
   if (cmd_mode.state == CMD_MODE_COMMAND_ACTIVE || 
-      cmd_mode.state == CMD_MODE_LOG_LEVEL_SELECT) {
+      cmd_mode.state == CMD_MODE_LOG_LEVEL_SELECT
+#ifdef CONVERTER_LEDS
+      || cmd_mode.state == CMD_MODE_BRIGHTNESS_SELECT
+#endif
+      ) {
     if (now_ms - cmd_mode.state_start_time_ms >= CMD_MODE_TIMEOUT_MS) {
+#ifdef CONVERTER_LEDS
+      // Save to flash if brightness changed
+      if (cmd_mode.state == CMD_MODE_BRIGHTNESS_SELECT) {
+        uint8_t current_brightness = ws2812_get_brightness();
+        if (current_brightness != brightness_original_value) {
+          config_save();
+          LOG_INFO("LED brightness saved to flash: %u\n", current_brightness);
+        }
+      }
+#endif
+      
       // Use different log messages for debugging clarity
-      const char *reason = (cmd_mode.state == CMD_MODE_COMMAND_ACTIVE)
-        ? "Command mode timeout, returning to idle"
-        : "Log level selection timeout, returning to idle";
+      const char *reason;
+      if (cmd_mode.state == CMD_MODE_COMMAND_ACTIVE) {
+        reason = "Command mode timeout, returning to idle";
+      } else if (cmd_mode.state == CMD_MODE_LOG_LEVEL_SELECT) {
+        reason = "Log level selection timeout, returning to idle";
+#ifdef CONVERTER_LEDS
+      } else {
+        reason = "LED brightness selection timeout, returning to idle";
+#endif
+      }
       command_mode_exit(reason);
       return;  // Exit early after mode exit
     }
@@ -392,6 +430,26 @@ void command_mode_task(void) {
     }
 #endif
   }
+  
+#ifdef CONVERTER_LEDS
+  // Update LED feedback when in BRIGHTNESS_SELECT state (rainbow cycling)
+  if (cmd_mode.state == CMD_MODE_BRIGHTNESS_SELECT) {
+    // Update rainbow hue every 50ms for smooth cycling (faster than command mode toggle)
+    const uint32_t RAINBOW_CYCLE_MS = 50;
+    if (now_ms - cmd_mode.last_led_toggle_ms >= RAINBOW_CYCLE_MS) {
+      // Increment hue for rainbow effect (360 degrees for full cycle)
+      brightness_rainbow_hue = (brightness_rainbow_hue + 6) % 360;  // 6 degrees per update = 3 seconds per cycle
+      
+      // Convert HSV to RGB (full saturation and brightness for vivid colors)
+      uint32_t rainbow_color = hsv_to_rgb(brightness_rainbow_hue, 255, 255);
+      
+      // Set the status LED directly (bypass normal LED helper logic)
+      ws2812_show(rainbow_color);
+      
+      cmd_mode.last_led_toggle_ms = now_ms;
+    }
+  }
+#endif
 }
 
 bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
@@ -439,7 +497,9 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
       if (is_key_pressed(keyboard_report, KC_D)) {
         cmd_mode.state = CMD_MODE_LOG_LEVEL_SELECT;
         cmd_mode.state_start_time_ms = to_ms_since_boot(get_absolute_time());
+#ifdef CONVERTER_LEDS
         log_level_selection_mode = true;  // Change LED colors to GREEN/PINK
+#endif
         LOG_INFO("Log level selection: Press 1=ERROR, 2=INFO, 3=DEBUG\n");
         return false;
       }
@@ -466,6 +526,23 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
         watchdog_reboot(0, 0, 0);
         
         // Never returns
+        return false;
+      }
+      
+      // Check for LED brightness adjustment command
+      if (is_key_pressed(keyboard_report, KC_L)) {
+#ifdef CONVERTER_LEDS
+        cmd_mode.state = CMD_MODE_BRIGHTNESS_SELECT;
+        cmd_mode.state_start_time_ms = to_ms_since_boot(get_absolute_time());
+        
+        // Save original brightness to detect changes
+        brightness_original_value = ws2812_get_brightness();
+        brightness_rainbow_hue = 0;  // Start rainbow cycle at red
+        
+        LOG_INFO("LED brightness selection: Press +/- to adjust (0-10), current=%u\n", brightness_original_value);
+#else
+        LOG_WARN("LED brightness control not available (CONVERTER_LEDS not defined)\n");
+#endif
         return false;
       }
       
@@ -509,6 +586,43 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
       
       // Suppress ALL keyboard reports while waiting for level selection
       return false;
+      
+#ifdef CONVERTER_LEDS
+    case CMD_MODE_BRIGHTNESS_SELECT:
+      // Wait for user to press + or - to adjust brightness
+      // KC_EQUAL is the physical '=' key which produces '+' when shifted
+      if (is_key_pressed(keyboard_report, KC_EQUAL) || is_key_pressed(keyboard_report, KC_KP_PLUS)) {
+        uint8_t current = ws2812_get_brightness();
+        if (current < 10) {
+          uint8_t new_brightness = current + 1;
+          ws2812_set_brightness(new_brightness);
+          config_set_led_brightness(new_brightness);
+          LOG_INFO("LED brightness increased to %u\n", new_brightness);
+          
+          // Reset timeout on brightness change
+          cmd_mode.state_start_time_ms = to_ms_since_boot(get_absolute_time());
+        }
+        return false;
+      }
+      
+      // '-' key
+      if (is_key_pressed(keyboard_report, KC_MINUS) || is_key_pressed(keyboard_report, KC_KP_MINUS)) {
+        uint8_t current = ws2812_get_brightness();
+        if (current > 0) {
+          uint8_t new_brightness = current - 1;
+          ws2812_set_brightness(new_brightness);
+          config_set_led_brightness(new_brightness);
+          LOG_INFO("LED brightness decreased to %u\n", new_brightness);
+          
+          // Reset timeout on brightness change
+          cmd_mode.state_start_time_ms = to_ms_since_boot(get_absolute_time());
+        }
+        return false;
+      }
+      
+      // Suppress ALL keyboard reports while in brightness selection mode
+      return false;
+#endif
   }
   
   // Should never reach here, but default to normal processing

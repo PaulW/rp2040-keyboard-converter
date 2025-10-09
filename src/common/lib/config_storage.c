@@ -39,12 +39,46 @@
  * 3. Increment CONFIG_VERSION_CURRENT
  * 4. Update get_config_size_for_version()
  */
+// --- Factory Default Configuration ---
+
+/**
+ * @brief Factory default configuration
+ * 
+ * This configuration is used when:
+ * - No valid config found in flash (first boot)
+ * - Both config copies are corrupt
+ * - Factory reset is requested
+ * - Config version upgrade (as base for migration)
+ * 
+ * Default Values:
+ * - log_level: From LOG_LEVEL_DEFAULT in config.h (compile-time)
+ * - led_brightness: From CONVERTER_LEDS_BRIGHTNESS in config.h (compile-time)
+ * - All other fields: Zero/empty
+ * 
+ * Version Upgrade Pattern:
+ * When new fields are added to config_data_t, they automatically get
+ * these default values during size-based migration (see config_init).
+ */
+
+// LED brightness compile-time default handling
+// If CONVERTER_LEDS is defined, require CONVERTER_LEDS_BRIGHTNESS to be set
+// If CONVERTER_LEDS is not defined, provide a safe default (won't be used)
+#ifdef CONVERTER_LEDS
+#ifndef CONVERTER_LEDS_BRIGHTNESS
+#error "CONVERTER_LEDS_BRIGHTNESS must be defined in config.h when CONVERTER_LEDS is enabled"
+#endif
+#define LED_BRIGHTNESS_DEFAULT CONVERTER_LEDS_BRIGHTNESS
+#else
+#define LED_BRIGHTNESS_DEFAULT 5  // Safe default when LEDs disabled (unused)
+#endif
+
 static const config_data_t DEFAULT_CONFIG = {
     .magic = CONFIG_MAGIC,
     .version = CONFIG_VERSION_CURRENT,
     .crc16 = 0,  // Calculated at save time
     .sequence = 0,
     .log_level = LOG_LEVEL_DEFAULT,  // From config.h
+    .led_brightness = LED_BRIGHTNESS_DEFAULT,  // From config.h or default
     .flags = { .dirty = 0, .reserved = 0 },
     .reserved = {0},
     .storage = {0}
@@ -302,6 +336,33 @@ void config_set_log_level(uint8_t level) {
         g_config.flags.dirty = 1;
         LOG_INFO("Log level changed to %d (pending save)\n", level);
     }
+}
+
+void config_set_led_brightness(uint8_t level) {
+    if (!g_initialized) {
+        LOG_ERROR("Config not initialized!\n");
+        return;
+    }
+    
+    // Clamp to valid range [0-10]
+    if (level > 10) {
+        level = 10;
+    }
+    
+    if (g_config.led_brightness != level) {
+        g_config.led_brightness = level;
+        g_config.flags.dirty = 1;
+        LOG_INFO("LED brightness changed to %d (pending save)\n", level);
+    }
+}
+
+uint8_t config_get_led_brightness(void) {
+    if (!g_initialized) {
+        LOG_WARN("Config not initialized, returning default brightness\n");
+        return LED_BRIGHTNESS_DEFAULT;  // Return compile-time default
+    }
+    
+    return g_config.led_brightness;
 }
 
 bool config_save(void) {

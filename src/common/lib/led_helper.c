@@ -176,8 +176,8 @@ bool update_converter_leds(void) {
  * @note Non-blocking: deferred updates handled in next call iteration
  */
 void update_converter_status(void) {
-  static uint8_t status;
 #ifdef CONVERTER_LEDS
+  static uint8_t status;
   // Update if state changed OR if a previous update is pending
   if (status != converter.value || led_update_pending) {
     if (update_converter_leds()) {
@@ -188,7 +188,7 @@ void update_converter_status(void) {
     // and we'll retry on the next call
   }
 #else
-  status = converter.value;
+  // No LEDs configured - this function is a no-op
 #endif
 }
 
@@ -214,22 +214,73 @@ void update_converter_status(void) {
  * @note Called from USB interrupt context - 60µs bounded wait is acceptable here
  * @note Most calls succeed immediately; wait only occurs if called within 60µs of previous update
  */
+
+#ifdef CONVERTER_LEDS
+/**
+ * @brief Convert HSV color to RGB color
+ * 
+ * Converts HSV (Hue, Saturation, Value) color space to RGB color space using
+ * efficient integer mathematics. No floating point operations are used.
+ * 
+ * Algorithm:
+ * - Divides 360-degree hue circle into 6 regions (60 degrees each)
+ * - Calculates RGB components using region-specific formulas
+ * - Returns 24-bit RGB value suitable for WS2812 LEDs
+ * 
+ * Color Wheel:
+ * - 0° (0): Red
+ * - 60°: Yellow
+ * - 120°: Green
+ * - 180°: Cyan
+ * - 240°: Blue
+ * - 300°: Magenta
+ * - 360° wraps back to 0° (Red)
+ * 
+ * @param hue Hue angle (0-359 degrees, automatically wraps if >= 360)
+ * @param saturation Color saturation (0-255, 0=grayscale, 255=full color)
+ * @param value Brightness value (0-255, 0=black, 255=full brightness)
+ * @return 24-bit RGB color in format 0xRRGGBB
+ * 
+ * @note Pure function - thread-safe, no state
+ * @note Integer-only math for RP2040 performance
+ */
+uint32_t hsv_to_rgb(uint16_t hue, uint8_t saturation, uint8_t value) {
+  // Normalize hue to 0-359
+  hue = hue % 360;
+  
+  // Calculate RGB components using efficient integer math
+  uint8_t region = hue / 60;
+  uint8_t remainder = (hue - (region * 60)) * 255 / 60;
+  
+  uint8_t p = (value * (255 - saturation)) / 255;
+  uint8_t q = (value * (255 - ((saturation * remainder) / 255))) / 255;
+  uint8_t t = (value * (255 - ((saturation * (255 - remainder)) / 255))) / 255;
+  
+  uint8_t r, g, b;
+  switch (region) {
+    case 0:  r = value; g = t;     b = p;     break;
+    case 1:  r = q;     g = value; b = p;     break;
+    case 2:  r = p;     g = value; b = t;     break;
+    case 3:  r = p;     g = q;     b = value; break;
+    case 4:  r = t;     g = p;     b = value; break;
+    default: r = value; g = p;     b = q;     break;
+  }
+  
+  return (r << 16) | (g << 8) | b;
+}
+#endif
+
 void set_lock_values_from_hid(uint8_t lock_val) {
   lock_leds.keys.numLock = (unsigned char)(lock_val & 0x01);
   lock_leds.keys.capsLock = (unsigned char)((lock_val >> 1) & 0x01);
   lock_leds.keys.scrollLock = (unsigned char)((lock_val >> 2) & 0x01);
 
 #ifdef CONVERTER_LEDS
-  // Retry LED update with bounded wait (max ~60µs total)
-  // Lock key changes are rare, so bounded wait is acceptable for immediate feedback
-  for (int retry = 0; retry < 10; retry++) {
-    if (update_converter_leds()) {
-      // Update succeeded
-      break;
-    }
-    // Wait a bit before retry (total max wait: ~60µs)
-    // This only happens if called within 60µs of previous update (rare)
-    sleep_us(6);
+  // Update lock LEDs immediately if possible, otherwise defer to main loop
+  // This function is called from USB ISR context, so no blocking operations allowed
+  if (!update_converter_leds()) {
+    // Update failed (timing constraint), set flag for main loop retry
+    led_update_pending = true;
   }
 #endif
 }

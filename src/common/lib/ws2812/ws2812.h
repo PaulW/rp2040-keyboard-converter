@@ -69,4 +69,31 @@ bool ws2812_show(uint32_t led_color);
  */
 void ws2812_setup(uint data_pin);
 
+/**
+ * @brief Set LED brightness level
+ * 
+ * Updates the runtime LED brightness level. The new brightness takes effect
+ * immediately on the next LED update.
+ * 
+ * @param level Brightness level (0-10, where 0=off and 10=max)
+ * 
+ * @note Values >10 are clamped to 10
+ * @note Takes effect on next ws2812_show() call
+ * @note Non-blocking operation
+ */
+#ifdef CONVERTER_LEDS
+void ws2812_set_brightness(uint8_t level);
+
+/**
+ * @brief Get current LED brightness level
+ * 
+ * Returns the current runtime LED brightness setting.
+ * 
+ * @return Current brightness level (0-10)
+ * 
+ * @note Fast RAM read, no hardware access
+ */
+uint8_t ws2812_get_brightness(void);
+#endif
+
 #endif /* WS2812_H */
