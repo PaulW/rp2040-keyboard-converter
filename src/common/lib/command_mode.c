@@ -24,12 +24,14 @@
 #include "log.h"
 
 #include "config.h"
+#include "config_storage.h"
 #include "hid_interface.h"
 #include "hid_keycodes.h"
 #include "led_helper.h"
 #include "pico/bootrom.h"
 #include "pico/time.h"
 #include "uart.h"
+#include "hardware/watchdog.h"
 
 // External flag from led_helper.c to control LED colors during log level selection
 extern volatile bool log_level_selection_mode;
@@ -48,6 +50,7 @@ extern volatile bool log_level_selection_mode;
  * 
  *   COMMAND_ACTIVE ──┬─> Bootloader (command 'B' executed - device resets)
  *                     ├─> LOG_LEVEL_SELECT (command 'D' for debug level)
+ *                     ├─> IDLE (command 'F' for factory reset)
  *                     └─> IDLE (3 second timeout)
  * 
  *   LOG_LEVEL_SELECT ──┬─> IDLE (key '1' = ERROR level)
@@ -352,7 +355,7 @@ void command_mode_task(void) {
       cmd_mode_led_green = true;
       update_converter_status();
 #endif
-      LOG_INFO("Command mode active! Press 'B' for bootloader, or wait 3s to cancel\n");
+      LOG_INFO("Command mode active! Press 'B'=bootloader, 'D'=log level, 'F'=factory reset, or wait 3s to cancel\n");
     }
     return;  // Exit early - no LED update needed in SHIFT_HOLD_WAIT
   }
@@ -420,7 +423,7 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
       
     case CMD_MODE_COMMAND_ACTIVE:
       // Note: User can release shifts once command mode is active
-      // We only care about command key presses (e.g., 'B' for bootloader, 'D' for debug level)
+      // We only care about command key presses (e.g., 'B' for bootloader, 'D' for log level, 'F' for factory reset)
       
       // Note: Timeout check is handled in command_mode_task() which runs from main loop
       // This ensures timeout works even when no keyboard events are occurring
@@ -441,6 +444,31 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
         return false;
       }
       
+      // Check for factory reset command
+      if (is_key_pressed(keyboard_report, KC_F)) {
+        LOG_WARN("Factory reset requested - restoring default configuration\n");
+        config_factory_reset();
+        LOG_INFO("Factory reset complete - rebooting device...\n");
+        
+#ifdef CONVERTER_LEDS
+        // Clear all LED states
+        lock_leds.value = 0;
+        converter.state.cmd_mode = 0;
+        converter.state.fw_flash = 1;  // Set status LED to indicate reboot
+        update_converter_status();
+#endif
+        
+        // Flush UART before reboot
+        uart_dma_flush();
+        
+        // Reboot device using watchdog (cleanest reboot method)
+        // Parameters: delay_ms=0 (immediate), scratch0=0, scratch1=0 (no custom values)
+        watchdog_reboot(0, 0, 0);
+        
+        // Never returns
+        return false;
+      }
+      
       // Note: LED update is handled in command_mode_task() which runs from main loop
       // This ensures smooth LED flashing even when no keys are being pressed
       
@@ -452,6 +480,8 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
       if (is_key_pressed(keyboard_report, KC_1)) {
         // Set log level to ERROR (only errors visible)
         log_set_level(LOG_LEVEL_ERROR);
+        config_set_log_level(LOG_LEVEL_ERROR);
+        config_save();  // Persist to flash
         LOG_ERROR("Log level set to ERROR (0)\n");
         command_mode_exit("Log level changed to ERROR");
         return false;
@@ -460,6 +490,8 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
       if (is_key_pressed(keyboard_report, KC_2)) {
         // Set log level to INFO (info + error visible, debug hidden)
         log_set_level(LOG_LEVEL_INFO);
+        config_set_log_level(LOG_LEVEL_INFO);
+        config_save();  // Persist to flash
         LOG_INFO("Log level set to INFO (1)\n");
         command_mode_exit("Log level changed to INFO");
         return false;
@@ -468,6 +500,8 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
       if (is_key_pressed(keyboard_report, KC_3)) {
         // Set log level to DEBUG (all messages visible)
         log_set_level(LOG_LEVEL_DEBUG);
+        config_set_log_level(LOG_LEVEL_DEBUG);
+        config_save();  // Persist to flash
         LOG_DEBUG("Log level set to DEBUG (2)\n");
         command_mode_exit("Log level changed to DEBUG");
         return false;

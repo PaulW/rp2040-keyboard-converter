@@ -69,12 +69,18 @@ static hid_mouse_report_t mouse_report;
  * @param message  Message to be printed before the HID report.
  */
 static void hid_print_report(void* report, size_t size, const char* message) {
-  LOG_DEBUG("[%s-HID-REPORT] ", message);
+  // Build the entire report string in one buffer for single LOG_DEBUG call
+  // Maximum HID report size is typically small (keyboard=8, mouse=5, consumer=2)
+  // Buffer: prefix (32) + hex bytes (size * 3) + null terminator
+  char buffer[128];
+  size_t offset = (size_t)snprintf(buffer, sizeof(buffer), "[%s-HID-REPORT] ", message);
+  
   uint8_t* p = (uint8_t*)report;
-  for (size_t i = 0; i < size; i++) {
-    printf("%02X ", *p++);
+  for (size_t i = 0; i < size && offset < sizeof(buffer) - 4; i++) {
+    offset += (size_t)snprintf(buffer + offset, sizeof(buffer) - offset, "%02X ", *p++);
   }
-  printf("\n");
+  
+  LOG_DEBUG("%s\n", buffer);
 }
 
 /**

@@ -28,6 +28,7 @@
 #include "bsp/board.h"
 #include "command_mode.h"
 #include "config.h"
+#include "config_storage.h"
 #include "hid_interface.h"
 #include "log.h"
 #include "pico/unique_id.h"
@@ -55,13 +56,22 @@ int main(void) {
   hid_device_setup();
   init_uart_dma();
   command_mode_init();  // Initialize command mode system
+  
+  // Load persistent configuration from flash
+  if (!config_init()) {
+    LOG_WARN("Using factory default configuration\n");
+  }
+  
+  // Apply saved log level
+  log_set_level(config_get()->log_level);
+  
   char pico_unique_id[32];
   pico_get_unique_board_id_string(pico_unique_id, sizeof(pico_unique_id));
-  printf("--------------------------------\n");
+  LOG_INFO("--------------------------------\n");
   LOG_INFO("RP2040 Device Converter\n");
   LOG_INFO("RP2040 Serial ID: %s\n", pico_unique_id);
   LOG_INFO("Build Time: %s\n", BUILD_TIME);
-  printf("--------------------------------\n");
+  LOG_INFO("--------------------------------\n");
 
   // Initialise Optional Components
 #ifdef CONVERTER_PIEZO
@@ -80,7 +90,7 @@ int main(void) {
   LOG_INFO("Keyboard Description: %s\n", KEYBOARD_DESCRIPTION);
   LOG_INFO("Keyboard Protocol: %s\n", KEYBOARD_PROTOCOL);
   LOG_INFO("Keyboard Scancode Set: %s\n", KEYBOARD_CODESET);
-  printf("--------------------------------\n");
+  LOG_INFO("--------------------------------\n");
   keyboard_interface_setup(KEYBOARD_DATA_PIN);  // Setup the keyboard interface.
 #else
   LOG_INFO("Keyboard Support Disabled\n");
@@ -89,7 +99,7 @@ int main(void) {
 #if MOUSE_ENABLED
   LOG_INFO("Mouse Support Enabled\n");
   LOG_INFO("Mouse Protocol: %s\n", MOUSE_PROTOCOL);
-  printf("--------------------------------\n");
+  LOG_INFO("--------------------------------\n");
   mouse_interface_setup(MOUSE_DATA_PIN);  // Setup the mouse interface.
 #else
   LOG_INFO("Mouse Support Disabled\n");
