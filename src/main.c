@@ -48,6 +48,7 @@
 #ifdef CONVERTER_PIEZO
 #include "buzzer.h"
 #endif
+
 #ifdef CONVERTER_LEDS
 #include "ws2812/ws2812.h"
 #endif
@@ -80,6 +81,11 @@ int main(void) {
 
 #ifdef CONVERTER_LEDS
   ws2812_setup(LED_PIN);  // Setup the WS2812 LEDs.
+  
+  // Apply saved LED brightness from configuration
+  uint8_t saved_brightness = config_get_led_brightness();
+  ws2812_set_brightness(saved_brightness);
+  LOG_INFO("LED brightness set to %u (0-10 range)\n", saved_brightness);
 #endif
 
   // Initialise aspects of the Interface.

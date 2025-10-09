@@ -117,6 +117,33 @@ typedef union lock_keys_union {
 
 extern lock_keys_union lock_leds;
 
+#ifdef CONVERTER_LEDS
+/**
+ * @brief Convert HSV color to RGB color
+ * 
+ * Converts HSV (Hue, Saturation, Value) color space to RGB color space.
+ * This is useful for generating rainbow effects and smooth color transitions.
+ * 
+ * HSV Color Space:
+ * - Hue: 0-359 degrees (0=red, 60=yellow, 120=green, 180=cyan, 240=blue, 300=magenta)
+ * - Saturation: 0-255 (0=gray, 255=full color)
+ * - Value: 0-255 (0=black, 255=full brightness)
+ * 
+ * RGB Color Format:
+ * - Returns 24-bit RGB color: 0xRRGGBB
+ * - Red: bits 23-16, Green: bits 15-8, Blue: bits 7-0
+ * 
+ * @param hue Hue value (0-359 degrees, wraps around if >359)
+ * @param saturation Saturation level (0-255)
+ * @param value Brightness level (0-255)
+ * @return 24-bit RGB color value
+ * 
+ * @note Uses integer math for efficiency (no floating point)
+ * @note Thread-safe: pure function with no state
+ */
+uint32_t hsv_to_rgb(uint16_t hue, uint8_t saturation, uint8_t value);
+#endif
+
 void set_lock_values_from_hid(uint8_t lock_val);
 void update_converter_status(void);
 bool update_converter_leds(void);

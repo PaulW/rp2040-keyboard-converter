@@ -59,8 +59,17 @@
  * When new fields are added to config_data_t, they automatically get
  * these default values during size-based migration (see config_init).
  */
+
+// LED brightness compile-time default handling
+// If CONVERTER_LEDS is defined, require CONVERTER_LEDS_BRIGHTNESS to be set
+// If CONVERTER_LEDS is not defined, provide a safe default (won't be used)
+#ifdef CONVERTER_LEDS
 #ifndef CONVERTER_LEDS_BRIGHTNESS
-#error "CONVERTER_LEDS_BRIGHTNESS must be defined in config.h"
+#error "CONVERTER_LEDS_BRIGHTNESS must be defined in config.h when CONVERTER_LEDS is enabled"
+#endif
+#define LED_BRIGHTNESS_DEFAULT CONVERTER_LEDS_BRIGHTNESS
+#else
+#define LED_BRIGHTNESS_DEFAULT 5  // Safe default when LEDs disabled (unused)
 #endif
 
 static const config_data_t DEFAULT_CONFIG = {
@@ -69,7 +78,7 @@ static const config_data_t DEFAULT_CONFIG = {
     .crc16 = 0,  // Calculated at save time
     .sequence = 0,
     .log_level = LOG_LEVEL_DEFAULT,  // From config.h
-    .led_brightness = CONVERTER_LEDS_BRIGHTNESS,  // From config.h
+    .led_brightness = LED_BRIGHTNESS_DEFAULT,  // From config.h or default
     .flags = { .dirty = 0, .reserved = 0 },
     .reserved = {0},
     .storage = {0}
@@ -350,7 +359,7 @@ void config_set_led_brightness(uint8_t level) {
 uint8_t config_get_led_brightness(void) {
     if (!g_initialized) {
         LOG_WARN("Config not initialized, returning default brightness\n");
-        return CONVERTER_LEDS_BRIGHTNESS;  // Return compile-time default from config.h
+        return LED_BRIGHTNESS_DEFAULT;  // Return compile-time default
     }
     
     return g_config.led_brightness;
