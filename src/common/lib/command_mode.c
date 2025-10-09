@@ -105,7 +105,7 @@ static command_mode_context_t cmd_mode = {
 #ifdef CONVERTER_LEDS
 /** Brightness selection state tracking */
 static uint8_t brightness_original_value = 0;    /**< Original brightness when entering selection mode */
-static uint8_t brightness_rainbow_hue = 0;       /**< Current rainbow hue (0-359) for visual feedback */
+static uint16_t brightness_rainbow_hue = 0;      /**< Current rainbow hue (0-359) for visual feedback */
 #endif
 
 /** Command mode timing constants (milliseconds) */
