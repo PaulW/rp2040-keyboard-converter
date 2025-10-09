@@ -174,9 +174,8 @@ static bool validate_config(const config_data_t *cfg) {
 static size_t get_config_size_for_version(uint16_t version) {
     switch (version) {
         case 1:
-            // Version 1: log_level only
-            // Size up to (but not including) storage array
-            return offsetof(config_data_t, storage);
+            // Version 1 matches the current layout (includes TLV storage)
+            return sizeof(config_data_t);
             
         // Future versions:
         // case 2: return offsetof(config_data_t, new_field_in_v2);
