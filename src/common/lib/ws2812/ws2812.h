@@ -81,6 +81,7 @@ void ws2812_setup(uint data_pin);
  * @note Takes effect on next ws2812_show() call
  * @note Non-blocking operation
  */
+#ifdef CONVERTER_LEDS
 void ws2812_set_brightness(uint8_t level);
 
 /**
@@ -93,5 +94,6 @@ void ws2812_set_brightness(uint8_t level);
  * @note Fast RAM read, no hardware access
  */
 uint8_t ws2812_get_brightness(void);
+#endif
 
 #endif /* WS2812_H */

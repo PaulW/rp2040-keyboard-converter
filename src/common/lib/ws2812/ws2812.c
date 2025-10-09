@@ -102,6 +102,7 @@ PIO ws2812_pio = NULL;
  * @note Static storage in flash (const) - no RAM consumption
  * @note Compiler may optimize away unused table entries if brightness is compile-time constant
  */
+#ifdef CONVERTER_LEDS
 static const uint8_t BRIGHTNESS_LUT[11] = {
     0,   // Index 0: Unused (brightness levels start at 1)
     2,   // Level 1: Very dim    (  0.8% electrical = ~10% perceived)
@@ -115,6 +116,7 @@ static const uint8_t BRIGHTNESS_LUT[11] = {
     190, // Level 9: Very bright ( 74.5% electrical = ~90% perceived)
     255  // Level 10: Maximum    (100.0% electrical = 100% perceived)
 };
+#endif
 
 /**
  * @brief Runtime LED brightness level (0-10)
@@ -249,6 +251,7 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
   // - When g_led_brightness = 0, BRIGHTNESS_LUT[0] = 0
   // - All color components are multiplied by 0 → LED is off
   // - This is intentional: level 0 = LEDs off, level 1 = dimmest visible setting
+#ifdef CONVERTER_LEDS
   if (g_led_brightness <= 10) {
     const uint8_t multiplier = BRIGHTNESS_LUT[g_led_brightness];
     
@@ -264,6 +267,7 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
     g = (uint8_t)((g * multiplier) / 255);
     b = (uint8_t)((b * multiplier) / 255);
   }
+#endif
   // If g_led_brightness > 10, use original colors unchanged (shouldn't happen, but safe fallback)
 
 #ifdef CONVERTER_LEDS_TYPE
@@ -400,6 +404,7 @@ void ws2812_setup(uint led_pin) {
  * ws2812_show(0xFF0000);     // Red at 70% perceived brightness
  * ```
  */
+#ifdef CONVERTER_LEDS
 void ws2812_set_brightness(uint8_t level) {
     // Clamp to valid range [0-10]
     if (level > 10) {
@@ -431,3 +436,4 @@ void ws2812_set_brightness(uint8_t level) {
 uint8_t ws2812_get_brightness(void) {
     return g_led_brightness;
 }
+#endif
