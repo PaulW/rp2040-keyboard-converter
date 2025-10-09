@@ -490,7 +490,7 @@ void mouse_interface_setup(uint data_pin) {
   irq_set_enabled(pio_irq, true);
   irq_set_priority(pio_irq, 0);
 
-  printf(
-      "[INFO] PIO%d SM%d Interface program loaded at mouse_offset %d with clock divider of %.2f\n",
+  LOG_INFO(
+      "PIO%d SM%d Interface program loaded at mouse_offset %d with clock divider of %.2f\n",
       (mouse_pio == pio0 ? 0 : 1), mouse_sm, mouse_offset, clock_div);
 }

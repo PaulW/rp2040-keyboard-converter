@@ -2,6 +2,7 @@
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
   hardware_dma
+  hardware_flash
   hardware_pio
   hardware_pwm
   pico_stdlib

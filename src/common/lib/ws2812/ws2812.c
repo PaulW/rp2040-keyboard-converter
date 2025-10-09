@@ -335,7 +335,7 @@ void ws2812_setup(uint led_pin) {
 
   ws2812_program_init(ws2812_pio, ws2812_sm, ws2812_offset, led_pin, clock_div);
 
-  printf(
-      "[INFO] PIO%d SM%d WS2812 Interface program loaded at offset %d with clock divider of %.2f\n",
+  LOG_INFO(
+      "PIO%d SM%d WS2812 Interface program loaded at offset %d with clock divider of %.2f\n",
       ws2812_pio == pio0 ? 0 : 1, ws2812_sm, ws2812_offset, clock_div);
 }

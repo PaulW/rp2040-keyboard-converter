@@ -64,6 +64,7 @@
 #include "hardware/clocks.h"
 #include "keyboard_interface.pio.h"
 #include "led_helper.h"
+#include "log.h"
 #include "pio_helper.h"
 #include "ringbuf.h"
 #include "scancode.h"

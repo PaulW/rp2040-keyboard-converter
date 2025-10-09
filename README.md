@@ -12,6 +12,7 @@ This project started as a way to use an IBM Model F PC/AT keyboard on modern har
 - Simultaneous keyboard and mouse conversion
 - USB HID Boot Protocol for BIOS/UEFI compatibility
 - Per-keyboard configuration with layer support and macros
+- Persistent configuration storage (settings survive reboots and firmware updates)
 
 **Why RP2040?**
 
@@ -182,6 +183,7 @@ To enter Command Mode, press and hold **ONLY** both shift keys (Left Shift + Rig
 3. **Execute command** - Press a command key:
    - **B** = Enter Bootloader Mode (for firmware updates)
    - **D** = Log Level Selection (for debugging - see below)
+   - **F** = Factory Reset (restore default configuration - see below)
 
 #### Command: Bootloader Mode ('B' key)
 
@@ -210,6 +212,24 @@ Press 'D' in Command Mode to change the UART debug output level:
 
 This feature is useful for field debugging without reflashing firmware. Connect a UART adapter to see diagnostic output at the selected level.
 
+#### Command: Factory Reset ('F' key)
+
+Press 'F' in Command Mode to restore all configuration settings to factory defaults:
+
+1. **Press 'F' in Command Mode**
+   - Configuration storage is completely erased
+   - UART shows: `[INFO] Factory reset complete - rebooting...`
+2. **Automatic reboot:**
+   - Device automatically restarts with factory defaults
+   - All custom settings (log level, etc.) are reset
+
+**When to use Factory Reset:**
+- Troubleshooting configuration issues
+- Resetting to known good state before testing
+- Clearing all custom settings
+
+**Note:** Factory reset only affects runtime configuration settings. It does not modify keyboard layouts, keymaps, or firmware code. The device reboots automatically after reset.
+
 #### Visual Feedback
 
 The Status LED provides feedback during the Command Mode sequence:
@@ -217,7 +237,7 @@ The Status LED provides feedback during the Command Mode sequence:
 | State | LED Behavior | Description |
 |-------|-------------|-------------|
 | **Waiting** | Normal (Green if ready, Orange if not) | Holding shifts, waiting for 3 seconds |
-| **Command Mode Active** | Flashing Green/Blue (100ms) | Ready to accept command keys (B/D), 3 second timeout |
+| **Command Mode Active** | Flashing Green/Blue (100ms) | Ready to accept command keys (B/D/F), 3 second timeout |
 | **Log Level Selection** | Flashing Green/Pink (100ms) | Waiting for level selection (1/2/3), 3 second timeout |
 | **Bootloader Mode** | Solid Magenta | Bootloader active, ready for firmware update |
 
@@ -230,6 +250,42 @@ Command Mode was designed to work with 2-key rollover (2KRO) keyboards, which ca
 - Strict entry requirement (only shifts, no other keys) prevents false triggers during normal typing
 
 **Note**: Command Mode is only available when the firmware includes keyboard support. Mouse-only builds require manual bootloader entry (hold BOOT during power-on or reset).
+
+### Configuration Storage
+
+The converter includes a persistent configuration storage system that survives reboots and firmware updates. Configuration data is stored in the last 4KB of the RP2040's flash memory, completely separate from the firmware code.
+
+**Current Settings Stored:**
+- **Log Level**: ERROR/INFO/DEBUG setting persists across power cycles
+- **Reserved Space**: 2KB available for future enhancements (keyboard macros, remapping, etc.)
+
+**Architecture:**
+- **Storage Location**: Last 4KB flash sector (0x101FF000-0x101FFFFF)
+- **Dual-Copy Redundancy**: Two copies (A and B) for power-loss protection
+- **Automatic Versioning**: Forward-compatible migration when structure changes
+- **Performance**: Config loaded to RAM at boot (~100µs), zero-overhead runtime reads
+- **Write Endurance**: Wear leveling via alternating copy writes (~10,000 cycles per sector)
+
+**How it Works:**
+1. **Boot**: Configuration loaded from flash to RAM
+2. **Runtime**: All reads access RAM (zero overhead)
+3. **Changes**: Settings marked dirty, saved to flash when changed
+4. **Power Loss Protection**: Dual-copy system ensures at least one valid copy survives
+
+**Factory Reset:**
+Use Command Mode 'F' key to erase all configuration and restore factory defaults. This is useful for:
+- Troubleshooting configuration issues
+- Resetting to known good state
+- Testing with clean configuration
+
+**Firmware Updates:**
+Configuration storage is preserved across firmware updates because it resides in a separate flash region. Your settings (log level, future macros, etc.) will survive when you flash new firmware versions.
+
+**Technical Details:**
+For implementation details, see `src/common/lib/config_storage.h`. The storage system uses:
+- CRC-16/CCITT validation for data integrity
+- Sequence numbers for wear leveling and conflict resolution
+- Size-based automatic version migration (no explicit migration functions needed)
 
 ## Important Usage Notes
 
