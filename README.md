@@ -184,6 +184,7 @@ To enter Command Mode, press and hold **ONLY** both shift keys (Left Shift + Rig
    - **B** = Enter Bootloader Mode (for firmware updates)
    - **D** = Log Level Selection (for debugging - see below)
    - **F** = Factory Reset (restore default configuration - see below)
+   - **L** = LED Brightness Control (adjust status LED brightness - see below)
 
 #### Command: Bootloader Mode ('B' key)
 
@@ -230,6 +231,36 @@ Press 'F' in Command Mode to restore all configuration settings to factory defau
 
 **Note:** Factory reset only affects runtime configuration settings. It does not modify keyboard layouts, keymaps, or firmware code. The device reboots automatically after reset.
 
+#### Command: LED Brightness Control ('L' key)
+
+Press 'L' in Command Mode to adjust the status LED brightness (only available when `CONVERTER_LEDS` is enabled):
+
+1. **Press 'L' in Command Mode**
+   - Status LED starts cycling through rainbow colors (smooth transitions)
+   - UART shows: `[INFO] LED brightness selection: Press +/- to adjust (0-10), current=X`
+2. **Adjust brightness:**
+   - **'+'** or **'='** key = Increase brightness (up to level 10)
+   - **'-'** key = Decrease brightness (down to level 0)
+   - Level 0 = LEDs off, Level 10 = Maximum brightness
+   - Each press increments/decrements by 1 level
+   - Changes are applied immediately (visible in rainbow effect)
+3. **Save and exit:**
+   - Mode times out after 3 seconds of inactivity
+   - If brightness changed, automatically saved to flash
+   - New brightness persists across reboots
+
+**Brightness Levels:**
+- **0**: LEDs completely off (useful for dark environments)
+- **1-4**: Dim (low visibility, good for night use)
+- **5**: Default (balanced brightness for most environments)
+- **6-9**: Bright (high visibility)
+- **10**: Maximum (full LED brightness)
+
+**Visual Feedback:**
+The rainbow cycling effect during brightness selection allows you to see the immediate impact of your changes. Each color in the spectrum is displayed at the current brightness level.
+
+**Note:** This command is only available when the firmware is built with LED support (`CONVERTER_LEDS` defined in `config.h`). If unavailable, pressing 'L' displays a warning message on UART.
+
 #### Visual Feedback
 
 The Status LED provides feedback during the Command Mode sequence:
@@ -237,8 +268,9 @@ The Status LED provides feedback during the Command Mode sequence:
 | State | LED Behavior | Description |
 |-------|-------------|-------------|
 | **Waiting** | Normal (Green if ready, Orange if not) | Holding shifts, waiting for 3 seconds |
-| **Command Mode Active** | Flashing Green/Blue (100ms) | Ready to accept command keys (B/D/F), 3 second timeout |
+| **Command Mode Active** | Flashing Green/Blue (100ms) | Ready to accept command keys (B/D/F/L), 3 second timeout |
 | **Log Level Selection** | Flashing Green/Pink (100ms) | Waiting for level selection (1/2/3), 3 second timeout |
+| **Brightness Selection** | Rainbow Cycling (50ms) | Adjusting LED brightness (+/-), displays current brightness level |
 | **Bootloader Mode** | Solid Magenta | Bootloader active, ready for firmware update |
 
 #### Design Rationale
@@ -257,6 +289,7 @@ The converter includes a persistent configuration storage system that survives r
 
 **Current Settings Stored:**
 - **Log Level**: ERROR/INFO/DEBUG setting persists across power cycles
+- **LED Brightness**: Status LED brightness level (0-10) persists across power cycles
 - **Reserved Space**: 2KB available for future enhancements (keyboard macros, remapping, etc.)
 
 **Architecture:**
@@ -279,7 +312,7 @@ Use Command Mode 'F' key to erase all configuration and restore factory defaults
 - Testing with clean configuration
 
 **Firmware Updates:**
-Configuration storage is preserved across firmware updates because it resides in a separate flash region. Your settings (log level, future macros, etc.) will survive when you flash new firmware versions.
+Configuration storage is preserved across firmware updates because it resides in a separate flash region. Your settings (log level, LED brightness, future macros, etc.) will survive when you flash new firmware versions.
 
 **Technical Details:**
 For implementation details, see `src/common/lib/config_storage.h`. The storage system uses:
