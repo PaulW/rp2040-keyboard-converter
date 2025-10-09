@@ -169,6 +169,7 @@ typedef struct __attribute__((packed)) {
     
     // --- Runtime Settings (v1+) ---
     uint8_t log_level;           /**< LOG_LEVEL_ERROR/INFO/DEBUG */
+    uint8_t led_brightness;      /**< LED brightness level 0-10 (0=off, 10=max) */
     
     // --- Flags ---
     struct {
@@ -177,7 +178,7 @@ typedef struct __attribute__((packed)) {
     } flags;
     
     // --- Padding (alignment and future expansion) ---
-    uint8_t reserved[2];         /**< Alignment padding */
+    uint8_t reserved[1];         /**< Alignment padding */
     
     // --- Variable Storage (future use for TLV data) ---
     uint8_t storage[CONFIG_STORAGE_SIZE];  /**< Reserved for macros, key remaps, etc */
@@ -267,6 +268,51 @@ const config_data_t* config_get(void);
  * ```
  */
 void config_set_log_level(uint8_t level);
+
+/**
+ * @brief Set LED brightness level in config
+ * 
+ * Updates the LED brightness level in the RAM configuration. The value is
+ * clamped to the valid range [0-10] where 0 is off and 10 is maximum brightness.
+ * 
+ * **Usage:**
+ * - Range: 0-10 (0=off, 10=brightest)
+ * - Applies gamma correction via BRIGHTNESS_LUT in ws2812.c
+ * - Values outside range are clamped automatically
+ * - Must call ws2812_set_brightness() to apply immediately
+ * - Must call config_save() to persist to flash
+ * 
+ * @param level Brightness level (0-10, will be clamped to valid range)
+ * 
+ * @note Only updates RAM, call config_save() to persist
+ * @note Not thread-safe, call from main loop only
+ * @note Caller must apply brightness to LEDs separately
+ * 
+ * Example:
+ * ```c
+ * config_set_led_brightness(7);
+ * ws2812_set_brightness(7);  // Apply immediately to LEDs
+ * config_save();             // Persist to flash
+ * ```
+ */
+void config_set_led_brightness(uint8_t level);
+
+/**
+ * @brief Get current LED brightness level from config
+ * 
+ * Returns the LED brightness level from the RAM configuration.
+ * 
+ * @return Current brightness level (0-10)
+ * 
+ * @note Returns value from RAM (fast, no flash access)
+ * @note Thread-safe for reads
+ * 
+ * Example:
+ * ```c
+ * uint8_t current_brightness = config_get_led_brightness();
+ * ```
+ */
+uint8_t config_get_led_brightness(void);
 
 /**
  * @brief Save configuration to flash
