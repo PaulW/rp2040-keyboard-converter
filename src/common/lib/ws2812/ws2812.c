@@ -242,7 +242,12 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
   // Apply gamma-corrected brightness scaling using runtime brightness level
   // Uses g_led_brightness (0-10) to look up multiplier from BRIGHTNESS_LUT
   // This allows runtime brightness adjustment without recompiling firmware
-  if (g_led_brightness > 0 && g_led_brightness <= 10) {
+  // 
+  // Brightness level 0 special case:
+  // - When g_led_brightness = 0, BRIGHTNESS_LUT[0] = 0
+  // - All color components are multiplied by 0 → LED is off
+  // - This is intentional: level 0 = LEDs off, level 1 = dimmest visible setting
+  if (g_led_brightness <= 10) {
     const uint8_t multiplier = BRIGHTNESS_LUT[g_led_brightness];
     
     // Scale each color component by multiplier, normalize back to 8-bit range
@@ -257,7 +262,7 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
     g = (uint8_t)((g * multiplier) / 255);
     b = (uint8_t)((b * multiplier) / 255);
   }
-  // If g_led_brightness is 0, LEDs will be off (r=g=b remain at extracted values but will be black)
+  // If g_led_brightness > 10, use original colors unchanged (shouldn't happen, but safe fallback)
 
 #ifdef CONVERTER_LEDS_TYPE
   // Apply color order based on LED chip variant
