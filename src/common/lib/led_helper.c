@@ -176,8 +176,8 @@ bool update_converter_leds(void) {
  * @note Non-blocking: deferred updates handled in next call iteration
  */
 void update_converter_status(void) {
-  static uint8_t status;
 #ifdef CONVERTER_LEDS
+  static uint8_t status;
   // Update if state changed OR if a previous update is pending
   if (status != converter.value || led_update_pending) {
     if (update_converter_leds()) {
@@ -188,7 +188,8 @@ void update_converter_status(void) {
     // and we'll retry on the next call
   }
 #else
-  status = converter.value;
+  // No LEDs configured - this function is a no-op
+  (void)0;  // Suppress empty function warning
 #endif
 }
 
