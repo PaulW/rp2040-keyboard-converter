@@ -1,0 +1,107 @@
+.program keyboard_interface
+.wrap_target
+
+; Pins: 0 = KDAT (bidirectional), 1 = KCLK (input only, keyboard-driven)
+
+init:
+    ; Wait until KCLK is HIGH before we continue (keyboard idle state)
+    wait 1 pin 1
+
+check:
+    ; Wait for KCLK to go low (start of byte transmission from keyboard)
+    jmp pin, check
+
+    ; Receiving Data
+    ;        ___ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _________________
+    ;   KCLK    \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
+    ;        ___ ___ ___ ___ ___ ___ ___ ___ ___     handshake
+    ;   KDAT    \___X___X___X___X___X___X___X___\_______________/
+    ;             6   5   4   3   2   1   0   7
+    ;
+    ; Amiga transmits bits in rotated order: 6-5-4-3-2-1-0-7
+    ; Host reads KDAT on KCLK falling edge
+    ; KCLK is brought LOW for ~20µs, and HIGH for ~20µs (~60µs per bit)
+    ; After 8 bits, host must pulse KDAT low for 85µs (handshake)
+
+    ; Read 8 bits (bit order: 6-5-4-3-2-1-0-7)
+    set x, 7
+
+bit_loop:
+    ; Wait for KCLK falling edge
+    wait 0 pin 1 [1]
+    ; Read KDAT pin on falling edge
+    in pins, 1
+    ; Wait for KCLK rising edge
+    wait 1 pin 1
+    ; Decrement x and jump back to bit_loop if not zero
+    jmp x--, bit_loop
+
+    ; All 8 bits received - autopush has pushed to RX FIFO
+    ; Now send handshake: pulse KDAT low for 85µs
+    ; 
+    ; Timing calculation at clock divider ~2.5:
+    ; - 1 PIO cycle = 20ns (125 MHz / 2.5)
+    ; - 85µs = 85000ns = 4250 cycles
+    ; - Loop iteration: 20 cycles (nop [19]) + ~2 (jmp) ≈ 22 cycles
+    ; - Iterations needed: 4250 / 22 ≈ 193
+
+    set pins, 0         ; Pull KDAT low
+    set pindirs, 1      ; Set KDAT as output
+    set y, 192          ; Loop counter for ~85µs (193 iterations)
+
+handshake_loop:
+    nop [19]            ; 20 cycles delay
+    jmp y--, handshake_loop
+
+    set pindirs, 0      ; Release KDAT (goes high via pull-up)
+
+    ; Continue to next byte
+    jmp check
+
+.wrap
+
+% c-sdk {
+static inline void keyboard_interface_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {
+    // Pin configuration:
+    // pin = KDAT (bidirectional: input for data, output for handshake)
+    // pin + 1 = KCLK (input only, keyboard-driven, never drive from host)
+    
+    // Set both pins as inputs initially
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 2, false);
+    
+    // Initialize pins for PIO control
+    pio_gpio_init(pio, pin);       // KDAT
+    pio_gpio_init(pio, pin + 1);   // KCLK
+    
+    // Configure pull-ups (open-collector design)
+    // Both keyboard and computer have pull-ups internally
+    gpio_pull_up(pin);      // KDAT pull-up
+    gpio_pull_up(pin + 1);  // KCLK pull-up
+    
+    // Get default config
+    pio_sm_config c = keyboard_interface_program_get_default_config(offset);
+    
+    // Configure SET pins (for KDAT output during handshake)
+    sm_config_set_set_pins(&c, pin, 2);
+    
+    // Configure IN pins (for reading KDAT)
+    sm_config_set_in_pins(&c, pin);
+    
+    // Configure JMP pin (for KCLK monitoring)
+    sm_config_set_jmp_pin(&c, pin + 1);
+    
+    // Configure shift register for 8-bit reception
+    // Right shift (LSB first after rotation), autopush after 8 bits
+    sm_config_set_in_shift(&c, true, true, 8);
+    
+    // Set clock divider for timing
+    sm_config_set_clkdiv(&c, div);
+    
+    // Enable RX FIFO not empty interrupt
+    pio_set_irq0_source_enabled(pio, pis_sm0_rx_fifo_not_empty + sm, true);
+    
+    // Initialize and start the state machine
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}
