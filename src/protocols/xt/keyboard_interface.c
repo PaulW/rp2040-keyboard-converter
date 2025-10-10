@@ -96,7 +96,7 @@
 /* PIO State Machine Configuration */
 uint keyboard_sm = 0;              /**< PIO state machine number */
 uint keyboard_offset = 0;          /**< PIO program memory offset */
-PIO keyboard_pio = pio1;          /**< PIO instance (pio0 or pio1) */
+PIO keyboard_pio;                  /**< PIO instance (pio0 or pio1) */
 uint keyboard_data_pin;            /**< GPIO pin for DATA line (single wire) */
 
 /**
