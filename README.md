@@ -2,14 +2,14 @@
 [![Test Building of Converter Firmware](https://github.com/PaulW/rp2040-keyboard-converter/actions/workflows/docker-image.yml/badge.svg)](https://github.com/PaulW/rp2040-keyboard-converter/actions/workflows/docker-image.yml)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/PaulW/rp2040-keyboard-converter?style=flat)
 
-A USB HID converter for vintage keyboards and mice, using the RP2040's PIO (Programmable I/O) hardware to support multiple protocols including AT/PS2, XT, and Apple M0110.
+A USB HID converter for vintage keyboards and mice, using the RP2040's PIO (Programmable I/O) hardware to support multiple protocols.
 
 ## Overview
 
 This project started as a way to use an IBM Model F PC/AT keyboard on modern hardware, and has grown to support keyboards and mice from various manufacturers and eras. The goal is to provide a non-invasive interface solution that preserves original hardware.
 
 **Features:**
-- Multi-protocol support: AT/PS2, XT, and Apple M0110 via PIO state machines
+- Multi-protocol support via PIO state machines
 - Simultaneous keyboard and mouse conversion
 - USB HID Boot Protocol for BIOS/UEFI compatibility
 - Per-keyboard configuration with layer support and macros
@@ -71,6 +71,7 @@ The converter supports multiple vintage keyboard and mouse protocols through PIO
 | **AT/PS2** | Keyboard & Mouse | IBM PC/AT and PS/2 protocol (bidirectional synchronous) | ✅ Full Support |
 | **XT** | Keyboard | IBM PC/XT protocol (unidirectional synchronous) | ✅ Full Support |
 | **Apple M0110** | Keyboard | Apple M0110/M0110A protocol (unique to these models) | ⚠️ Partial Support |
+| **Amiga** | Keyboard | Commodore Amiga protocol (bidirectional with handshake) | ✅ Full Support |
 
 See [Protocols Documentation](src/protocols/) for technical details and PIO implementation.
 
@@ -85,6 +86,7 @@ Supported keyboards with per-device configuration:
 | **IBM** | Model M (122-key) | AT/PS2 | Set 3 |
 | **Cherry** | G80-0614H, G80-1104H | XT | Set 1 |
 | **Microswitch** | 122ST13 | AT/PS2 | Set 3 |
+| **Commodore** | Amiga A500/A2000 | Amiga | Amiga |
 
 See [Keyboards Documentation](src/keyboards/) for configuration details and adding new keyboards.
 
@@ -98,13 +100,14 @@ Mouse support is protocol-based. Specify the protocol when building:
 
 ### Scancode Sets
 
-The converter translates between different scancode sets:
+The converter translates between different scancode sets (can vary depending on keyboard):
 
 | Scancode Set | Used By | Description |
 |--------------|---------|-------------|
 | **Set 1** | XT, AT/PS2 | Original IBM PC/XT codes (make code + 0x80 for break) |
 | **Set 2** | AT/PS2 (default) | Most common, uses F0 prefix for break codes |
 | **Set 3** | AT/PS2 (rare) | Uniform make/break structure |
+| **Amiga** | Commodore Amiga | Scancode Set compatible with Amiga A500/A2000 |
 
 **Implementation:** Sets 1, 2, and 3 are handled by a unified, configuration-driven processor (`src/scancodes/set123/scancode.{h,c}`) that consolidates common XT/AT protocol logic while maintaining per-set behavior. See [Scancodes Documentation](src/scancodes/) for complete tables.
 
@@ -149,6 +152,7 @@ The compiled firmware is placed in `./build/rp2040-converter.uf2` and ready to f
 | `cherry/G80-0614H` | Cherry G80-0614H |
 | `cherry/G80-1104H` | Cherry G80-1104H |
 | `microswitch/122st13` | Microswitch 122ST13 |
+| `amiga/a500` | Commodore Amiga A500/A2000 |
 
 See [Keyboards README](src/keyboards/README.md) for adding new keyboard configurations.
 
