@@ -181,7 +181,9 @@ void process_scancode(uint8_t code) {
     return;
   }
   
-  // All keys (including CAPS LOCK) processed normally
-  // CAPS LOCK special handling is done in protocol layer (keyboard_interface.c)
+  // All keys processed as simple make/break codes at this level
+  // CAPS LOCK special handling (LED state comparison, press+release generation)
+  // is performed earlier in the protocol layer (keyboard_interface.c) before
+  // codes reach this scancode processor
   handle_keyboard_report(key_code, make);
 }

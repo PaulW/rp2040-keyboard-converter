@@ -133,6 +133,14 @@ static enum {
 #define AMIGA_CAPSLOCK_KEY 0x62
 
 /**
+ * @brief Bit mask for make/break and LED state flags
+ * - Used to extract bit 7 from scan codes
+ * - For normal keys: bit 7 = 1 indicates key release (break)
+ * - For CAPS LOCK: bit 7 = 1 indicates LED is OFF
+ */
+#define AMIGA_BREAK_BIT_MASK 0x80
+
+/**
  * @brief CAPS LOCK timing state machine
  * 
  * MacOS and some other systems require CAPS LOCK to be held for a short period
@@ -255,7 +263,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
     // Amiga CAPS LOCK only sends on press, bit 7 = LED state
     // We need to generate press+release pair to toggle USB HID CAPS LOCK
     if (key_code == AMIGA_CAPSLOCK_KEY) {
-      bool kbd_led_on = (data_byte & 0x80) == 0;  // bit 7=0 → LED ON, bit 7=1 → LED OFF
+      bool kbd_led_on = (data_byte & AMIGA_BREAK_BIT_MASK) == 0;  // bit 7=0 → LED ON, bit 7=1 → LED OFF
       bool hid_caps_on = lock_leds.keys.capsLock;  // Current USB HID CAPS LOCK state
       
       LOG_DEBUG("Amiga: CAPS LOCK event - kbd LED %s, USB HID %s [raw: 0x%02X]\n",
@@ -510,10 +518,12 @@ void keyboard_interface_task() {
   // CAPS LOCK timing state machine - handle delayed release
   if (caps_lock_timing.state == CAPS_PRESS_SENT) {
     uint32_t now_ms = to_ms_since_boot(get_absolute_time());
+    // Note: Unsigned subtraction handles wraparound correctly for time deltas
+    // as long as elapsed time < 2^31 ms (~24 days). CAPS LOCK hold time is 125ms.
     if (now_ms - caps_lock_timing.press_time_ms >= CAPS_LOCK_TOGGLE_TIME_MS) {
       // Time to send release event
       if (!ringbuf_is_full()) {
-        ringbuf_put(AMIGA_CAPSLOCK_KEY | 0x80);  // Release (bit 7=1)
+        ringbuf_put(AMIGA_CAPSLOCK_KEY | AMIGA_BREAK_BIT_MASK);  // Release (bit 7=1)
         LOG_DEBUG("Amiga: CAPS LOCK release queued after %ums hold (0xE2)\n", 
                   (unsigned int)CAPS_LOCK_TOGGLE_TIME_MS);
         caps_lock_timing.state = CAPS_IDLE;

@@ -30,11 +30,9 @@
  * - Bit 7: 0 = key press (make), 1 = key release (break)
  * - Bits 6-0: Key code (0x00-0x67)
  * 
- * Special case: CAPS LOCK (0x62)
- * - Only generates code on press (never on release)
- * - Bit 7 indicates LED state (not press/release):
- *   * Bit 7 = 0: CAPS LOCK LED is now ON
- *   * Bit 7 = 1: CAPS LOCK LED is now OFF
+ * Note: CAPS LOCK (0x62) special handling, including LED state synchronization
+ * and press+release generation, is performed in the protocol layer before codes
+ * reach this processor. This function only receives normal make/break codes.
  * 
  * @param code The scancode byte to process (after de-rotation and inversion)
  */

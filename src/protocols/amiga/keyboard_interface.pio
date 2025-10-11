@@ -50,7 +50,7 @@ bit_loop:
 
     set pins, 0         ; Pull KDAT low
     set pindirs, 1      ; Set KDAT as output
-    set x, 24           ; Outer loop counter (25 iterations)
+    set x, 24           ; Outer loop counter (25 iterations: 24→0, zero-based)
 
 handshake_outer:
     set y, 30           ; Inner loop counter (31 iterations)
