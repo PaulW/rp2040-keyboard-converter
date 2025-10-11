@@ -298,7 +298,8 @@ static void keyboard_event_processor(uint8_t data_byte) {
   }
   
 #ifdef CONVERTER_LEDS
-  // Update LED status
+  // Update LED status - this pattern matches all other protocols
+  // update_converter_status() is non-blocking and ISR-safe (only sets flags, no I/O)
   converter.state.kb_ready = (keyboard_state == INITIALISED) ? 1 : 0;
   update_converter_status();
 #endif
@@ -315,6 +316,12 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * - De-rotates bits to standard format: 7-6-5-4-3-2-1-0
  * - No parity or stop bits in Amiga protocol
  * - Direct bit manipulation for optimal interrupt performance
+ * 
+ * Implementation Note - Direct Register Access:
+ * - Uses direct PIO RX FIFO register access (keyboard_pio->rxf[keyboard_sm])
+ * - This matches the established pattern across ALL protocols (AT/PS2, XT, Apple M0110)
+ * - Single-byte read is intentional - ISR fires once per byte, not burst
+ * - Performance-optimized for minimal ISR latency
  * 
  * Handshake Protocol:
  * - PIO automatically sends 85µs handshake pulse after receiving 8 bits
@@ -425,6 +432,8 @@ void keyboard_interface_setup(uint data_pin) {
   LOG_INFO("Amiga: Effective SM Clock Speed: %.2fkHz\n", effective_clock_khz);
   
   // Initialize PIO program with calculated clock divider
+  // Note: keyboard_interface_program_init (in .pio file) enables RX FIFO interrupt via:
+  //   pio_set_irq0_source_enabled(pio, pis_sm0_rx_fifo_not_empty + sm, true)
   keyboard_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset,
                                    data_pin, clock_div);
   
@@ -433,7 +442,7 @@ void keyboard_interface_setup(uint data_pin) {
       keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0,
       keyboard_input_event_handler);
   
-  // Enable the IRQ
+  // Enable the IRQ (PIO RX FIFO source already enabled in program_init above)
   irq_set_enabled(keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0, true);
   
   LOG_INFO("PIO%d SM%d Amiga Keyboard Interface loaded at offset %d (clock div %.2f)\n",

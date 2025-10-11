@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with RP2040 Keyboard Converter.
- * If not, see <https://www.gnu.org/licenses/\>.
+ * If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -52,10 +52,11 @@
  * 
  * Implementation Strategy:
  * - Most keys: Extract bit 7 for make/break, pass key code to HID layer
- * - CAPS LOCK: Generate press+release pair for EVERY Amiga CAPS LOCK event
- *   * USB HID CAPS LOCK is a toggle key that toggles on press+release cycles
- *   * Both 0x62 (LED ON) and 0xE2 (LED OFF) generate same press+release pair
- *   * Each Amiga physical press causes one USB toggle, keeping states synchronized
+ * - CAPS LOCK: Special handling is done in the protocol layer (keyboard_interface.c)
+ *   * Protocol compares keyboard LED state (from bit 7) with USB HID CAPS LOCK state
+ *   * Only sends toggle when states differ (smart synchronization)
+ *   * Generates press+release pair with configurable hold time (CAPS_LOCK_TOGGLE_TIME_MS)
+ *   * This module forwards CAPS LOCK codes like any other key
  * 
  * Data Flow:
  * Protocol Layer → De-rotation → Active-low inversion → THIS MODULE → HID Layer
