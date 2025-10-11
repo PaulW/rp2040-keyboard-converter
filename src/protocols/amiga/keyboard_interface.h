@@ -104,34 +104,6 @@
 #define AMIGA_CODE_POWERUP_END      0xFE  /**< Terminate power-up key stream */
 
 /**
- * @brief Amiga Keyboard Key Code Ranges
- * 
- * Key codes are 7-bit values (0x00-0x67) with bit 7 used for up/down flag.
- */
-#define AMIGA_KEYCODE_MIN           0x00  /**< Minimum key code (ESC = 0x45 with modifiers) */
-#define AMIGA_KEYCODE_MAX           0x67  /**< Maximum key code (Right Amiga key) */
-#define AMIGA_KEYCODE_UP_FLAG       0x80  /**< Bit 7 set = key released */
-
-/**
- * @brief Common Amiga Key Codes (Examples)
- * 
- * These are make codes (bit 7 = 0). Add 0x80 for break codes.
- */
-#define AMIGA_KEY_ESC               0x45  /**< Escape key */
-#define AMIGA_KEY_SPACE             0x40  /**< Space bar */
-#define AMIGA_KEY_RETURN            0x44  /**< Return key */
-#define AMIGA_KEY_BACKSPACE         0x41  /**< Backspace key */
-#define AMIGA_KEY_TAB               0x42  /**< Tab key */
-#define AMIGA_KEY_CAPS_LOCK         0x62  /**< Caps Lock (special: only press, no release) */
-#define AMIGA_KEY_LEFT_SHIFT        0x60  /**< Left Shift (independent matrix position) */
-#define AMIGA_KEY_RIGHT_SHIFT       0x61  /**< Right Shift (independent matrix position) */
-#define AMIGA_KEY_CTRL              0x63  /**< Control key (independent matrix position) */
-#define AMIGA_KEY_LEFT_ALT          0x64  /**< Left Alt key (independent matrix position) */
-#define AMIGA_KEY_RIGHT_ALT         0x65  /**< Right Alt key (independent matrix position) */
-#define AMIGA_KEY_LEFT_AMIGA        0x66  /**< Left Amiga key (independent matrix position) */
-#define AMIGA_KEY_RIGHT_AMIGA       0x67  /**< Right Amiga key (independent matrix position) */
-
-/**
  * @brief Protocol Timing Constants
  * 
  * These timing values are critical for proper Amiga keyboard operation.

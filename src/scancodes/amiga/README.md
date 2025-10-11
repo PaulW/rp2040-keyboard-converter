@@ -42,7 +42,7 @@ The Amiga CAPS LOCK key (scancode 0x62) has unique behavior that differs from al
 - Protocol layer detects CAPS LOCK by key code (0x62)
 - **Smart synchronization**: Compares keyboard LED state (from bit 7) with USB HID CAPS LOCK state
 - **Only toggles if states differ**: Prevents unnecessary HID events and handles desync gracefully
-- Generates press+release pair with 125ms hold time for MacOS compatibility
+- Generates press+release pair with configurable hold time (default 125ms, set via `CAPS_LOCK_TOGGLE_TIME_MS` in `config.h`)
 - This scancode processor receives normal make/break codes and processes them uniformly
 
 **Why This Design?**:
@@ -61,13 +61,13 @@ Initial state: LED OFF, USB CAPS OFF
 User presses CAPS LOCK (first time):
   Keyboard: Toggles LED OFF→ON, sends 0x62 (bit 7=0, "LED now ON")
   Protocol: Check states - LED=ON, USB=OFF → Different, send toggle
-  Scancode: Receives 0x62 (press) and 0xE2 (release after 125ms)
+  Scancode: Receives 0x62 (press) and 0xE2 (release after hold time)
   Result: Both keyboard LED and USB CAPS are ON ✓
 
 User presses CAPS LOCK (second time):
   Keyboard: Toggles LED ON→OFF, sends 0xE2 (bit 7=1, "LED now OFF")
   Protocol: Check states - LED=OFF, USB=ON → Different, send toggle
-  Scancode: Receives 0x62 (press) and 0xE2 (release after 125ms)
+  Scancode: Receives 0x62 (press) and 0xE2 (release after hold time)
   Result: Both keyboard LED and USB CAPS are OFF ✓
 
 Reboot scenario (keyboard stays powered):

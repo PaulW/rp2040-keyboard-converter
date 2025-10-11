@@ -94,6 +94,7 @@
 #include <math.h>
 
 #include "bsp/board.h"
+#include "config.h"
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "keyboard_interface.pio.h"
@@ -101,17 +102,7 @@
 #include "log.h"
 #include "pio_helper.h"
 #include "ringbuf.h"
-
-// Include appropriate scancode header
-// Try unified processor first (set123), fall back to legacy
-#if __has_include("scancode_config.h")
-  #include "scancode.h"
-  #include "scancode_config.h"
-  #define USING_SET123 1
-#else
-  #include "scancode.h"
-  #define USING_SET123 0
-#endif
+#include "scancode.h"
 
 /* PIO State Machine Configuration */
 uint keyboard_sm = 0;              /**< PIO state machine number */
@@ -142,31 +133,15 @@ static enum {
 #define AMIGA_CAPSLOCK_KEY 0x62
 
 /**
- * @brief Tracks expected keyboard CAPS LOCK LED state
- * 
- * The Amiga keyboard maintains its own CAPS LOCK LED state. We track what we
- * expect the LED state to be, and synchronize with USB HID CAPS LOCK state.
- * 
- * - true: Keyboard LED should be ON (USB CAPS LOCK should be ON)
- * - false: Keyboard LED should be OFF (USB CAPS LOCK should be OFF)
- * 
- * Synchronization Strategy:
- * - On CAPS LOCK press, check if keyboard LED state matches USB HID state
- * - If desynchronized (e.g., after reboot), generate toggle events to resync
- * - Each physical press toggles our expectation and generates USB toggle
- */
-static bool amiga_caps_led_state = false;
-
-/**
  * @brief CAPS LOCK timing state machine
  * 
  * MacOS and some other systems require CAPS LOCK to be held for a short period
  * (typically 100-150ms) before recognizing it. We use a non-blocking state machine
- * to delay the release event. 125ms provides reliable recognition on MacOS without
- * requiring host configuration changes.
+ * to delay the release event.
+ * 
+ * The hold time is configured globally via CAPS_LOCK_TOGGLE_TIME_MS in config.h,
+ * allowing reuse across different keyboard protocols that require CAPS LOCK toggling.
  */
-#define CAPS_LOCK_HOLD_TIME_MS 125  // Hold time in milliseconds
-
 static struct {
   enum {
     CAPS_IDLE,       // No pending CAPS LOCK operation
@@ -312,9 +287,6 @@ static void keyboard_event_processor(uint8_t data_byte) {
           caps_lock_timing.press_time_ms = to_ms_since_boot(get_absolute_time());
         }
       }
-      
-      // Update our tracking of keyboard LED state (regardless of sync)
-      amiga_caps_led_state = kbd_led_on;
     } else {
       // Normal key - queue to ring buffer
       if (!ringbuf_is_full()) {
@@ -529,12 +501,12 @@ void keyboard_interface_task() {
   // CAPS LOCK timing state machine - handle delayed release
   if (caps_lock_timing.state == CAPS_PRESS_SENT) {
     uint32_t now_ms = to_ms_since_boot(get_absolute_time());
-    if (now_ms - caps_lock_timing.press_time_ms >= CAPS_LOCK_HOLD_TIME_MS) {
+    if (now_ms - caps_lock_timing.press_time_ms >= CAPS_LOCK_TOGGLE_TIME_MS) {
       // Time to send release event
       if (!ringbuf_is_full()) {
         ringbuf_put(AMIGA_CAPSLOCK_KEY | 0x80);  // Release (bit 7=1)
         LOG_DEBUG("Amiga: CAPS LOCK release queued after %ums hold (0xE2)\n", 
-                  (unsigned int)CAPS_LOCK_HOLD_TIME_MS);
+                  (unsigned int)CAPS_LOCK_TOGGLE_TIME_MS);
         caps_lock_timing.state = CAPS_IDLE;
       }
       // If buffer full, we'll try again on next iteration

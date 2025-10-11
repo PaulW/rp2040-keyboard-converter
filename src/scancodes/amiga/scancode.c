@@ -87,14 +87,6 @@
 #include "log.h"
 
 /**
- * @brief Amiga CAPS LOCK scancode (without bit 7)
- * 
- * CAPS LOCK is at position 0x62 in the Amiga keyboard matrix.
- * This constant is used to detect CAPS LOCK presses.
- */
-#define AMIGA_CAPSLOCK_KEY 0x62
-
-/**
  * @brief Maximum valid Amiga key code
  * 
  * Amiga keyboards use 7-bit key codes (0x00-0x67 = 0-103 decimal).

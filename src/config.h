@@ -133,6 +133,12 @@
 #define PIEZO_PIN 11         // Piezo Buzzer GPIO Pin.  Only required if CONVERTER_PIEZO is defined
 #define LED_PIN 29           // LED GPIO Pin.  If using WS2812 LEDs, this is the GPIO Pin for the Data Line, otherwise we require 4 total GPIO for individual LED connections
 
+// --- CAPS LOCK Toggle Configuration ---
+// Time in milliseconds to hold a CAPS LOCK key press before generating the release event.
+// This is used by keyboards that require toggling CAPS LOCK state (e.g., Amiga, other vintage keyboards).
+// The timing ensures compatibility with modern OS CAPS LOCK behavior (e.g., macOS requires a period of time between make and break events).
+#define CAPS_LOCK_TOGGLE_TIME_MS 125  // Hold time for CAPS LOCK toggle (milliseconds)
+
 // Define some Compile Time variables.  Do not modify below this line
 #define BUILD_TIME _BUILD_TIME
 
