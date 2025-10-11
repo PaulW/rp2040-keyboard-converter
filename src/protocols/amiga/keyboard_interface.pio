@@ -1,0 +1,134 @@
+.program keyboard_interface
+.wrap_target
+
+; Pins: 0 = KDAT (bidirectional), 1 = KCLK (input only, keyboard-driven)
+
+init:
+    ; Wait until KCLK is HIGH before we continue (keyboard idle state)
+    wait 1 pin 1
+
+check:
+    ; Wait for KCLK to go low (start of byte transmission from keyboard)
+    jmp pin, check
+
+    ; Receiving Data
+    ;        ___ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _________________
+    ;   KCLK    \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
+    ;        ___ ___ ___ ___ ___ ___ ___ ___ ___     handshake
+    ;   KDAT    \___X___X___X___X___X___X___X___\_______________/
+    ;             6   5   4   3   2   1   0   7
+    ;
+    ; Amiga transmits bits in rotated order: 6-5-4-3-2-1-0-7
+    ; Host reads KDAT on KCLK falling edge
+    ; KCLK is brought LOW for ~20µs, and HIGH for ~20µs (~60µs per bit)
+    ; After 8 bits, host must pulse KDAT low for 85µs (handshake)
+
+    ; Read 8 bits (bit order: 6-5-4-3-2-1-0-7)
+    set x, 7
+
+bit_loop:
+    ; Wait for KCLK falling edge
+    wait 0 pin 1 [1]
+    ; Read KDAT pin on falling edge
+    in pins, 1
+    ; Wait for KCLK rising edge
+    wait 1 pin 1
+    ; Decrement x and jump back to bit_loop if not zero
+    jmp x--, bit_loop
+
+    ; All 8 bits received - autopush has pushed to RX FIFO
+    ; Now send handshake: pulse KDAT low for 85µs (minimum required)
+    ; 
+    ; IMPORTANT: Actual timing with current clock divider configuration:
+    ; 
+    ; Clock divider calculation:
+    ; - calculate_clock_divider(AMIGA_TIMING_CLOCK_MIN_US) where AMIGA_TIMING_CLOCK_MIN_US = 20µs
+    ; - System clock: 125 MHz = 125,000 kHz
+    ; - Target sampling: (1000 / 20µs) × 5 samples = 250 kHz
+    ; - Calculated divider: 125,000 / 250 = 500
+    ; 
+    ; Actual handshake timing with div=500:
+    ; - 1 PIO cycle = 4µs (125 MHz / 500)
+    ; - Nested loop: outer = 25, inner = 31
+    ; - Each inner iteration: nop [4] = 5 cycles × 4µs = 20µs
+    ; - Inner loop total: 31 iterations × 20µs = 620µs
+    ; - Outer loop total: 25 iterations × 620µs = 15,500µs = 15.5ms
+    ; - Plus setup/teardown overhead ≈ 15.5ms total pulse width
+    ; 
+    ; Design note:
+    ; The clock divider (500) is optimized for fast input sampling of KCLK pulses,
+    ; not for precise handshake timing. The resulting 15.5ms handshake pulse is
+    ; significantly longer than the protocol minimum of 85µs, but well within the
+    ; keyboard's tolerance range (85µs minimum to 143ms timeout). This has been
+    ; verified working with hardware testing on Amiga A500/A2000/A3000/A4000.
+    ; 
+    ; Future improvement:
+    ; Consider separating timing domains (see issue #18) to achieve both
+    ; precise input sampling and accurate output handshake timing.
+
+    set pins, 0         ; Pull KDAT low
+    set pindirs, 1      ; Set KDAT as output
+    set x, 24           ; Outer loop counter (25 iterations: 24→0, zero-based)
+
+handshake_outer:
+    set y, 30           ; Inner loop counter (31 iterations)
+
+handshake_inner:
+    nop [4]             ; 5 cycles delay per iteration
+    jmp y--, handshake_inner
+    jmp x--, handshake_outer
+
+    set pindirs, 0      ; Release KDAT (goes high via pull-up)
+
+    ; Continue to next byte
+    jmp check
+
+.wrap
+
+% c-sdk {
+static inline void keyboard_interface_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {
+    // Pin configuration:
+    // pin = KDAT (bidirectional: input for data, output for handshake)
+    // pin + 1 = KCLK (input only, keyboard-driven, never drive from host)
+    
+    // Set both pins as inputs initially
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 2, false);
+    
+    // Initialize pins for PIO control
+    pio_gpio_init(pio, pin);       // KDAT
+    pio_gpio_init(pio, pin + 1);   // KCLK
+    
+    // Configure pull-ups (open-collector design)
+    // Both keyboard and computer have pull-ups internally
+    gpio_pull_up(pin);      // KDAT pull-up
+    gpio_pull_up(pin + 1);  // KCLK pull-up
+    
+    // Get default config
+    pio_sm_config c = keyboard_interface_program_get_default_config(offset);
+    
+    // Configure SET pins (only KDAT) for handshake pulldown
+    sm_config_set_set_pins(&c, pin, 1);
+    
+    // Configure IN pins (for reading KDAT)
+    sm_config_set_in_pins(&c, pin);
+    
+    // Configure JMP pin (for KCLK monitoring)
+    sm_config_set_jmp_pin(&c, pin + 1);
+    
+    // Configure shift register for 8-bit reception
+    // Left shift (MSB first) - first bit received goes to bit 7, shifts left
+    // Amiga sends bits in order: 6-5-4-3-2-1-0-7
+    // After left-shift reception: [6 5 4 3 2 1 0 7] (rotated format as expected)
+    sm_config_set_in_shift(&c, false, true, 8);
+    
+    // Set clock divider for timing
+    sm_config_set_clkdiv(&c, div);
+    
+    // Enable RX FIFO not empty interrupt
+    pio_set_irq0_source_enabled(pio, pis_sm0_rx_fifo_not_empty + sm, true);
+    
+    // Initialize and start the state machine
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}
