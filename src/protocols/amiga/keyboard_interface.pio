@@ -42,16 +42,23 @@ bit_loop:
     ; Timing calculation at clock divider ~2.5:
     ; - 1 PIO cycle = 20ns (125 MHz / 2.5)
     ; - 85µs = 85000ns = 4250 cycles
-    ; - Loop iteration: 20 cycles (nop [19]) + ~2 (jmp) ≈ 22 cycles
-    ; - Iterations needed: 4250 / 22 ≈ 193
+    ; - Nested loop: outer = 25, inner = 31
+    ; - Each inner iteration: nop [4] = 5 cycles
+    ; - Inner loop cycles: 31 * 5 = 155 cycles
+    ; - Total: 25 * 155 = 3875 cycles ≈ 77.5µs
+    ; - Plus setup overhead ≈ 85µs total
 
     set pins, 0         ; Pull KDAT low
     set pindirs, 1      ; Set KDAT as output
-    set y, 192          ; Loop counter for ~85µs (193 iterations)
+    set x, 24           ; Outer loop counter (25 iterations)
 
-handshake_loop:
-    nop [19]            ; 20 cycles delay
-    jmp y--, handshake_loop
+handshake_outer:
+    set y, 30           ; Inner loop counter (31 iterations)
+
+handshake_inner:
+    nop [4]             ; 5 cycles delay per iteration
+    jmp y--, handshake_inner
+    jmp x--, handshake_outer
 
     set pindirs, 0      ; Release KDAT (goes high via pull-up)
 
@@ -91,8 +98,10 @@ static inline void keyboard_interface_program_init(PIO pio, uint sm, uint offset
     sm_config_set_jmp_pin(&c, pin + 1);
     
     // Configure shift register for 8-bit reception
-    // Right shift (LSB first after rotation), autopush after 8 bits
-    sm_config_set_in_shift(&c, true, true, 8);
+    // Left shift (MSB first) - first bit received goes to bit 7, shifts left
+    // Amiga sends bits in order: 6-5-4-3-2-1-0-7
+    // After left-shift reception: [6 5 4 3 2 1 0 7] (rotated format as expected)
+    sm_config_set_in_shift(&c, false, true, 8);
     
     // Set clock divider for timing
     sm_config_set_clkdiv(&c, div);

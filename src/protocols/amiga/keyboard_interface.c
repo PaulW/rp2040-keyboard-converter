@@ -137,6 +137,45 @@ static enum {
 } keyboard_state = UNINITIALISED;
 
 /**
+ * @brief Amiga CAPS LOCK key code (without bit 7)
+ */
+#define AMIGA_CAPSLOCK_KEY 0x62
+
+/**
+ * @brief Tracks expected keyboard CAPS LOCK LED state
+ * 
+ * The Amiga keyboard maintains its own CAPS LOCK LED state. We track what we
+ * expect the LED state to be, and synchronize with USB HID CAPS LOCK state.
+ * 
+ * - true: Keyboard LED should be ON (USB CAPS LOCK should be ON)
+ * - false: Keyboard LED should be OFF (USB CAPS LOCK should be OFF)
+ * 
+ * Synchronization Strategy:
+ * - On CAPS LOCK press, check if keyboard LED state matches USB HID state
+ * - If desynchronized (e.g., after reboot), generate toggle events to resync
+ * - Each physical press toggles our expectation and generates USB toggle
+ */
+static bool amiga_caps_led_state = false;
+
+/**
+ * @brief CAPS LOCK timing state machine
+ * 
+ * MacOS and some other systems require CAPS LOCK to be held for a short period
+ * (typically 100-150ms) before recognizing it. We use a non-blocking state machine
+ * to delay the release event. 125ms provides reliable recognition on MacOS without
+ * requiring host configuration changes.
+ */
+#define CAPS_LOCK_HOLD_TIME_MS 125  // Hold time in milliseconds
+
+static struct {
+  enum {
+    CAPS_IDLE,       // No pending CAPS LOCK operation
+    CAPS_PRESS_SENT, // Press sent, waiting to send release
+  } state;
+  uint32_t press_time_ms;  // Time when press was sent
+} caps_lock_timing = { .state = CAPS_IDLE, .press_time_ms = 0 };
+
+/**
  * @brief Amiga Keyboard Scan Code Processor
  * 
  * Processes scan codes received from Amiga keyboards using the bidirectional
@@ -234,10 +273,55 @@ static void keyboard_event_processor(uint8_t data_byte) {
   
   // Normal key code processing (INITIALISED state only, but we're always INITIALISED after first byte)
   if (keyboard_state == INITIALISED) {
-    if (!ringbuf_is_full()) {
-      ringbuf_put(data_byte);
+    // Extract key code (bits 6-0) for CAPS LOCK detection
+    uint8_t key_code = data_byte & 0x7F;
+    
+    // Special handling for CAPS LOCK (0x62/0xE2)
+    // Amiga CAPS LOCK only sends on press, bit 7 = LED state
+    // We need to generate press+release pair to toggle USB HID CAPS LOCK
+    if (key_code == AMIGA_CAPSLOCK_KEY) {
+      bool kbd_led_on = (data_byte & 0x80) == 0;  // bit 7=0 → LED ON, bit 7=1 → LED OFF
+      bool hid_caps_on = lock_leds.keys.capsLock;  // Current USB HID CAPS LOCK state
+      
+      LOG_DEBUG("Amiga: CAPS LOCK event - kbd LED %s, USB HID %s [raw: 0x%02X]\n",
+             kbd_led_on ? "ON" : "OFF",
+             hid_caps_on ? "ON" : "OFF",
+             data_byte);
+      
+      // Synchronization logic: Only send toggle if states differ
+      // - kbd_led_on == hid_caps_on: Already in sync, ignore
+      // - kbd_led_on != hid_caps_on: Out of sync, send toggle to fix
+      if (kbd_led_on == hid_caps_on) {
+        // States match - keyboard and HID are synchronized
+        LOG_DEBUG("Amiga: CAPS LOCK already in sync (both %s) - no action needed\n",
+                  kbd_led_on ? "ON" : "OFF");
+        // Do nothing - no HID events needed
+      } else {
+        // States differ - need to toggle HID to synchronize
+        LOG_DEBUG("Amiga: CAPS LOCK out of sync - kbd=%s, HID=%s - sending toggle\n",
+                  kbd_led_on ? "ON" : "OFF",
+                  hid_caps_on ? "ON" : "OFF");
+        
+        // Queue press event (bit 7=0)
+        if (!ringbuf_is_full()) {
+          ringbuf_put(AMIGA_CAPSLOCK_KEY);
+          LOG_DEBUG("Amiga: CAPS LOCK press queued (0x62)\n");
+          
+          // Start timing state machine - release will be sent after delay
+          caps_lock_timing.state = CAPS_PRESS_SENT;
+          caps_lock_timing.press_time_ms = to_ms_since_boot(get_absolute_time());
+        }
+      }
+      
+      // Update our tracking of keyboard LED state (regardless of sync)
+      amiga_caps_led_state = kbd_led_on;
     } else {
-      LOG_WARN("Amiga: Ring buffer full, dropping key code 0x%02X\n", data_byte);
+      // Normal key - queue to ring buffer
+      if (!ringbuf_is_full()) {
+        ringbuf_put(data_byte);
+      } else {
+        LOG_WARN("Amiga: Ring buffer full, dropping key code 0x%02X\n", data_byte);
+      }
     }
   }
   
@@ -303,15 +387,14 @@ static void __isr keyboard_input_event_handler() {
   // PIO has already sent the handshake automatically
   uint8_t rotated_byte = (uint8_t)(keyboard_pio->rxf[keyboard_sm] & 0xFF);
   
+  // Amiga protocol is active-low: HIGH = 0, LOW = 1
+  // Invert all bits to get correct logical values
+  rotated_byte = ~rotated_byte;
+  
   // De-rotate the byte to standard bit order
   // Received: [6 5 4 3 2 1 0 7]
   // Target:   [7 6 5 4 3 2 1 0]
   uint8_t data_byte = amiga_derotate_byte(rotated_byte);
-  
-  // Log received byte for debugging (only when needed)
-  #ifdef DEBUG_AMIGA_PROTOCOL
-  LOG_DEBUG("Amiga RX: 0x%02X (rotated: 0x%02X)\n", data_byte, rotated_byte);
-  #endif
   
   // Process the de-rotated byte through state machine
   keyboard_event_processor(data_byte);
@@ -340,19 +423,12 @@ static void __isr keyboard_input_event_handler() {
  * - IRQ priority set for timely handshake response
  * 
  * @param data_pin GPIO pin for KDAT (bidirectional data line)
- * @param clock_pin GPIO pin for KCLK (input only, keyboard-driven)
+ *                 KCLK is automatically assigned to data_pin + 1
  */
-void keyboard_interface_setup(uint data_pin, uint clock_pin) {
-  // Store pin assignments for later use
+void keyboard_interface_setup(uint data_pin) {
+  // Store pin assignments - KCLK must be KDAT + 1 (PIO program requirement)
   keyboard_data_pin = data_pin;
-  keyboard_clock_pin = clock_pin;
-  
-  // Verify clock_pin is data_pin + 1 (PIO program assumes adjacent pins)
-  if (clock_pin != data_pin + 1) {
-    LOG_ERROR("Amiga: KCLK pin must be KDAT pin + 1 (got KDAT=%d, KCLK=%d)\n",
-              data_pin, clock_pin);
-    return;
-  }
+  keyboard_clock_pin = data_pin + 1;
   
   // Find available PIO block
   keyboard_pio = find_available_pio(&keyboard_interface_program);
@@ -400,23 +476,91 @@ void keyboard_interface_setup(uint data_pin, uint clock_pin) {
 /**
  * @brief Main task function for Amiga keyboard interface
  * 
- * This function should be called periodically from the main loop to handle
- * any deferred processing. Currently, all critical processing happens in
- * the ISR (handshake timing is too tight to defer).
+ * This function must be called periodically from the main loop to process
+ * scan codes from the ring buffer and handle keyboard state management.
  * 
- * Future enhancements might include:
- * - Watchdog monitoring for keyboard responsiveness
- * - Statistics tracking for lost sync events
- * - Power management for keyboard LED control
- * - Reset warning handling coordination
+ * Operation Modes:
+ * 
+ * UNINITIALISED State:
+ * - Waiting for first byte from keyboard (power-up sequence)
+ * - Keyboard sends 0xFD (power-up start) after self-test
+ * - Transition to INITIALISED happens in ISR on first byte
+ * 
+ * INITIALISED State (Normal Operation):
+ * - Process scan codes from ring buffer when HID interface ready
+ * - Coordinates scan code translation for Amiga protocol
+ * - Maintains optimal data flow between keyboard and USB HID
+ * - Prevents HID report queue overflow through ready checking
+ * 
+ * Data Processing:
+ * - Non-blocking ring buffer processing for real-time performance
+ * - HID-ready checking prevents USB report queue overflow
+ * - Scan codes processed through dedicated Amiga processor
+ * - Handles CAPS LOCK special behavior (press only, LED state tracking)
+ * 
+ * Protocol Features:
+ * - No initialization sequence needed (unlike AT/PS2)
+ * - No LED control capability from computer (keyboard maintains state)
+ * - Bidirectional handshake handled entirely in PIO hardware
+ * - Special codes (0x78, 0xF9-0xFE) filtered by event processor
+ * 
+ * Error Recovery:
+ * - Lost sync recovery automatic (keyboard sends 0xF9, retransmits)
+ * - Buffer overflow protection (ring buffer full checks)
+ * - Keyboard self-test failures logged (0xFC)
+ * - Reset warning detection (0x78)
+ * 
+ * Performance:
+ * - Called from main loop (not time-critical like ISR)
+ * - Processing deferred until HID ready (prevents USB congestion)
+ * - Efficient scan code processing without protocol overhead
+ * - Direct translation to modern HID key codes via scancode processor
+ * 
+ * Hardware Monitoring:
+ * - Converter status LED updates when CONVERTER_LEDS enabled
+ * - Keyboard ready state reflects INITIALISED status
+ * 
+ * @note Must be called regularly from main loop for scan code processing
+ * @note Ring buffer filled by ISR, consumed here (producer-consumer pattern)
+ * @note HID ready check is critical to prevent USB report queue overflow
+ * @note Handshake timing handled entirely in PIO (not here)
  */
 void keyboard_interface_task() {
-  // Currently, all processing happens in ISR due to strict handshake timing
-  // This function reserved for future enhancements
+  // CAPS LOCK timing state machine - handle delayed release
+  if (caps_lock_timing.state == CAPS_PRESS_SENT) {
+    uint32_t now_ms = to_ms_since_boot(get_absolute_time());
+    if (now_ms - caps_lock_timing.press_time_ms >= CAPS_LOCK_HOLD_TIME_MS) {
+      // Time to send release event
+      if (!ringbuf_is_full()) {
+        ringbuf_put(AMIGA_CAPSLOCK_KEY | 0x80);  // Release (bit 7=1)
+        LOG_DEBUG("Amiga: CAPS LOCK release queued after %ums hold (0xE2)\n", 
+                  (unsigned int)CAPS_LOCK_HOLD_TIME_MS);
+        caps_lock_timing.state = CAPS_IDLE;
+      }
+      // If buffer full, we'll try again on next iteration
+    }
+  }
   
-  // Potential future additions:
-  // - Monitor for keyboard disconnection (no data for extended period)
-  // - Handle reset warning sequence coordination
-  // - Implement keyboard LED control (if supported by keyboard model)
-  // - Track statistics (sync losses, buffer overflows, etc.)
+  // INITIALISED state: Process scan codes from ring buffer
+  if (keyboard_state == INITIALISED) {
+    if (!ringbuf_is_empty() && tud_hid_ready()) {
+      // Process scan codes only when HID interface ready to prevent report queue overflow
+      // HID ready check ensures reliable USB report transmission
+      
+      uint8_t scancode = ringbuf_get();  // Retrieve next scan code from interrupt-filled buffer
+      
+      // Process through Amiga scancode processor
+      // CAPS LOCK handling already done in ISR (generates press+release pair)
+      // All keys here are processed normally
+      process_scancode(scancode);
+    }
+  }
+  // UNINITIALISED state: Waiting for keyboard power-up
+  // No action needed here - transition happens in ISR on first byte received
+  
+#ifdef CONVERTER_LEDS
+  // Update LED status to reflect keyboard ready state
+  converter.state.kb_ready = (keyboard_state == INITIALISED) ? 1 : 0;
+  update_converter_status();
+#endif
 }

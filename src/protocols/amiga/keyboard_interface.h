@@ -156,12 +156,12 @@
  * 
  * Sets up PIO state machine and GPIO configuration for Amiga keyboard
  * communication. Configures bidirectional KDAT line for data reception
- * and handshake transmission.
+ * and handshake transmission. KCLK pin is automatically set to data_pin + 1.
  * 
  * @param data_pin GPIO pin for KDAT (bidirectional: input for data, output for handshake)
- * @param clock_pin GPIO pin for KCLK (input only, keyboard-driven, never drive low)
+ *                 KCLK is automatically assigned to data_pin + 1
  */
-void keyboard_interface_setup(uint data_pin, uint clock_pin);
+void keyboard_interface_setup(uint data_pin);
 
 /**
  * @brief Main task function for Amiga keyboard interface
