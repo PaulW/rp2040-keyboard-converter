@@ -88,8 +88,8 @@ static inline void keyboard_interface_program_init(PIO pio, uint sm, uint offset
     // Get default config
     pio_sm_config c = keyboard_interface_program_get_default_config(offset);
     
-    // Configure SET pins (for KDAT output during handshake)
-    sm_config_set_set_pins(&c, pin, 2);
+    // Configure SET pins (only KDAT) for handshake pulldown
+    sm_config_set_set_pins(&c, pin, 1);
     
     // Configure IN pins (for reading KDAT)
     sm_config_set_in_pins(&c, pin);

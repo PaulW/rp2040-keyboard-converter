@@ -89,6 +89,7 @@
 #define KEYBOARD_INTERFACE_H
 
 #include "pico/stdlib.h"
+#include <stdbool.h>
 
 /**
  * @brief Amiga Protocol Special Codes
@@ -142,9 +143,8 @@ void keyboard_interface_setup(uint data_pin);
  * codes, and manages the Amiga protocol state machine. Must be called
  * periodically from main loop to ensure handshake timing requirements are met.
  * 
- * Critical: This function must execute frequently enough to send handshakes
- * within 1µs of byte reception. Consider running from interrupt context or
- * high-priority task.
+ * Note: Handshake timing (≤1µs start, 85µs pulse) is handled in PIO/ISR.
+ * This task should run regularly to drain scan codes and manage CAPS LOCK timing.
  */
 void keyboard_interface_task();
 

@@ -83,6 +83,7 @@
 #include "scancode.h"
 
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "hid_interface.h"
 #include "log.h"
