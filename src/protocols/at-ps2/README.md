@@ -73,29 +73,84 @@ s  = Stop bit (1 for IBM AT, 0 for some variants)
 
 ### Transmitting Data (Host → Device)
 
+When the host needs to send commands to the device (keyboard/mouse), it must follow a specific protocol sequence to seize control of the bus from the device.
+
 ```
-IBM AT Format:
-    __      _ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _ A __ B _____
+Standard AT/PS2:
+    __ I__R _ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _ A __ B _____
 CLK   \____/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/  \_/
     ______     ___ ___ ___ ___ ___ ___ ___ ___ ______     ____
 DAT       \___/___X___X___X___X___X___X___X___X___/  \___/
-       H    R   0   1   2   3   4   5   6   7   P   s ACK
+       H   I R  0   1   2   3   4   5   6   7   P   s ACK
 
-Z-150/Other AT Variants:
-    __      _ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _ A __________
+Z-150/Other AT (irregular ACK clock):
+    __ I__R _ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _ A __________
 CLK   \____/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ XXXXX
     ______     ___ ___ ___ ___ ___ ___ ___ ___ ______     ____
-DAT       \___/___X___X___X___X___X___X___X___X___/  \___/
-       H    R   0   1   2   3   4   5   6   7   P   s ACK*
+DAT       \___/___X___X___X___X___X___X___X___X___X___/  \___/
+       H   I R  0   1   2   3   4   5   6   7   P   s ACK*
 
-H   = Host pulls DATA low to request transmission
-R   = Request-to-send acknowledgment  
+Legend:
+H   = Host/Idle state (both lines HIGH via pull-ups)
+I   = Inhibit phase (CLK driven LOW by host, ~96µs)
+R   = Request-to-Send (DATA LOW, CLK released, acts as Start Bit)
 0-7 = Data bits (LSB first)
 P   = Parity bit (odd parity)
 s   = Stop bit (always 1)
-ACK = Device acknowledgment (DATA pulled low briefly)
-*   = Some variants have irregular clock during ACK
+ACK = Device acknowledgment (DATA pulled LOW briefly)
+*   = Some variants have slow/irregular clock during ACK
 ```
+
+#### Host-to-Device Transmission Sequence
+
+**Phase 1: Inhibit**
+1. Host pulls **CLK LOW** to inhibit device transmission
+2. Duration: ~96µs (must exceed typical bit period of 60-100µs)
+3. Purpose: Signals to device that host wants to transmit
+
+**Phase 2: Request-to-Send (RTS)**
+1. Host pulls **DATA LOW** (serves dual purpose: RTS signal + Start Bit)
+2. Host releases **CLK** (returns HIGH via pull-up)
+3. Device detects CLK release and begins generating clock pulses
+
+**Phase 3: Data Transmission**
+1. Device controls CLK timing (generates clock edges)
+2. Host sends 8 data bits + 1 parity bit synchronized to device clock
+3. Data transmitted LSB-first on each clock falling edge
+
+**Phase 4: Stop Bit**
+1. Host pulls **DATA HIGH** (Stop Bit = 1)
+2. Signals end of host transmission frame
+
+**Phase 5: Acknowledgment**
+1. Host releases DATA (sets pin to input mode)
+2. Device pulls **DATA LOW** briefly (ACK)
+3. Device releases DATA (returns HIGH)
+4. Transmission complete, both lines return to idle (HIGH)
+
+#### Implementation Details (RP2040 PIO)
+
+The RP2040 PIO implementation uses the following timing for host-to-device transmission:
+
+**Clock Divider:** 750 (from `calculate_clock_divider(30µs)`)
+- Minimum clock pulse width: 30µs (per IBM specification)
+- 5× oversampling: 166.67 kHz sampling rate
+- PIO cycle time: **6µs per cycle**
+
+**Inhibit Phase:**
+```pio
+set pindirs 3 [15]  ; Set both DATA and CLK to output (16 cycles)
+set pins, 0 [15]    ; Drive both LOW: CLK=Inhibit, DATA=RTS (16 cycles)
+set pindirs 1       ; Release CLK (input), keep DATA as output (LOW)
+```
+- Total inhibit time: 16 cycles × 6µs = **96µs**
+- Meets protocol requirement: 96µs > 60µs minimum bit period ✓
+
+**Critical Notes:**
+- The host MUST pull CLK LOW during inhibit (not just DATA)
+- Duration must exceed typical bit period to ensure device recognition
+- Open-collector design: use input mode to release lines (pull-ups bring HIGH)
+- Some keyboards (e.g., Z-150) have irregular ACK timing - implementation handles this
 
 ## Protocol Data Format
 

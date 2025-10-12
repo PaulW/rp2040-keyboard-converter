@@ -1,6 +1,4 @@
 .program keyboard_interface
-.wrap_target
-
 ; Pins: 0 = KDAT (bidirectional), 1 = KCLK (input only, keyboard-driven)
 
 init:
@@ -81,8 +79,6 @@ handshake_loop:
 
     ; Continue to next byte
     jmp check
-
-.wrap
 
 % c-sdk {
 static inline void keyboard_interface_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {

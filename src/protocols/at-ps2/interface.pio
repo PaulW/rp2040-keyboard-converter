@@ -1,6 +1,4 @@
 .program pio_interface
-.wrap_target
-
 ; Pins: 0 = data, 1 = clock
 
 init:
@@ -52,54 +50,68 @@ bitLoopIn:
     jmp check
 
 bitLoopOut:
-    ; Sending Data
-    ;    IBM AT:
-    ;        __      _ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _ A __ B _____
+    ; Sending Data (Host → Device)
+    ;    Standard AT/PS2:
+    ;        __ I__R _ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _ A __ B _____
     ;    CLK   \____/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/  \_/
     ;        ______     ___ ___ ___ ___ ___ ___ ___ ___ ______     ____
     ;    DAT       \___/___X___X___X___X___X___X___X___X___/  \___/
-    ;           H    R   0   1   2   3   4   5   6   7   P   s ACK
+    ;           H   I R  0   1   2   3   4   5   6   7   P   s ACK
     ;
-    ;    Z-150/Other AT:
-    ;        __      _ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _ A __________
+    ;    Z-150/Other AT (irregular ACK clock):
+    ;        __ I__R _ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _ A __________
     ;    CLK   \____/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ XXXXX
     ;        ______     ___ ___ ___ ___ ___ ___ ___ ___ ______     ____
     ;    DAT       \___/___X___X___X___X___X___X___X___X___/  \___/
-    ;           H    R   0   1   2   3   4   5   6   7   P   s ACK*
+    ;           H   I R  0   1   2   3   4   5   6   7   P   s ACK*
     ;
-    ;    * No or slow clock pulse for ACK
+    ;    Legend: H=Idle, I=Inhibit, R=RTS/Start, 0-7=Data, P=Parity, s=Stop, ACK=Acknowledge
+    ;    * = Some keyboards have slow/irregular clock during ACK
 
-    ; Set data pin low and configure pins
-    set pins, 0
-    set pindirs 2 [14]   ; Set data pin to output mode
-    set pindirs 1  [1]   ; Set clock pin to input mode
-    ; Set x to 8 (to write out 8 Data Bits and 1 Parity Bit)
+    ; Host-to-Device Transmission Sequence (see README for detailed timing):
+    ; 1. Inhibit: Pull CLK LOW for ~96µs (stops keyboard transmission)
+    ; 2. RTS: Pull DATA LOW (Request-to-Send + Start bit)
+    ; 3. Release: Set CLK to input (keyboard takes over clock generation)
+    ; 4. Data: Send 8 bits + parity on keyboard clock edges
+    ; 5. Stop: Pull DATA HIGH
+    ; 6. ACK: Wait for keyboard to pull DATA LOW (acknowledgment)
+
+    ; Inhibit Phase: Drive both CLK and DATA LOW for ~96µs
+    ; Clock divider 750 → 6µs per cycle, 16 cycles = 96µs
+    set pindirs 3 [15]  ; Set both DATA (Pin 0) and CLK (Pin 1) to output
+    set pins, 0 [15]    ; Drive both LOW: CLK=Inhibit, DATA=RTS/Start Bit
+
+    ; Release CLK, keep DATA LOW
+    ; Keyboard detects CLK release and begins generating clock pulses
+    set pindirs 1       ; CLK → input (released HIGH), DATA → output (LOW)
+
+    ; Send 8 data bits + 1 parity bit (9 total from OSR, LSB first)
+    ; Start bit (0) is implicit in DATA LOW state from RTS phase
     set x, 8
 
 bitLoopOutLoop:
-    ; Wait for clock signal to go low and start sending bit
+    ; Wait for keyboard to generate clock edges, output data bits LSB-first
     wait 0 pin 1 [1]
-    out pins, 1
-    ; Wait for clock signal to go high
+    out pins, 1         ; Output next bit from OSR to DATA (Pin 0)
     wait 1 pin 1
-    ; Decrement x and jump back to bitLoopOutLoop if it's not zero
     jmp x--, bitLoopOutLoop
 
-    ; Send stop bit
+    ; Send Stop bit (DATA HIGH)
     wait 0 pin 1 [1]
-    set pins, 1
+    set pins, 1         ; Drive DATA HIGH (Stop Bit = 1)
     wait 1 pin 1
 
-    ; Wait for ACK to acknowledge
-    set pindirs, 0  ; Set data pin to input mode so we can read ACK
-
+    ; Wait for ACK (keyboard pulls DATA LOW briefly)
+    set pindirs, 0      ; Release DATA (set to input to read ACK)
     wait 0 pin 0 [1]
-    wait 1 pin 0 [5]
+    wait 1 pin 0 [5]    ; Extra delay [5] for keyboard timing variations
+
+    ; Transmission complete, return to idle
+    jmp check
 
 % c-sdk {
 static inline void pio_interface_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {
   pio_sm_set_consecutive_pindirs(pio, sm, pin, 2, false);
-
   pio_gpio_init(pio, pin);
   pio_gpio_init(pio, pin + 1);
 
@@ -108,10 +120,9 @@ static inline void pio_interface_program_init(PIO pio, uint sm, uint offset, uin
   // as-per USB spec, both DATA and CLK are low and await device to bring high.
   // AT/PS2 Specification will keep both floating HIGH when power on/connected.
   gpio_pull_up(pin);
-  gpio_pull_down(pin + 1);
+  gpio_pull_up(pin + 1); // Ensure CLK has a pull-up too. (Correction)
 
   pio_sm_config c = pio_interface_program_get_default_config(offset);
-
   sm_config_set_set_pins(&c, pin, 2);
 
   sm_config_set_jmp_pin(&c, pin + 1);
