@@ -1,126 +1,104 @@
 .program keyboard_interface
-.wrap_target
-
-; Pins: 0 = data, 1 = clock
+; Pins: 0 = DATA, 1 = CLOCK (CLK)
 
 init:
-    ; Wait for CLK to go HIGH.  At power on, CLOCK is always LOW then brought HIGH.
+    ; Wait for CLK to go HIGH (keyboard ready after power-on reset)
+    ; At power-on, CLK is always LOW, then brought HIGH by keyboard
     wait 1 pin 1 [1]
 
 pwrOnCheck:
-    ; Now check if DATA is HIGH.  During power on INIT, CLOCK is brought high, but then
-    ; DATA is brought high for ~500ms, before going LOW.  If we are resetting following a
-    ; SOFT reset, then DATA will already be low.
+    ; Power-on sequence: CLK goes HIGH, then DATA goes HIGH for ~500ms
+    ; If soft reset (not power-on), DATA will already be LOW
+    ; Loop here until DATA goes LOW, signaling readiness for soft reset
 
-    ; Read in DATA line
-    mov isr null
-    in pins, 1
+    mov isr null        ; Clear ISR for clean DATA read
+    in pins, 1          ; Read DATA pin state
 
-    ; If Data is LOW, skip ahead to softReset
-    mov y, isr
-    jmp !y softReset
+    mov y, isr          ; Move DATA state to Y for conditional jump
+    jmp !y softReset    ; If DATA is LOW (0), proceed to soft reset
 
-    ; DATA still likely HIGH, so loop back around to check.
-    jmp pwrOnCheck
+    jmp pwrOnCheck      ; DATA still HIGH, continue waiting
 
 softReset:
-    ; Firstly, clear our internal ISR of the previous testing bit.
-    mov isr null
+    ; XT Soft Reset Protocol
+    ; ======================
+    ; Host pulls CLK LOW for ~20ms to request reset
+    ; Keyboard ACKs by pulling DATA HIGH
+    ; Host releases CLK (keyboard controls timing)
+    ; 
+    ; Genuine IBM XT: Strobes CLK with DATA HIGH (pseudo start bit = 0xFF)
+    ; Clone XT: Simply brings CLK HIGH without strobe
+    ; 
+    ; Keyboard then pulls DATA LOW and performs self-test
+    ; Next byte should be 0xAA (BAT passed) or other (BAT failed)
+    ; Failures trigger state machine reset outside PIO
 
-    ; To instruct the XT Keyboard to perform a Soft Reset, the host must inhibit CLOCK
-    ; for around 20ms or so. The Keyboard will ACK the reset request by bringing DATA HIGH
-    ; at which point we can safely release CLOCK to the keyboard to control.
+    mov isr null            ; Clear ISR from power-on check
 
-    ; On Genuine XT Keyboards, once CLOCK is released, the keyboard will strobe CLOCK to issue
-    ; a pseudo start bit while keeping DATA HIGH, which interprets as 0xFF.  Clone XT Keyboards
-    ; (at least ones tested) appear to not follow this behaviour and simply bring CLOCK HIGH.
+    set pindirs 2 [1]       ; Set CLK pin to output mode
+    set pins, 0             ; Pull CLK LOW (soft reset request, ~20ms hold)
 
-    ; The Keyboard then brings DATA LOW and starts its own self test routines.  At this point
-    ; we cam safely assume that the next bytecode received from the Keyboard will either signal
-    ; a successful self test (BAT) by sending 0xAA.
-    
-    ; If we recieve anything other than 0xAA, or if we hit some timeout condition where we don't
-    ; receive a response within a set period of time, the State Machine will be reset, causing
-    ; this PIO code to be restarted.  This step is handled out side of the PIO Code, but is
-    ; commented here for clarity.
+    wait 1 pin 0 [1]        ; Wait for DATA HIGH (keyboard ACK)
 
-    ; Let's inhibit CLOCK and force it low to initiate a Soft Reset.
-    set pindirs 2 [1]   ; Set CLOCK pin to Output Mode
-    set pins, 0         ; Set CLOCK to LOW to signal Soft Reset Request
+    set pindirs 1  [1]      ; Set CLK to input (release to keyboard)
+    set pindirs, 0          ; Set DATA to input (allow keyboard control)
 
-    ; As described above, let's now wait for DATA to be brought HIGH to signify the Keyboard
-    ; has acknowledged the Soft Reset.
-    wait 1 pin 0 [1]
-
-    ; Now set both CLOCK and DATA to Input Modes to allow both to be driven
-    ; by the keyboard.
-    set pindirs 1  [1]   ; Set clock pin to input mode
-    set pindirs, 0       ; Set data pin to input mode so we can read ACK
-
-    ; To avoid reading in the pseudo-start bit, we want to wait until DATA is released LOW again
-    wait 0 pin 0 [1]
+    wait 0 pin 0 [1]        ; Wait for DATA LOW (ready for transmission)
 
 check:
-    ; Wait for incoming data
-    jmp pin, check ; Loop back to check if CLK is high
+    jmp pin, check          ; Wait for CLK falling edge (start of transmission)
 
-    ; Receiving Data
-    ;    IBM XT(Two start bits):
-    ;        ____       _ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _______
-    ;    CLK     \_____/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/   
-    ;                 _____ ___ ___ ___ ___ ___ ___ ___ ___
-    ;    DAT ________/     \___X___X___X___X___X___X___X___\_______
-    ;            ^   ^  S    0   1   2   3   4   5   6   7
-    ;            RTS CTS
+    ; XT Data Reception - Double Start Bit Detection
+    ; ===============================================
+    ; Genuine IBM XT:
+    ;     ____       _ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _______
+    ; CLK     \_____/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
+    ;              _____ ___ ___ ___ ___ ___ ___ ___ ___
+    ; DAT ________/     \___X___X___X___X___X___X___X___\_______
+    ;         ^   ^  S    0   1   2   3   4   5   6   7
+    ;         RTS CTS
+    ; 
+    ; Clone XT:
+    ;     ____________ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _______
+    ; CLK             \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
+    ;     ______________ ___ ___ ___ ___ ___ ___ ___ ___ _______
+    ; DAT               \___X___X___X___X___X___X___X___/
+    ;                S    0   1   2   3   4   5   6   7
     ;
-    ;    XT Clones(One start bit):
-    ;        ____________ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _______
-    ;    CLK             \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/     
-    ;        ______________ ___ ___ ___ ___ ___ ___ ___ ___ _______
-    ;    DAT               \___X___X___X___X___X___X___X___/
-    ;                   S    0   1   2   3   4   5   6   7
+    ; Detection Strategy (10µs sampling):
+    ; - Clock divider 10µs enables detection within ~40µs pulse width
+    ; - Genuine XT: CLK LOW + DATA LOW = double start bit (RTS/CTS)
+    ; - Clone XT: CLK LOW + DATA HIGH = single start bit
+    ; - Differentiation required for correct frame alignment
 
-    ; Check if Data is LOW straight away, if it is then we are likely a Genuine XT and not a Clone
-    ; We may see some wobble if timings aren't precise or if we have some other delay, so this needs
-    ; more investigation.
-    in pins, 1
+    in pins, 1              ; Sample DATA on first CLK falling edge
 
-    ; If Data is LOW on first Clock LOW signal, we likely have 2 start bits.
-    mov y, isr
-    jmp !y genXT
+    mov y, isr              ; Check DATA state
+    jmp !y genXT            ; If DATA LOW → genuine XT (double start bit)
 
-    ; We only get here if DATA was HIGH (so not indicitave of a single start bit)
-    jmp bitLoopInFunc
+    jmp bitLoopInFunc       ; DATA HIGH → clone XT (single start bit)
 
 genXT:
-    ; This only occurs if we seem to match conditions of being a Genuine XT compatible board (CLK LOW, DATA LOW)
-    ; As such, this portion allows us to disregard the 'first' start bit, and read the 'second' one as fact.
-    ; Clear isr, we dont want to store the previous 'first' start bit.
-    mov isr null
-    ; Wait for clock to go HIGH again and read the 'proper' Start Bit (CTS not RTS) once low.
-    wait 1 pin 1
-    wait 0 pin 1 [1]
-    in pins, 1
+    ; Genuine XT Path: Discard first start bit (RTS), read second (CTS)
+    ; This ensures correct frame alignment with the actual data bits
+    mov isr null            ; Clear first start bit from ISR
+    wait 1 pin 1            ; Wait for CLK rising edge
+    wait 0 pin 1 [1]        ; Wait for CLK falling edge (second start bit)
+    in pins, 1              ; Read actual start bit (CTS)
 
 bitLoopInFunc:
-    ; We should be starting now from CLK(1) being LOW
-    ; Wait for CLK High and read data
-    wait 1 pin 1
-    ; Set x to 7 (to read in 8 x Data bits)
-    set x, 7
+    ; Entry point after start bit detection (genuine or clone)
+    ; CLK is currently LOW, wait for rising edge then read 8 data bits
+    wait 1 pin 1            ; Wait for CLK rising edge
+    set x, 7                ; Loop counter for 8 data bits
 
 bitLoopIn:
-    ; Wait for clock signal to go low (1 cycle delay)
-    wait 0 pin 1 [1]
-    ; Read data on Clock Rising Edge
-    in pins, 1
-    ; Wait for clock signal to go high
-    wait 1 pin 1
-    ; Decrement x and jump back to bitLoopIn if it's not zero
-    jmp x--, bitLoopIn
+    wait 0 pin 1 [1]        ; Wait for CLK falling edge (1 cycle delay)
+    in pins, 1              ; Read DATA bit on falling edge
+    wait 1 pin 1            ; Wait for CLK rising edge
+    jmp x--, bitLoopIn      ; Decrement counter, loop if not zero
 
-    ; Jump back to check now all data read
-    jmp check
+    jmp check               ; Frame complete, return to idle
 
 % c-sdk {
 static inline void keyboard_interface_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {

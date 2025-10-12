@@ -193,6 +193,58 @@ Soft Reset Sequence:
 - BAT Response: 0xAA sent immediately after successful self-test completion
 ```
 
+### Double Start Bit Detection (Genuine vs Clone)
+
+The XT protocol has a unique characteristic where genuine IBM XT keyboards transmit **two start bits** (RTS/CTS sequence), while clone keyboards typically transmit only **one start bit**. This requires special detection logic:
+
+**Timing Challenge:**
+- Start bit pulse width: ~40µs (both genuine and clone)
+- Need to detect presence/absence of second start bit within first 40µs window
+- Standard sampling at ~100µs (bit period) would miss the distinction
+
+**RP2040 PIO Solution:**
+```
+Clock Divider Calculation:
+- Minimum pulse detection: 10µs (not 100µs typical bit period)
+- System clock: 125 MHz = 125,000 kHz
+- Target sampling: (1000 / 10µs) × 5 samples = 500 kHz
+- Calculated divider: 125,000 / 500 = 250
+- PIO cycle time: 2µs per cycle
+
+Detection Window:
+- Start bit width: ~40µs
+- Sampling interval: 10µs
+- Samples per start bit: 4 samples (40µs / 10µs)
+- This provides adequate resolution to detect:
+  * Genuine XT: CLK LOW + DATA LOW (first start bit)
+  * Clone XT: CLK LOW + DATA HIGH (single start bit)
+```
+
+**Detection Logic:**
+```
+On CLK falling edge:
+  Sample DATA immediately (within 10µs window)
+  
+  If DATA = LOW:
+    → Genuine XT detected (double start bit)
+    → Discard first start bit (RTS)
+    → Wait for CLK rising edge
+    → Wait for CLK falling edge again
+    → Read second start bit (CTS)
+    → Proceed with 8 data bits
+    
+  If DATA = HIGH:
+    → Clone XT detected (single start bit)
+    → Use this sample as start bit
+    → Proceed with 8 data bits
+```
+
+**Why 10µs Sampling is Critical:**
+- Bit period sampling (~100µs): Would see DATA HIGH in both cases (too slow)
+- 10µs sampling: Catches DATA LOW state of first start bit on genuine XT
+- Fast enough: 4 samples within 40µs pulse width ensures reliable detection
+- Oversampling factor: 10× faster than bit period (10µs vs 100µs)
+
 -----
 
 ## Implementation Details
