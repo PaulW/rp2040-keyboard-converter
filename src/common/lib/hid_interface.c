@@ -98,9 +98,18 @@ static void hid_print_report(void* report, size_t size, const char* message) {
  * 
  * Regular Key Handling:
  * - Regular keys stored in 6-element keycode array
- * - Function searches for empty slot (value 0)
- * - Duplicate keys ignored (prevents multiple entries for same key)
+ * - Function scans ALL slots for duplicates before adding (prevents double-entry bug)
+ * - Remembers first available empty slot during scan
  * - Returns false if all 6 slots are full (keyboard rollover limit)
+ * 
+ * Duplicate Prevention:
+ * - CRITICAL: Must check ALL slots before adding to any slot
+ * - Previous implementation checked slot availability during duplicate scan,
+ *   which could add a key to an early empty slot even if it existed later
+ * - Bug scenario: Key A in slot 1, slot 0 empty, press A again → would add
+ *   to slot 0, creating duplicate (A in both slot 0 and slot 1)
+ * - Fix: Single loop that checks all slots for duplicates, remembers first empty slot,
+ *   then adds to that slot only if key not already present
  * 
  * 6-Key Rollover Limitation:
  * - USB HID boot protocol supports maximum 6 simultaneous keys
@@ -112,6 +121,7 @@ static void hid_print_report(void* report, size_t size, const char* message) {
  * 
  * @note This function is called from main task context only
  * @note Modifier check uses IS_MOD() macro (checks range 0xE0-0xE7)
+ * @note Fix for issue #19: Prevents duplicate keys in report array
  */
 static bool hid_keyboard_add_key(uint8_t key) {
   if (IS_MOD(key)) {
@@ -122,13 +132,29 @@ static bool hid_keyboard_add_key(uint8_t key) {
     return false;
   }
 
-  for (size_t i = 0; i < 6; i++) {
-    if (keyboard_report.keycode[i] == key) return false;
-    if (keyboard_report.keycode[i] == 0) {
-      keyboard_report.keycode[i] = key;
-      return true;
+  // Duplicate prevention approach to fix issue #19:
+  // Single loop checks all 6 slots for duplicates while tracking first empty slot
+  // Only adds key if: (1) not already present AND (2) empty slot available
+  uint8_t validSlot = 0xFF;  // 0xFF = no slot found (invalid index)
+  for (uint8_t i = 0; i < 6; i++) {
+    // Check for duplicate (already in report) - early return for performance
+    if (keyboard_report.keycode[i] == key) {
+      return false;  // Key already present, don't add again
+    }
+    // Remember first available slot (but don't use it yet!)
+    // Only check if we haven't found a slot yet (validSlot == 0xFF)
+    if (keyboard_report.keycode[i] == 0 && validSlot == 0xFF) {
+      validSlot = i;
     }
   }
+
+  // If we found an empty slot and key wasn't already present, add it
+  if (validSlot < 6) {  // 0xFF > 6, so this checks if valid slot was found
+    keyboard_report.keycode[validSlot] = key;
+    return true;
+  }
+
+  // All 6 slots full (keyboard rollover limit reached)
   return false;
 }
 
