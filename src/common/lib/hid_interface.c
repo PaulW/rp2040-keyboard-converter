@@ -135,15 +135,15 @@ static bool hid_keyboard_add_key(uint8_t key) {
   // Duplicate prevention approach to fix issue #19:
   // Single loop checks all 6 slots for duplicates while tracking first empty slot
   // Only adds key if: (1) not already present AND (2) empty slot available
-  uint8_t validSlot = 0xFF;  // 0xFF = no slot found (invalid index)
+  uint8_t validSlot = UINT8_MAX;  // Invalid slot sentinel
   for (uint8_t i = 0; i < 6; i++) {
     // Check for duplicate (already in report) - early return for performance
     if (keyboard_report.keycode[i] == key) {
       return false;  // Key already present, don't add again
     }
     // Remember first available slot (but don't use it yet!)
-    // Only check if we haven't found a slot yet (validSlot == 0xFF)
-    if (keyboard_report.keycode[i] == 0 && validSlot == 0xFF) {
+    // Only check if we haven't found a slot yet (validSlot == UINT8_MAX)
+    if (keyboard_report.keycode[i] == 0 && validSlot == UINT8_MAX) {
       validSlot = i;
     }
   }
