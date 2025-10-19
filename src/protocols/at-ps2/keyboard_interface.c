@@ -409,6 +409,12 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * - Adapts to non-compliant keyboards automatically
  * - Logs stop bit state changes for diagnostic purposes
  * 
+ * Debug Logging (Issue #21 - Temporary):
+ * - Logs every received scancode with timestamp
+ * - Shows frame validation details (start, parity, stop bits)
+ * - Enables hardware-level protocol debugging
+ * - Will be removed before PR to main branch
+ * 
  * Data Flow:
  * - Valid frames passed to keyboard event processor
  * - Invalid frames rejected with appropriate error logging
@@ -421,6 +427,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * 
  * @note ISR function - no blocking operations allowed
  * @note PIO FIFO automatically handles timing and bit synchronization
+ * @note Debug logging will be removed before merge to main (Issue #21 investigation only)
  */
 static void __isr keyboard_input_event_handler() {
   io_ro_32 data_cast = keyboard_pio->rxf[keyboard_sm] >> 21;

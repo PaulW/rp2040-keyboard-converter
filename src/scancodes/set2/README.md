@@ -59,11 +59,20 @@ The Pause/Break key uses the most complex sequence in Set 2:
 |-------|----------|
 | **Pause** | `E1 14 77 E1 F0 14 F0 77` (8 bytes!) |
 | **Break** (Ctrl+Pause) | `E0 7E E0 F0 7E` |
+| **Unicomp Pause** | `E0 77 E0 F0 77` (Unicomp New Model M variant) |
 
 **Important**: 
 - Pause sends the full 8-byte sequence on press only
 - No separate release event for Pause
-- Break (Ctrl+Pause) is a different 4-byte sequence
+- Break (Ctrl+Pause) is a different 4-byte sequence (E0 7E)
+- Some keyboards (Unicomp) use E0 77 for Pause instead of E1 sequence
+
+**USB HID Mapping:**
+- All Pause variants map to **interface code 0x48** (USB HID Pause/Break key)
+- E1 sequences (regular Pause): `E1 14 77` → 0x48
+- E0 7E (Ctrl+Pause): `E0 7E` → 0x48 (with Ctrl modifier)
+- E0 77 (Unicomp): `E0 77` → 0x48
+- See Issue #21 for historical context on E0 mapping fixes
 
 ### Fake Shift Codes
 

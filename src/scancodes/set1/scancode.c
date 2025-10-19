@@ -47,7 +47,8 @@ static const uint8_t e0_code_translation[256] = {
     [0x35] = 0x7F,  // Keypad Slash (/)
     [0x37] = 0x54,  // Print Screen
     [0x38] = 0x7C,  // Right Alt
-    [0x46] = 0x55,  // Pause / Break
+    [0x45] = 0x48,  // Pause / Break
+    [0x46] = 0x48,  // Ctrl'd Pause
     [0x47] = 0x74,  // Home
     [0x48] = 0x60,  // Up Arrow
     [0x49] = 0x77,  // Page Up
@@ -187,7 +188,7 @@ void process_scancode(uint8_t code) {
     case E1_1D:  // E1-prefixed 1D
       switch (code) {
         case 0x45:
-          handle_keyboard_report(0x55, true);
+          handle_keyboard_report(0x48, true);
           state = INIT;
           break;
         default:
@@ -199,7 +200,7 @@ void process_scancode(uint8_t code) {
     case E1_9D:  // E1-prefixed 9D
       switch (code) {
         case 0xC5:
-          handle_keyboard_report(0x55, false);
+          handle_keyboard_report(0x48, false);
           state = INIT;
           break;
         default:

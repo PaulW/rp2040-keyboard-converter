@@ -84,11 +84,11 @@ static const uint8_t e0_code_translation[256] = {
     [0x7A] = 0x56,  // Page Down
     [0x7C] = 0x7F,  // Print Screen
     [0x7D] = 0x5E,  // Page Up
+    [0x77] = 0x48,  // Unicomp New Model M Pause/Break
+    [0x7E] = 0x48,  // Control'd Pause
     // Special codes that should be ignored:
     [0x12] = 0x00,  // Fake shift (ignore)
     [0x59] = 0x00,  // Fake shift (ignore)
-    [0x77] = 0x00,  // Unicomp New Model M Pause/Break key fix (ignore)
-    [0x7E] = 0x00,  // Control'd Pause (ignore)
     // All other entries implicitly 0 (unmapped/ignore)
 };
 
