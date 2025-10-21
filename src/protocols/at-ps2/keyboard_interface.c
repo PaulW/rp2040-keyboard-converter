@@ -440,10 +440,6 @@ static void __isr keyboard_input_event_handler() {
   uint8_t data_byte = (uint8_t)((data_cast >> 1) & 0xFF);
   uint8_t parity_bit_check = interface_parity_table[data_byte];
 
-  // DEBUG: Log every scancode received from keyboard (Issue #21 investigation)
-  LOG_DEBUG("[%lu] [SCANCODE] RX: 0x%02X (start=%d, parity=%d, stop=%d)\n", 
-            board_millis(), data_byte, start_bit, parity_bit, stop_bit);
-
   // Detect and adapt to non-standard stop bit behavior (Z-150 compatibility)
   if (stop_bit_state != (stop_bit ? STOP_BIT_HIGH : STOP_BIT_LOW)) {
     stop_bit_state = stop_bit ? STOP_BIT_HIGH : STOP_BIT_LOW;

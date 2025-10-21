@@ -220,10 +220,6 @@ void handle_keyboard_report(uint8_t rawcode, bool make) {
   // Convert the Interface Scancode to a HID Keycode
   uint8_t code = keymap_get_key_val(rawcode, make);
   
-  // DEBUG: Log HID translation for Issue #21 investigation
-  LOG_DEBUG("[%lu] [HID] Code: 0x%02X %s → HID: 0x%02X\n", 
-            board_millis(), rawcode, make ? "MAKE" : "BREAK", code);
-  
   if (IS_KEY(code) || IS_MOD(code)) {
     bool report_modified = false;
     if (make) {
@@ -243,9 +239,6 @@ void handle_keyboard_report(uint8_t rawcode, bool make) {
     }
 
     if (report_modified) {
-      // DEBUG: Log HID report that would be sent (Issue #21 investigation)
-      hid_print_report(&keyboard_report, sizeof(keyboard_report), "ISSUE-21-DEBUG");
-      
       bool res = tud_hid_n_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &keyboard_report,
                                   sizeof(keyboard_report));
       if (!res) {
