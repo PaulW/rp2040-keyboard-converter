@@ -212,24 +212,24 @@ static bool hid_keyboard_del_key(uint8_t key) {
  * USB HID reports to the host. It handles three types of HID reports:
  * 
  * 1. Keyboard Reports (Standard Keys and Modifiers):
- *    - Translates interface scan codes to HID keycodes via keymap lookup
- *    - Updates keyboard report structure (modifiers + 6-key array)
- *    - Only sends USB report if state changed (prevents duplicate reports)
- *    - Handles typematic prevention (host handles key repeat, not device)
+ * - Translates interface scan codes to HID keycodes via keymap lookup
+ * - Updates keyboard report structure (modifiers + 6-key array)
+ * - Only sends USB report if state changed (prevents duplicate reports)
+ * - Handles typematic prevention (host handles key repeat, not device)
  * 
  * 2. Consumer Control Reports (Multimedia Keys):
- *    - Media keys (play, pause, volume, etc.)
- *    - Uses separate USB HID interface for consumer controls
- *    - Single 16-bit usage code per report
- *    - Code 0 indicates "no keys pressed" for key release
+ * - Media keys (play, pause, volume, etc.)
+ * - Uses separate USB HID interface for consumer controls
+ * - Single 16-bit usage code per report
+ * - Code 0 indicates "no keys pressed" for key release
  * 
  * 3. Command Mode System:
- *    - Time-based special function access for 2KRO keyboards
- *    - Hold both shifts for 3 seconds to enter command mode
- *    - LED provides visual feedback (Green/Blue alternating flash)
- *    - Press 'B' for bootloader entry (other commands can be added)
- *    - 3 second timeout or shift release exits command mode
- *    - Keyboard reports suppressed during command mode operation
+ * - Time-based special function access for 2KRO keyboards
+ * - Hold both shifts for 3 seconds to enter command mode
+ * - LED provides visual feedback (Green/Blue alternating flash)
+ * - Press 'B' for bootloader entry (other commands can be added)
+ * - 3 second timeout or shift release exits command mode
+ * - Keyboard reports suppressed during command mode operation
  * 
  * Command Mode vs. Legacy Macro System:
  * - Old: Action key + both shifts + 'B' (simultaneous press - fails on 2KRO)
@@ -248,15 +248,17 @@ static bool hid_keyboard_del_key(uint8_t key) {
  * - Continues operation on failure (transient USB issues)
  * - Could be enhanced with retry queue for critical reports
  * 
- * @param code Interface scan code (protocol-normalized, not raw scan code)
- * @param make true for key press, false for key release
+ * @param rawcode Interface scan code (protocol-normalized, not raw scan code)
+ *                Example: 0x48 for Pause key across all protocols
+ * @param make    true for key press, false for key release
  * 
  * @note Called from main task context via process_scancode()
  * @note Thread-safe: no interrupt access to keyboard_report or mouse_report
  */
-void handle_keyboard_report(uint8_t code, bool make) {
+void handle_keyboard_report(uint8_t rawcode, bool make) {
   // Convert the Interface Scancode to a HID Keycode
-  code = keymap_get_key_val(code, make);
+  uint8_t code = keymap_get_key_val(rawcode, make);
+  
   if (IS_KEY(code) || IS_MOD(code)) {
     bool report_modified = false;
     if (make) {

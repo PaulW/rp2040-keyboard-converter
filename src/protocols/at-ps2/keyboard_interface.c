@@ -65,6 +65,15 @@
  * - Timeout detection with state machine reset
  * - Parity error detection and recovery
  * - Graceful handling of non-standard keyboards
+ * 
+ * Known Limitation:
+ * - Some vintage or non-compliant keyboards (observed in a 1988 Cherry unit)
+ *   emit a bare sequence for Pause that lacks the standard E1 prefix and can
+ *   therefore be indistinguishable from an intentional Ctrl+NumLock sequence.
+ *   Detecting this in firmware without introducing heuristics that risk breaking
+ *   normal Ctrl+key combinations is not safe. The recommended workaround is to
+ *   remap an unused physical key (for example Scroll Lock) to PAUS in the
+ *   keyboard configuration for that physical keyboard.
  */
 
 #include "keyboard_interface.h"

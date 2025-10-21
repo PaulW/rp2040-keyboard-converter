@@ -61,8 +61,25 @@ The Pause/Break key uses a special 6-byte sequence:
 |-------|----------|
 | **Pause** | `E1 1D 45 E1 9D C5` |
 | **Break** (Ctrl+Pause) | `E0 46 E0 C6` |
+| **Alternate Pause** | `E0 45` (some keyboards) |
 
-**Important**: Pause sends the entire sequence on press only, with no separate release event.
+**Important**: 
+- Pause sends the entire sequence on press only, with no separate release event
+- Break (Ctrl+Pause) uses E0 46 sequence
+- Some keyboards may send E0 45 as an alternate Pause encoding
+
+**USB HID Mapping:**
+- All Pause variants map to **interface code 0x48** (USB HID Pause/Break key)
+- E1 sequences (regular Pause): `E1 1D 45` → 0x48
+- E0 46 (Ctrl+Pause): `E0 46` → 0x48 (with Ctrl modifier)
+- E0 45 (alternate): `E0 45` → 0x48
+- See Issue #21 for historical context on E0 mapping fixes
+- Note: Some very old or non-compliant keyboards may not emit the E1 prefix for Pause
+  (they instead send a bare sequence that looks like Ctrl+NumLock). Such keyboards cannot
+  be reliably distinguished from intentional Ctrl+key combinations in firmware without
+  introducing fragile heuristics that break other combinations. Recommended workaround:
+  remap an unused physical key (for example Scroll Lock) to PAUS in your keyboard
+  configuration if you need a dedicated Pause key for a non-compliant keyboard.
 
 ### Fake Shift Codes
 

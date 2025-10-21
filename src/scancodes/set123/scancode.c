@@ -52,7 +52,8 @@ static const uint8_t set1_e0_translation[256] = {
     [0x35] = 0x7F,  // Keypad Slash (/)
     [0x37] = 0x54,  // Print Screen
     [0x38] = 0x7C,  // Right Alt
-    [0x46] = 0x55,  // Pause / Break
+    [0x45] = 0x48,  // Pause / Break
+    [0x46] = 0x48,  // Ctrl'd Pause
     [0x47] = 0x74,  // Home
     [0x48] = 0x60,  // Up Arrow
     [0x49] = 0x77,  // Page Up
@@ -131,11 +132,11 @@ static const uint8_t set2_e0_translation[256] = {
     [0x7A] = 0x56,  // Page Down
     [0x7C] = 0x7F,  // Print Screen
     [0x7D] = 0x5E,  // Page Up
+    [0x77] = 0x48,  // Unicomp New Model M Pause/Break
+    [0x7E] = 0x48,  // Control'd Pause
     // Special codes that should be ignored:
     [0x12] = 0x00,  // Fake shift (ignore)
     [0x59] = 0x00,  // Fake shift (ignore)
-    [0x77] = 0x00,  // Unicomp New Model M Pause/Break key fix (ignore)
-    [0x7E] = 0x00,  // Control'd Pause (ignore)
     // All other entries implicitly 0 (unmapped/ignore)
 };
 
@@ -434,7 +435,7 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
         case E1_1D:
             // Set 1: E1 1D 45 (Pause make)
             if (code == 0x45) {
-                handle_keyboard_report(0x55, true);
+                handle_keyboard_report(0x48, true);
             } else {
                 LOG_DEBUG("!E1_1D! (0x%02X)\n", code);
             }
@@ -444,7 +445,7 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
         case E1_9D:
             // Set 1: E1 9D C5 (Pause break)
             if (code == 0xC5) {
-                handle_keyboard_report(0x55, false);
+                handle_keyboard_report(0x48, false);
             } else {
                 LOG_DEBUG("!E1_9D! (0x%02X)\n", code);
             }
@@ -454,8 +455,10 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
         case E1_14:
             // Set 2: E1 14 77 (Pause make)
             if (code == 0x77) {
-                // Pause key uses direct HID code 0x55, not E0 translation
-                handle_keyboard_report(0x55, true);
+                uint8_t translated = translate_e0_code(code, config);
+                if (translated) {
+                handle_keyboard_report(translated, true);
+                }
             } else {
                 LOG_DEBUG("!E1_14! (0x%02X)\n", code);
             }
@@ -485,8 +488,10 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
         case E1_F0_14_F0:
             // Set 2: E1 F0 14 F0 77 (Pause break)
             if (code == 0x77) {
-                // Pause key uses direct HID code 0x55, not E0 translation
-                handle_keyboard_report(0x55, false);
+                uint8_t translated = translate_e0_code(code, config);
+                if (translated) {
+                handle_keyboard_report(translated, false);
+                }
             } else {
                 LOG_DEBUG("!E1_F0_14_F0! (0x%02X)\n", code);
             }
