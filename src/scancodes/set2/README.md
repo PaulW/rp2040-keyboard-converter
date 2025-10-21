@@ -73,6 +73,12 @@ The Pause/Break key uses the most complex sequence in Set 2:
 - E0 7E (Ctrl+Pause): `E0 7E` → 0x48 (with Ctrl modifier)
 - E0 77 (Unicomp): `E0 77` → 0x48
 - See Issue #21 for historical context on E0 mapping fixes
+- Note: Some very old or non-compliant keyboards may not emit the E1 prefix for Pause
+  (they instead send a bare sequence that looks like Ctrl+NumLock). Such keyboards cannot
+  be reliably distinguished from intentional Ctrl+key combinations in firmware without
+  introducing fragile heuristics that break other combinations. Recommended workaround:
+  remap an unused physical key (for example Scroll Lock) to PAUS in your keyboard
+  configuration if you need a dedicated Pause key for a non-compliant keyboard.
 
 ### Fake Shift Codes
 

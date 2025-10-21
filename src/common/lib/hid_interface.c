@@ -180,41 +180,54 @@ static bool hid_keyboard_del_key(uint8_t key) {
 }
 
 /**
- * @brief Process keyboard input and generate USB HID report
+ * @brief Handles input reports for keyboard and consumer control devices
  * 
- * Converts protocol-specific interface codes to USB HID keycodes via keyboard layout mapping,
- * then generates and transmits HID keyboard reports.
+ * This is the main entry point for processing translated scan codes and sending
+ * USB HID reports to the host. It handles three types of HID reports:
  * 
- * Data Flow:
- * 1. Receives interface code (protocol-normalized scancode, e.g., 0x48 for Pause)
- * 2. Translates to HID code via keymap_get_key_val() (keyboard layout mapping)
- * 3. Updates keyboard_report structure (modifiers, keys array)
- * 4. Processes command mode logic (bootloader entry detection)
- * 5. Transmits report via USB if modified
+ * 1. Keyboard Reports (Standard Keys and Modifiers):
+ * - Translates interface scan codes to HID keycodes via keymap lookup
+ * - Updates keyboard report structure (modifiers + 6-key array)
+ * - Only sends USB report if state changed (prevents duplicate reports)
+ * - Handles typematic prevention (host handles key repeat, not device)
  * 
- * Debug Logging (Issue #21 - Temporary):
- * - Logs before/after keymap translation: interface code → HID code
- * - Logs final HID report contents with [ISSUE-21-DEBUG] prefix
- * - Includes millisecond timestamps for timing analysis
- * - Will be removed before PR to main branch
+ * 2. Consumer Control Reports (Multimedia Keys):
+ * - Media keys (play, pause, volume, etc.)
+ * - Uses separate USB HID interface for consumer controls
+ * - Single 16-bit usage code per report
+ * - Code 0 indicates "no keys pressed" for key release
  * 
- * Thread Safety:
- * - Called from main task context only (via process_scancode())
- * - No interrupt access to keyboard_report structure
- * - Ring buffer provides thread-safe boundary from IRQ handlers
+ * 3. Command Mode System:
+ * - Time-based special function access for 2KRO keyboards
+ * - Hold both shifts for 3 seconds to enter command mode
+ * - LED provides visual feedback (Green/Blue alternating flash)
+ * - Press 'B' for bootloader entry (other commands can be added)
+ * - 3 second timeout or shift release exits command mode
+ * - Keyboard reports suppressed during command mode operation
+ * 
+ * Command Mode vs. Legacy Macro System:
+ * - Old: Action key + both shifts + 'B' (simultaneous press - fails on 2KRO)
+ * - New: Hold both shifts 3s, then press 'B' (sequential - works on 2KRO)
+ * - Legacy macro system (keymap_is_action_key_pressed) removed
+ * - Command mode provides better UX with LED feedback
+ * 
+ * Report Deduplication:
+ * - Uses report_modified flag to track actual state changes
+ * - Some keyboards send typematic repeats (same key repeatedly)
+ * - HID spec: host handles key repeat, device sends state changes only
+ * - Prevents USB bus saturation from redundant reports
  * 
  * Error Handling:
  * - Logs failed USB transmissions with report contents
  * - Continues operation on failure (transient USB issues)
  * - Could be enhanced with retry queue for critical reports
  * 
- * @param rawcode Interface scan code (protocol-normalized, not raw hardware scancode)
+ * @param rawcode Interface scan code (protocol-normalized, not raw scan code)
  *                Example: 0x48 for Pause key across all protocols
- * @param make    true for key press (make), false for key release (break)
+ * @param make    true for key press, false for key release
  * 
  * @note Called from main task context via process_scancode()
  * @note Thread-safe: no interrupt access to keyboard_report or mouse_report
- * @note Debug logging will be removed before merge to main (Issue #21 investigation only)
  */
 void handle_keyboard_report(uint8_t rawcode, bool make) {
   // Convert the Interface Scancode to a HID Keycode

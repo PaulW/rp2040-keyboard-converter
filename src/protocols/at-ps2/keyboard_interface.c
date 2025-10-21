@@ -65,6 +65,15 @@
  * - Timeout detection with state machine reset
  * - Parity error detection and recovery
  * - Graceful handling of non-standard keyboards
+ * 
+ * Known Limitation:
+ * - Some vintage or non-compliant keyboards (observed in a 1988 Cherry unit)
+ *   emit a bare sequence for Pause that lacks the standard E1 prefix and can
+ *   therefore be indistinguishable from an intentional Ctrl+NumLock sequence.
+ *   Detecting this in firmware without introducing heuristics that risk breaking
+ *   normal Ctrl+key combinations is not safe. The recommended workaround is to
+ *   remap an unused physical key (for example Scroll Lock) to PAUS in the
+ *   keyboard configuration for that physical keyboard.
  */
 
 #include "keyboard_interface.h"
@@ -409,12 +418,6 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * - Adapts to non-compliant keyboards automatically
  * - Logs stop bit state changes for diagnostic purposes
  * 
- * Debug Logging (Issue #21 - Temporary):
- * - Logs every received scancode with timestamp
- * - Shows frame validation details (start, parity, stop bits)
- * - Enables hardware-level protocol debugging
- * - Will be removed before PR to main branch
- * 
  * Data Flow:
  * - Valid frames passed to keyboard event processor
  * - Invalid frames rejected with appropriate error logging
@@ -427,7 +430,6 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * 
  * @note ISR function - no blocking operations allowed
  * @note PIO FIFO automatically handles timing and bit synchronization
- * @note Debug logging will be removed before merge to main (Issue #21 investigation only)
  */
 static void __isr keyboard_input_event_handler() {
   io_ro_32 data_cast = keyboard_pio->rxf[keyboard_sm] >> 21;

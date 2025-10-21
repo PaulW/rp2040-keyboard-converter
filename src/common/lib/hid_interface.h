@@ -24,7 +24,7 @@
 #include "config.h"
 #include "pico/stdlib.h"
 
-void handle_keyboard_report(uint8_t code, bool make);
+void handle_keyboard_report(uint8_t rawcode, bool make);
 void handle_mouse_report(const uint8_t buttons[5], int8_t pos[3]);
 void hid_device_setup(void);
 void send_empty_keyboard_report(void);
