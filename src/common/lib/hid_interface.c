@@ -123,7 +123,7 @@ static inline bool hid_send_report(uint8_t instance, uint8_t report_id, void con
     if (result) {
       LOG_DEBUG("%s\n", buffer);
     } else {
-      LOG_ERROR("HID Report Send Failed (instance=%u, report_id=%u, len=%u)\n", instance, report_id, len);
+      LOG_ERROR("HID Report Send Failed (instance=%u, report_id=0x%02X, len=%u)\n", instance, report_id, len);
       LOG_ERROR("%s\n", buffer);
     }
   }
