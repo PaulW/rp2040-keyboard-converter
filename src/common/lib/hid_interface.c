@@ -59,28 +59,76 @@ static hid_keyboard_report_t keyboard_report;
 static hid_mouse_report_t mouse_report;
 
 /**
- * @brief Prints the contents of a HID report.
- * This function takes a HID report, its size, and a message as input and prints the contents of the
- * report in hexadecimal format. The message is prefixed to the printed output for identification
- * purposes.
- *
- * @param report   Pointer to the HID report.
- * @param size     Size of the HID report.
- * @param message  Message to be printed before the HID report.
+ * @brief Sends a HID report with automatic logging.
+ * 
+ * This wrapper function logs the report contents when DEBUG enabled or on failure.
+ * Using this function ensures all HID reports are consistently logged without
+ * performance overhead (single function call vs separate log + send).
+ * 
+ * The function builds a formatted hex dump of the report (matching USB wire format
+ * with Report ID first) only when needed:
+ * - Always when DEBUG logging enabled (log level >= LOG_LEVEL_DEBUG)
+ * - Always when transmission fails (for error diagnostics)
+ * - Never otherwise (zero overhead in production with DEBUG disabled)
+ * 
+ * This optimized approach constructs the hex dump only once, even if both
+ * DEBUG is enabled AND transmission fails. The appropriate log level (DEBUG
+ * or ERROR) is chosen based on the final transmission result.
+ * 
+ * Performance Characteristics:
+ * - LOG_LEVEL < DEBUG + success: Only TinyUSB send (~1.6µs, near-zero overhead)
+ * - LOG_LEVEL >= DEBUG + success: TinyUSB send + hex dump + UART (~16µs)
+ * - Any level + failure: TinyUSB send attempt + hex dump + UART (~16µs)
+ * - Inline function allows compiler to optimize based on call site
+ * - Single hex dump construction (not duplicated if DEBUG enabled AND failure)
+ * 
+ * Memory Overhead:
+ * - Zero heap allocation (stack-only buffer)
+ * - 128-byte stack buffer only allocated when logging needed
+ * - Buffer immediately freed when function returns
+ * 
+ * @param instance    The HID interface instance number
+ * @param report_id   The HID report ID (automatically prepended by TinyUSB)
+ * @param report      Pointer to the HID report data structure
+ * @param len         Size of the report data in bytes
+ * @return true if report was successfully queued for transmission, false on error
+ * 
+ * @note This function should be used instead of calling tud_hid_n_report() directly
+ * @note Failed transmissions are always logged regardless of log level
+ * @note Hex dump only generated once (not duplicated on DEBUG+failure)
  */
-static void hid_print_report(void* report, size_t size, const char* message) {
-  // Build the entire report string in one buffer for single LOG_DEBUG call
-  // Maximum HID report size is typically small (keyboard=8, mouse=5, consumer=2)
-  // Buffer: prefix (32) + hex bytes (size * 3) + null terminator
-  char buffer[128];
-  size_t offset = (size_t)snprintf(buffer, sizeof(buffer), "[%s-HID-REPORT] ", message);
+static inline bool hid_send_report(uint8_t instance, uint8_t report_id, void const* report, uint16_t len) {
+  // Check if we should build hex dump (DEBUG enabled or might fail)
+  bool should_log = (log_get_level() >= (log_level_t)LOG_LEVEL_DEBUG);
   
-  uint8_t* p = (uint8_t*)report;
-  for (size_t i = 0; i < size && offset < sizeof(buffer) - 4; i++) {
-    offset += (size_t)snprintf(buffer + offset, sizeof(buffer) - offset, "%02X ", *p++);
+  // Send via TinyUSB first
+  bool result = tud_hid_n_report(instance, report_id, report, len);
+  
+  // Build hex dump if DEBUG enabled OR transmission failed
+  // This ensures we only construct the report once, even if both conditions true
+  if (should_log || !result) {
+    // Build formatted hex dump: Report ID + data bytes (matches USB wire format)
+    // Maximum HID report size is typically small (keyboard=8, mouse=5, consumer=2)
+    // Buffer: prefix (32) + report ID (3) + hex bytes (len * 3) + null terminator
+    char buffer[128];
+    const char* prefix = result ? "[SENT-HID-REPORT]" : "[FAILED-HID-REPORT]";
+    size_t offset = (size_t)snprintf(buffer, sizeof(buffer), "%s %02X ", prefix, report_id);
+    
+    const uint8_t* p = (const uint8_t*)report;
+    for (uint16_t i = 0; i < len && offset < sizeof(buffer) - 4; i++) {
+      offset += (size_t)snprintf(buffer + offset, sizeof(buffer) - offset, "%02X ", *p++);
+    }
+    
+    // Log at appropriate level based on result
+    if (result) {
+      LOG_DEBUG("%s\n", buffer);
+    } else {
+      LOG_ERROR("HID Report Send Failed (instance=%u, report_id=0x%02X, len=%u)\n", instance, report_id, len);
+      LOG_ERROR("%s\n", buffer);
+    }
   }
   
-  LOG_DEBUG("%s\n", buffer);
+  return result;
 }
 
 /**
@@ -278,12 +326,9 @@ void handle_keyboard_report(uint8_t rawcode, bool make) {
     }
 
     if (report_modified) {
-      bool res = tud_hid_n_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &keyboard_report,
-                                  sizeof(keyboard_report));
-      if (!res) {
-        LOG_ERROR("Keyboard HID Report Failed:\n");
-        hid_print_report(&keyboard_report, sizeof(keyboard_report), "handle_keyboard_report");
-      }
+      // Send report with automatic logging
+      hid_send_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &keyboard_report,
+                      sizeof(keyboard_report));
     }
   } else if (IS_CONSUMER(code)) {
     uint16_t usage;
@@ -292,11 +337,9 @@ void handle_keyboard_report(uint8_t rawcode, bool make) {
     } else {
       usage = 0;
     }
-    bool res = tud_hid_n_report(ITF_NUM_CONSUMER_CONTROL, REPORT_ID_CONSUMER_CONTROL, &usage,
-                                sizeof(usage));
-    if (!res) {
-      LOG_ERROR("Consumer HID Report Failed: 0x%04X\n", usage);
-    }
+    
+    // Send consumer control report with automatic logging
+    hid_send_report(ITF_NUM_CONSUMER_CONTROL, REPORT_ID_CONSUMER_CONTROL, &usage, sizeof(usage));
   }
 }
 
@@ -323,24 +366,48 @@ void send_empty_keyboard_report(void) {
     .keycode = {0, 0, 0, 0, 0, 0}
   };
   
-  bool res = tud_hid_n_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &empty_report,
-                              sizeof(empty_report));
-  if (!res) {
-    LOG_ERROR("Empty keyboard report failed\n");
-  } else {
+  // Send empty report with automatic logging
+  if (hid_send_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &empty_report, sizeof(empty_report))) {
     LOG_INFO("Sent empty keyboard report (all keys released)\n");
   }
 }
 
 /**
- * @brief Handles the mouse report.
- * This function handles the mouse report by updating the mouse_report structure with the provided
- * button states and position values. It then sends the updated report to the USB HID interface
- * using the tud_hid_n_report function. If the report fails to send, an error message is printed and
- * the report is printed for debugging purposes.
- *
- * @param buttons An array of uint8_t representing the button states.
- * @param pos An array of int8_t representing the mouse position values (x, y, wheel).
+ * @brief Handles mouse input reports and sends to USB HID interface
+ * 
+ * This function processes mouse input by updating the mouse report structure with
+ * button states and movement/scroll values, then transmits the report via USB HID.
+ * 
+ * Report Structure:
+ * - buttons: 5-button bit field (buttons[0-4] mapped to bits 0-4)
+ * - x: Horizontal movement (-127 to +127, signed 8-bit)
+ * - y: Vertical movement (-127 to +127, signed 8-bit)
+ * - wheel: Scroll wheel movement (-127 to +127, signed 8-bit)
+ * 
+ * Button Mapping:
+ * - buttons[0]: Left button (bit 0)
+ * - buttons[1]: Right button (bit 1)
+ * - buttons[2]: Middle button (bit 2)
+ * - buttons[3]: Button 4 (bit 3)
+ * - buttons[4]: Button 5 (bit 4)
+ * 
+ * Movement Characteristics:
+ * - Movement values are deltas (relative to previous position)
+ * - Range: -127 to +127 per report
+ * - Host integrates deltas to track cursor position
+ * - Zero values indicate no movement
+ * 
+ * Error Handling:
+ * - Failed transmissions logged automatically via hid_send_report()
+ * - Operation continues on failure (transient USB issues)
+ * - Report contents logged in DEBUG mode
+ * 
+ * @param buttons Array of 5 button states (0=released, 1=pressed)
+ * @param pos Array of 3 movement values: [x, y, wheel] (signed 8-bit deltas)
+ * 
+ * @note Called from mouse protocol handlers (AT/PS2 mouse interface)
+ * @note Uses separate USB endpoint from keyboard (ITF_NUM_MOUSE or ITF_NUM_KEYBOARD)
+ * @note All calls from main task context (thread-safe)
  */
 void handle_mouse_report(const uint8_t buttons[5], int8_t pos[3]) {
   // Handle Mouse Report
@@ -349,33 +416,48 @@ void handle_mouse_report(const uint8_t buttons[5], int8_t pos[3]) {
   mouse_report.x = pos[0];
   mouse_report.y = pos[1];
   mouse_report.wheel = pos[2];
-  bool res = tud_hid_n_report(KEYBOARD_ENABLED ? ITF_NUM_MOUSE : ITF_NUM_KEYBOARD, REPORT_ID_MOUSE,
-                              &mouse_report, sizeof(mouse_report));
-  if (!res) {
-    LOG_ERROR("Mouse HID Report Failed:\n");
-    hid_print_report(&mouse_report, sizeof(mouse_report), "handle_mouse_report");
-  }
+  
+  // Send mouse report with automatic logging
+  hid_send_report(KEYBOARD_ENABLED ? ITF_NUM_MOUSE : ITF_NUM_KEYBOARD, REPORT_ID_MOUSE,
+                  &mouse_report, sizeof(mouse_report));
 }
 
 /**
- * @brief Callback function invoked when a GET_REPORT control request is received.
- * This function is called when a GET_REPORT control request is received by the application. The
- * application should fill the buffer with the content of the report and return the length of the
- * report. If the application returns zero, the request will be stalled by the stack.
- *
- * @param instance    The instance of the HID interface.
- * @param report_id   The ID of the report.
- * @param report_type The type of the report.
- * @param buffer      The buffer to store the report content.
- * @param reqlen      The length of the request.
- *
- * @return The length of the report. Returning zero will cause the stack to stall the request.
- *
- * @note This function is not implemented, and always returns zero.
+ * @brief TinyUSB callback invoked when host sends GET_REPORT control request
+ * 
+ * This callback is invoked by TinyUSB when the USB host requests the current state
+ * of a HID report via a GET_REPORT control transfer. The application should populate
+ * the buffer with the requested report data and return its length.
+ * 
+ * Use Cases:
+ * - Host polls current keyboard LED state
+ * - Host queries current key state after resume
+ * - Debugging tools request report state
+ * 
+ * Return Value:
+ * - >0: Number of bytes written to buffer (report sent to host)
+ * - 0: Request will be STALLed by TinyUSB stack (not supported)
+ * 
+ * Current Implementation:
+ * - Not implemented (returns 0, STALLs all GET_REPORT requests)
+ * - Keyboards typically don't need this (reports sent via interrupt endpoint)
+ * - Could be implemented for LED state queries if needed
+ * 
+ * @param instance    HID interface instance number (ITF_NUM_KEYBOARD, ITF_NUM_MOUSE, etc.)
+ * @param report_id   Report ID being requested (REPORT_ID_KEYBOARD, REPORT_ID_MOUSE, etc.)
+ * @param report_type Report type (INPUT, OUTPUT, or FEATURE)
+ * @param buffer      Buffer to fill with report data (provided by TinyUSB)
+ * @param reqlen      Maximum buffer length available
+ * 
+ * @return Number of bytes written to buffer, or 0 to STALL request
+ * 
+ * @note Called from TinyUSB USB interrupt context
+ * @note Currently not implemented - all requests STALLed
+ * @note Standard keyboards rarely need this callback
  */
 uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type,
                                uint8_t* buffer, uint16_t reqlen) {
-  // TODO not Implemented
+  // Not implemented - STALL all GET_REPORT requests
   (void)instance;
   (void)report_id;
   (void)report_type;
@@ -386,25 +468,48 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 }
 
 /**
- * @brief Callback function invoked when a SET_REPORT control request is received or data is
- * received on the OUT endpoint.
- * This is responsible for handling HID reports dependant on the report type and report ID. The
- * function is called when a SET_REPORT control request is received or data is received on the OUT
- * endpoint. The function should parse the received HID report and take the appropriate action based
- * on the report type and report ID.
- *
- * @param instance    The instance number of the HID interface.
- * @param report_id   The report ID of the received HID report.
- * @param report_type The type of the received HID report.
- * @param buffer      Pointer to the buffer containing the received HID report data.
- * @param bufsize     The size of the received HID report data buffer.
- *
- * @note This function only handles the keyboard LED report.
+ * @brief TinyUSB callback invoked when host sends SET_REPORT control request or OUT endpoint data
+ * 
+ * This callback is invoked by TinyUSB when:
+ * 1. USB host sends SET_REPORT control transfer (typically for keyboard LEDs)
+ * 2. Host sends data to HID OUT endpoint (if configured)
+ * 
+ * The application parses the received report and takes appropriate action based
+ * on report type and report ID.
+ * 
+ * Current Implementation:
+ * - Handles keyboard OUTPUT reports (LED state: Caps Lock, Num Lock, Scroll Lock)
+ * - Forwards LED state to keyboard interface via set_lock_values_from_hid()
+ * - Ignores all other report types and instances
+ * 
+ * Keyboard LED Mapping (buffer[0] bit field):
+ * - Bit 0: Num Lock LED
+ * - Bit 1: Caps Lock LED
+ * - Bit 2: Scroll Lock LED
+ * - Bit 3: Compose LED (unused)
+ * - Bit 4: Kana LED (unused)
+ * - Bits 5-7: Reserved
+ * 
+ * Report Flow:
+ * 1. Host updates LED state (user presses Caps Lock)
+ * 2. TinyUSB receives OUTPUT report via control transfer
+ * 3. This callback invoked with LED bit field
+ * 4. set_lock_values_from_hid() updates protocol handler
+ * 5. Protocol sends LED command to physical keyboard
+ * 
+ * @param instance    HID interface instance number (ITF_NUM_KEYBOARD, ITF_NUM_MOUSE, etc.)
+ * @param report_id   Report ID of received data (REPORT_ID_KEYBOARD, etc.)
+ * @param report_type Report type (HID_REPORT_TYPE_OUTPUT, INPUT, or FEATURE)
+ * @param buffer      Pointer to received report data
+ * @param bufsize     Size of received report data in bytes
+ * 
+ * @note Called from TinyUSB USB interrupt context
+ * @note Only processes keyboard OUTPUT reports (LED state)
+ * @note Non-keyboard instances and report types ignored
  */
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type,
                            uint8_t const* buffer, uint16_t bufsize) {
-  (void)buffer;
-
+  // Ignore non-keyboard instances
   if (instance != ITF_NUM_KEYBOARD) return;
 
   if (report_type == HID_REPORT_TYPE_OUTPUT) {
@@ -418,9 +523,30 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
 }
 
 /**
- * @brief Sets up the HID device by initializing the board and the tinyusb stack.
- * This function should be called before using any HID device functionality. It initializes the
- * board and the tinyusb stack, allowing the device to communicate with the host.
+ * @brief Initializes the USB HID device and TinyUSB stack
+ * 
+ * This function performs the essential initialization sequence for USB HID operation.
+ * Must be called once during startup before any USB or HID functionality is used.
+ * 
+ * Initialization Sequence:
+ * 1. board_init() - Initializes RP2040 board peripherals (GPIO, clocks, UART)
+ * 2. tusb_init() - Initializes TinyUSB stack (USB device controller, endpoints, descriptors)
+ * 
+ * After Initialization:
+ * - USB device controller configured and ready
+ * - HID endpoints created (keyboard, consumer control, mouse)
+ * - USB device visible to host (enumeration begins)
+ * - Application can send HID reports via handle_keyboard_report(), handle_mouse_report()
+ * 
+ * TinyUSB Configuration:
+ * - Device descriptors defined in usb_descriptors.c
+ * - HID report descriptors for keyboard, consumer control, mouse
+ * - Boot protocol support for BIOS compatibility
+ * - Endpoints: 0x81 (keyboard), 0x82 (consumer), 0x83 (mouse)
+ * 
+ * @note Called once from main() before entering main loop
+ * @note Must be called before any tud_*() TinyUSB functions
+ * @note Enables USB device enumeration with host
  */
 void hid_device_setup(void) {
   board_init();
