@@ -125,6 +125,91 @@ git submodule update --init --recursive
 
 **Note:** The Pico SDK submodule is optional for Docker builds (SDK is built into the Docker image) but useful for local development and IDE integration.
 
+### Local Development Setup (Optional)
+
+For IDE integration with IntelliSense, CMake, and syntax checking, you can set up a local development environment. **This is completely optional** - Docker builds work without any local tooling.
+
+**Prerequisites:**
+- CMake 3.13+ ([Installation Guide](https://cmake.org/install/))
+- ARM GCC Toolchain ([Installation Guide](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm))
+
+**Platform-Specific Setup:**
+
+<details>
+<summary><strong>macOS</strong></summary>
+
+```bash
+# Install CMake and ARM GCC toolchain via Homebrew
+brew install cmake
+brew install --cask gcc-arm-embedded
+```
+
+Toolchain location: `/opt/homebrew/bin/arm-none-eabi-gcc` (Apple Silicon) or `/usr/local/bin/arm-none-eabi-gcc` (Intel)
+
+</details>
+
+<details>
+<summary><strong>Linux</strong></summary>
+
+```bash
+# Debian/Ubuntu
+sudo apt-get install cmake gcc-arm-none-eabi
+
+# Fedora
+sudo dnf install cmake arm-none-eabi-gcc-cs
+
+# Arch Linux
+sudo pacman -S cmake arm-none-eabi-gcc
+```
+
+Toolchain location: `/usr/bin/arm-none-eabi-gcc`
+
+</details>
+
+<details>
+<summary><strong>Windows</strong></summary>
+
+1. **CMake**: Download from [cmake.org](https://cmake.org/download/) or `winget install Kitware.CMake`
+2. **ARM GCC**: Download from [ARM Developer](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm)
+
+Typical toolchain location: `C:\Program Files (x86)\GNU Arm Embedded Toolchain\<version>\bin\arm-none-eabi-gcc.exe`
+
+</details>
+
+**VS Code Configuration:**
+
+The repository includes example VS Code configuration files in `.vscode.example/`. To use them:
+
+```bash
+# Copy example configurations
+cp -r .vscode.example/ .vscode/
+
+# Generate compile_commands.json for IntelliSense
+mkdir -p .build-cache && cd .build-cache
+cmake -DCMAKE_BUILD_TYPE=Debug \
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+      -DKEYBOARD=modelm/enhanced \
+      -DMOUSE=at-ps2 \
+      ../src
+cp compile_commands.json ..
+
+# Reload VS Code window (Cmd+Shift+P -> "Developer: Reload Window")
+```
+
+**What You Get:**
+- ✅ IntelliSense autocomplete for Pico SDK functions
+- ✅ Go to Definition for SDK headers
+- ✅ Real-time error checking
+- ✅ Symbol navigation and refactoring
+- ✅ CMake integration in VS Code
+
+**Notes:**
+- `.vscode/` and `compile_commands.json` are in `.gitignore` (not committed)
+- Your local settings won't affect other developers
+- Docker builds remain the canonical build method
+- ARM toolchain paths vary by platform - see `.vscode.example/README.md` for details
+- VS Code will automatically select the correct configuration based on your OS
+
 ## Building Firmware
 
 The project uses Docker to provide a consistent build environment across platforms.

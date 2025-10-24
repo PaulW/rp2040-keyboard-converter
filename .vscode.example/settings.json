@@ -1,0 +1,31 @@
+{
+  "cmake.sourceDirectory": "${workspaceFolder}/src",
+  "cmake.configureEnvironment": {
+    "KEYBOARD": "modelm/enhanced",
+    "MOUSE": "at-ps2"
+  },
+  "cmake.environment": {
+    "PICO_PLATFORM": "rp2040",
+    "PICO_COMPILER": "pico_arm_gcc",
+    "PICO_BOARD": "keyboard_converter_board",
+    "PICO_BOARD_HEADER_DIRS": "${workspaceFolder}/src/board_config/",
+    "CXX": "g++"
+  },
+  "cmake.buildDirectory": "${workspaceFolder}/.build-cache",
+  "cmake.configureSettings": {
+    "PICO_SDK_PATH": "${workspaceFolder}/external/pico-sdk"
+  },
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/compile_commands.json",
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "C_Cpp.default.includePath": [
+    "${workspaceFolder}/src/**",
+    "${workspaceFolder}/external/pico-sdk/**"
+  ],
+  "files.associations": {
+    "*.pio": "c",
+    "*.h": "c"
+  },
+  "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, ReflowComments: true, ColumnLimit: 100 }",
+  "C_Cpp.doxygen.generatedStyle": "/**",
+  "C_Cpp.clang_format_style": "{ BasedOnStyle: Google, ReflowComments: true, ColumnLimit: 100 }"
+}

@@ -1,5 +1,6 @@
 .DS_Store
-.vscode
-.build-cache
+.vscode/
+.build-cache/
 build/
 docs-internal/
+compile_commands.json
