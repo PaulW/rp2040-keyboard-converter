@@ -111,6 +111,20 @@ The converter translates between different scancode sets (can vary depending on 
 
 **Implementation:** Sets 1, 2, and 3 are handled by a unified, configuration-driven processor (`src/scancodes/set123/scancode.{h,c}`) that consolidates common XT/AT protocol logic while maintaining per-set behavior. See [Scancodes Documentation](src/scancodes/) for complete tables.
 
+## Getting Started
+
+### Clone Repository
+
+```bash
+# Clone with submodules (includes Pico SDK 2.2.0)
+git clone --recurse-submodules https://github.com/PaulW/rp2040-keyboard-converter.git
+
+# Or if already cloned:
+git submodule update --init --recursive
+```
+
+**Note:** The Pico SDK submodule is optional for Docker builds (SDK is built into the Docker image) but useful for local development and IDE integration.
+
 ## Building Firmware
 
 The project uses Docker to provide a consistent build environment across platforms.

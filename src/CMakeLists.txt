@@ -50,6 +50,20 @@ if(NOT KEYBOARD AND NOT MOUSE)
 endif()
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
+# Priority: 1) ENV var, 2) Submodule, 3) Error
+if(DEFINED ENV{PICO_SDK_PATH})
+  # User-specified path takes priority
+  message(STATUS "Using PICO_SDK_PATH from environment: $ENV{PICO_SDK_PATH}")
+elseif(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../external/pico-sdk/pico_sdk_init.cmake")
+  # Fallback to submodule if it exists
+  set(ENV{PICO_SDK_PATH} "${CMAKE_CURRENT_LIST_DIR}/../external/pico-sdk")
+  message(STATUS "Using Pico SDK from submodule: $ENV{PICO_SDK_PATH}")
+else()
+  message(FATAL_ERROR "Pico SDK not found. Either:\n"
+    "  1) Set PICO_SDK_PATH environment variable, OR\n"
+    "  2) Initialize git submodule: git submodule update --init --recursive")
+endif()
+
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 # Set the project name
