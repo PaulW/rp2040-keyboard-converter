@@ -15,17 +15,51 @@
   "cmake.configureSettings": {
     "PICO_SDK_PATH": "${workspaceFolder}/external/pico-sdk"
   },
+  "c-cpp-flylint.enable": false,
+  "C_Cpp.errorSquiggles": "enabled",
   "C_Cpp.default.compileCommands": "${workspaceFolder}/compile_commands.json",
   "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
   "C_Cpp.default.includePath": [
-    "${workspaceFolder}/src/**",
-    "${workspaceFolder}/external/pico-sdk/**"
+    "${workspaceFolder}/src",
+    "${workspaceFolder}/src/common/lib",
+    "${workspaceFolder}/src/keyboards/**",
+    "${workspaceFolder}/src/protocols/**",
+    "${workspaceFolder}/src/scancodes/**",
+    "${workspaceFolder}/external/pico-sdk/src/**",
+    "${workspaceFolder}/external/pico-sdk/lib/**",
+    "${workspaceFolder}/.build-cache/generated/**"
   ],
   "files.associations": {
     "*.pio": "c",
-    "*.h": "c"
+    "*.h": "c",
+    "hid_keycodes.h": "c",
+    "system_error": "c",
+    "ws2812.h": "c",
+    "config.h": "c",
+    "stdlib.h": "c",
+    "pico.h": "c",
+    "types.h": "c",
+    "time.h": "c",
+    "multicore.h": "c",
+    "board.h": "c",
+    "math.h": "c",
+    "clocks.h": "c",
+    "pio_helper.h": "c",
+    "stdint.h": "c",
+    "uart.h": "c",
+    "common_interface.h": "c",
+    "led_helper.h": "c",
+    "hid_interface.h": "c",
+    "flash.h": "c",
+    "command_mode.h": "c",
+    "stdio.h": "c",
+    "usb_descriptors.h": "c",
+    "tusb.h": "c"
   },
+  "c-cpp-flylint.language": "c",
+  "c-cpp-flylint.clang.standard": [],
   "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, ReflowComments: true, ColumnLimit: 100 }",
   "C_Cpp.doxygen.generatedStyle": "/**",
-  "C_Cpp.clang_format_style": "{ BasedOnStyle: Google, ReflowComments: true, ColumnLimit: 100 }"
+  "C_Cpp.clang_format_style": "{ BasedOnStyle: Google, ReflowComments: true, ColumnLimit: 100 }",
+  "github.copilot.advanced": {}
 }
