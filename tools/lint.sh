@@ -121,7 +121,8 @@ echo ""
 
 # Check 4: ringbuf_reset() Usage
 echo -e "${BLUE}[4/7] Checking ringbuf_reset() usage...${NC}"
-RINGBUF_RESET=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" "ringbuf_reset" src/ 2>/dev/null || true)
+# Exclude the ringbuf library itself (contains function definition)
+RINGBUF_RESET=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" --exclude-dir="ringbuf" "ringbuf_reset" src/ 2>/dev/null | grep -v "^src/common/lib/ringbuf\.[ch]:" || true)
 
 if [ -n "$RINGBUF_RESET" ]; then
     # Check for LINT:ALLOW annotation
@@ -130,8 +131,9 @@ if [ -n "$RINGBUF_RESET" ]; then
         file=$(echo "$line" | cut -d':' -f1)
         linenum=$(echo "$line" | cut -d':' -f2)
         
-        # Check if line has LINT:ALLOW annotation
-        if ! grep -q "// LINT:ALLOW ringbuf_reset" "$file" | head -n "$linenum" | tail -n 1 >/dev/null 2>&1; then
+        # Check if the specific line contains LINT:ALLOW annotation
+        # Use sed to extract the exact line and check for the annotation
+        if ! sed -n "${linenum}p" "$file" | grep -q "// LINT:ALLOW ringbuf_reset"; then
             RINGBUF_VIOLATIONS="${RINGBUF_VIOLATIONS}${line}\n"
         fi
     done <<< "$RINGBUF_RESET"
