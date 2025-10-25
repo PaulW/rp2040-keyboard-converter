@@ -1,0 +1,17 @@
+# Commit message template
+# 
+# ⚠️ REMINDER: Do NOT reference 'docs-internal/' in commit messages!
+# Commit messages are PUBLIC documentation visible in git history.
+#
+# Format:
+# <type>: <subject> (50 chars max)
+#
+# <body> (wrap at 72 chars)
+#
+# Types: feat, fix, docs, style, refactor, test, chore
+#
+# Checklist before committing:
+# [ ] No references to docs-internal/ in this message
+# [ ] No docs-internal/ files staged (check: git status)
+# [ ] Build tested (if code changes)
+# [ ] Documentation updated (public docs only)

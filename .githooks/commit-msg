@@ -1,0 +1,38 @@
+#!/bin/sh
+#
+# Commit-msg hook to prevent docs-internal/ references in commit messages
+# This runs AFTER the commit message is written but BEFORE the commit is created
+#
+
+# ANSI color codes
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+COMMIT_MSG_FILE=$1
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Check for docs-internal references (case-insensitive)
+if echo "$COMMIT_MSG" | grep -qi "docs-internal"; then
+    echo ""
+    echo "${RED}========================================${NC}"
+    echo "${RED}ERROR: Commit message blocked!${NC}"
+    echo "${RED}========================================${NC}"
+    echo ""
+    echo "${YELLOW}Your commit message references 'docs-internal/'.${NC}"
+    echo ""
+    echo "Policy violation (see .github/copilot-instructions.md):"
+    echo "  ⚠️  NEVER reference docs-internal/ in public documentation"
+    echo "  ⚠️  Commit messages are PUBLIC (visible in git history)"
+    echo ""
+    echo "Your message:"
+    echo "${YELLOW}---${NC}"
+    echo "$COMMIT_MSG"
+    echo "${YELLOW}---${NC}"
+    echo ""
+    echo "Please remove all references to 'docs-internal' and try again."
+    echo ""
+    exit 1
+fi
+
+exit 0

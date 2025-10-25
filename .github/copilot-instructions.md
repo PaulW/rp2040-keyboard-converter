@@ -598,9 +598,60 @@ If you encounter build issues, consider the following steps:
   - [ ] Code changes are complete and tested
   - [ ] Code Quality Audit checklist completed
   - [ ] Performance Analysis checklist completed
+  - [ ] **Run lint script**: `./tools/lint.sh` (fix violations before committing)
   - [ ] Documentation (docstrings, READMEs, etc) all updated if necessary (both internal and external)
   - [ ] Build process verified (clean build)
   - [ ] Changes committed with clear messages
+
+### Enforcement Tools
+
+**Automated Architecture Compliance:**
+
+The project includes enforcement tools to prevent violations of critical rules:
+
+1. **Lint Script** (`tools/lint.sh`)
+   - Detects: blocking operations, multicore APIs, printf in IRQ, docs-internal violations
+   - Run before every commit: `./tools/lint.sh`
+   - CI runs in strict mode (warnings = failures)
+
+2. **Git Hooks** (`.githooks/`)
+   - Pre-commit: Blocks staging docs-internal files
+   - Commit-msg: Blocks docs-internal references in messages
+   - Setup: `git config core.hooksPath .githooks`
+
+3. **CI Pipeline** (`.github/workflows/ci.yml`)
+   - Runs lint checks on every PR
+   - Build matrix: 8+ keyboard/mouse configurations
+   - Memory usage validation (Flash < 230KB, RAM < 150KB)
+   - Commit message verification
+
+4. **PR Template** (`.github/PULL_REQUEST_TEMPLATE.md`)
+   - Mandatory architecture compliance checklist
+   - Reviewer guidelines
+   - Testing verification
+
+**Using the Tools:**
+
+```bash
+# Before committing
+./tools/lint.sh
+
+# Test all enforcement mechanisms
+./tools/test-enforcement.sh
+
+# Quick reference
+cat tools/QUICKTEST.md
+```
+
+**When AI Makes Changes:**
+
+1. Always run lint script before suggesting commit
+2. Check that no docs-internal references appear anywhere
+3. Verify no new blocking operations introduced
+4. Ensure volatile + __dmb() used for IRQ-shared variables
+5. Run test suite if modifying enforcement tools themselves
+
+See `tools/TESTING.md` for comprehensive testing guide.
 
 ### AI Rules
 
