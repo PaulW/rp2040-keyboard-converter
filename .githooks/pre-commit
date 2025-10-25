@@ -1,0 +1,54 @@
+#!/bin/sh
+#
+# Pre-commit hook to prevent docs-internal/ violations
+# Checks for:
+# 1. Staged files from docs-internal/
+# 2. References to docs-internal/ in commit messages (when using git commit -m)
+#
+
+# ANSI color codes
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Check 1: Ensure no docs-internal/ files are staged
+STAGED_DOCS_INTERNAL=$(git diff --cached --name-only | grep '^docs-internal/')
+
+if [ -n "$STAGED_DOCS_INTERNAL" ]; then
+    echo "${RED}ERROR: Attempting to commit docs-internal/ files!${NC}"
+    echo ""
+    echo "The following files are staged from docs-internal/:"
+    echo "$STAGED_DOCS_INTERNAL"
+    echo ""
+    echo "${YELLOW}These files should NEVER be committed (see .github/copilot-instructions.md).${NC}"
+    echo ""
+    echo "To unstage these files, run:"
+    echo "  git reset HEAD docs-internal/"
+    echo ""
+    exit 1
+fi
+
+# Check 2: Warn about docs-internal references in commit message
+# (This only works if commit message is already prepared, e.g., via -m flag or --file)
+if [ -f ".git/COMMIT_EDITMSG" ]; then
+    if grep -qi "docs-internal" ".git/COMMIT_EDITMSG"; then
+        echo "${RED}WARNING: Commit message references 'docs-internal/'!${NC}"
+        echo ""
+        echo "${YELLOW}Commit messages are PUBLIC documentation (visible in git history).${NC}"
+        echo "${YELLOW}Do NOT reference docs-internal/ in commit messages.${NC}"
+        echo ""
+        echo "Please edit your commit message to remove any 'docs-internal' references."
+        echo ""
+        # Note: We warn but don't block here since user might be in the editor
+        # and this is the pre-commit hook (message can still be edited)
+    fi
+fi
+
+# Check 3: Ensure docs-internal/ is in .gitignore
+if ! grep -q '^docs-internal/' .gitignore; then
+    echo "${YELLOW}WARNING: docs-internal/ not found in .gitignore${NC}"
+    echo "This directory should be ignored. Consider adding it."
+    echo ""
+fi
+
+exit 0

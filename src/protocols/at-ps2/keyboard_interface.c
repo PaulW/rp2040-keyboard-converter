@@ -668,7 +668,7 @@ void keyboard_interface_setup(uint data_pin) {
   update_converter_status();  // Initialize converter status LEDs to "not ready" state
 #endif
 
-  ringbuf_reset();  // Ensure clean startup state despite static initialization
+  ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Safe: IRQs not yet enabled during init
 
   // Locate available PIO instance with sufficient program memory space
   // find_available_pio() searches PIO0 and PIO1 for program capacity

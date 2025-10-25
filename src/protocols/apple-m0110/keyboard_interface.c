@@ -325,7 +325,7 @@ void keyboard_interface_task(void) {
       // The keyboard should ALWAYS respond, so timeout indicates a problem
       if (response_elapsed_valid && elapsed_since_response > M0110_RESPONSE_TIMEOUT_MS) {
         LOG_ERROR("No response from keyboard within 1/2 second - keyboard not behaving, reinitializing\n");
-        ringbuf_reset();  // Clear any stale buffered data
+        ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Clear any stale buffered data during reinitialization
         keyboard_state = UNINITIALISED;
         last_command_time = current_time;
         break;  // Skip processing, restart initialization
@@ -389,7 +389,7 @@ void keyboard_interface_setup(uint data_pin) {
 #endif
 
   // Initialize ring buffer for key data communication between IRQ and main task
-  ringbuf_reset();
+  ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Safe: IRQs not yet enabled during init
   
   // Find and allocate available PIO instance for M0110 protocol handling
   keyboard_pio = find_available_pio(&keyboard_interface_program);

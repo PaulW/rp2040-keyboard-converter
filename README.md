@@ -643,6 +643,53 @@ Device Status:     0x0000
 
 Boot Protocol is used for BIOS/UEFI compatibility (6-key rollover, NKRO not supported).
 
+## Development Guidelines
+
+### Code Quality & Architecture Enforcement
+
+The project includes automated enforcement tools to maintain code quality and architectural purity:
+
+**Lint Script** - Detects violations of critical architecture rules:
+```bash
+# Run locally before committing
+./tools/lint.sh
+
+# Run in strict mode (warnings cause failure)
+./tools/lint.sh --strict
+```
+
+**Git Hooks** - Automatic checks during commits:
+- Pre-commit: Prevents staging of internal documentation
+- Commit-msg: Blocks references to internal docs in commit messages
+
+**CI Pipeline** - GitHub Actions runs on every PR:
+- Architecture lint checks
+- Build matrix (8+ keyboard/mouse configurations)
+- Memory usage validation
+- Commit message verification
+
+**Setup** (one-time for contributors):
+```bash
+# Configure git hooks
+git config core.hooksPath .githooks
+chmod +x .githooks/*
+
+# Configure commit template with reminders
+git config commit.template .gitmessage
+
+# Test the tools
+./tools/test-enforcement.sh
+```
+
+**What's Enforced:**
+- ❌ No blocking operations (`sleep_ms`, `busy_wait_us`)
+- ❌ No multicore APIs (single-core architecture)
+- ❌ No `printf()` in IRQ context
+- ✅ Volatile + memory barriers for IRQ-shared variables
+- ✅ `tud_hid_ready()` checked before sending HID reports
+
+See [`.github/copilot-instructions.md`](.github/copilot-instructions.md) for complete architecture rules and [tools/TESTING.md](tools/TESTING.md) for testing documentation.
+
 ## Contributing
 
 Contributions welcome! Areas for expansion:
@@ -652,6 +699,12 @@ Contributions welcome! Areas for expansion:
 - Feature development (NKRO, dynamic keymaps)
 - Hardware designs (PCBs, inline adapters, cases)
 - Documentation improvements
+
+**Before submitting PRs:**
+1. Run `./tools/lint.sh` to check for violations
+2. Ensure builds succeed for your configuration
+3. Follow the PR template checklist
+4. Review `.github/copilot-instructions.md` for architecture rules
 
 ## Future Development
 

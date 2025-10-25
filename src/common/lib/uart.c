@@ -448,7 +448,7 @@ static inline bool wait_for_queue_space(void) {
     int delay_us = 1;
     int waited = 0;
     while (queue_full() && waited < UART_DMA_WAIT_US) {
-        sleep_us(delay_us);
+        sleep_us(delay_us);  // LINT:ALLOW blocking - UART debug logging only, IRQ-protected, yields CPU for PIO/interrupts
         waited += delay_us;
         delay_us <<= 1;  // double delay
         if (delay_us > 1024) delay_us = 1024; // cap step size
