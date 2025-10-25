@@ -81,7 +81,6 @@
 #include <math.h>
 
 #include "bsp/board.h"
-#include "buzzer.h"
 #include "common_interface.h"
 #include "hardware/clocks.h"
 #include "interface.pio.h"
@@ -243,7 +242,6 @@ static void keyboard_event_processor(uint8_t data_byte) {
           // Power-on self-test completed successfully (Basic Assurance Test)
           // Keyboard passed internal diagnostics and is ready
           LOG_DEBUG("Keyboard Self Test OK!\n");
-          buzzer_play_sound_sequence_non_blocking(READY_SEQUENCE);
           keyboard_lock_leds = 0;
           LOG_DEBUG("Waiting for Keyboard ID...\n");
           keyboard_state = INIT_READ_ID_1;
@@ -271,7 +269,6 @@ static void keyboard_event_processor(uint8_t data_byte) {
       switch (data_byte) {
         case ATPS2_RESP_BAT_PASSED:
           LOG_DEBUG("Keyboard Self Test OK!\n");
-          buzzer_play_sound_sequence_non_blocking(READY_SEQUENCE);
           keyboard_lock_leds = 0;
           // Proceed to keyboard identification phase for terminal keyboard detection
           LOG_DEBUG("Waiting for Keyboard ID...\n");
@@ -367,7 +364,6 @@ static void keyboard_event_processor(uint8_t data_byte) {
                                                lock_leds.keys.scrollLock));
           } else {
             // LED command sequence completed successfully - return to normal operation
-            buzzer_play_sound_sequence_non_blocking(LOCK_LED);
             keyboard_state = INITIALISED;
           }
           break;

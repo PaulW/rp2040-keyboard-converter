@@ -44,11 +44,6 @@
 #include "mouse_interface.h"
 #endif
 
-// The following includes are optional and are only included if the relevant features are enabled.
-#ifdef CONVERTER_PIEZO
-#include "buzzer.h"
-#endif
-
 #ifdef CONVERTER_LEDS
 #include "ws2812/ws2812.h"
 #endif
@@ -73,11 +68,6 @@ int main(void) {
   LOG_INFO("RP2040 Serial ID: %s\n", pico_unique_id);
   LOG_INFO("Build Time: %s\n", BUILD_TIME);
   LOG_INFO("--------------------------------\n");
-
-  // Initialise Optional Components
-#ifdef CONVERTER_PIEZO
-  buzzer_init(PIEZO_PIN);  // Setup the buzzer.
-#endif
 
 #ifdef CONVERTER_LEDS
   ws2812_setup(LED_PIN);  // Setup the WS2812 LEDs.

@@ -115,7 +115,6 @@
 #include "types.h"
 
 // Define configuration options for the Keyboard Converter
-#define CONVERTER_PIEZO              // Enable Piezo Buzzer on Converter Hardware
 #define CONVERTER_LEDS               // Enable support for LED indicator lights on Converter Hardware
 #define CONVERTER_LEDS_TYPE LED_GRB  // Define type of LED which we are using
 #define CONVERTER_LOCK_LEDS          // Enable Lock LED Indicators on Converter Hardware
@@ -130,7 +129,6 @@
 // Define the GPIO Pins for the Keyboard Converter.
 #define KEYBOARD_DATA_PIN 2  // This is the starting pin for the connected Keyboard.  Depending on the keyboard, we may use 2, 3 or more pins.
 #define MOUSE_DATA_PIN 6     // This is the starting pin for the connected Mouse.  Depending on the mouse, we may use 2, 3 or more pins.
-#define PIEZO_PIN 11         // Piezo Buzzer GPIO Pin.  Only required if CONVERTER_PIEZO is defined
 #define LED_PIN 29           // LED GPIO Pin.  If using WS2812 LEDs, this is the GPIO Pin for the Data Line, otherwise we require 4 total GPIO for individual LED connections
 
 // --- CAPS LOCK Toggle Configuration ---
