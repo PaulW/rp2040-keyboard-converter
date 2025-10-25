@@ -112,11 +112,16 @@ jobs:
           echo "✓ Build successful"
           ls -lh build/rp2040-converter.*
       
+      - name: Install ARM toolchain for memory analysis
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi
+      
       - name: Extract memory usage
         run: |
           if [ -f build/rp2040-converter.elf ]; then
             echo "Memory usage for ${{ matrix.config.name }}:"
-            docker compose run --rm builder arm-none-eabi-size /usr/local/builder/build/rp2040-converter.elf
+            arm-none-eabi-size build/rp2040-converter.elf
           fi
       
       - name: Upload firmware artifact
