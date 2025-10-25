@@ -18,9 +18,10 @@ Architectural lint script that enforces critical rules from `.github/copilot-ins
 
 ### Checks Performed
 
-1. **Blocking Operations** - Detects `sleep_ms()`, `sleep_us()`, `busy_wait_us()`
+1. **Blocking Operations** - Detects `sleep_ms()`, `sleep_us()`, `busy_wait_us()`, `busy_wait_ms()`
    - ❌ **Fails**: Any blocking call found in src/
    - 💡 **Fix**: Use time-based state machines with `to_ms_since_boot(get_absolute_time())`
+   - 💡 **Suppress error**: Add `// LINT:ALLOW blocking` comment for debug-only code with IRQ protection
 
 2. **Multicore API Usage** - Detects `multicore_launch_core1`, `multicore_fifo_*`
    - ❌ **Fails**: Any multicore API usage
@@ -106,6 +107,15 @@ if (to_ms_since_boot(get_absolute_time()) - start_time >= 100) {
     do_something();
     waiting = false;
 }
+```
+
+**Exception**: Debug-only code with explicit justification
+```c
+// Acceptable use case: UART debug logging with IRQ protection
+if (in_irq()) {
+    return !queue_full();  // Never block in IRQ
+}
+sleep_us(delay_us);  // LINT:ALLOW blocking - UART debug logging only, IRQ-protected, yields CPU for PIO/interrupts
 ```
 
 #### printf in IRQ Context

@@ -47,15 +47,32 @@ echo -e "${BLUE}[1/7] Checking for blocking operations...${NC}"
 BLOCKING_CALLS=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "sleep_ms\(|sleep_us\(|busy_wait_us\(|busy_wait_ms\(" src/ 2>/dev/null || true)
 
 if [ -n "$BLOCKING_CALLS" ]; then
-    echo -e "${RED}ERROR: Blocking operations detected!${NC}"
-    echo ""
-    echo "$BLOCKING_CALLS"
-    echo ""
-    echo -e "${YELLOW}Architecture rule: NEVER use blocking operations${NC}"
-    echo "  - Use to_ms_since_boot(get_absolute_time()) for timing"
-    echo "  - Implement time-based state machines"
-    echo ""
-    ERRORS=$((ERRORS + 1))
+    # Check for LINT:ALLOW annotations
+    BLOCKING_VIOLATIONS=""
+    while IFS= read -r line; do
+        file=$(echo "$line" | cut -d':' -f1)
+        linenum=$(echo "$line" | cut -d':' -f2)
+        
+        # Check if the specific line contains LINT:ALLOW annotation
+        if ! sed -n "${linenum}p" "$file" | grep -q "// LINT:ALLOW blocking"; then
+            BLOCKING_VIOLATIONS="${BLOCKING_VIOLATIONS}${line}\n"
+        fi
+    done <<< "$BLOCKING_CALLS"
+    
+    if [ -n "$BLOCKING_VIOLATIONS" ]; then
+        echo -e "${RED}ERROR: Blocking operations detected!${NC}"
+        echo ""
+        echo -e "$BLOCKING_VIOLATIONS"
+        echo ""
+        echo -e "${YELLOW}Architecture rule: NEVER use blocking operations${NC}"
+        echo "  - Use to_ms_since_boot(get_absolute_time()) for timing"
+        echo "  - Implement time-based state machines"
+        echo "  - Add '// LINT:ALLOW blocking' comment to suppress this error for exceptional cases"
+        echo ""
+        ERRORS=$((ERRORS + 1))
+    else
+        echo -e "${GREEN}✓ All blocking operations have LINT:ALLOW annotation${NC}"
+    fi
 else
     echo -e "${GREEN}✓ No blocking operations found${NC}"
 fi

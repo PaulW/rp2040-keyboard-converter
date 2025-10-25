@@ -126,8 +126,17 @@ Protocol Handler → Scancode Decoder → Keymap → HID Interface → USB
 ## Critical Patterns
 
 ### Non-Blocking Requirement
-**Wrong:** `sleep_ms()`, `busy_wait_us()`, `sleep_us()` in any context (breaks PIO timing)  
+**Wrong:** `sleep_ms()`, `sleep_us()`, `busy_wait_us()`, `busy_wait_ms()` in any context (breaks PIO timing)  
 **Right:** Time-based state machines using `to_ms_since_boot(get_absolute_time())`
+
+**Exception:** Debug-only code with LINT:ALLOW annotation and explicit IRQ protection:
+```c
+// ONLY acceptable in debug/logging subsystems with IRQ guards
+if (in_irq()) {
+    return;  // Never block in IRQ context
+}
+sleep_us(delay);  // LINT:ALLOW blocking - [justification here]
+```
 
 Example from `command_mode_task()`:
 ```c
@@ -610,22 +619,30 @@ If you encounter build issues, consider the following steps:
 The project includes enforcement tools to prevent violations of critical rules:
 
 1. **Lint Script** (`tools/lint.sh`)
-   - Detects: blocking operations, multicore APIs, printf in IRQ, docs-internal violations
+   - Detects: blocking operations (sleep_ms/us, busy_wait_ms/us), multicore APIs, printf in IRQ, docs-internal violations, ringbuf_reset, copy_to_ram config
+   - Supports: LINT:ALLOW annotations for exceptional cases (blocking, ringbuf_reset)
    - Run before every commit: `./tools/lint.sh`
    - CI runs in strict mode (warnings = failures)
 
-2. **Git Hooks** (`.githooks/`)
+2. **Runtime RAM Check** (`src/common/lib/ram_check.c`)
+   - Enabled in debug builds (CMAKE_BUILD_TYPE=Debug)
+   - Verifies code executes from SRAM (0x20000000), not Flash (0x10000000)
+   - Panics with descriptive message if executing from wrong memory region
+   - Defense-in-depth beyond CMake text search
+
+3. **Git Hooks** (`.githooks/`)
    - Pre-commit: Blocks staging docs-internal files
    - Commit-msg: Blocks docs-internal references in messages
    - Setup: `git config core.hooksPath .githooks`
 
-3. **CI Pipeline** (`.github/workflows/ci.yml`)
-   - Runs lint checks on every PR
+4. **CI Pipeline** (`.github/workflows/ci.yml`)
+   - Runs lint checks on every PR (strict mode)
    - Build matrix: 8+ keyboard/mouse configurations
-   - Memory usage validation (Flash < 230KB, RAM < 150KB)
+   - Real ELF memory parsing with arm-none-eabi-size
+   - Memory limits enforced: Flash < 230KB, RAM < 150KB
    - Commit message verification
 
-4. **PR Template** (`.github/PULL_REQUEST_TEMPLATE.md`)
+5. **PR Template** (`.github/PULL_REQUEST_TEMPLATE.md`)
    - Mandatory architecture compliance checklist
    - Reviewer guidelines
    - Testing verification
@@ -647,9 +664,10 @@ cat tools/QUICKTEST.md
 
 1. Always run lint script before suggesting commit
 2. Check that no docs-internal references appear anywhere
-3. Verify no new blocking operations introduced
-4. Ensure volatile + __dmb() used for IRQ-shared variables
-5. Run test suite if modifying enforcement tools themselves
+3. Verify no new blocking operations introduced (sleep_ms/us, busy_wait_ms/us)
+4. If blocking operation is necessary (debug/logging only), add LINT:ALLOW annotation with justification
+5. Ensure volatile + __dmb() used for IRQ-shared variables
+6. Run test suite if modifying enforcement tools themselves
 
 See `tools/TESTING.md` for comprehensive testing guide.
 
