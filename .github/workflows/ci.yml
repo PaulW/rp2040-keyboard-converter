@@ -56,26 +56,23 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - name: "IBM Model M Enhanced (Keyboard only)"
+          - name: "IBM Model M Enhanced (AT/PS2 Protocol)"
             keyboard: "modelm/enhanced"
             mouse: ""
-          - name: "IBM Model F PC/AT (Keyboard only)"
-            keyboard: "modelf/pcat"
+          - name: "Cherry G80-1104H (XT Protocol)"
+            keyboard: "cherry/G80-1104H"
             mouse: ""
-          - name: "IBM XT 5150 (Keyboard only)"
-            keyboard: "xt/ibm5150"
-            mouse: ""
-          - name: "Apple M0110A (Keyboard only)"
+          - name: "Apple M0110A (Apple M0110 Protocol)"
             keyboard: "apple/m0110a"
             mouse: ""
-          - name: "Amiga 1000 (Keyboard only)"
-            keyboard: "amiga/amiga1000"
+          - name: "Amiga 500 (CBM Amiga Protocol)"
+            keyboard: "amiga/a500"
             mouse: ""
           - name: "Model M + AT/PS2 Mouse"
             keyboard: "modelm/enhanced"
             mouse: "at-ps2"
-          - name: "XT + AT/PS2 Mouse"
-            keyboard: "xt/ibm5150"
+          - name: "Cherry G80-1104H + AT/PS2 Mouse"
+            keyboard: "cherry/G80-1104H"
             mouse: "at-ps2"
           - name: "AT/PS2 Mouse only"
             keyboard: ""
@@ -119,7 +116,7 @@ jobs:
         run: |
           if [ -f build/rp2040-converter.elf ]; then
             echo "Memory usage for ${{ matrix.config.name }}:"
-            arm-none-eabi-size build/rp2040-converter.elf || docker run --rm -v $(pwd):/workspace ghcr.io/paulw/rp2040-keyboard-converter-builder:latest arm-none-eabi-size /workspace/build/rp2040-converter.elf
+            docker compose run --rm builder arm-none-eabi-size /usr/local/builder/build/rp2040-converter.elf
           fi
       
       - name: Upload firmware artifact

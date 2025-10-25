@@ -73,9 +73,8 @@ void ram_check_verify(void) {
     
     // Unexpected memory region
     panic("WARNING: Code executing from unexpected memory region (0x%08x)!\n"
-          "         Expected SRAM: 0x20000000-0x20042000\n"
-          "         Got: 0x%08x\n",
-          addr, addr);
+          "         Expected SRAM: 0x20000000-0x20042000\n",
+          addr);
 }
 
 #else
