@@ -1,5 +1,5 @@
 # RP2040 Multi-Protocol Keyboard & Mouse Converter
-[![Test Building of Converter Firmware](https://github.com/PaulW/rp2040-keyboard-converter/actions/workflows/docker-image.yml/badge.svg)](https://github.com/PaulW/rp2040-keyboard-converter/actions/workflows/docker-image.yml)
+[![Test Building of Converter Firmware](https://github.com/PaulW/rp2040-keyboard-converter/actions/workflows/docker-image.yml/badge.svg)](https://github.com/PaulW/rp2040-keyboard-converter/actions/workflows/ci.yml)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/PaulW/rp2040-keyboard-converter?style=flat)
 
 A USB HID converter for vintage keyboards and mice, using the RP2040's PIO (Programmable I/O) hardware to support multiple protocols.
