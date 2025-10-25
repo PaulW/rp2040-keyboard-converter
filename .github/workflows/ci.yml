@@ -124,10 +124,31 @@ jobs:
             arm-none-eabi-size build/rp2040-converter.elf
           fi
       
+      - name: Prepare artifact name
+        id: artifact-name
+        run: |
+          # Sanitize keyboard and mouse names for artifact naming (replace / with -)
+          KEYBOARD_SAFE=$(echo "${{ matrix.config.keyboard }}" | tr '/' '-')
+          MOUSE_SAFE=$(echo "${{ matrix.config.mouse }}" | tr '/' '-')
+          
+          # Create artifact name
+          if [ -n "$KEYBOARD_SAFE" ] && [ -n "$MOUSE_SAFE" ]; then
+            ARTIFACT_NAME="firmware-${KEYBOARD_SAFE}-${MOUSE_SAFE}"
+          elif [ -n "$KEYBOARD_SAFE" ]; then
+            ARTIFACT_NAME="firmware-${KEYBOARD_SAFE}"
+          elif [ -n "$MOUSE_SAFE" ]; then
+            ARTIFACT_NAME="firmware-mouse-${MOUSE_SAFE}"
+          else
+            ARTIFACT_NAME="firmware-unknown"
+          fi
+          
+          echo "artifact_name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
+          echo "Artifact name: ${ARTIFACT_NAME}"
+      
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-${{ matrix.config.keyboard }}-${{ matrix.config.mouse }}
+          name: ${{ steps.artifact-name.outputs.artifact_name }}
           path: |
             build/rp2040-converter.uf2
             build/rp2040-converter.elf
