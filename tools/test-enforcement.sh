@@ -156,7 +156,7 @@ test_hook_docs_internal_staging() {
     echo "test" > docs-internal/test_file.md
     
     # Try to add and commit (should fail at pre-commit)
-    run_test "Pre-commit blocks docs-internal files" "git add -f docs-internal/test_file.md && git commit -m 'test' --no-verify" "fail"
+    run_test "Pre-commit blocks docs-internal files" "git add -f docs-internal/test_file.md && git commit -m 'test'" "fail"
     
     git reset HEAD docs-internal/test_file.md 2>/dev/null || true
     rm -f docs-internal/test_file.md

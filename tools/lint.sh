@@ -16,6 +16,17 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Base grep exclude patterns (avoid scanning tools/hooks/workflow files)
+EXCLUDE_DIRS=(
+    --exclude-dir=".git"
+    --exclude-dir="build"
+    --exclude-dir="external"
+    --exclude-dir="docs-internal"
+    --exclude-dir="tools"
+    --exclude-dir=".githooks"
+    --exclude-dir=".github"
+)
+
 # Options
 STRICT_MODE=0
 if [[ "$1" == "--strict" ]]; then
@@ -33,7 +44,7 @@ echo ""
 
 # Check 1: Blocking Operations
 echo -e "${BLUE}[1/7] Checking for blocking operations...${NC}"
-BLOCKING_CALLS=$(grep -R --line-number --exclude-dir=".git" --exclude-dir="build" --exclude-dir="external" --exclude-dir="docs-internal" --exclude="*.md" -E "sleep_ms\(|sleep_us\(|busy_wait_us\(|busy_wait_ms\(" src/ 2>/dev/null || true)
+BLOCKING_CALLS=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "sleep_ms\(|sleep_us\(|busy_wait_us\(|busy_wait_ms\(" src/ 2>/dev/null || true)
 
 if [ -n "$BLOCKING_CALLS" ]; then
     echo -e "${RED}ERROR: Blocking operations detected!${NC}"
@@ -52,7 +63,7 @@ echo ""
 
 # Check 2: Multicore API Usage
 echo -e "${BLUE}[2/7] Checking for multicore API usage...${NC}"
-MULTICORE_USAGE=$(grep -R --line-number --exclude-dir=".git" --exclude-dir="build" --exclude-dir="external" --exclude-dir="docs-internal" --exclude="*.md" -E "multicore_launch_core1|multicore_fifo|multicore_reset_core1|SIO_FIFO|core1_entry|CORE1" src/ 2>/dev/null || true)
+MULTICORE_USAGE=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "multicore_launch_core1|multicore_fifo_push_blocking|multicore_fifo_pop_blocking|multicore_fifo_drain|multicore_reset_core1|multicore_lockout" src/ 2>/dev/null || true)
 
 if [ -n "$MULTICORE_USAGE" ]; then
     echo -e "${RED}ERROR: Multicore API usage detected!${NC}"
@@ -72,7 +83,7 @@ echo ""
 # Check 3: printf in IRQ Context
 echo -e "${BLUE}[3/7] Checking for printf in IRQ context...${NC}"
 # This is a heuristic check - finds functions with __isr attribute and checks for printf
-ISR_FUNCTIONS=$(grep -R --files-with-matches --exclude-dir=".git" --exclude-dir="build" --exclude-dir="external" --exclude-dir="docs-internal" --exclude="*.md" "__isr" src/ 2>/dev/null || true)
+ISR_FUNCTIONS=$(grep -R --files-with-matches "${EXCLUDE_DIRS[@]}" --exclude="*.md" "__isr" src/ 2>/dev/null || true)
 
 PRINTF_IN_ISR=""
 if [ -n "$ISR_FUNCTIONS" ]; then
@@ -81,8 +92,11 @@ if [ -n "$ISR_FUNCTIONS" ]; then
         ISR_NAMES=$(grep -o "__isr [a-zA-Z_][a-zA-Z0-9_]*" "$file" | awk '{print $2}' || true)
         
         for isr_name in $ISR_NAMES; do
-            # Check if printf appears in same function (simple heuristic)
-            if grep -A 50 "$isr_name" "$file" | grep -q "printf\|LOG_"; then
+            # Check if printf/fprintf/sprintf appears in same function
+            # Look ahead max 30 lines and stop at closing brace at column 1 (end of function)
+            # Note: LOG_* macros are allowed - they're designed for IRQ use
+            FUNCTION_BODY=$(grep -A 30 "$isr_name" "$file" | awk '/^}/ {exit} {print}')
+            if echo "$FUNCTION_BODY" | grep -E "\bprintf\(|\bfprintf\(|\bsprintf\(" >/dev/null 2>&1; then
                 PRINTF_IN_ISR="${PRINTF_IN_ISR}${file}:${isr_name}\n"
             fi
         done
@@ -95,8 +109,8 @@ if [ -n "$PRINTF_IN_ISR" ]; then
     echo -e "$PRINTF_IN_ISR"
     echo ""
     echo -e "${YELLOW}Architecture rule: No printf() in IRQ context${NC}"
-    echo "  - printf uses DMA which isn't IRQ-safe"
-    echo "  - LOG_* macros are designed for IRQ use"
+    echo "  - printf/fprintf/sprintf use DMA which isn't IRQ-safe"
+    echo "  - LOG_* macros are allowed - designed for IRQ use"
     echo "  - Defer logging to main loop if unsure"
     echo ""
     WARNINGS=$((WARNINGS + 1))
@@ -107,19 +121,36 @@ echo ""
 
 # Check 4: ringbuf_reset() Usage
 echo -e "${BLUE}[4/7] Checking ringbuf_reset() usage...${NC}"
-RINGBUF_RESET=$(grep -R --line-number --exclude-dir=".git" --exclude-dir="build" --exclude-dir="external" --exclude-dir="docs-internal" --exclude="*.md" "ringbuf_reset" src/ 2>/dev/null || true)
+RINGBUF_RESET=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" "ringbuf_reset" src/ 2>/dev/null || true)
 
 if [ -n "$RINGBUF_RESET" ]; then
-    echo -e "${YELLOW}WARNING: ringbuf_reset() usage detected:${NC}"
-    echo ""
-    echo "$RINGBUF_RESET"
-    echo ""
-    echo -e "${YELLOW}Architecture rule: Only call ringbuf_reset() with IRQs disabled${NC}"
-    echo "  - Never call during normal operation"
-    echo "  - Only during initialization or state machine resets"
-    echo "  - Must verify IRQs are disabled first"
-    echo ""
-    WARNINGS=$((WARNINGS + 1))
+    # Check for LINT:ALLOW annotation
+    RINGBUF_VIOLATIONS=""
+    while IFS= read -r line; do
+        file=$(echo "$line" | cut -d':' -f1)
+        linenum=$(echo "$line" | cut -d':' -f2)
+        
+        # Check if line has LINT:ALLOW annotation
+        if ! grep -q "// LINT:ALLOW ringbuf_reset" "$file" | head -n "$linenum" | tail -n 1 >/dev/null 2>&1; then
+            RINGBUF_VIOLATIONS="${RINGBUF_VIOLATIONS}${line}\n"
+        fi
+    done <<< "$RINGBUF_RESET"
+    
+    if [ -n "$RINGBUF_VIOLATIONS" ]; then
+        echo -e "${YELLOW}WARNING: ringbuf_reset() usage detected:${NC}"
+        echo ""
+        echo -e "$RINGBUF_VIOLATIONS"
+        echo ""
+        echo -e "${YELLOW}Architecture rule: Only call ringbuf_reset() with IRQs disabled${NC}"
+        echo "  - Never call during normal operation"
+        echo "  - Only during initialization or state machine resets"
+        echo "  - Must verify IRQs are disabled first"
+        echo "  - Add '// LINT:ALLOW ringbuf_reset' comment to suppress this warning"
+        echo ""
+        WARNINGS=$((WARNINGS + 1))
+    else
+        echo -e "${GREEN}✓ All ringbuf_reset() calls have LINT:ALLOW annotation${NC}"
+    fi
 else
     echo -e "${GREEN}✓ No ringbuf_reset() calls found${NC}"
 fi

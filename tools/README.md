@@ -27,12 +27,13 @@ Architectural lint script that enforces critical rules from `.github/copilot-ins
    - 💡 **Fix**: This project is single-core only (Core 0) by design
 
 3. **printf in IRQ Context** - Heuristic check for `printf` in `__isr` functions
-   - ⚠️ **Warns**: Possible printf in interrupt handlers
-   - 💡 **Fix**: Use `LOG_*` macros or defer logging to main loop
+   - ⚠️ **Warns**: Possible printf/fprintf/sprintf in interrupt handlers
+   - 💡 **Fix**: Use `LOG_*` macros (allowed - designed for IRQ use) or defer logging to main loop
 
 4. **ringbuf_reset() Usage** - Detects calls to `ringbuf_reset()`
    - ⚠️ **Warns**: Must only be called with IRQs disabled
    - 💡 **Fix**: Only use during initialization or state machine resets
+   - 💡 **Suppress warning**: Add `// LINT:ALLOW ringbuf_reset` comment on same line
 
 5. **docs-internal/ in Repository** - Checks for committed internal docs
    - ❌ **Fails**: Any docs-internal/ files tracked by git
@@ -41,6 +42,7 @@ Architectural lint script that enforces critical rules from `.github/copilot-ins
 6. **copy_to_ram Configuration** - Verifies code runs from RAM
    - ⚠️ **Warns**: `pico_set_binary_type(copy_to_ram)` not found
    - 💡 **Fix**: Add to CMakeLists.txt for timing-critical code
+   - 🔧 **Runtime check**: Debug builds include `ram_check_verify()` - panics if executing from Flash
 
 7. **IRQ-Shared Variables** - Reminder for manual review
    - ⚠️ **Manual check**: Volatile keyword and memory barriers
@@ -138,6 +140,37 @@ void main_loop(void) {
     }
 }
 ```
+
+#### Suppressing ringbuf_reset Warnings
+
+**Problem**: Legitimate `ringbuf_reset()` call during initialization triggers warning
+
+**Fix**: Add annotation comment
+```c
+// Legitimate use - IRQs not yet enabled during init
+void keyboard_interface_init(void) {
+    // ... setup code ...
+    ringbuf_reset();  // LINT:ALLOW ringbuf_reset
+}
+```
+
+The lint script will skip warnings for lines with the `// LINT:ALLOW ringbuf_reset` annotation.
+
+### Runtime RAM Execution Check
+
+In debug builds (`cmake -DCMAKE_BUILD_TYPE=Debug`), the firmware includes a runtime check that verifies code is executing from SRAM rather than Flash:
+
+```c
+#include "ram_check.h"
+
+int main(void) {
+    ram_check_verify();  // Panics if executing from Flash (0x10000000)
+                          // Passes if executing from SRAM (0x20000000)
+    // ... rest of initialization
+}
+```
+
+This provides defense-in-depth verification beyond the lint script's text search for `pico_set_binary_type(copy_to_ram)`.
 
 ## Testing the Tools
 

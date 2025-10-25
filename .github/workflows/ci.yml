@@ -16,6 +16,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Full history for complete git ls-files check
+          submodules: true  # Include submodules for future-proofing
       
       - name: Run lint script
         run: |
@@ -140,6 +141,11 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
       
+      - name: Install ARM toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi
+      
       - name: Check memory limits
         run: |
           # Memory limits (bytes)
@@ -150,28 +156,78 @@ jobs:
           echo "=========================================="
           
           FAILED=0
+          CHECKED=0
           
-          for elf in firmware-*/rp2040-converter.elf; do
-            if [ -f "$elf" ]; then
-              CONFIG=$(dirname "$elf")
+          # Iterate through all directories (defensive - handle any artifact naming)
+          for artifact_dir in */; do
+            # Skip if not a directory or if it doesn't look like a firmware artifact
+            if [ ! -d "$artifact_dir" ]; then
+              continue
+            fi
+            
+            # Remove trailing slash
+            artifact_dir="${artifact_dir%/}"
+            
+            # Look for ELF file (handle variations in naming)
+            ELF_FILE=$(find "$artifact_dir" -name "*.elf" -type f | head -n 1)
+            
+            if [ -n "$ELF_FILE" ] && [ -f "$ELF_FILE" ]; then
+              CONFIG=$(basename "$artifact_dir")
               echo ""
               echo "Configuration: $CONFIG"
               
-              # This requires arm-none-eabi-size to be installed
-              # For now, just check file exists and note that detailed check requires toolchain
-              echo "  ⚠ Detailed memory check requires arm-none-eabi-size"
-              echo "  Build artifact size: $(stat -f%z "$elf" 2>/dev/null || stat -c%s "$elf" 2>/dev/null) bytes"
+              # Use arm-none-eabi-size to get section sizes
+              SIZE_OUTPUT=$(arm-none-eabi-size "$ELF_FILE")
+              
+              # Parse output: "text    data     bss     dec     hex filename"
+              # Flash usage = text + data
+              # RAM usage = data + bss
+              TEXT=$(echo "$SIZE_OUTPUT" | awk 'NR==2 {print $1}')
+              DATA=$(echo "$SIZE_OUTPUT" | awk 'NR==2 {print $2}')
+              BSS=$(echo "$SIZE_OUTPUT" | awk 'NR==2 {print $3}')
+              
+              FLASH_USAGE=$((TEXT + DATA))
+              RAM_USAGE=$((DATA + BSS))
+              
+              FLASH_KB=$((FLASH_USAGE / 1024))
+              RAM_KB=$((RAM_USAGE / 1024))
+              
+              echo "  Flash: ${FLASH_KB}KB (${FLASH_USAGE} bytes)"
+              echo "  RAM:   ${RAM_KB}KB (${RAM_USAGE} bytes)"
+              
+              # Check limits
+              if [ $FLASH_USAGE -gt $MAX_FLASH ]; then
+                echo "  ❌ FLASH EXCEEDS LIMIT (max: 230KB)"
+                FAILED=$((FAILED + 1))
+              else
+                echo "  ✓ Flash within limit"
+              fi
+              
+              if [ $RAM_USAGE -gt $MAX_RAM ]; then
+                echo "  ❌ RAM EXCEEDS LIMIT (max: 150KB)"
+                FAILED=$((FAILED + 1))
+              else
+                echo "  ✓ RAM within limit"
+              fi
+              
+              CHECKED=$((CHECKED + 1))
             fi
           done
           
+          if [ $CHECKED -eq 0 ]; then
+            echo ""
+            echo "❌ No ELF files found in artifacts"
+            exit 1
+          fi
+          
           if [ $FAILED -ne 0 ]; then
             echo ""
-            echo "❌ Memory limit exceeded in $FAILED configuration(s)"
+            echo "❌ Memory limit exceeded in $FAILED check(s)"
             exit 1
           fi
           
           echo ""
-          echo "✓ All configurations within memory limits"
+          echo "✅ All $CHECKED configurations within memory limits"
 
   status-check:
     name: All Checks Passed
