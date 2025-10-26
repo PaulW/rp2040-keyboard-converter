@@ -28,14 +28,22 @@ reviews:
   suggested_labels: true
   auto_apply_labels: true
   labeling_instructions:
-    - "bug - for bug fixes or issues"
-    - "enhancement - for new features or improvements"
-    - "performance - for performance optimizations"
-    - "protocol - for protocol implementation changes"
-    - "hardware - for hardware-related changes"
-    - "documentation - for documentation updates"
-    - "ci - for CI/CD changes"
-    - "breaking-change - for breaking changes"
+    - label: "bug"
+      instructions: "Apply for bug fixes or issues"
+    - label: "enhancement"
+      instructions: "Apply for new features or improvements"
+    - label: "performance"
+      instructions: "Apply for performance optimisations"
+    - label: "protocol"
+      instructions: "Apply for protocol implementation changes"
+    - label: "hardware"
+      instructions: "Apply for hardware-related changes"
+    - label: "documentation"
+      instructions: "Apply for documentation updates"
+    - label: "ci"
+      instructions: "Apply for CI/CD changes"
+    - label: "breaking-change"
+      instructions: "Apply for breaking changes"
   
   # Reviewer suggestions (but don't auto-assign for small projects)
   suggested_reviewers: true
