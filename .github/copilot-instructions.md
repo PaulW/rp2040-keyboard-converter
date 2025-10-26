@@ -466,6 +466,18 @@ external/pico-sdk/         # Pico SDK submodule
 - **docs-internal/**: Performance data, architecture decisions, investigation findings (use freely for context, never commit)
 - **Protocol/Keyboard READMEs**: Specifications and implementation details
 
+### AI Behavioral Guidelines
+
+- **No hallucinations**: Confirm files/modules exist before referencing them. The full codebase is in your context.
+- **Validate from multiple sources**: Cross-reference source code, Pico SDK documentation, and docs-internal when making technical claims
+- **Hardware Platform Awareness**: Ensure all functions, code, and features use the RP2040 microcontroller and its capabilities
+- **Understand the Architecture**: Single-core (Core 0 only), non-blocking operations required
+- **Ask if task unclear**: Don't make assumptions about requirements
+- **Preserve existing logic**: Don't overwrite unless explicitly requested - refactor or add new functions instead
+- **Plan before coding**: Think through approach, then reflect on the plan after implementation
+- **Maintain architectural purity**: All USB/HID logic runs on Core 0 - ensure no blocking operations introduced
+- **Remember PIO files**: Protocols (and libraries like WS2812) use PIO assembly files - ensure correctly referenced
+
 ---
 
 **Remember:** This RP2040 firmware is single-core, non-blocking, RAM-only execution. Builds are fast, tests are focused, codebase optimized for resource-constrained embedded systems. Use docs-internal/ freely as your development knowledge base!
