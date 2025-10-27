@@ -2,7 +2,7 @@
 
 **Status**: 🔄 In Progress | **Last Updated**: 27 October 2025
 
-Complete hardware documentation for the RP2040 Keyboard Converter project.
+This section covers everything you need to know about building hardware for the RP2040 Keyboard Converter. Whether you're prototyping on a breadboard, designing a custom PCB, or planning an internal keyboard installation, you'll find detailed information about components, connections, and practical considerations.
 
 ## Available Documentation
 
