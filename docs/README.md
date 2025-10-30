@@ -21,62 +21,42 @@ New to the project? Start here:
 
 Everything about the physical hardware:
 
-- **[Hardware Overview](hardware/README.md)** - Complete hardware guide
-- **[Breadboard Prototype](hardware/breadboard-prototype.md)** - Simple breadboard setup
+- **[Hardware Overview](hardware/README.md)** - Complete hardware guide with wiring diagrams
 - **[Custom PCB](hardware/custom-pcb.md)** - Custom PCB design for IBM Model F
-- **[Pin Configurations](hardware/pin-configurations.md)** - GPIO pin assignments
-- **[Level Shifters](hardware/level-shifters.md)** - 5V ↔ 3.3V conversion
 
 ### 📡 Protocols
 
 Supported keyboard and mouse protocols:
 
 - **[Protocol Overview](protocols/README.md)** - All supported protocols
-- **[AT/PS2 Protocol](protocols/at-ps2.md)** - IBM PC/AT and PS/2 keyboards/mice
+- **[AT/PS2 Protocol](protocols/at-ps2.md)** - IBM PC/AT and PS/2 keyboards/mice (includes mouse support)
 - **[XT Protocol](protocols/xt.md)** - IBM PC/XT keyboards
 - **[Amiga Protocol](protocols/amiga.md)** - Commodore Amiga keyboards
-- **[Apple M0110 Protocol](protocols/apple-m0110.md)** - Apple M0110/M0110A keyboards
-- **[Mouse Support](protocols/mouse-support.md)** - Mouse protocol details
+- **[Apple M0110 Protocol](protocols/m0110.md)** - Apple M0110/M0110A keyboards
 
 ### ⌨️ Keyboards
 
 Information about supported keyboards:
 
-- **[Supported Keyboards](keyboards/README.md)** - Complete keyboard list
-- **[Keyboard Configuration](keyboards/configuration.md)** - How to configure keyboards
-- **[Adding New Keyboards](keyboards/adding-keyboards.md)** - Guide for adding support
-- **[Scancode Sets](keyboards/scancode-sets.md)** - Understanding scancode sets
+- **[Supported Keyboards](keyboards/README.md)** - Complete keyboard list and configuration guide
 
 ### ✨ Features
 
 Key features and how to use them:
 
-- **[Features Overview](features/README.md)** - All available features
-- **[Command Mode](features/command-mode.md)** - Interactive command mode
-- **[Keytest Mode](features/keytest-mode.md)** - Keyboard testing utility
-- **[Configuration Storage](features/configuration-storage.md)** - Persistent settings
-- **[LED Control](features/led-control.md)** - LED brightness and patterns
-- **[USB Compatibility](features/usb-compatibility.md)** - USB HID and BIOS mode
+- **[Features Overview](features/README.md)** - All available features including Command Mode, LED control, and USB compatibility
 
 ### 🎓 Advanced Topics
 
 Deep dives into technical details:
 
-- **[Architecture Overview](advanced/README.md)** - System architecture
-- **[Performance Characteristics](advanced/performance.md)** - Speed and latency
-- **[PIO Programming](advanced/pio-programming.md)** - PIO state machines explained
-- **[Build System](advanced/build-system.md)** - CMake configuration
-- **[Troubleshooting](advanced/troubleshooting.md)** - Common problems and solutions
+- **[Architecture Overview](advanced/README.md)** - System architecture, performance, PIO programming, build system, and troubleshooting
 
 ### 👨‍💻 Development
 
 For contributors and developers:
 
-- **[Development Guide](development/README.md)** - Contributing to the project
-- **[Contributing Guidelines](development/contributing.md)** - How to contribute
-- **[Code Standards](development/code-standards.md)** - Coding conventions
-- **[Testing Guide](development/testing.md)** - How to test changes
-- **[Architecture Decisions](development/architecture-decisions.md)** - Why we made certain choices
+- **[Development Guide](development/README.md)** - Contributing guidelines, code standards, testing, and architecture decisions
 
 ---
 
@@ -90,11 +70,10 @@ For contributors and developers:
 | **Build the firmware** | [Building Firmware](getting-started/building-firmware.md) |
 | **Connect my keyboard** | [Hardware Setup](getting-started/hardware-setup.md) |
 | **Check if my keyboard is supported** | [Supported Keyboards](keyboards/README.md) |
-| **Understand performance** | [Performance Characteristics](advanced/performance.md) |
-| **Test my keyboard** | [Keytest Mode](features/keytest-mode.md) |
-| **Add a new keyboard** | [Adding New Keyboards](keyboards/adding-keyboards.md) |
-| **Troubleshoot problems** | [Troubleshooting](advanced/troubleshooting.md) |
-| **Contribute code** | [Contributing Guidelines](development/contributing.md) |
+| **Understand performance** | [Architecture Overview](advanced/README.md) |
+| **Add a new keyboard** | [Development Guide](development/README.md) |
+| **Troubleshoot problems** | [Architecture Overview](advanced/README.md) |
+| **Contribute code** | [Development Guide](development/README.md) |
 
 ### By Protocol
 
@@ -103,7 +82,7 @@ For contributors and developers:
 | AT/PS2 | [AT/PS2 Protocol](protocols/at-ps2.md) |
 | XT | [XT Protocol](protocols/xt.md) |
 | Amiga | [Amiga Protocol](protocols/amiga.md) |
-| Apple M0110 | [Apple M0110 Protocol](protocols/apple-m0110.md) |
+| Apple M0110 | [Apple M0110 Protocol](protocols/m0110.md) |
 
 ---
 
@@ -132,8 +111,8 @@ All documentation in this project follows these guidelines:
 
 ## 📝 About This Documentation
 
-**Status**: 🔄 In Progress  
-**Last Updated**: 27 October 2025  
+**Status**: ✅ 60% Complete (Getting Started + Protocols verified)  
+**Last Updated**: 30 October 2025  
 **Maintained By**: Development Team
 
 This documentation is version-controlled alongside the code. If you find errors or have suggestions, please [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) or submit a pull request.

@@ -1,199 +1,118 @@
 # Protocol Documentation
 
-**Status**: 🔄 In Progress | **Last Updated**: 27 October 2025
+**Status**: ✅ Complete | **Last Updated**: 27 October 2025
 
-Complete protocol documentation for supported keyboard and mouse communication protocols.
+This converter supports a variety of keyboard and mouse protocols from the 1980s and early 1990s. Each protocol has its own detailed documentation with historical context, technical specifications, timing diagrams, and implementation notes.
+
+---
 
 ## Supported Protocols
 
 ### Keyboard Protocols
 
-| Protocol | Description | Keyboards | Status |
-|----------|-------------|-----------|--------|
-| **[AT/PS2](at-ps2.md)** | Bidirectional, clock-synchronized | IBM Model M, Most modern keyboards | ✅ Production |
-| **[XT](xt.md)** | Unidirectional, simple protocol | IBM Model F (XT), Early keyboards | ✅ Production |
-| **[Amiga](amiga.md)** | Bidirectional, special handshake | Amiga keyboards | ✅ Production |
-| **[Apple M0110](m0110.md)** | Unidirectional, Apple-specific | Macintosh M0110, M0110A | ✅ Production |
+| Protocol | Era | Direction | Typical Keyboards | Documentation |
+|----------|-----|-----------|-------------------|---------------|
+| **AT/PS2** | 1984-2000s | Bidirectional | IBM Model M, Most PC keyboards | **[→ Full Guide](at-ps2.md)** |
+| **XT** | 1981-1987 | Unidirectional | IBM Model F (XT), Early PC keyboards | **[→ Full Guide](xt.md)** |
+| **Amiga** | 1985-1996 | Bidirectional | Commodore Amiga A500/A1000/A2000/A3000/A4000 | **[→ Full Guide](amiga.md)** |
+| **Apple M0110** | 1984-1987 | Poll-based | Macintosh M0110, M0110A, M0110B | **[→ Full Guide](m0110.md)** |
 
 ### Mouse Protocols
 
-| Protocol | Description | Mice | Status |
-|----------|-------------|------|--------|
-| **[AT/PS2 Mouse](at-ps2-mouse.md)** | 3-byte packets, bidirectional | PS/2 mice, IntelliMouse | ✅ Production |
+| Protocol | Era | Description | Documentation |
+|----------|-----|-------------|---------------|
+| **AT/PS2 Mouse** | 1987-2000s | 3/4-byte packets, IntelliMouse support | **[→ Full Guide](at-ps2.md#mouse-implementation)** |
+
+**Note**: Mouse protocol documentation is included in the AT/PS2 guide, as both keyboard and mouse use the same underlying protocol with different data formats.
 
 ---
 
-## Protocol Overview
+## Quick Protocol Selection
 
-### AT/PS2 Protocol
+**Don't know which protocol your keyboard uses?** Use this quick reference:
 
-**Direction**: Bidirectional (host ↔ device)  
-**Voltage**: 5V  
-**Lines**: CLK (Clock), DATA  
-**Communication**: Device generates clock, either can send data
-
-**Key Features:**
-- Most common protocol for modern keyboards
-- Supports LED control (Caps Lock, Num Lock, Scroll Lock)
-- Error detection via parity bit
-- Start/stop bits for frame synchronization
-
-**See:** [AT/PS2 Protocol Guide](at-ps2.md)
-
----
-
-### XT Protocol
-
-**Direction**: Unidirectional (device → host)  
-**Voltage**: 5V  
-**Lines**: CLK (Clock), DATA  
-**Communication**: Device sends scancodes only
-
-**Key Features:**
-- Simple make/break scancodes
-- No host-to-device communication
-- No LED control
-- Fixed clock timing (~20 kHz)
-
-**See:** [XT Protocol Guide](xt.md)
-
----
-
-### Amiga Protocol
-
-**Direction**: Bidirectional (host ↔ device)  
-**Voltage**: 5V  
-**Lines**: CLK (Clock), DATA, RESET  
-**Communication**: Special handshake sequence
-
-**Key Features:**
-- Unique handshake-driven timing
-- Caps Lock synchronization via pulse
-- Reset line for keyboard initialization
-- Make/break scancodes with prefix
-
-**See:** [Amiga Protocol Guide](amiga.md)
-
----
-
-### Apple M0110 Protocol
-
-**Direction**: Unidirectional (device → host)  
-**Voltage**: 5V  
-**Lines**: CLK (Clock), DATA  
-**Communication**: Device responds to host requests
-
-**Key Features:**
-- Poll-based communication
-- Host requests, keyboard responds
-- Simple protocol, minimal error handling
-- No LED control
-
-**See:** [Apple M0110 Protocol Guide](m0110.md)
-
----
-
-### AT/PS2 Mouse Protocol
-
-**Direction**: Bidirectional (host ↔ device)  
-**Voltage**: 5V  
-**Lines**: CLK (Clock), DATA  
-**Communication**: Same as AT/PS2 keyboard
-
-**Key Features:**
-- 3-byte standard packets (button status, X-delta, Y-delta)
-- 4-byte extended packets (scroll wheel - IntelliMouse protocol)
-- Independent from keyboard (separate CLK/DATA lines)
-- Can be used with any keyboard protocol
-
-**See:** [AT/PS2 Mouse Protocol Guide](at-ps2-mouse.md)
-
----
-
-## Protocol Selection
-
-### How to Choose
-
-Your keyboard determines the protocol:
-
-| Keyboard Type | Protocol |
+| Your Keyboard | Protocol |
 |---------------|----------|
-| IBM Model M Enhanced | AT/PS2 |
-| IBM Model M 1391401 | AT/PS2 |
+| IBM Model M Enhanced (1391401) | AT/PS2 |
+| IBM Model M (101/102-key) | AT/PS2 |
 | IBM Model F PC/AT | AT/PS2 |
 | IBM Model F XT | XT |
-| IBM Model F 4704 | Custom (not yet supported) |
-| Amiga Keyboards | Amiga |
-| Apple M0110/M0110A | M0110 |
-| Modern keyboards | Usually AT/PS2 |
+| Commodore Amiga keyboard (any model) | Amiga |
+| Apple Macintosh M0110/M0110A | M0110 |
+| Most keyboards with 5-pin DIN connector | XT or AT/PS2 |
+| Most keyboards with 6-pin mini-DIN connector | AT/PS2 |
 
-**See:** [Keyboards Documentation](../keyboards/README.md) for specific keyboard details.
+**Still unsure?** See the [Keyboards Documentation](../keyboards/README.md) for detailed keyboard identification.
 
 ---
 
-## Technical Details
+## Why Multiple Protocols?
 
-### PIO State Machines
+Vintage keyboards use different communication protocols depending on when and by whom they were designed. Unlike modern USB, the early computing era (1980s-1990s) had no universal standard—each manufacturer designed protocols optimized for their specific hardware and design philosophy:
 
-All protocols are implemented using RP2040's PIO (Programmable I/O) hardware:
+- **IBM XT (1981)**: Simplest protocol—keyboard sends scancodes, no host commands, no LEDs
+- **IBM AT/PS2 (1984)**: Bidirectional—host can send commands, control LEDs, configure keyboard
+- **Commodore Amiga (1985)**: Custom handshake and bit rotation for safety and reliability
+- **Apple M0110 (1984)**: Poll-based—host requests keys, keyboard responds on demand
 
-- **Precise timing**: Hardware-driven, microsecond accuracy
-- **CPU independent**: Protocols run in parallel with main code
+Each protocol reflects different engineering priorities: cost, simplicity, features, or integration with specific computer architectures.
+
+---
+
+## Protocol Comparison
+
+---
+
+
+### Feature Comparison
+
+| Feature | AT/PS2 | XT | Amiga | M0110 |
+|---------|--------|-----|-------|-------|
+| **Direction** | Bidirectional | Unidirectional | Bidirectional | Poll-based |
+| **LED Control** | ✅ Yes | ❌ No | ✅ Yes (special) | ❌ No |
+| **Error Detection** | ✅ Parity | ❌ None | ✅ Handshake | ❌ Minimal |
+| **Host Commands** | ✅ Yes | ❌ No | ✅ Limited | ✅ Yes |
+| **Clock Source** | Device/Host | Device only | Device only | Host only |
+| **Complexity** | High | Low | High | Medium |
+
+**For detailed technical specifications, timing diagrams, and implementation notes, see each protocol's dedicated documentation.**
+
+---
+
+## Implementation Notes
+
+All protocols are implemented using the RP2040's **PIO (Programmable I/O)** hardware for precise timing:
+
+- **Microsecond accuracy**: Hardware-driven timing independent of CPU load
+- **Non-blocking**: Protocols run in parallel with main firmware
 - **IRQ-driven**: Scancodes trigger interrupts for processing
-- **Non-blocking**: Main loop remains responsive
-
-**See:** [Architecture Guide](../advanced/architecture.md) for implementation details.
-
----
-
-### Signal Levels
+- **Low CPU overhead**: PIO handles bit-level timing automatically
 
 ⚠️ **CRITICAL: Level Shifting Required**
+- Keyboard/Mouse signals: **5V**
+- RP2040 GPIO: **3.3V** (NOT 5V tolerant)
+- **Solution**: Bidirectional level shifter (e.g., BSS138-based) on both CLK and DATA lines
 
-- **Keyboard/Mouse**: 5V signals
-- **RP2040 GPIO**: 3.3V (NOT 5V tolerant)
-- **Solution**: Bi-directional level shifter (e.g., BSS138-based)
-
-Both CLK and DATA lines must be level-shifted.
-
-**See:** [Level Shifters Guide](../hardware/level-shifters.md)
-
----
-
-### Timing Requirements
-
-Each protocol has strict timing requirements:
-
-| Protocol | Clock Freq | Bit Time | Frame Time |
-|----------|-----------|----------|------------|
-| AT/PS2 | 10-16.7 kHz | 60-100 μs | ~1 ms |
-| XT | ~20 kHz | ~50 μs | ~550 μs |
-| Amiga | Variable | Variable | ~1 ms |
-| M0110 | Variable | Variable | ~1 ms |
-
-PIO state machines handle all timing automatically.
-
----
-
-## Adding New Protocols
-
-To add support for a new protocol:
-
-1. **Research**: Understand timing, framing, and communication flow
-2. **PIO Program**: Write `.pio` assembly for bit timing and framing
-3. **Interface**: Implement `keyboard_interface.h/c` for state management
-4. **Test**: Verify with real hardware (timing-critical)
-
-**See:** [Contributing Guide](../development/contributing.md) for implementation details.
+See **[Hardware Setup](../hardware/README.md)** for wiring and level shifter details.
 
 ---
 
 ## Related Documentation
 
-**In This Documentation:**
-- [Hardware Setup](../hardware/README.md) - Physical connections
-- [Keyboards](../keyboards/README.md) - Supported keyboards
-- [Architecture](../advanced/architecture.md) - Implementation details
+**Detailed Guides:**
+- **[AT/PS2 Protocol](at-ps2.md)** - Comprehensive guide with keyboard and mouse implementation
+- **[XT Protocol](xt.md)** - Full specifications and genuine vs clone detection
+- **[Amiga Protocol](amiga.md)** - Handshake timing and special features
+- **[Apple M0110 Protocol](m0110.md)** - Poll-based protocol and command reference
+
+**Hardware and Setup:**
+- **[Hardware Setup](../hardware/README.md)** - Physical connections and wiring
+- **[Keyboards](../keyboards/README.md)** - Supported keyboard models
+- **[Getting Started](../getting-started/README.md)** - Quick start guide
+
+**Advanced Topics:**
+- **[Architecture](../advanced/architecture.md)** - Implementation details and PIO programs
+- **[Troubleshooting](../advanced/troubleshooting.md)** - Protocol-specific debugging
 
 **Source Code:**
 - Protocol implementations: [`src/protocols/`](../../src/protocols/)
@@ -203,10 +122,6 @@ To add support for a new protocol:
 
 ## Need Help?
 
-- 📖 [Troubleshooting](../advanced/troubleshooting.md)
-- 💬 [Ask Questions](https://github.com/PaulW/rp2040-keyboard-converter/discussions)
-- 🐛 [Report Protocol Issues](https://github.com/PaulW/rp2040-keyboard-converter/issues)
-
----
-
-**Status**: Documentation in progress. Protocol-specific guides coming soon!
+- 📖 **[Troubleshooting Guide](../advanced/troubleshooting.md)** - Common issues and solutions
+- 💬 **[Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions)** - Ask questions
+- 🐛 **[Issue Tracker](https://github.com/PaulW/rp2040-keyboard-converter/issues)** - Report bugs
