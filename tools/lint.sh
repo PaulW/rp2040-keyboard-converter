@@ -214,17 +214,15 @@ echo ""
 # Check 7: Volatile Usage on IRQ-Shared Variables
 echo -e "${BLUE}[7/14] Checking for IRQ-shared variables...${NC}"
 
-# Find files with __isr functions
-ISR_FILES=$(grep -R --files-with-matches "${EXCLUDE_DIRS[@]}" --exclude="*.md" "__isr" src/ 2>/dev/null || true)
-
 VOLATILE_ISSUES=""
 BARRIER_ISSUES=""
 
-if [ -n "$ISR_FILES" ]; then
-    for file in $ISR_FILES; do
-        # Look for static variables that aren't volatile (potential IRQ-shared variables)
-        # Pattern: "static" followed by type, then variable name, but NOT containing "volatile"
-        NON_VOLATILE_STATIC=$(grep -n "^static " "$file" | grep -v "volatile" | grep -v "const" | grep -v "inline" | grep -E 'static (uint|int|bool|unsigned|_Atomic)' || true)
+ISR_FILES=$(grep -R "${EXCLUDE_DIRS[@]}" --exclude="*.md" --files-with-matches "__isr" src/ 2>/dev/null || true)
+
+for file in $ISR_FILES; do
+    # Look for static variables that aren't volatile (potential IRQ-shared variables)
+    # Pattern: "static" followed by type, then variable name, but NOT containing "volatile"
+    NON_VOLATILE_STATIC=$(grep -n "^static " "$file" | grep -v "volatile" | grep -v "const" | grep -v "inline" | grep -E 'static (uint|int|bool|unsigned|_Atomic)' || true)
         
         if [ -n "$NON_VOLATILE_STATIC" ]; then
             # Get all __isr function names once (same for all variables in this file)
@@ -321,8 +319,7 @@ if [ -n "$ISR_FILES" ]; then
                 done
             done <<< "$VOLATILE_VAR_NAMES"
         fi
-    done
-fi
+done
 
 ISSUES_FOUND=false
 
@@ -379,9 +376,8 @@ echo ""
 # Check 9: Header Guards in .h Files
 echo -e "${BLUE}[9/14] Checking header guards...${NC}"
 MISSING_GUARDS=""
-HEADER_FILES=$(find src/ -name "*.h" -not -path "*/external/*" -not -path "*/build/*" 2>/dev/null)
 
-for header in $HEADER_FILES; do
+while IFS= read -r header; do
     # Skip very small files or generated files
     [ ! -s "$header" ] && continue
     grep -q "\.pio\.h$" <<< "$header" && continue
@@ -390,7 +386,7 @@ for header in $HEADER_FILES; do
     if ! grep -q "^#ifndef.*_H" "$header" || ! grep -q "^#define.*_H" "$header"; then
         MISSING_GUARDS="${MISSING_GUARDS}${header}\n"
     fi
-done
+done < <(find src/ -name "*.h" -not -path "*/external/*" -not -path "*/build/*" 2>/dev/null)
 
 if [ -n "$MISSING_GUARDS" ]; then
     echo -e "${YELLOW}WARNING: Header files missing include guards:${NC}"
@@ -416,9 +412,7 @@ MIT_LICENSED_FILES=(
     "src/common/lib/tusb_config.h"
 )
 
-SOURCE_FILES=$(find src/ \( -name "*.c" -o -name "*.h" \) -not -path "*/external/*" -not -path "*/build/*" 2>/dev/null | grep -v "\.pio\.h$")
-
-for file in $SOURCE_FILES; do
+while IFS= read -r file; do
     # Skip known MIT-licensed files (TinyUSB-derived)
     skip=false
     for mit_file in "${MIT_LICENSED_FILES[@]}"; do
@@ -438,7 +432,7 @@ for file in $SOURCE_FILES; do
             MISSING_HEADERS="${MISSING_HEADERS}${file}\n"
         fi
     fi
-done
+done < <(find src/ \( -name "*.c" -o -name "*.h" \) -not -path "*/external/*" -not -path "*/build/*" 2>/dev/null | grep -v "\.pio\.h$")
 
 if [ -n "$MISSING_HEADERS" ]; then
     echo -e "${YELLOW}WARNING: Files missing proper license header:${NC}"
@@ -479,9 +473,8 @@ echo ""
 echo -e "${BLUE}[12/14] Checking include order...${NC}"
 WRONG_INCLUDE_ORDER=""
 GROUPING_ISSUES=""
-C_FILES=$(find src/ -name "*.c" -not -path "*/external/*" -not -path "*/build/*" 2>/dev/null)
 
-for cfile in $C_FILES; do
+while IFS= read -r cfile; do
     # Get the expected header name (e.g., foo.c -> foo.h)
     header_name=$(basename "$cfile" .c).h
     
@@ -541,7 +534,7 @@ for cfile in $C_FILES; do
     if [ "$found_sdk_after_project" = true ]; then
         GROUPING_ISSUES="${GROUPING_ISSUES}${cfile}: SDK/standard headers appear after project headers\n"
     fi
-done
+done < <(find src/ -name "*.c" -not -path "*/external/*" 2>/dev/null)
 
 ISSUES_FOUND=false
 
