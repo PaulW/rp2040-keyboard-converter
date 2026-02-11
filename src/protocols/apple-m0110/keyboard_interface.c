@@ -60,9 +60,11 @@
 
 #include <math.h>
 
-#include "bsp/board.h"
 #include "hardware/clocks.h"
 #include "keyboard_interface.pio.h"
+
+#include "bsp/board.h"
+
 #include "led_helper.h"
 #include "log.h"
 #include "pio_helper.h"
@@ -103,6 +105,28 @@ static enum {
 static volatile uint32_t last_command_time = 0;     /**< Timestamp of last command sent (for timeouts) */
 static volatile uint8_t model_retry_count = 0;      /**< Number of model command retries attempted */
 static volatile uint32_t last_response_time = 0;    /**< Timestamp of last keyboard response received */
+
+/**
+ * @brief Returns a human-readable description for an M0110 model response code
+ * 
+ * Model response format (Apple spec): Bits 1-3=keyboard model, Bits 4-6=next device, Bit 7=chained device
+ * This function is called only during initialization, so performance is not a concern.
+ * 
+ * @param model_byte Model identification byte from keyboard
+ * @return Pointer to static string describing the keyboard model, or NULL if unrecognized
+ */
+static const char* get_model_description(uint8_t model_byte) {
+  switch (model_byte) {
+    case M0110_RESP_MODEL_M0110:           return "M0110 (GS536) - original compact keyboard";
+    case M0110_RESP_MODEL_M0110_ALT:       return "M0110 (GS624) - original compact keyboard variant";
+    case M0110_RESP_MODEL_M0110A:          return "M0110A - enhanced keyboard with arrow keys";
+    case M0110_RESP_MODEL_M0120:           return "M0120 - numeric keypad only";
+    case M0110_RESP_MODEL_M0110_M0120:     return "M0110 (GS536) + M0120 keypad detected";
+    case M0110_RESP_MODEL_M0110_M0120_ALT: return "M0110 (GS624) + M0120 keypad detected";
+    case M0110_RESP_MODEL_M0110A_M0120:    return "M0110A + M0120 keypad detected";
+    default:                               return NULL;
+  }
+}
 
 /**
  * @brief Sends a command byte to the Apple M0110 keyboard (internal function)
@@ -160,6 +184,7 @@ static void keyboard_command_handler(uint8_t command) {
 static void keyboard_event_processor(uint8_t data_byte) {
   // LOG_DEBUG("M0110 received: 0x%02X\n", data_byte);
   last_response_time = board_millis(); // Record response time for timeout management
+  __dmb();  // Memory barrier - ensure volatile write completes
   
   switch (keyboard_state) {
     case UNINITIALISED:
@@ -168,17 +193,17 @@ static void keyboard_event_processor(uint8_t data_byte) {
       break;
     case INIT_MODEL_REQUEST:
       // Handle model number response during initialization phase
-      switch (data_byte) {
-        case M0110_RESP_MODEL_M0110A:
-          LOG_INFO("Apple M0110 Keyboard Model: M0110A - keyboard reset and ready\n");
-          break;
-        default:
+      {
+        const char* model_desc = get_model_description(data_byte);
+        if (model_desc) {
+          LOG_INFO("Apple M0110 Keyboard Model: %s, reset and ready\n", model_desc);
+        } else {
           LOG_DEBUG("Unknown model response: 0x%02X - proceeding with initialization\n", data_byte);
-          break;
+        }
+        keyboard_state = INITIALISED;
+        keyboard_command_handler(M0110_CMD_INQUIRY);
+        last_command_time = board_millis();
       }
-      keyboard_state = INITIALISED;
-      keyboard_command_handler(M0110_CMD_INQUIRY);
-      last_command_time = board_millis();
       break;
       
     case INITIALISED:
@@ -282,6 +307,7 @@ static void __isr keyboard_input_event_handler(void) {
  */
 void keyboard_interface_task(void) {
   uint32_t current_time = board_millis();
+  __dmb();  // Memory barrier - ensure we see latest volatile values from IRQ
   
   // Calculate elapsed time once for all timing checks (handles timer wraparound)
   uint32_t elapsed_since_command = current_time - last_command_time;
@@ -297,7 +323,7 @@ void keyboard_interface_task(void) {
         keyboard_state = INIT_MODEL_REQUEST;
         keyboard_command_handler(M0110_CMD_MODEL);
         last_command_time = current_time;
-        model_retry_count = 0;
+        model_retry_count = 0;  // LINT:ALLOW barrier - read-side protected at line 310
       }
       break;
       

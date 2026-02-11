@@ -212,12 +212,402 @@ fi
 echo ""
 
 # Check 7: Volatile Usage on IRQ-Shared Variables
-echo -e "${BLUE}[7/7] Checking for IRQ-shared variables...${NC}"
-# This is a heuristic - looks for static variables in files with ISR functions
-echo -e "${YELLOW}⚠ Manual review required for IRQ-shared variables${NC}"
-echo "  - Check that shared variables use 'volatile' keyword"
-echo "  - Check for __dmb() memory barriers after volatile writes/reads"
-echo "  - See copilot-instructions.md for examples"
+echo -e "${BLUE}[7/14] Checking for IRQ-shared variables...${NC}"
+
+# Find files with __isr functions
+ISR_FILES=$(grep -R --files-with-matches "${EXCLUDE_DIRS[@]}" --exclude="*.md" "__isr" src/ 2>/dev/null || true)
+
+VOLATILE_ISSUES=""
+BARRIER_ISSUES=""
+
+if [ -n "$ISR_FILES" ]; then
+    for file in $ISR_FILES; do
+        # Look for static variables that aren't volatile (potential IRQ-shared variables)
+        # Pattern: "static" followed by type, then variable name, but NOT containing "volatile"
+        NON_VOLATILE_STATIC=$(grep -n "^static " "$file" | grep -v "volatile" | grep -v "const" | grep -v "inline" | awk '/static (uint|int|bool|unsigned|_Atomic)/{print}' || true)
+        
+        if [ -n "$NON_VOLATILE_STATIC" ]; then
+            # Check if these variables might be accessed in ISR (heuristic: same name appears in file)
+            while IFS= read -r line; do
+                # Extract variable name (last word before = or ;)
+                var_name=$(echo "$line" | awk -F'[=;]' '{print $1}' | awk '{print $NF}' | sed 's/[*]//g')
+                line_num=$(echo "$line" | cut -d: -f1)
+                
+                # Check for LINT:ALLOW annotation on this line
+                if sed -n "${line_num}p" "$file" | grep -q "// LINT:ALLOW non-volatile"; then
+                    continue  # Skip this variable - it's annotated
+                fi
+                
+                # Check if variable name appears in an __isr function
+                # Get all __isr function names
+                ISR_FUNCTION_NAMES=$(grep -o "__isr [a-zA-Z_][a-zA-Z0-9_]*" "$file" | awk '{print $2}')
+                
+                for isr_func in $ISR_FUNCTION_NAMES; do
+                    # Check if variable is referenced in this ISR function
+                    # Look ahead from function definition until closing brace at column 1
+                    ISR_BODY=$(sed -n "/$isr_func/,/^}/p" "$file")
+                    if echo "$ISR_BODY" | grep -qw "$var_name"; then
+                        VOLATILE_ISSUES="${VOLATILE_ISSUES}${file}:${line_num}: static ${var_name} (accessed in ${isr_func})\n"
+                        break
+                    fi
+                done
+            done <<< "$NON_VOLATILE_STATIC"
+        fi
+        
+        # Check for volatile variables without __dmb() in the file
+        HAS_VOLATILE=$(grep -q "volatile" "$file" && echo "yes" || echo "no")
+        HAS_BARRIER=$(grep -q "__dmb()" "$file" && echo "yes" || echo "no")
+        
+        if [ "$HAS_VOLATILE" = "yes" ] && [ "$HAS_BARRIER" = "no" ]; then
+            BARRIER_ISSUES="${BARRIER_ISSUES}${file}: has volatile variables but no __dmb() barriers\n"
+        elif [ "$HAS_VOLATILE" = "yes" ] && [ "$HAS_BARRIER" = "yes" ]; then
+            # File has volatile and barriers, but check if EVERY volatile write has a nearby barrier
+            # Get volatile variable declarations (extract names)
+            VOLATILE_VAR_NAMES=$(grep -o "volatile[[:space:]]\+[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]\+\*\?[a-zA-Z_][a-zA-Z0-9_]*" "$file" | awk '{print $NF}' | sed 's/\*//g' | sort -u)
+            
+            # For each volatile variable, find writes and check for nearby __dmb()
+            while IFS= read -r var; do
+                [ -z "$var" ] && continue
+                
+                # Find lines where this variable is written (assigned, not declared)
+                # Pattern: variable = something (exclude comparisons ==, !=, <=, >=)
+                # Exclude lines with "volatile" keyword (declarations) and LINT:ALLOW annotations
+                WRITE_LINES=$(grep -n "[^a-zA-Z_!<>=]${var}[[:space:]]*=[^=]" "$file" | grep -v "volatile" | grep -v "LINT:ALLOW" | cut -d: -f1)
+                
+                for write_line in $WRITE_LINES; do
+                    # Check if line has LINT:ALLOW annotation
+                    if sed -n "${write_line}p" "$file" | grep -q "LINT:ALLOW"; then
+                        continue
+                    fi
+                    
+                    # Check if __dmb() appears within next 3 lines
+                    next_line=$((write_line + 1))
+                    next_2=$((write_line + 2))
+                    next_3=$((write_line + 3))
+                    
+                    has_barrier_after=false
+                    if sed -n "${next_line}p" "$file" | grep -q "__dmb()"; then
+                        has_barrier_after=true
+                    elif sed -n "${next_2}p" "$file" | grep -q "__dmb()"; then
+                        has_barrier_after=true
+                    elif sed -n "${next_3}p" "$file" | grep -q "__dmb()"; then
+                        has_barrier_after=true
+                    fi
+                    
+                    if [ "$has_barrier_after" = false ]; then
+                        # Check if this line is already followed by a barrier on the same line
+                        if ! sed -n "${write_line}p" "$file" | grep -q "__dmb()"; then
+                            # One more check: see if this file has barriers before reads (read-side protection)
+                            # Look for patterns like: __dmb(); ... var_name (reading the variable)
+                            # If found, the write-side doesn't strictly need barriers (read-side protects)
+                            has_read_barrier=false
+                            
+                            # Search for __dmb() followed within 5 lines by a read of this variable
+                            # This is a heuristic - if we find it, assume read-side protection exists
+                            dmb_lines=$(grep -n "__dmb()" "$file" | cut -d: -f1)
+                            for dmb_line in $dmb_lines; do
+                                # Check next 5 lines after __dmb() for variable read
+                                next_5=$(sed -n "$((dmb_line + 1)),$((dmb_line + 5))p" "$file")
+                                if echo "$next_5" | grep -qw "$var"; then
+                                    has_read_barrier=true
+                                    break
+                                fi
+                            done
+                            
+                            if [ "$has_read_barrier" = false ]; then
+                                BARRIER_ISSUES="${BARRIER_ISSUES}${file}:${write_line}: volatile '${var}' write missing __dmb() barrier\n"
+                            fi
+                        fi
+                    fi
+                done
+            done <<< "$VOLATILE_VAR_NAMES"
+        fi
+    done
+fi
+
+ISSUES_FOUND=false
+
+if [ -n "$VOLATILE_ISSUES" ]; then
+    echo -e "${YELLOW}⚠ Potential missing 'volatile' on IRQ-shared variables:${NC}"
+    echo ""
+    echo -e "$VOLATILE_ISSUES" | head -10
+    [ $(echo -e "$VOLATILE_ISSUES" | wc -l) -gt 10 ] && echo "... and more"
+    echo ""
+    ISSUES_FOUND=true
+fi
+
+if [ -n "$BARRIER_ISSUES" ]; then
+    echo -e "${YELLOW}⚠ Missing memory barriers (__dmb()):${NC}"
+    echo ""
+    echo -e "$BARRIER_ISSUES"
+    echo ""
+    ISSUES_FOUND=true
+fi
+
+if [ "$ISSUES_FOUND" = true ]; then
+    echo -e "${YELLOW}IRQ safety rules:${NC}"
+    echo "  - Static variables accessed in __isr functions must be 'volatile'"
+    echo "  - Use __dmb() after volatile writes (in ISR) and before reads (in main)"
+    echo "  - Add '// LINT:ALLOW non-volatile' for write-once variables"
+    echo "  - See code-standards.md for examples"
+    echo ""
+    WARNINGS=$((WARNINGS + 1))
+else
+    echo -e "${GREEN}✓ No obvious IRQ variable safety issues detected${NC}"
+fi
+echo ""
+
+# Check 8: Tab Characters
+echo -e "${BLUE}[8/14] Checking for tab characters...${NC}"
+TAB_USAGE=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" $'^\t\|[^\t]\t' src/ 2>/dev/null || true)
+
+if [ -n "$TAB_USAGE" ]; then
+    echo -e "${RED}ERROR: Tab characters found!${NC}"
+    echo ""
+    echo "$TAB_USAGE" | head -20
+    [ $(echo "$TAB_USAGE" | wc -l) -gt 20 ] && echo "... and more"
+    echo ""
+    echo -e "${YELLOW}Code formatting rule: Use 4 spaces, never tabs${NC}"
+    echo "  - Maintains consistent indentation across editors"
+    echo "  - Run: expand -t 4 <file> to convert tabs to spaces"
+    echo ""
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ No tab characters found${NC}"
+fi
+echo ""
+
+# Check 9: Header Guards in .h Files
+echo -e "${BLUE}[9/14] Checking header guards...${NC}"
+MISSING_GUARDS=""
+HEADER_FILES=$(find src/ -name "*.h" -not -path "*/external/*" -not -path "*/build/*" 2>/dev/null)
+
+for header in $HEADER_FILES; do
+    # Skip very small files or generated files
+    [ ! -s "$header" ] && continue
+    grep -q "\.pio\.h$" <<< "$header" && continue
+    
+    # Check for #ifndef and #define guard pattern
+    if ! grep -q "^#ifndef.*_H" "$header" || ! grep -q "^#define.*_H" "$header"; then
+        MISSING_GUARDS="${MISSING_GUARDS}${header}\n"
+    fi
+done
+
+if [ -n "$MISSING_GUARDS" ]; then
+    echo -e "${YELLOW}WARNING: Header files missing include guards:${NC}"
+    echo ""
+    echo -e "$MISSING_GUARDS"
+    echo ""
+    echo -e "${YELLOW}Code organization rule: All .h files need include guards${NC}"
+    echo "  - Format: #ifndef FILENAME_H / #define FILENAME_H"
+    echo "  - Prevents multiple inclusion errors"
+    echo ""
+    WARNINGS=$((WARNINGS + 1))
+else
+    echo -e "${GREEN}✓ All header files have include guards${NC}"
+fi
+echo ""
+
+# Check 10: File Headers (GPL License)
+echo -e "${BLUE}[10/14] Checking file headers...${NC}"
+MISSING_HEADERS=""
+MIT_LICENSED_FILES=(
+    "src/common/lib/usb_descriptors.c"
+    "src/common/lib/usb_descriptors.h"
+    "src/common/lib/tusb_config.h"
+)
+
+SOURCE_FILES=$(find src/ \( -name "*.c" -o -name "*.h" \) -not -path "*/external/*" -not -path "*/build/*" 2>/dev/null | grep -v "\.pio\.h$")
+
+for file in $SOURCE_FILES; do
+    # Skip known MIT-licensed files (TinyUSB-derived)
+    skip=false
+    for mit_file in "${MIT_LICENSED_FILES[@]}"; do
+        if [[ "$file" == "$mit_file" ]]; then
+            # Verify MIT license is present
+            if ! head -25 "$file" | grep -q "The MIT License (MIT)"; then
+                MISSING_HEADERS="${MISSING_HEADERS}${file} (expected MIT license)\n"
+            fi
+            skip=true
+            break
+        fi
+    done
+    
+    # Check for GPL header on non-MIT files
+    if [ "$skip" = false ]; then
+        if ! head -25 "$file" | grep -q "Copyright.*Paul Bramhall"; then
+            MISSING_HEADERS="${MISSING_HEADERS}${file}\n"
+        fi
+    fi
+done
+
+if [ -n "$MISSING_HEADERS" ]; then
+    echo -e "${YELLOW}WARNING: Files missing proper license header:${NC}"
+    echo ""
+    echo -e "$MISSING_HEADERS"
+    echo ""
+    echo -e "${YELLOW}Documentation rule: All source files need appropriate license header${NC}"
+    echo "  - GPL files: See code-standards.md for template"
+    echo "  - MIT files (TinyUSB): usb_descriptors.[ch], tusb_config.h"
+    echo ""
+    WARNINGS=$((WARNINGS + 1))
+else
+    echo -e "${GREEN}✓ All source files have proper headers${NC}"
+fi
+echo ""
+
+# Check 11: Naming Conventions (camelCase detection)
+echo -e "${BLUE}[11/14] Checking naming conventions...${NC}"
+CAMEL_CASE=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "^[a-z]+[A-Z][a-zA-Z]*\s*\(|^static\s+[a-z]+[A-Z][a-zA-Z]*\s+[a-z]" src/ 2>/dev/null | grep -v "typedef" | head -20 || true)
+
+if [ -n "$CAMEL_CASE" ]; then
+    echo -e "${YELLOW}⚠ Possible camelCase usage detected (expecting snake_case):${NC}"
+    echo ""
+    echo "$CAMEL_CASE"
+    echo ""
+    echo -e "${YELLOW}Naming convention: Use snake_case for functions/variables${NC}"
+    echo "  - Functions: keyboard_interface_task()"
+    echo "  - Variables: scancode_buffer"
+    echo "  - Manual review recommended"
+    echo ""
+    # Don't increment warnings - this is informational only (too many false positives)
+else
+    echo -e "${GREEN}✓ No obvious camelCase violations${NC}"
+fi
+echo ""
+
+# Check 12: Include Order (comprehensive check)
+echo -e "${BLUE}[12/14] Checking include order...${NC}"
+WRONG_INCLUDE_ORDER=""
+GROUPING_ISSUES=""
+C_FILES=$(find src/ -name "*.c" -not -path "*/external/*" -not -path "*/build/*" 2>/dev/null)
+
+for cfile in $C_FILES; do
+    # Get the expected header name (e.g., foo.c -> foo.h)
+    header_name=$(basename "$cfile" .c).h
+    
+    # Check if corresponding .h file exists
+    expected_header=$(dirname "$cfile")/$header_name
+    if [ -f "$expected_header" ]; then
+        # Get first #include line
+        first_include=$(grep -n "^#include" "$cfile" | head -1)
+        
+        # Check if it includes its own header
+        if ! echo "$first_include" | grep -q "\"$header_name\""; then
+            WRONG_INCLUDE_ORDER="${WRONG_INCLUDE_ORDER}${cfile}: First include should be \"${header_name}\"\n"
+        else
+            # Check for blank line after own header
+            first_line_num=$(echo "$first_include" | cut -d: -f1)
+            next_line_num=$((first_line_num + 1))
+            next_line=$(sed -n "${next_line_num}p" "$cfile")
+            
+            # Next line should be blank or a comment, not immediately another include
+            if echo "$next_line" | grep -q "^#include"; then
+                WRONG_INCLUDE_ORDER="${WRONG_INCLUDE_ORDER}${cfile}: Missing blank line after own header include (line ${first_line_num})\n"
+            fi
+        fi
+    fi
+    
+    # Check group ordering: Look for project headers before SDK headers (common mistake)
+    # Extract all includes (skip own header if present)
+    includes=$(grep "^#include" "$cfile" 2>/dev/null || true)
+    
+    # Flag if project headers (quoted, not .pio.h) appear before pico/ or hardware/ includes
+    found_project_header=false
+    found_sdk_after_project=false
+    
+    while IFS= read -r line; do
+        # Skip own header
+        if [ -f "$expected_header" ] && echo "$line" | grep -q "\"$header_name\""; then
+            continue
+        fi
+        
+        # Check if this is a project header (quoted, but not .pio.h, bsp/, hardware/, or pico/)
+        if echo "$line" | grep -q '^#include "' && ! echo "$line" | grep -q '\.pio\.h' && ! echo "$line" | grep -q 'bsp/' && ! echo "$line" | grep -q 'hardware/' && ! echo "$line" | grep -q 'pico/'; then
+            found_project_header=true
+        fi
+        
+        # Check if SDK header appears after we've seen project headers
+        if [ "$found_project_header" = true ]; then
+            if echo "$line" | grep -q '#include.*\(pico/\|hardware/\|<.*\.h>\)'; then
+                found_sdk_after_project=true
+                break
+            fi
+        fi
+    done <<< "$includes"
+    
+    if [ "$found_sdk_after_project" = true ]; then
+        GROUPING_ISSUES="${GROUPING_ISSUES}${cfile}: SDK/standard headers appear after project headers\n"
+    fi
+done
+
+ISSUES_FOUND=false
+
+if [ -n "$WRONG_INCLUDE_ORDER" ]; then
+    echo -e "${YELLOW}⚠ Include order violations:${NC}"
+    echo ""
+    echo -e "$WRONG_INCLUDE_ORDER" | head -10
+    [ $(echo -e "$WRONG_INCLUDE_ORDER" | wc -l) -gt 10 ] && echo "... and more"
+    echo ""
+    ISSUES_FOUND=true
+fi
+
+if [ -n "$GROUPING_ISSUES" ]; then
+    echo -e "${YELLOW}⚠ Include grouping violations:${NC}"
+    echo ""
+    echo -e "$GROUPING_ISSUES" | head -10
+    [ $(echo -e "$GROUPING_ISSUES" | wc -l) -gt 10 ] && echo "... and more"
+    echo ""
+    ISSUES_FOUND=true
+fi
+
+if [ "$ISSUES_FOUND" = true ]; then
+    echo -e "${YELLOW}Include order standard (code-standards.md):${NC}"
+    echo "  1. Own header first (for .c files)"
+    echo "  2. Blank line"
+    echo "  3. Standard library headers (<stdio.h>, <stdint.h>, etc.)"
+    echo "  4. Pico SDK headers (pico/stdlib.h, hardware/*, etc.)"
+    echo "  5. External library headers (tusb.h, bsp/*, etc.)"
+    echo "  6. Project headers (config.h, ringbuf.h, etc.)"
+    echo "  - Blank lines between groups"
+    echo "  - Alphabetical within groups"
+    echo ""
+    WARNINGS=$((WARNINGS + 1))
+else
+    echo -e "${GREEN}✓ Include order looks correct${NC}"
+fi
+echo ""
+
+# Check 13: Missing __isr Attribute
+echo -e "${BLUE}[13/14] Checking interrupt handler attributes...${NC}"
+MISSING_ISR=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "void.*_irq_handler\s*\(|void.*_interrupt_handler\s*\(|void.*_isr\s*\(" src/ 2>/dev/null | grep -v "__isr" | grep -v "\.h:" || true)
+
+if [ -n "$MISSING_ISR" ]; then
+    echo -e "${YELLOW}WARNING: IRQ handlers possibly missing __isr attribute:${NC}"
+    echo ""
+    echo "$MISSING_ISR"
+    echo ""
+    echo -e "${YELLOW}Naming convention: IRQ handlers should use __isr attribute${NC}"
+    echo "  - void __isr keyboard_irq_handler(void);"
+    echo "  - Helps compiler optimize for interrupt context"
+    echo ""
+    WARNINGS=$((WARNINGS + 1))
+else
+    echo -e "${GREEN}✓ IRQ handlers properly attributed${NC}"
+fi
+echo ""
+
+# Check 14: _Static_assert for Compile-Time Validation
+echo -e "${BLUE}[14/14] Checking for compile-time validation...${NC}"
+STATIC_ASSERT_COUNT=$(grep -R "${EXCLUDE_DIRS[@]}" --exclude="*.md" -c "_Static_assert\|#error" src/ 2>/dev/null | grep -v ":0$" | wc -l)
+
+if [ "$STATIC_ASSERT_COUNT" -gt 0 ]; then
+    echo -e "${GREEN}✓ Found $STATIC_ASSERT_COUNT files with compile-time checks${NC}"
+else
+    echo -e "${YELLOW}⚠ No _Static_assert or #error directives found${NC}"
+    echo "  - Consider adding compile-time validation for constants"
+    echo "  - See code-standards.md for examples"
+fi
 echo ""
 
 # Summary

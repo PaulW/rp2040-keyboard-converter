@@ -18,8 +18,8 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef KEYMAP_H
-#define KEYMAP_H
+#ifndef KEYBOARD_H
+#define KEYBOARD_H
 
 #include "hid_keycodes.h"
 
@@ -74,4 +74,4 @@
 }
 // clang-format on
 
-#endif /* KEYMAP_H */
+#endif /* KEYBOARD_H */

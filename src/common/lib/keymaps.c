@@ -22,9 +22,9 @@
 
 #include <stdint.h>
 #include <stdio.h>
-#include "log.h"
 
 #include "hid_keycodes.h"
+#include "log.h"
 #include "numpad_flip.h"
 
 static int keymap_layer = 0; /* TO-DO Add full Layer Switching Support */

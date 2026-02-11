@@ -27,20 +27,20 @@
  * bidirectional protocol with handshaking and synchronization recovery.
  * 
  * Protocol Characteristics:
- * - 2-wire interface: KCLK (keyboard clock) + KDAT (bidirectional data)
- * - KCLK: Unidirectional, always driven by keyboard
- * - KDAT: Bidirectional, driven by keyboard (data) and computer (handshake)
+ * - 2-wire interface: CLOCK (keyboard clock) + DATA (bidirectional data)
+ * - CLOCK: Unidirectional, always driven by keyboard
+ * - DATA: Bidirectional, driven by keyboard (data) and computer (handshake)
  * - Synchronous serial transmission with keyboard-generated clock
  * - Bit rotation: Transmitted as 6-5-4-3-2-1-0-7 (bit 7 last)
  * - Active-low logic: HIGH = 0, LOW = 1
- * - Mandatory handshake: Computer must pulse KDAT low for 85µs after each byte
+ * - Mandatory handshake: Computer must pulse DATA low for 85µs after each byte
  * - Automatic resynchronization on handshake timeout (143ms)
  * 
  * Physical Interface:
- * - KCLK: Keyboard clock output, open-collector with pull-up
- * - KDAT: Bidirectional data, open-collector with pull-up
+ * - CLOCK: Keyboard clock output, open-collector with pull-up
+ * - DATA: Bidirectional data, open-collector with pull-up
  * - 5V TTL logic levels
- * - 4-pin connector: KCLK, KDAT, +5V, GND
+ * - 4-pin connector: CLOCK, DATA, +5V, GND
  * - Pull-up resistors in both keyboard and computer
  * 
  * Timing Requirements:
@@ -68,7 +68,7 @@
  * 
  * Handshake Protocol:
  * - Computer MUST respond to every byte within 1µs
- * - Response: Pull KDAT low for exactly 85µs
+ * - Response: Pull DATA low for exactly 85µs
  * - Shorter pulses may not be detected by all keyboards
  * - Missing handshake triggers resync (keyboard clocks out 1-bits)
  * - After resync: keyboard sends 0xF9, then retransmits failed byte
@@ -76,7 +76,7 @@
  * Special Features:
  * - Reset warning: Three-key combo (CTRL + both Amiga keys)
  * - Reset sequence: Keyboard sends 0x78 twice, waits 10 seconds
- * - Hard reset: Keyboard pulls KCLK low for 500ms
+ * - Hard reset: Keyboard pulls CLOCK low for 500ms
  * - CAPS LOCK: Only generates code on press (not release), bit 7 = LED state
  * 
  * Compatibility:
@@ -110,7 +110,7 @@
  * These timing values are critical for proper Amiga keyboard operation.
  */
 #define AMIGA_TIMING_BIT_PERIOD_US  60    /**< Typical bit period (20µs × 3 phases) */
-#define AMIGA_TIMING_CLOCK_MIN_US   20    /**< Minimum KCLK pulse width for PIO detection */
+#define AMIGA_TIMING_CLOCK_MIN_US   20    /**< Minimum CLOCK pulse width for PIO detection */
 #define AMIGA_TIMING_HANDSHAKE_US   85    /**< Handshake pulse width (MUST be 85µs) */
 #define AMIGA_TIMING_HANDSHAKE_MAX_US 1   /**< Maximum delay before handshake starts */
 #define AMIGA_TIMING_TIMEOUT_MS     143   /**< Handshake timeout before keyboard resyncs */
@@ -128,11 +128,11 @@
  * @brief Initializes the Commodore Amiga keyboard interface
  * 
  * Sets up PIO state machine and GPIO configuration for Amiga keyboard
- * communication. Configures bidirectional KDAT line for data reception
- * and handshake transmission. KCLK pin is automatically set to data_pin + 1.
+ * communication. Configures bidirectional DATA line for data reception
+ * and handshake transmission. CLOCK pin is automatically set to data_pin + 1.
  * 
- * @param data_pin GPIO pin for KDAT (bidirectional: input for data, output for handshake)
- *                 KCLK is automatically assigned to data_pin + 1
+ * @param data_pin GPIO pin for DATA (bidirectional: input for data, output for handshake)
+ *                 CLOCK is automatically assigned to data_pin + 1
  */
 void keyboard_interface_setup(uint data_pin);
 

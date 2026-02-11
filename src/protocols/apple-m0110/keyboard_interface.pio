@@ -4,7 +4,7 @@
 ; Pins: 0 = data, 1 = clock
 
 init:
-    ; Wait until both CLK and DATA are high before we continue.
+    ; Wait until both CLOCK and DATA are high before we continue.
     ; This normally signifies an Idle state on the keyboard.
     wait 1 pin 0
     wait 1 pin 1
@@ -16,11 +16,11 @@ check:
 
     ; Receiving Data
     ;
-    ;        ___ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _____
-    ;    CLK    \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
-    ;        ___ ___ ___ ___ ___ ___ ___ ___ ___ ___
-    ;    DAT    \___X___X___X___X___X___X___X___/
-    ;             7   6   5   4   3   2   1   0
+    ;          ___ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _____
+    ;    CLOCK    \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
+    ;          ___ ___ ___ ___ ___ ___ ___ ___ ___ ___
+    ;    DAT      \___X___X___X___X___X___X___X___/
+    ;               7   6   5   4   3   2   1   0
     ;
     ; Host reads DATA on Rising Edge of CLOCK.
     ; Clock is brought LOW for 160us, and HIGH for 170us during pulses.
@@ -49,11 +49,11 @@ bitLoopIn:
 bitLoopOut:
     ; Sending Data
     ;
-    ;        _______ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _____
-    ;    CLK        \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
-    ;        ___     ___ ___ ___ ___ ___ ___ ___ ___ ___
-    ;    DAT    \___/___X___X___X___X___X___X___X___/
-    ;             *   7   6   5   4   3   2   1   0
+    ;          _______ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _____
+    ;    CLOCK        \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
+    ;          ___     ___ ___ ___ ___ ___ ___ ___ ___ ___
+    ;    DAT      \___/___X___X___X___X___X___X___X___/
+    ;               *   7   6   5   4   3   2   1   0
     ;
     ; * Host initiates by pulling DATA LOW
     ; Keyboard detects this, and then starts pulsing CLOCK (approx. 840us after host brings DATA LOW)

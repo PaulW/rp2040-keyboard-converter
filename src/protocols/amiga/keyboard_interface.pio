@@ -1,41 +1,41 @@
 .program keyboard_interface
-; Pins: 0 = KDAT (bidirectional), 1 = KCLK (input only, keyboard-driven)
+; Pins: 0 = DATA (bidirectional), 1 = CLOCK (input only, keyboard-driven)
 
 init:
-    ; Wait until KCLK is HIGH before we continue (keyboard idle state)
+    ; Wait until CLOCK is HIGH before we continue (keyboard idle state)
     wait 1 pin 1
 
 check:
-    ; Wait for KCLK to go low (start of byte transmission from keyboard)
+    ; Wait for CLOCK to go low (start of byte transmission from keyboard)
     jmp pin, check
 
     ; Receiving Data
-    ;        ___ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _________________
-    ;   KCLK    \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
-    ;        ___ ___ ___ ___ ___ ___ ___ ___ ___     handshake
-    ;   KDAT    \___X___X___X___X___X___X___X___\_______________/
-    ;             6   5   4   3   2   1   0   7
+    ;         ___ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _________________
+    ;   CLOCK    \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
+    ;         ___ ___ ___ ___ ___ ___ ___ ___ ___     handshake
+    ;   DATA     \___X___X___X___X___X___X___X___\_______________/
+    ;              6   5   4   3   2   1   0   7
     ;
     ; Amiga transmits bits in rotated order: 6-5-4-3-2-1-0-7
-    ; Host reads KDAT on KCLK falling edge
-    ; KCLK is brought LOW for ~20µs, and HIGH for ~20µs (~60µs per bit)
-    ; After 8 bits, host must pulse KDAT low for 85µs (handshake)
+    ; Host reads DATA on CLOCK falling edge
+    ; CLOCK is brought LOW for ~20µs, and HIGH for ~20µs (~60µs per bit)
+    ; After 8 bits, host must pulse DATA low for 85µs (handshake)
 
     ; Read 8 bits (bit order: 6-5-4-3-2-1-0-7)
     set x, 7
 
 bit_loop:
-    ; Wait for KCLK falling edge
+    ; Wait for CLOCK falling edge
     wait 0 pin 1 [1]
-    ; Read KDAT pin on falling edge
+    ; Read DATA pin on falling edge
     in pins, 1
-    ; Wait for KCLK rising edge
+    ; Wait for CLOCK rising edge
     wait 1 pin 1
     ; Decrement x and jump back to bit_loop if not zero
     jmp x--, bit_loop
 
     ; All 8 bits received - autopush has pushed to RX FIFO
-    ; Now send handshake: pulse KDAT low for ~100µs
+    ; Now send handshake: pulse DATA low for ~100µs
     ; 
     ; Handshake Timing Calculation:
     ; ==============================
@@ -68,14 +68,14 @@ bit_loop:
     ; Verified with oscilloscope measurements and tested with actual
     ; Amiga A500/A2000/A3000/A4000 keyboards.
 
-    set pins, 0         ; Pull KDAT low
-    set pindirs, 1      ; Set KDAT as output
+    set pins, 0         ; Pull DATA low
+    set pindirs, 1      ; Set DATA as output
     set x, 24           ; Loop counter for 100µs handshake (25 iterations: 24→0)
 
 handshake_loop:
     jmp x--, handshake_loop
 
-    set pindirs, 0      ; Release KDAT (goes high via pull-up)
+    set pindirs, 0      ; Release DATA (goes high via pull-up)
 
     ; Continue to next byte
     jmp check
@@ -83,31 +83,31 @@ handshake_loop:
 % c-sdk {
 static inline void keyboard_interface_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {
     // Pin configuration:
-    // pin = KDAT (bidirectional: input for data, output for handshake)
-    // pin + 1 = KCLK (input only, keyboard-driven, never drive from host)
+    // pin = DATA (bidirectional: input for data, output for handshake)
+    // pin + 1 = CLOCK (input only, keyboard-driven, never drive from host)
     
     // Set both pins as inputs initially
     pio_sm_set_consecutive_pindirs(pio, sm, pin, 2, false);
     
     // Initialize pins for PIO control
-    pio_gpio_init(pio, pin);       // KDAT
-    pio_gpio_init(pio, pin + 1);   // KCLK
+    pio_gpio_init(pio, pin);       // DATA
+    pio_gpio_init(pio, pin + 1);   // CLOCK
     
     // Configure pull-ups (open-collector design)
     // Both keyboard and computer have pull-ups internally
-    gpio_pull_up(pin);      // KDAT pull-up
-    gpio_pull_up(pin + 1);  // KCLK pull-up
+    gpio_pull_up(pin);      // DATA pull-up
+    gpio_pull_up(pin + 1);  // CLOCK pull-up
     
     // Get default config
     pio_sm_config c = keyboard_interface_program_get_default_config(offset);
     
-    // Configure SET pins (only KDAT) for handshake pulldown
+    // Configure SET pins (only DATA) for handshake pulldown
     sm_config_set_set_pins(&c, pin, 1);
     
-    // Configure IN pins (for reading KDAT)
+    // Configure IN pins (for reading DATA)
     sm_config_set_in_pins(&c, pin);
     
-    // Configure JMP pin (for KCLK monitoring)
+    // Configure JMP pin (for CLOCK monitoring)
     sm_config_set_jmp_pin(&c, pin + 1);
     
     // Configure shift register for 8-bit reception

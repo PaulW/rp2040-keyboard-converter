@@ -96,19 +96,20 @@
  * - **Real-time safe**: Configurable behavior from immediate drop to CPU-friendly backoff
  */
 
-#include "pico/stdlib.h"
-#include "hardware/uart.h"
-#include "hardware/dma.h"
-#include "hardware/structs/scb.h"   // for scb_hw->icsr
-#include "hardware/regs/m0plus.h"   // for M0PLUS_ICSR_VECTACTIVE_BITS
-#include "pico/stdio/driver.h"
-#include "pico/time.h"
-
 #include "uart.h"
-#include "log.h"  // Log level filtering system
 
 #include <stdio.h>
 #include <string.h>
+
+#include "hardware/dma.h"
+#include "hardware/regs/m0plus.h"   // for M0PLUS_ICSR_VECTACTIVE_BITS
+#include "hardware/structs/scb.h"   // for scb_hw->icsr
+#include "hardware/uart.h"
+#include "pico/stdio/driver.h"
+#include "pico/stdlib.h"
+#include "pico/time.h"
+
+#include "log.h"  // Log level filtering system
 
 /**
  * @brief UART Hardware Configuration
@@ -164,8 +165,8 @@ static log_entry_t log_queue[UART_DMA_QUEUE_SIZE] __attribute__((aligned(4))); /
 static volatile uint8_t q_head = 0;        /**< Queue head index (next write position) */
 static volatile uint8_t q_tail = 0;        /**< Queue tail index (next read position) */
 static volatile bool dma_active = false;   /**< DMA transfer active flag */
-static int uart_dma_chan;                  /**< DMA channel number allocated for UART TX */
-static bool uart_dma_inited = false;       /**< One-time init guard */
+static int uart_dma_chan;                  /**< DMA channel number allocated for UART TX */ // LINT:ALLOW non-volatile - write-once during init
+static bool uart_dma_inited = false;       /**< One-time init guard */ // LINT:ALLOW non-volatile - write-once during init
 
 #ifdef UART_DMA_DEBUG_STATS
 /**
@@ -308,7 +309,7 @@ static inline void report_drop_stats(void) {
             start_next_dma_if_needed();
             
             // Update last_reported only on successful enqueue
-            stats_last_reported = current_drops;
+            stats_last_reported = current_drops;  // LINT:ALLOW barrier - debug only, main context (not IRQ-shared)
             
             // Don't increment stats_enqueued here - it's for normal messages
             // Stats messages are meta-data about the queue, not user data
@@ -357,7 +358,7 @@ static void start_next_dma_if_needed() {
     }
 
     // Mark active before arming to avoid a window where producers see it as idle
-    dma_active = true;
+    dma_active = true;  // LINT:ALLOW barrier - read-side protected in IRQ handler (line 395)
 
     dma_channel_set_read_addr(uart_dma_chan, entry->buf, false);
     dma_channel_set_trans_count(uart_dma_chan, len, true);
@@ -386,13 +387,13 @@ void __isr dma_handler() {
         // Finished current entry → consume it
         uint8_t finished = q_tail;
         q_tail = (q_tail + 1) & (UART_DMA_QUEUE_SIZE - 1);
+        __dmb();  // Memory barrier - ensure q_tail update visible to main loop
 
         // Mark the slot as empty (len = 0) so a future start won’t arm early
         log_entry_t *done = &log_queue[finished];
         done->len = 0;
 
-        dma_active = false;
-
+        dma_active = false;        __dmb();  // Memory barrier - ensure volatile writes complete before ISR returns
         // Start next if available
         start_next_dma_if_needed();
     }

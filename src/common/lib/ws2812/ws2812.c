@@ -22,13 +22,15 @@
 
 #include <math.h>
 #include <stdio.h>
-#include "log.h"
 #include <stdlib.h>
 
-#include "bsp/board.h"
-#include "config.h"
-#include "pio_helper.h"
 #include "ws2812.pio.h"  // Generated from ws2812.pio at build time
+
+#include "bsp/board.h"
+
+#include "config.h"
+#include "log.h"
+#include "pio_helper.h"
 
 uint ws2812_sm = 0;
 uint ws2812_offset = 0;

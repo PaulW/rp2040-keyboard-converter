@@ -1,10 +1,10 @@
 # Development Tools
 
-This directory contains development and maintenance tools for the RP2040 Keyboard Converter project.
+The tools in this directory handle enforcement and testing for the RP2040 Keyboard Converter project. These catch architectural violations before they make it into the codebase—things like blocking operations or multicore API usage that would break the converter's timing requirements.
 
 ## lint.sh
 
-Architectural lint script that enforces critical rules from `.github/copilot-instructions.md`.
+This script checks source code against the architectural rules defined in `.github/copilot-instructions.md`.
 
 ### Usage
 
@@ -16,7 +16,9 @@ Architectural lint script that enforces critical rules from `.github/copilot-ins
 ./tools/lint.sh --strict
 ```
 
-### Checks Performed
+### What It Checks
+
+The script runs through seven different checks, each targeting a specific architectural rule:
 
 1. **Blocking Operations** - Detects `sleep_ms()`, `sleep_us()`, `busy_wait_us()`, `busy_wait_ms()`
    - ❌ **Fails**: Any blocking call found in src/
@@ -168,7 +170,7 @@ The lint script will skip warnings for lines with the `// LINT:ALLOW ringbuf_res
 
 ### Runtime RAM Execution Check
 
-In debug builds (`cmake -DCMAKE_BUILD_TYPE=Debug`), the firmware includes a runtime check that verifies code is executing from SRAM rather than Flash:
+Debug builds (`cmake -DCMAKE_BUILD_TYPE=Debug`) include a runtime verification that code is actually executing from SRAM:
 
 ```c
 #include "ram_check.h"
@@ -180,37 +182,26 @@ int main(void) {
 }
 ```
 
-This provides defense-in-depth verification beyond the lint script's text search for `pico_set_binary_type(copy_to_ram)`.
+This catches Flash execution at runtime, which complements the lint script's static check for `pico_set_binary_type(copy_to_ram)` in CMakeLists.txt.
 
 ## Testing the Tools
 
-See comprehensive testing documentation:
-- **[TESTING.md](TESTING.md)** - Complete testing guide with all scenarios
-- **[QUICKTEST.md](QUICKTEST.md)** - Quick reference commands
+If you're modifying the enforcement tools themselves (not regular development), run the meta-testing suite:
 
-Run automated tests:
 ```bash
 ./tools/test-enforcement.sh
 ```
 
-Quick verification:
+This validates that lint checks detect violations correctly. See [TESTING.md](TESTING.md) for detailed scenarios and [QUICKTEST.md](QUICKTEST.md) for quick reference commands.
+
+For regular development, just run the lint script before committing:
+
 ```bash
 ./tools/lint.sh && echo "✅ Ready to commit"
 ```
 
-## Future Tools
-
-Additional tools planned:
-- **Memory profiler** - Detailed RAM/Flash usage analysis
-- **Latency analyzer** - Automated pipeline timing measurements
-- **Config validator** - Validate keyboard.config files
-- **Hardware test harness** - Automated hardware-in-loop tests
-
 ## Contributing
 
-When adding new tools:
-1. Add executable shell script or Python script
-2. Make it executable: `chmod +x tools/new-tool.sh`
-3. Document usage in this README
-4. Consider integrating with CI pipeline if appropriate
-5. Follow existing tool patterns (color output, exit codes, etc.)
+If you're adding new enforcement checks, start by adding the check logic to `lint.sh`. Then add corresponding test cases to `test-enforcement.sh` that verify the check detects violations correctly. Document the new check in this README and update `.github/PULL_REQUEST_TEMPLATE.md` with any relevant checklist items.
+
+For new standalone tools, create an executable shell script (`chmod +x tools/new-tool.sh`) and document its usage here. Follow the patterns used by existing tools—colour-coded output, meaningful exit codes (0 for success, 1 for failure), and clear error messages. If the tool should run in CI, update `.github/workflows/ci.yml` accordingly.

@@ -133,7 +133,7 @@
 
 // --- CAPS LOCK Toggle Configuration ---
 // Time in milliseconds to hold a CAPS LOCK key press before generating the release event.
-// This is used by keyboards that require toggling CAPS LOCK state (e.g., Amiga, other vintage keyboards).
+// This is used by keyboards that require toggling CAPS LOCK state (e.g., Amiga, other keyboards).
 // The timing ensures compatibility with modern OS CAPS LOCK behavior (e.g., macOS requires a period of time between make and break events).
 #define CAPS_LOCK_TOGGLE_TIME_MS 125  // Hold time for CAPS LOCK toggle (milliseconds)
 

@@ -21,17 +21,18 @@
 #include "command_mode.h"
 
 #include <stdio.h>
-#include "log.h"
+
+#include "hardware/watchdog.h"
+#include "pico/bootrom.h"
+#include "pico/time.h"
 
 #include "config.h"
 #include "config_storage.h"
 #include "hid_interface.h"
 #include "hid_keycodes.h"
 #include "led_helper.h"
-#include "pico/bootrom.h"
-#include "pico/time.h"
+#include "log.h"
 #include "uart.h"
-#include "hardware/watchdog.h"
 
 #ifdef CONVERTER_LEDS
 #include "ws2812/ws2812.h"

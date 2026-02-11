@@ -22,9 +22,10 @@
 
 #include <stdbool.h>
 
+#include "pico/time.h"
+
 #ifdef CONVERTER_LEDS
 #include "ws2812/ws2812.h"
-#include "pico/time.h"
 #endif
 
 // Initialize the converter state with both keyboard and mouse states set to ready
