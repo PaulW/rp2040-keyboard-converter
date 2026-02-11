@@ -43,7 +43,7 @@ echo -e "${BLUE}========================================${NC}"
 echo ""
 
 # Check 1: Blocking Operations
-echo -e "${BLUE}[1/7] Checking for blocking operations...${NC}"
+echo -e "${BLUE}[1/14] Checking for blocking operations...${NC}"
 BLOCKING_CALLS=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "sleep_ms\(|sleep_us\(|busy_wait_us\(|busy_wait_ms\(" src/ 2>/dev/null || true)
 
 if [ -n "$BLOCKING_CALLS" ]; then
@@ -79,7 +79,7 @@ fi
 echo ""
 
 # Check 2: Multicore API Usage
-echo -e "${BLUE}[2/7] Checking for multicore API usage...${NC}"
+echo -e "${BLUE}[2/14] Checking for multicore API usage...${NC}"
 MULTICORE_USAGE=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "multicore_launch_core1|multicore_fifo_push_blocking|multicore_fifo_pop_blocking|multicore_fifo_drain|multicore_reset_core1|multicore_lockout" src/ 2>/dev/null || true)
 
 if [ -n "$MULTICORE_USAGE" ]; then
@@ -98,7 +98,7 @@ fi
 echo ""
 
 # Check 3: printf in IRQ Context
-echo -e "${BLUE}[3/7] Checking for printf in IRQ context...${NC}"
+echo -e "${BLUE}[3/14] Checking for printf in IRQ context...${NC}"
 # This is a heuristic check - finds functions with __isr attribute and checks for printf
 ISR_FUNCTIONS=$(grep -R --files-with-matches "${EXCLUDE_DIRS[@]}" --exclude="*.md" "__isr" src/ 2>/dev/null || true)
 
@@ -137,7 +137,7 @@ fi
 echo ""
 
 # Check 4: ringbuf_reset() Usage
-echo -e "${BLUE}[4/7] Checking ringbuf_reset() usage...${NC}"
+echo -e "${BLUE}[4/14] Checking ringbuf_reset() usage...${NC}"
 # Exclude the ringbuf library itself (contains function definition)
 RINGBUF_RESET=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" --exclude-dir="ringbuf" "ringbuf_reset" src/ 2>/dev/null | grep -v "^src/common/lib/ringbuf\.[ch]:" || true)
 
@@ -176,7 +176,7 @@ fi
 echo ""
 
 # Check 5: docs-internal in Repository
-echo -e "${BLUE}[5/7] Checking for docs-internal/ files in repository...${NC}"
+echo -e "${BLUE}[5/14] Checking for docs-internal/ files in repository...${NC}"
 DOCS_INTERNAL=$(git ls-files | grep "^docs-internal/" 2>/dev/null || true)
 
 if [ -n "$DOCS_INTERNAL" ]; then
@@ -195,7 +195,7 @@ fi
 echo ""
 
 # Check 6: Flash Execution (check for missing copy_to_ram)
-echo -e "${BLUE}[6/7] Checking for copy_to_ram configuration...${NC}"
+echo -e "${BLUE}[6/14] Checking for copy_to_ram configuration...${NC}"
 COPY_TO_RAM=$(grep -R --exclude-dir=".git" --exclude-dir="build" --exclude-dir="external" --exclude-dir="docs-internal" "pico_set_binary_type.*copy_to_ram" . 2>/dev/null || true)
 
 if [ -z "$COPY_TO_RAM" ]; then
@@ -227,10 +227,14 @@ if [ -n "$ISR_FILES" ]; then
         NON_VOLATILE_STATIC=$(grep -n "^static " "$file" | grep -v "volatile" | grep -v "const" | grep -v "inline" | grep -E 'static (uint|int|bool|unsigned|_Atomic)' || true)
         
         if [ -n "$NON_VOLATILE_STATIC" ]; then
+            # Get all __isr function names once (same for all variables in this file)
+            ISR_FUNCTION_NAMES=$(grep -o "__isr [a-zA-Z_][a-zA-Z0-9_]*" "$file" | awk '{print $2}')
+            
             # Check if these variables might be accessed in ISR (heuristic: same name appears in file)
             while IFS= read -r line; do
                 # Extract variable name (last word before = or ;)
-                var_name=$(echo "$line" | awk -F'[=;]' '{print $1}' | awk '{print $NF}' | sed 's/[*]//g')
+                # Strip pointer asterisks and array brackets to get base name
+                var_name=$(echo "$line" | awk -F'[=;]' '{print $1}' | awk '{print $NF}' | sed 's/[*]//g' | sed 's/\[.*\]//')
                 line_num=$(echo "$line" | cut -d: -f1)
                 
                 # Check for LINT:ALLOW annotation on this line
@@ -239,9 +243,6 @@ if [ -n "$ISR_FILES" ]; then
                 fi
                 
                 # Check if variable name appears in an __isr function
-                # Get all __isr function names
-                ISR_FUNCTION_NAMES=$(grep -o "__isr [a-zA-Z_][a-zA-Z0-9_]*" "$file" | awk '{print $2}')
-                
                 for isr_func in $ISR_FUNCTION_NAMES; do
                     # Check if variable is referenced in this ISR function
                     # Use grep -n to find function start line (avoids regex metacharacter issues)
@@ -268,7 +269,12 @@ if [ -n "$ISR_FILES" ]; then
         elif [ "$HAS_VOLATILE" = "yes" ] && [ "$HAS_BARRIER" = "yes" ]; then
             # File has volatile and barriers, but check if EVERY volatile write has a nearby barrier
             # Get volatile variable declarations (extract names)
-            VOLATILE_VAR_NAMES=$(grep -o "volatile[[:space:]]\+[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]\+\*\?[a-zA-Z_][a-zA-Z0-9_]*" "$file" | awk '{print $NF}' | sed 's/\*//g' | sort -u)
+            # Pattern: volatile + type (possibly multi-word with pointers) + variable name + terminator
+            # Handles "volatile unsigned int foo", "volatile long long *bar", etc.
+            VOLATILE_VAR_NAMES=$(grep "volatile" "$file" | grep -v "^[[:space:]]*//" | sed -n 's/.*volatile[[:space:]]\+\([a-zA-Z_ *]\+\)[[:space:]]\+\([a-zA-Z_][a-zA-Z0-9_]*\)[[:space:]]*[;=].*/\2/p' | sed 's/\*//g' | sort -u)
+            
+            # Get all __dmb() barrier locations once (same for all variables in this file)
+            dmb_lines=$(grep -n "__dmb()" "$file" | cut -d: -f1)
             
             # For each volatile variable, find writes and check for nearby __dmb()
             while IFS= read -r var; do
@@ -297,7 +303,7 @@ if [ -n "$ISR_FILES" ]; then
                         
                         # Search for __dmb() followed within 5 lines by a read of this variable
                         # This is a heuristic - if we find it, assume read-side protection exists
-                        dmb_lines=$(grep -n "__dmb()" "$file" | cut -d: -f1)
+                        # dmb_lines already computed once per file (hoisted outside loops)
                         for dmb_line in $dmb_lines; do
                             # Check next 5 lines after __dmb() for variable read (using awk)
                             # Use flag variable to avoid exit/END block issues
@@ -596,7 +602,7 @@ echo ""
 # Check 14: _Static_assert for Compile-Time Validation
 # NOTE: This is an advisory-only check that doesn't affect pass/fail status
 echo -e "${BLUE}[14/14] Checking for compile-time validation...${NC}"
-STATIC_ASSERT_COUNT=$(grep -R "${EXCLUDE_DIRS[@]}" --exclude="*.md" -c "_Static_assert\|#error" src/ 2>/dev/null | grep -vc ":0$")
+STATIC_ASSERT_COUNT=$(grep -R "${EXCLUDE_DIRS[@]}" --exclude="*.md" -c "_Static_assert\|#error" src/ 2>/dev/null | grep -vc ":0$" || true)
 
 if [ "$STATIC_ASSERT_COUNT" -gt 0 ]; then
     echo -e "${GREEN}✓ Found $STATIC_ASSERT_COUNT files with compile-time checks${NC}"

@@ -72,18 +72,18 @@ run_test() {
 setup_test_env() {
     echo -e "${YELLOW}Setting up test environment...${NC}"
     
-    # Clean up any lingering test files from previous runs
-    git reset HEAD . >/dev/null 2>&1 || true
-    rm -f src/test_*.c
-    rm -f docs-internal/test_*.md
-    
     # Ensure hooks are configured
     git config core.hooksPath .githooks
     chmod +x .githooks/pre-commit .githooks/commit-msg
     chmod +x tools/lint.sh
     
-    # Create a test branch
+    # Create/switch to test branch first (before any git operations)
     git checkout -b test-enforcement-tools >/dev/null 2>&1 || git checkout test-enforcement-tools >/dev/null 2>&1
+    
+    # Clean up any lingering test files from previous runs
+    rm -f src/test_*.c
+    rm -f docs-internal/test_*.md
+    git reset HEAD -- src/test_*.c docs-internal/test_*.md >/dev/null 2>&1 || true
     
     echo -e "${GREEN}✓ Test environment ready${NC}"
     echo ""
@@ -111,6 +111,9 @@ cleanup_test_env() {
     
     echo -e "${GREEN}✓ Cleanup complete${NC}"
     echo ""
+    
+    # Restore exit-on-error
+    set -e
 }
 
 # Test 1: Lint Script - Clean Code
