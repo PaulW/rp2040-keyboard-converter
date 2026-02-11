@@ -25,16 +25,16 @@ All tests should pass, confirming the enforcement tools work as expected.
 ./tools/lint.sh
 ```
 
-**Current Expected Result**: 
-- ❌ 1 error (sleep_us in uart.c - under review)
-- ⚠️ 2 warnings (printf in IRQ, ringbuf_reset usage - both are correct/intentional)
+**Expected Result**: 
+- ✅ Passes with 0 errors, 0 warnings
+- All intentional violations properly annotated with LINT:ALLOW comments
 
 #### Test 1.2: Strict Mode
 ```bash
 ./tools/lint.sh --strict
 ```
 
-**Expected Result**: Fails due to warnings (strict mode treats warnings as errors)
+**Expected Result**: Passes (codebase is clean with proper LINT:ALLOW annotations)
 
 #### Test 1.3: Create Violation and Test
 ```bash

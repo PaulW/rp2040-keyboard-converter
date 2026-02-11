@@ -78,11 +78,12 @@
 /**
  * @brief Apple M0110 Model Identification Codes
  * 
- * Model response format (per Apple Technical Documentation):
+ * Model response format (based on observed values):
  * - Bit 0: Always 1
  * - Bits 1-3: Keyboard model number (1-8)
- * - Bits 4-6: Next device model number (1-8, used when keypad connected)
- * - Bit 7: 1 if another device connected (keypad detection)
+ * - Bit 4: 1 if another device connected (keypad detection)
+ * - Bits 5-6: Next device model number when bit 4 set (keypad model)
+ * - Bit 7: Always 0 (reserved/unused)
  */
 #define M0110_RESP_MODEL_M0110  0x03  /**< Model M0110(GS536) - original compact keyboard (0000 0011) */
 #define M0110_RESP_MODEL_M0110_ALT 0x09  /**< Model M0110(GS624) - original compact keyboard variant (0000 1001) */

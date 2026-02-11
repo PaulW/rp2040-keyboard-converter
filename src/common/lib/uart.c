@@ -394,7 +394,8 @@ void __isr dma_handler() {
         log_entry_t *done = &log_queue[finished];
         done->len = 0;
 
-        dma_active = false;        __dmb();  // Memory barrier - ensure volatile writes complete before ISR returns
+        dma_active = false;
+        __dmb();  // Memory barrier - ensure volatile writes complete before ISR returns
         // Start next if available
         start_next_dma_if_needed();
     }

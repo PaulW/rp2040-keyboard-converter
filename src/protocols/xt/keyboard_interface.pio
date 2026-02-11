@@ -1,5 +1,5 @@
 .program keyboard_interface
-; Pins: 0 = DATA, 1 = CLOCK (CLOCK)
+; Pins: 0 = DATA, 1 = CLOCK
 
 init:
     ; Wait for CLOCK to go HIGH (keyboard ready after power-on reset)

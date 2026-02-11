@@ -224,7 +224,7 @@ if [ -n "$ISR_FILES" ]; then
     for file in $ISR_FILES; do
         # Look for static variables that aren't volatile (potential IRQ-shared variables)
         # Pattern: "static" followed by type, then variable name, but NOT containing "volatile"
-        NON_VOLATILE_STATIC=$(grep -n "^static " "$file" | grep -v "volatile" | grep -v "const" | grep -v "inline" | awk '/static (uint|int|bool|unsigned|_Atomic)/{print}' || true)
+        NON_VOLATILE_STATIC=$(grep -n "^static " "$file" | grep -v "volatile" | grep -v "const" | grep -v "inline" | grep -E 'static (uint|int|bool|unsigned|_Atomic)' || true)
         
         if [ -n "$NON_VOLATILE_STATIC" ]; then
             # Check if these variables might be accessed in ISR (heuristic: same name appears in file)
@@ -331,7 +331,7 @@ if [ -n "$VOLATILE_ISSUES" ]; then
     echo -e "${YELLOW}⚠ Potential missing 'volatile' on IRQ-shared variables:${NC}"
     echo ""
     echo -e "$VOLATILE_ISSUES" | head -10
-    [ $(echo -e "$VOLATILE_ISSUES" | wc -l) -gt 10 ] && echo "... and more"
+    [ "$(echo -e "$VOLATILE_ISSUES" | wc -l)" -gt 10 ] && echo "... and more"
     echo ""
     ISSUES_FOUND=true
 fi
@@ -365,7 +365,7 @@ if [ -n "$TAB_USAGE" ]; then
     echo -e "${RED}ERROR: Tab characters found!${NC}"
     echo ""
     echo "$TAB_USAGE" | head -20
-    [ $(echo "$TAB_USAGE" | wc -l) -gt 20 ] && echo "... and more"
+    [ "$(echo "$TAB_USAGE" | wc -l)" -gt 20 ] && echo "... and more"
     echo ""
     echo -e "${YELLOW}Code formatting rule: Use 4 spaces, never tabs${NC}"
     echo "  - Maintains consistent indentation across editors"
@@ -547,7 +547,7 @@ if [ -n "$WRONG_INCLUDE_ORDER" ]; then
     echo -e "${YELLOW}⚠ Include order violations:${NC}"
     echo ""
     echo -e "$WRONG_INCLUDE_ORDER" | head -10
-    [ $(echo -e "$WRONG_INCLUDE_ORDER" | wc -l) -gt 10 ] && echo "... and more"
+    [ "$(echo -e "$WRONG_INCLUDE_ORDER" | wc -l)" -gt 10 ] && echo "... and more"
     echo ""
     ISSUES_FOUND=true
 fi
@@ -556,7 +556,7 @@ if [ -n "$GROUPING_ISSUES" ]; then
     echo -e "${YELLOW}⚠ Include grouping violations:${NC}"
     echo ""
     echo -e "$GROUPING_ISSUES" | head -10
-    [ $(echo -e "$GROUPING_ISSUES" | wc -l) -gt 10 ] && echo "... and more"
+    [ "$(echo -e "$GROUPING_ISSUES" | wc -l)" -gt 10 ] && echo "... and more"
     echo ""
     ISSUES_FOUND=true
 fi
@@ -598,6 +598,7 @@ fi
 echo ""
 
 # Check 14: _Static_assert for Compile-Time Validation
+# NOTE: This is an advisory-only check that doesn't affect pass/fail status
 echo -e "${BLUE}[14/14] Checking for compile-time validation...${NC}"
 STATIC_ASSERT_COUNT=$(grep -R "${EXCLUDE_DIRS[@]}" --exclude="*.md" -c "_Static_assert\|#error" src/ 2>/dev/null | grep -v ":0$" | wc -l)
 
