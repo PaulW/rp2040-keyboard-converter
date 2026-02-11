@@ -10,19 +10,19 @@ jobs:
   lint:
     name: Architecture Lint Checks
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Full history for complete git ls-files check
           submodules: true  # Include submodules for future-proofing
-      
+
       - name: Run lint script
         run: |
           chmod +x tools/lint.sh
           ./tools/lint.sh --strict
-      
+
       - name: Check for docs-internal files (defensive)
         run: |
           if git ls-files | grep -q "^docs-internal/"; then
@@ -32,13 +32,13 @@ jobs:
             exit 1
           fi
           echo "✓ No docs-internal/ files in repository"
-      
+
       - name: Check for docs-internal references in commit messages
         if: github.event_name == 'pull_request'
         run: |
           # Get all commit messages in the PR
           COMMITS=$(git log origin/${{ github.base_ref }}..${{ github.sha }} --pretty=format:"%s %b")
-          
+
           if echo "$COMMITS" | grep -qi "docs-internal"; then
             echo "ERROR: Commit message(s) reference 'docs-internal/'!"
             echo "Commit messages are PUBLIC documentation."
@@ -52,6 +52,7 @@ jobs:
   build-matrix:
     name: Build Configuration Matrix
     runs-on: ubuntu-latest
+    timeout-minutes: 20  # Add job-level timeout to prevent indefinite hangs
     strategy:
       fail-fast: false
       matrix:
@@ -77,17 +78,19 @@ jobs:
           - name: "AT/PS2 Mouse only"
             keyboard: ""
             mouse: "at-ps2"
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: recursive
-      
+
       - name: Build Docker image
+        timeout-minutes: 10  # Docker build should complete within 10 minutes
         run: docker compose build builder
-      
+
       - name: Build firmware - ${{ matrix.config.name }}
+        timeout-minutes: 5  # Firmware build should complete within 5 minutes
         env:
           KEYBOARD: ${{ matrix.config.keyboard }}
           MOUSE: ${{ matrix.config.mouse }}
@@ -102,7 +105,7 @@ jobs:
             echo "ERROR: Neither KEYBOARD nor MOUSE set"
             exit 1
           fi
-      
+
       - name: Check build artifacts
         run: |
           if [ ! -f build/rp2040-converter.uf2 ]; then
@@ -111,26 +114,46 @@ jobs:
           fi
           echo "✓ Build successful"
           ls -lh build/rp2040-converter.*
-      
+
       - name: Install ARM toolchain for memory analysis
+        timeout-minutes: 5  # Explicit timeout for apt operations
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi
-      
+          # Retry logic for apt-get to handle transient network issues
+          MAX_RETRIES=3
+          RETRY_DELAY=10
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "Attempt $i of $MAX_RETRIES: Installing ARM toolchain..."
+
+            if sudo apt-get update && \
+               sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi binutils-arm-none-eabi; then
+              echo "✓ ARM toolchain installed successfully"
+              exit 0
+            fi
+
+            if [ $i -lt $MAX_RETRIES ]; then
+              echo "⚠ Installation failed, retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+            fi
+          done
+
+          echo "❌ Failed to install ARM toolchain after $MAX_RETRIES attempts"
+          exit 1
+
       - name: Extract memory usage
         run: |
           if [ -f build/rp2040-converter.elf ]; then
             echo "Memory usage for ${{ matrix.config.name }}:"
             arm-none-eabi-size build/rp2040-converter.elf
           fi
-      
+
       - name: Prepare artifact name
         id: artifact-name
         run: |
           # Sanitize keyboard and mouse names for artifact naming (replace / with -)
           KEYBOARD_SAFE=$(echo "${{ matrix.config.keyboard }}" | tr '/' '-')
           MOUSE_SAFE=$(echo "${{ matrix.config.mouse }}" | tr '/' '-')
-          
+
           # Create artifact name
           if [ -n "$KEYBOARD_SAFE" ] && [ -n "$MOUSE_SAFE" ]; then
             ARTIFACT_NAME="firmware-${KEYBOARD_SAFE}-${MOUSE_SAFE}"
@@ -141,10 +164,10 @@ jobs:
           else
             ARTIFACT_NAME="firmware-unknown"
           fi
-          
+
           echo "artifact_name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
           echo "Artifact name: ${ARTIFACT_NAME}"
-      
+
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
@@ -158,66 +181,87 @@ jobs:
   memory-check:
     name: Memory Usage Guard
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # Add job-level timeout
     needs: [build-matrix]
-    
+
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
-      
+
       - name: Install ARM toolchain
+        timeout-minutes: 5  # Explicit timeout for apt operations
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi
-      
+          # Retry logic for apt-get to handle transient network issues
+          MAX_RETRIES=3
+          RETRY_DELAY=10
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "Attempt $i of $MAX_RETRIES: Installing ARM toolchain..."
+
+            if sudo apt-get update && \
+               sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi binutils-arm-none-eabi; then
+              echo "✓ ARM toolchain installed successfully"
+              exit 0
+            fi
+
+            if [ $i -lt $MAX_RETRIES ]; then
+              echo "⚠ Installation failed, retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+            fi
+          done
+
+          echo "❌ Failed to install ARM toolchain after $MAX_RETRIES attempts"
+          exit 1
+
       - name: Check memory limits
         run: |
           # Memory limits (bytes)
           MAX_FLASH=235520  # ~230KB (leaving margin below 256KB)
           MAX_RAM=153600    # ~150KB (leaving margin below 264KB)
-          
+
           echo "Memory Usage Check (Limits: Flash < 230KB, RAM < 150KB)"
           echo "=========================================="
-          
+
           FAILED=0
           CHECKED=0
-          
+
           # Iterate through all directories (defensive - handle any artifact naming)
           for artifact_dir in */; do
             # Skip if not a directory or if it doesn't look like a firmware artifact
             if [ ! -d "$artifact_dir" ]; then
               continue
             fi
-            
+
             # Remove trailing slash
             artifact_dir="${artifact_dir%/}"
-            
+
             # Look for ELF file (handle variations in naming)
             ELF_FILE=$(find "$artifact_dir" -name "*.elf" -type f | head -n 1)
-            
+
             if [ -n "$ELF_FILE" ] && [ -f "$ELF_FILE" ]; then
               CONFIG=$(basename "$artifact_dir")
               echo ""
               echo "Configuration: $CONFIG"
-              
+
               # Use arm-none-eabi-size to get section sizes
               SIZE_OUTPUT=$(arm-none-eabi-size "$ELF_FILE")
-              
+
               # Parse output: "text    data     bss     dec     hex filename"
               # Flash usage = text + data
               # RAM usage = data + bss
               TEXT=$(echo "$SIZE_OUTPUT" | awk 'NR==2 {print $1}')
               DATA=$(echo "$SIZE_OUTPUT" | awk 'NR==2 {print $2}')
               BSS=$(echo "$SIZE_OUTPUT" | awk 'NR==2 {print $3}')
-              
+
               FLASH_USAGE=$((TEXT + DATA))
               RAM_USAGE=$((DATA + BSS))
-              
+
               FLASH_KB=$((FLASH_USAGE / 1024))
               RAM_KB=$((RAM_USAGE / 1024))
-              
+
               echo "  Flash: ${FLASH_KB}KB (${FLASH_USAGE} bytes)"
               echo "  RAM:   ${RAM_KB}KB (${RAM_USAGE} bytes)"
-              
+
               # Check limits
               if [ $FLASH_USAGE -gt $MAX_FLASH ]; then
                 echo "  ❌ FLASH EXCEEDS LIMIT (max: 230KB)"
@@ -225,30 +269,30 @@ jobs:
               else
                 echo "  ✓ Flash within limit"
               fi
-              
+
               if [ $RAM_USAGE -gt $MAX_RAM ]; then
                 echo "  ❌ RAM EXCEEDS LIMIT (max: 150KB)"
                 FAILED=$((FAILED + 1))
               else
                 echo "  ✓ RAM within limit"
               fi
-              
+
               CHECKED=$((CHECKED + 1))
             fi
           done
-          
+
           if [ $CHECKED -eq 0 ]; then
             echo ""
             echo "❌ No ELF files found in artifacts"
             exit 1
           fi
-          
+
           if [ $FAILED -ne 0 ]; then
             echo ""
             echo "❌ Memory limit exceeded in $FAILED check(s)"
             exit 1
           fi
-          
+
           echo ""
           echo "✅ All $CHECKED configurations within memory limits"
 
@@ -257,7 +301,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint, build-matrix, memory-check]
     if: always()
-    
+
     steps:
       - name: Check job statuses
         run: |
