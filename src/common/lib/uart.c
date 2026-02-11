@@ -104,6 +104,7 @@
 #include "hardware/dma.h"
 #include "hardware/regs/m0plus.h"   // for M0PLUS_ICSR_VECTACTIVE_BITS
 #include "hardware/structs/scb.h"   // for scb_hw->icsr
+#include "hardware/sync.h"          // for __dmb()
 #include "hardware/uart.h"
 #include "pico/stdio/driver.h"
 #include "pico/stdlib.h"
