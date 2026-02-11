@@ -244,11 +244,16 @@ if [ -n "$ISR_FILES" ]; then
                 
                 for isr_func in $ISR_FUNCTION_NAMES; do
                     # Check if variable is referenced in this ISR function
-                    # Look ahead from function definition until closing brace at column 1
-                    ISR_BODY=$(sed -n "/$isr_func/,/^}/p" "$file")
-                    if echo "$ISR_BODY" | grep -qw "$var_name"; then
-                        VOLATILE_ISSUES="${VOLATILE_ISSUES}${file}:${line_num}: static ${var_name} (accessed in ${isr_func})\n"
-                        break
+                    # Use grep -n to find function start line (avoids regex metacharacter issues)
+                    func_start=$(grep -n "^void __isr ${isr_func}" "$file" | head -1 | cut -d: -f1)
+                    
+                    if [ -n "$func_start" ]; then
+                        # Extract from function start to first closing brace at column 1
+                        ISR_BODY=$(sed -n "${func_start},/^}/p" "$file")
+                        if echo "$ISR_BODY" | grep -qw "$var_name"; then
+                            VOLATILE_ISSUES="${VOLATILE_ISSUES}${file}:${line_num}: static ${var_name} (accessed in ${isr_func})\n"
+                            break
+                        fi
                     fi
                 done
             done <<< "$NON_VOLATILE_STATIC"
@@ -359,7 +364,7 @@ echo ""
 
 # Check 8: Tab Characters
 echo -e "${BLUE}[8/14] Checking for tab characters...${NC}"
-TAB_USAGE=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" $'^\t\|[^\t]\t' src/ 2>/dev/null || true)
+TAB_USAGE=$(grep -R -E --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" $'^\t|[^\t]\t' src/ 2>/dev/null || true)
 
 if [ -n "$TAB_USAGE" ]; then
     echo -e "${RED}ERROR: Tab characters found!${NC}"
@@ -509,6 +514,9 @@ for cfile in $C_FILES; do
     fi
     
     # Check group ordering: Look for project headers before SDK headers (common mistake)
+    # Note: This heuristic lumps standard library (<stdio.h>) and Pico SDK (pico/stdlib.h)
+    # together as "SDK/standard headers", so it cannot distinguish violations between
+    # groups 3 and 4 of the documented order. This is acceptable as a first-pass check.
     # Extract all includes (skip own header if present)
     includes=$(grep "^#include" "$cfile" 2>/dev/null || true)
     
@@ -600,7 +608,7 @@ echo ""
 # Check 14: _Static_assert for Compile-Time Validation
 # NOTE: This is an advisory-only check that doesn't affect pass/fail status
 echo -e "${BLUE}[14/14] Checking for compile-time validation...${NC}"
-STATIC_ASSERT_COUNT=$(grep -R "${EXCLUDE_DIRS[@]}" --exclude="*.md" -c "_Static_assert\|#error" src/ 2>/dev/null | grep -v ":0$" | wc -l)
+STATIC_ASSERT_COUNT=$(grep -R "${EXCLUDE_DIRS[@]}" --exclude="*.md" -c "_Static_assert\|#error" src/ 2>/dev/null | grep -vc ":0$")
 
 if [ "$STATIC_ASSERT_COUNT" -gt 0 ]; then
     echo -e "${GREEN}✓ Found $STATIC_ASSERT_COUNT files with compile-time checks${NC}"

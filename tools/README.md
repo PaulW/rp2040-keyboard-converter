@@ -18,7 +18,7 @@ This script checks source code against the architectural rules defined in `.gith
 
 ### What It Checks
 
-The script runs through seven different checks, each targeting a specific architectural rule:
+The script runs through fourteen different checks, each targeting a specific architectural rule:
 
 1. **Blocking Operations** - Detects `sleep_ms()`, `sleep_us()`, `busy_wait_us()`, `busy_wait_ms()`
    - ❌ **Fails**: Any blocking call found in src/
@@ -47,9 +47,40 @@ The script runs through seven different checks, each targeting a specific archit
    - 💡 **Fix**: Add to CMakeLists.txt for timing-critical code
    - 🔧 **Runtime check**: Debug builds include `ram_check_verify()` - panics if executing from Flash
 
-7. **IRQ-Shared Variables** - Reminder for manual review
-   - ⚠️ **Manual check**: Volatile keyword and memory barriers
+7. **IRQ-Shared Variables** - Comprehensive volatile and memory barrier analysis
+   - ⚠️ **Warns**: Static variables accessed in `__isr` functions without `volatile` keyword
+   - ⚠️ **Warns**: Volatile reads/writes without surrounding `__dmb()` memory barriers
    - 💡 **Fix**: Use `volatile` + `__dmb()` for IRQ/main shared data
+   - 💡 **Suppress warning**: Add `// LINT:ALLOW non-volatile` or `// LINT:ALLOW barrier` with justification
+
+8. **Tab Characters** - Enforces spaces-only indentation
+   - ❌ **Fails**: Tab characters found in source files
+   - 💡 **Fix**: Use 4 spaces, never tabs (run `expand -t 4 <file>` to convert)
+
+9. **Header Guards** - Verifies `#ifndef`/`#define` guards in .h files
+   - ⚠️ **Warns**: Header files missing include guards
+   - 💡 **Fix**: Add `#ifndef FILENAME_H` / `#define FILENAME_H` / `#endif` pattern
+
+10. **File Headers** - Checks for license headers
+    - ⚠️ **Warns**: Source files missing GPL or MIT license headers
+    - 💡 **Fix**: Add appropriate license header (see code-standards.md for template)
+
+11. **Naming Conventions** - Detects camelCase (expects snake_case)
+    - ⚠️ **Warns**: Possible camelCase function/variable names
+    - 💡 **Fix**: Use snake_case (e.g., `keyboard_interface_task`, not `keyboardInterfaceTask`)
+
+12. **Include Order** - Validates include directive organization
+    - ⚠️ **Warns**: Own header not first, or SDK headers after project headers
+    - 💡 **Fix**: Order: own header → blank line → stdlib → Pico SDK → external libs → project headers
+
+13. **Missing __isr Attribute** - Checks interrupt handler declarations
+    - ⚠️ **Warns**: Functions named `*_irq_handler` without `__isr` attribute
+    - 💡 **Fix**: Use `void __isr keyboard_irq_handler(void)` for interrupt handlers
+
+14. **Compile-Time Validation** - Advisory check for `_Static_assert` and `#error`
+    - ℹ️ **Info**: Reports presence of compile-time validation directives
+    - 💡 **Suggestion**: Consider adding compile-time checks for constants (see code-standards.md)
+    - 📝 **Note**: This is advisory-only and doesn't affect pass/fail status
 
 ### Exit Codes
 

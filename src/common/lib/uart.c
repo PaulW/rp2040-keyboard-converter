@@ -392,7 +392,7 @@ void __isr dma_handler() {
 
         // Mark the slot as empty (len = 0) so a future start won’t arm early
         log_entry_t *done = &log_queue[finished];
-        done->len = 0;
+        __atomic_store_n(&done->len, 0, __ATOMIC_RELEASE);
 
         dma_active = false;
         __dmb();  // Memory barrier - ensure volatile writes complete before ISR returns

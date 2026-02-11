@@ -25,7 +25,7 @@ All tests should pass, confirming the enforcement tools work as expected.
 ./tools/lint.sh
 ```
 
-**Expected Result**: 
+**Expected Result**:
 - ✅ Passes with 0 errors, 0 warnings
 - All intentional violations properly annotated with LINT:ALLOW comments
 

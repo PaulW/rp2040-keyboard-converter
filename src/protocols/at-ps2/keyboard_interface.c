@@ -245,7 +245,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
           // Power-on self-test completed successfully (Basic Assurance Test)
           // Keyboard passed internal diagnostics and is ready
           LOG_DEBUG("Keyboard Self Test OK!\n");
-          keyboard_lock_leds = 0;  // LINT:ALLOW barrier - read-side protected at line 563
+          keyboard_lock_leds = 0;  // LINT:ALLOW barrier - volatile provides atomic visibility on Cortex-M0+
           LOG_DEBUG("Waiting for Keyboard ID...\n");
           keyboard_state = INIT_READ_ID_1;
           break;
@@ -272,7 +272,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
       switch (data_byte) {
         case ATPS2_RESP_BAT_PASSED:
           LOG_DEBUG("Keyboard Self Test OK!\n");
-          keyboard_lock_leds = 0;  // LINT:ALLOW barrier - read-side protected at line 563
+          keyboard_lock_leds = 0;  // LINT:ALLOW barrier - volatile provides atomic visibility on Cortex-M0+
           // Proceed to keyboard identification phase for terminal keyboard detection
           LOG_DEBUG("Waiting for Keyboard ID...\n");
           keyboard_state = INIT_READ_ID_1;
@@ -361,7 +361,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
       switch (data_byte) {
         case 0xFA:
           if (lock_leds.value != keyboard_lock_leds) {
-            keyboard_lock_leds = lock_leds.value;  // LINT:ALLOW barrier - read-side protected at line 563
+            keyboard_lock_leds = lock_leds.value;  // LINT:ALLOW barrier - volatile provides atomic visibility on Cortex-M0+
             keyboard_command_handler((uint8_t)((lock_leds.keys.capsLock << 2) |
                                                (lock_leds.keys.numLock << 1) |
                                                lock_leds.keys.scrollLock));
@@ -372,7 +372,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
           break;
         default:
           LOG_DEBUG("SET_LOCK_LED FAILED (0x%02X)\n", data_byte);
-          keyboard_lock_leds = lock_leds.value;  // LINT:ALLOW barrier - read-side protected at line 563
+          keyboard_lock_leds = lock_leds.value;  // LINT:ALLOW barrier - volatile provides atomic visibility on Cortex-M0+
           keyboard_state = INITIALISED;
       }
       break;

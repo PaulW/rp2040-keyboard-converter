@@ -41,6 +41,10 @@
  * - 5V TTL logic levels
  * - 5-pin DIN connector on original IBM keyboards
  * 
+ * Note: Unlike AT/PS2 protocol, the CLOCK line in XT is primarily keyboard-driven
+ * with no continuous host flow control. However, XT Type 2 keyboards support soft
+ * reset by pulling both CLOCK and DATA low simultaneously.
+ * 
  * Timing Requirements:
  * - Keyboard-generated clock: approximately 10 kHz
  * - Clock pulse width: ~40µs low, 60µs high
@@ -115,7 +119,7 @@
  * communication. XT keyboards require minimal setup since they use
  * a simple unidirectional protocol.
  * 
- * @param data_pin GPIO pin for DATA line (single wire interface)
+ * @param data_pin GPIO pin for DATA line (2-wire interface)
  */
 void keyboard_interface_setup(uint data_pin);
 
