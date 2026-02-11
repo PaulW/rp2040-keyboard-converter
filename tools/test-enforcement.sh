@@ -214,7 +214,13 @@ test_ci_docs_internal() {
 test_lint_copy_to_ram() {
     # This should pass since src/CMakeLists.txt has copy_to_ram
     # Use same pattern as lint.sh: grep recursively from repo root
-    run_test "Lint verifies copy_to_ram config" 'cd $(git rev-parse --show-toplevel) && grep -R --exclude-dir='"'"'.git'"'"' --exclude-dir='"'"'build'"'"' --exclude-dir='"'"'external'"'"' '"'"'pico_set_binary_type.*copy_to_ram'"'"' .' "pass"
+    # Note: cd deferred to eval time via single quotes in run_test
+    local repo_root
+    repo_root=$(git rev-parse --show-toplevel)
+    
+    run_test "Lint verifies copy_to_ram config" \
+        "cd '$repo_root' && grep -R --exclude-dir='.git' --exclude-dir='build' --exclude-dir='external' 'pico_set_binary_type.*copy_to_ram' ." \
+        "pass"
 }
 
 # Test 10: Hook Bypass (--no-verify)

@@ -157,7 +157,7 @@ static struct {
     CAPS_IDLE,       // No pending CAPS LOCK operation
     CAPS_PRESS_SENT, // Press sent, waiting to send release
   } state;
-  uint32_t press_time_ms;  // Time when press was sent
+  volatile uint32_t press_time_ms;  // Time when press was sent (written in IRQ, read in main)
 } caps_lock_timing = { .state = CAPS_IDLE, .press_time_ms = 0 };
 
 /**
@@ -520,6 +520,7 @@ void keyboard_interface_task() {
   // CAPS LOCK timing state machine - handle delayed release
   if (caps_lock_timing.state == CAPS_PRESS_SENT) {
     uint32_t now_ms = to_ms_since_boot(get_absolute_time());
+    __dmb();  // Memory barrier - ensure we see latest volatile timestamp from IRQ
     // Note: Unsigned subtraction handles wraparound correctly for time deltas
     // as long as elapsed time < 2^31 ms (~24 days). CAPS LOCK hold time is 125ms.
     if (now_ms - caps_lock_timing.press_time_ms >= CAPS_LOCK_TOGGLE_TIME_MS) {

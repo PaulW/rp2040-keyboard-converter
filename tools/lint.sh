@@ -280,48 +280,36 @@ if [ -n "$ISR_FILES" ]; then
                 WRITE_LINES=$(grep -n "[^a-zA-Z_!<>=]${var}[[:space:]]*=[^=]" "$file" | grep -v "volatile" | grep -v "LINT:ALLOW" | cut -d: -f1)
                 
                 for write_line in $WRITE_LINES; do
-                    # Check if line has LINT:ALLOW annotation
-                    if sed -n "${write_line}p" "$file" | grep -q "LINT:ALLOW"; then
+                    # Check if line has LINT:ALLOW annotation (using awk for single file read)
+                    lint_allow=$(awk "BEGIN {found=0} NR==${write_line} && /LINT:ALLOW/ {found=1} END {print found}" "$file")
+                    if [ "$lint_allow" = "1" ]; then
                         continue
                     fi
                     
-                    # Check if __dmb() appears within next 3 lines
-                    next_line=$((write_line + 1))
-                    next_2=$((write_line + 2))
-                    next_3=$((write_line + 3))
+                    # Check if __dmb() appears within next 3 lines (using awk to read once)
+                    has_barrier_after=$(awk "BEGIN {found=0} NR>=${write_line} && NR<=$((write_line + 3)) && /__dmb\(\)/ {found=1} END {print found}" "$file")
                     
-                    has_barrier_after=false
-                    if sed -n "${next_line}p" "$file" | grep -q "__dmb()"; then
-                        has_barrier_after=true
-                    elif sed -n "${next_2}p" "$file" | grep -q "__dmb()"; then
-                        has_barrier_after=true
-                    elif sed -n "${next_3}p" "$file" | grep -q "__dmb()"; then
-                        has_barrier_after=true
-                    fi
-                    
-                    if [ "$has_barrier_after" = false ]; then
-                        # Check if this line is already followed by a barrier on the same line
-                        if ! sed -n "${write_line}p" "$file" | grep -q "__dmb()"; then
-                            # One more check: see if this file has barriers before reads (read-side protection)
-                            # Look for patterns like: __dmb(); ... var_name (reading the variable)
-                            # If found, the write-side doesn't strictly need barriers (read-side protects)
-                            has_read_barrier=false
-                            
-                            # Search for __dmb() followed within 5 lines by a read of this variable
-                            # This is a heuristic - if we find it, assume read-side protection exists
-                            dmb_lines=$(grep -n "__dmb()" "$file" | cut -d: -f1)
-                            for dmb_line in $dmb_lines; do
-                                # Check next 5 lines after __dmb() for variable read
-                                next_5=$(sed -n "$((dmb_line + 1)),$((dmb_line + 5))p" "$file")
-                                if echo "$next_5" | grep -qw "$var"; then
-                                    has_read_barrier=true
-                                    break
-                                fi
-                            done
-                            
-                            if [ "$has_read_barrier" = false ]; then
-                                BARRIER_ISSUES="${BARRIER_ISSUES}${file}:${write_line}: volatile '${var}' write missing __dmb() barrier\n"
+                    if [ "$has_barrier_after" = "0" ]; then
+                        # One more check: see if this file has barriers before reads (read-side protection)
+                        # Look for patterns like: __dmb(); ... var_name (reading the variable)
+                        # If found, the write-side doesn't strictly need barriers (read-side protects)
+                        has_read_barrier=false
+                        
+                        # Search for __dmb() followed within 5 lines by a read of this variable
+                        # This is a heuristic - if we find it, assume read-side protection exists
+                        dmb_lines=$(grep -n "__dmb()" "$file" | cut -d: -f1)
+                        for dmb_line in $dmb_lines; do
+                            # Check next 5 lines after __dmb() for variable read (using awk)
+                            # Use flag variable to avoid exit/END block issues
+                            read_found=$(awk "BEGIN {found=0} NR>$dmb_line && NR<=$((dmb_line + 5)) && /([^a-zA-Z0-9_]|^)${var}([^a-zA-Z0-9_]|$)/ {found=1} END {print found}" "$file")
+                            if [ "$read_found" = "1" ]; then
+                                has_read_barrier=true
+                                break
                             fi
+                        done
+                        
+                        if [ "$has_read_barrier" = false ]; then
+                            BARRIER_ISSUES="${BARRIER_ISSUES}${file}:${write_line}: volatile '${var}' write missing __dmb() barrier\n"
                         fi
                     fi
                 done
@@ -537,7 +525,7 @@ for cfile in $C_FILES; do
         
         # Check if SDK header appears after we've seen project headers
         if [ "$found_project_header" = true ]; then
-            if echo "$line" | grep -q '#include.*\(pico/\|hardware/\|<.*\.h>\)'; then
+            if echo "$line" | grep -Eq '#include.*(pico/|hardware/|<.*\.h>)'; then
                 found_sdk_after_project=true
                 break
             fi
