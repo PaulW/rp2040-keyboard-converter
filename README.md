@@ -86,6 +86,7 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
 | **M0110** | Keyboard | ⚠️ Partial Support | [Specification](docs/protocols/m0110.md) |
 
 ### Example Keyboards
+
 | Manufacturer | Models | Protocol |
 |--------------|--------|----------|
 | **IBM** | Model F (PC/AT), Model M (Enhanced/122-key) | AT/PS2 |
