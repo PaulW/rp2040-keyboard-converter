@@ -1,10 +1,9 @@
 # Flashing Firmware
 
 **Time Required**: 5-10 minutes  
-**Difficulty**: Beginner-friendly  
-**Last Updated**: 30 October 2025
+**Difficulty**: Beginner-friendly
 
-This guide walks you through installing the firmware you built onto your RP2040 board. The process is simple: put the board into bootloader mode, then drag and drop the firmware file. Once installed, you'll have a working vintage keyboard/mouse converter!
+Now that you've built your firmware, it's time to get it onto your RP2040 board. The good news is that this is one of the easiest parts of the whole process—you just put the board into bootloader mode and drag-and-drop a file. That's it. Once it's done, you'll have a working keyboard/mouse converter!
 
 **What you'll accomplish:**
 - Put your RP2040 into bootloader mode
@@ -12,64 +11,62 @@ This guide walks you through installing the firmware you built onto your RP2040 
 - Verify your converter is working
 - Learn how to update firmware without physical button access (Command Mode)
 
-**Why is this easy?** The RP2040 has a built-in bootloader that appears as a USB drive. No special software needed—just copy a file like you would to a USB stick.
+**Why this is so simple:** The RP2040 has a built-in bootloader that appears as a USB drive when you activate it. No special software or complicated tools needed—you literally just copy a file to it like you would to a USB stick.
 
 ---
 
 ## Prerequisites
 
-Before flashing, make sure you have:
+Before you can flash the firmware, you'll need:
 
 - **Compiled firmware** - The `rp2040-converter.uf2` file from [Building Firmware](building-firmware.md)
 - **Assembled hardware** - Your wired converter from [Hardware Setup](hardware-setup.md)
-- **USB cable** - Connected from RP2040 to your computer
+- **USB cable** - Connected from your RP2040 to your computer
 - **Access to BOOT and RESET buttons** - On your RP2040 board (for first-time flash only)
 
-**Note**: After the initial flash, you can update firmware remotely using Command Mode—no need to access the buttons again!
+**Note**: After this initial flash, you can update firmware using Command Mode—no need to access the buttons again!
 
 ---
 
 ## Understanding the Flashing Process
 
-The RP2040 has two modes:
+The RP2040 operates in two modes:
 
 1. **Bootloader Mode** - Acts as a USB drive named `RPI-RP2`, ready to receive firmware
 2. **Normal Mode** - Runs your converter firmware, translating keyboard/mouse input
 
-**The flashing process:**
-- Enter bootloader mode (appears as USB drive)
-- Copy `.uf2` file to the drive
-- RP2040 automatically writes firmware to flash memory
-- RP2040 reboots into normal mode
+**The flashing process is pretty simple:**
+- You enter bootloader mode (the board appears as a USB drive)
+- Copy the `.uf2` file to the drive
+- The RP2040 automatically writes the firmware to its flash memory
+- It reboots into normal mode
 - Your converter starts working immediately
 
-This is the same process used for all RP2040 boards—it's a standard feature of the chip.
+This is the same process for all RP2040 boards—it's a standard feature built into the chip.
 
 ---
 
 ## Step 1: Locate the BOOT and RESET Buttons
 
-Find the buttons on your RP2040 board. Their location varies by board type:
+First, locate the buttons on your RP2040 board. Where they are depends on which board you're using:
 
 ### Raspberry Pi Pico
-
-![Raspberry Pi Pico Buttons](../images/hardware/pico-buttons.png)
 
 - **BOOTSEL button**: Small button labeled "BOOTSEL" near the USB connector
 - **RESET**: Not present (use USB unplug/replug instead, or add external reset button)
 
-### WaveShare RP2040-Zero
-
-![WaveShare RP2040-Zero Buttons](../images/hardware/waveshare-buttons.png)
+### Waveshare RP2040-Zero
 
 - **BOOT button**: Small button labeled "BOOT" or "B" 
 - **RESET button**: Small button labeled "RESET" or "R"
-- Usually located on the back of the board
+- Located on the back of the board
+
+(This is the board I use, by the way—it's compact and has both buttons, which makes life easier)
 
 ### Other RP2040 Boards
 
-Check your board's documentation:
-- BOOT/BOOTSEL button (always present—required for bootloader)
+If you're using a different board, have a look at your board's documentation:
+- BOOT/BOOTSEL button (always present—it's required for the bootloader)
 - RESET button (may be absent on some boards)
 - Some boards have a single button that serves both functions
 
@@ -83,7 +80,7 @@ Check your board's documentation:
 
 ## Step 2: Enter Bootloader Mode
 
-This is the key step—putting your RP2040 into a state where it can receive new firmware.
+This is the important bit—you need to put your RP2040 into a state where it can receive new firmware.
 
 ### Method 1: Using BOOT + RESET Buttons (Recommended)
 
@@ -114,17 +111,17 @@ Time:   0s    1s         2s         3s
 ### What You Should See
 
 **On Windows:**
-- File Explorer shows new drive: `RPI-RP2 (D:)` or similar
-- Drive contains files: `INDEX.HTM` and `INFO_UF2.TXT`
+- File Explorer shows a new drive: `RPI-RP2 (D:)` or similar
+- The drive contains two files: `INDEX.HTM` and `INFO_UF2.TXT`
 
 **On macOS:**
-- New volume appears on desktop: `RPI-RP2`
-- Finder sidebar shows the drive
-- Contains two files as above
+- A new volume appears on your desktop: `RPI-RP2`
+- It'll also show up in the Finder sidebar
+- Contains the same two files
 
 **On Linux:**
-- Drive auto-mounts to `/media/<username>/RPI-RP2` or similar
-- Shows same two files
+- The drive auto-mounts to `/media/<username>/RPI-RP2` or similar
+- Shows the same two files
 
 **Status LED (if installed):**
 - **Will NOT turn magenta/purple** when using BOOT/RESET buttons
@@ -138,28 +135,28 @@ Time:   0s    1s         2s         3s
 
 ## Step 3: Flash the Firmware
 
-Now copy your compiled firmware to the RP2040.
+Now you just need to copy your compiled firmware to the RP2040.
 
 ### Locate Your Firmware File
 
-The firmware file is in your project's `build/` directory:
+Your firmware file is sitting in your project's `build/` directory:
 
 **Path**: `rp2040-keyboard-converter/build/rp2040-converter.uf2`
 
 **File details:**
 - Name: `rp2040-converter.uf2`
-- Size: ~80-120 KB (depending on configuration)
-- Created when you ran the build command
+- Size: ~80-120 KB (depending on your configuration)
+- This was created when you ran the build command
 
 ### Copy the Firmware
 
 **Method 1: Drag and Drop (All Operating Systems)**
 
-1. Open your file manager (Finder/Explorer/File Browser)
+1. Open your file manager (Finder on macOS, Explorer on Windows, or your file browser on Linux)
 2. Navigate to the `build/` folder in your project
 3. Find `rp2040-converter.uf2`
 4. **Drag the file** to the `RPI-RP2` drive
-5. **Wait** - The file copies, drive disappears (RP2040 reboots automatically)
+5. **Wait** - The file copies, then the drive disappears (the RP2040 reboots automatically)
 
 **Method 2: Command Line (macOS/Linux)**
 
@@ -178,16 +175,16 @@ Copy-Item build\rp2040-converter.uf2 D:\
 
 ### What Happens Next
 
-**During flashing (1-2 seconds):**
-- RP2040's onboard LED may blink rapidly
-- `RPI-RP2` drive disappears from your computer
-- You might see a brief "drive removed" notification
-- Status LED (if installed) remains in its previous state (does NOT change during BOOT/RESET method)
+**During flashing (takes 1-2 seconds):**
+- The RP2040's onboard LED may blink rapidly (if there is one)
+- The `RPI-RP2` drive disappears from your computer
+- You might see a brief "drive removed" notification, or some other warning about being removed unexpectedly (that's normal)
+- Your status LED (if you've installed one) remains in its previous state (it doesn't change during the BOOT/RESET method)
 
 **After flashing:**
-- RP2040 automatically reboots
-- New firmware starts running immediately
-- Status LED shows orange (if LED installed—waiting for device initialization), and should (hopefully) change to Green if everything is OK!
+- The RP2040 automatically reboots
+- Your new firmware starts running immediately
+- The status LED shows orange (if an LED is installed—means it's waiting for device initialization), and should change to green if everything's OK!
 
 **Important**: The `RPI-RP2` drive disappearing is **normal and expected**. This means the firmware was successfully written and the RP2040 rebooted into normal mode.
 
@@ -195,14 +192,14 @@ Copy-Item build\rp2040-converter.uf2 D:\
 
 ## Step 4: Verify It's Working
 
-Test your newly flashed converter to confirm everything works.
+Now let's test your newly flashed converter to confirm everything's working as it should.
 
 ### Initial Power-Up Checks
 
 **1. Status LED (if installed):**
 - **🟠 Orange**: Waiting for keyboard initialization (normal at startup)
 - **🟢 Green**: Converter ready (keyboard initialized successfully)
-- **No light**: Either no LED installed, or wiring issue
+- **No light**: Either no LED installed, configuration or wiring issue
 
 **2. Computer Recognition:**
 - Your computer should detect a new USB keyboard (and mouse, if you built with mouse support)
@@ -215,17 +212,18 @@ Test your newly flashed converter to confirm everything works.
 
 **Basic functionality test:**
 
-1. **Open a text editor** - Notepad (Windows), TextEdit (macOS), or any editor
-2. **Type on your vintage keyboard** - Try various keys
-3. **Verify output appears** - Characters should appear in the editor
+1. **Open a text editor** - Notepad (Windows), TextEdit (macOS), or whatever editor you prefer
+2. **Type on your keyboard** - Try various keys
+3. **Verify output appears** - The characters should appear in the editor
 4. **Test special keys**:
-   - Shift + letters (uppercase)
+   - Shift + letters (for uppercase)
+   - Caps Lock (to ensure it toggles correctly)
    - Function keys (F1-F12)
    - Arrow keys, Home, End, Page Up/Down
    - Number pad (if your keyboard has one)
 
 **Lock key indicators (if using 4 LEDs):**
-- Press **Num Lock** - LED 2 should light up
+- Press **Num Lock** - LED 2 should light up (unless you're connecting to a Apple Mac which doesnt use Num Lock)
 - Press **Caps Lock** - LED 3 should light up
 - Press **Scroll Lock** - LED 4 should light up
 
@@ -241,17 +239,17 @@ Test your newly flashed converter to confirm everything works.
 
 ## Step 5: Understanding Command Mode
 
-Command Mode is a powerful feature that lets you update firmware and adjust settings **without physical access to the RP2040 board**. Once your keyboard is installed somewhere inconvenient (like inside a case or under a desk), Command Mode saves you from disassembling everything for updates.
+Command Mode is one of those features that you'll really appreciate once your keyboard's all set up and installed somewhere awkward. It lets you update firmware and adjust settings **without having physical access to the RP2040 board**. Once your keyboard's tucked away inside a case or under a desk, Command Mode means you don't have to take everything apart just to update the firmware.
 
 ### What is Command Mode?
 
-A special menu accessed by holding both shift keys for 3 seconds. It lets you:
+It's a special menu you can access by holding both shift keys for 3 seconds. Once you're in, you can:
 - Enter bootloader mode for firmware updates (no BOOT button needed!)
 - Adjust LED brightness
 - Change debug log verbosity
 - Reset to factory settings
 
-**Why this is useful**: After your initial flash, you'll never need to touch the BOOT and RESET buttons again. All firmware updates can be done through Command Mode.
+**Why this is so useful**: After your initial flash, you'll never need to touch the BOOT and RESET buttons again. All firmware updates can be done through Command Mode.
 
 ### Entering Command Mode
 
@@ -292,14 +290,14 @@ After your initial flash, use Command Mode to update firmware without touching t
 ### When to Use This Method
 
 **Use Command Mode for updates when:**
-- ✅ Converter is already installed and working
+- ✅ Your converter's already installed and working
 - ✅ You've built new firmware and want to flash it
-- ✅ BOOT/RESET buttons are hard to access
-- ✅ You want a quick, convenient update process
+- ✅ The BOOT/RESET buttons are hard to access
+- ✅ You want a quick, handy update process
 
-**Use BOOT button method when:**
-- ❌ First-time flashing (no firmware installed yet)
-- ❌ Firmware is corrupted or not booting
+**Use the BOOT button method when:**
+- ❌ You're flashing for the first time (no firmware installed yet)
+- ❌ The firmware is corrupted or not booting
 - ❌ Command Mode isn't responding
 
 ### Update Process Using Command Mode
@@ -352,34 +350,34 @@ After your initial flash, use Command Mode to update firmware without touching t
 
 ## Troubleshooting
 
-Running into issues? Here are common problems and solutions:
+Running into issues? Here are troubleshooting steps and solutions:
 
 ---
 
 ### ❌ RPI-RP2 drive doesn't appear
 
-**What this means**: RP2040 didn't enter bootloader mode.
+**What this means**: Your RP2040 didn't enter bootloader mode.
 
 **How to fix it**:
 
 1. **Try again with precise timing**:
-   - Hold BOOT firmly (don't just tap it)
-   - Press RESET while continuing to hold BOOT
+   - Hold the BOOT button firmly (don't just tap it)
+   - Press RESET whilst continuing to hold BOOT
    - Hold BOOT for 2 full seconds after releasing RESET
 
-2. **Check USB cable**:
-   - Use a data cable (not charge-only cable)
-   - Try different USB port on your computer
-   - Try different USB cable
+2. **Check your USB cable**:
+   - Make sure you're using a data cable (not a charge-only cable)
+   - Try a different USB port on your computer
+   - Try a different USB cable
 
 3. **Verify board functionality**:
-   - Does RP2040's onboard LED light up when USB is connected?
-   - If not, board may have power issue
+   - Does the RP2040's onboard LED light up when USB is connected?
+   - If not, the board may have a power issue
 
-4. **Try alternative method**:
+4. **Try the alternative method**:
    - Disconnect USB
    - Hold BOOT
-   - Reconnect USB while holding BOOT
+   - Reconnect USB whilst holding BOOT
    - Wait 2 seconds, then release BOOT
 
 ---
@@ -415,32 +413,32 @@ Running into issues? Here are common problems and solutions:
 
 ### ❌ Firmware copied, but converter doesn't work
 
-**What this means**: Firmware flashed successfully, but something's wrong with the configuration.
+**What this means**: The firmware flashed successfully, but something's not quite right with the configuration.
 
 **How to fix it**:
 
-1. **Check Status LED** (if installed):
-   - **Orange**: Waiting for keyboard (check keyboard power and wiring)
-   - **Off**: No LED installed, or LED wiring problem
+1. **Check your Status LED** (if you've installed one):
+   - **Orange**: Waiting for keyboard (check your keyboard power and wiring)
+   - **Off**: Either no LED installed, or there's an LED wiring problem
    - **Rapid flashing**: Error state (check UART output for details)
 
-2. **Verify keyboard configuration**:
+2. **Verify your keyboard configuration**:
    - Did you build firmware for the correct keyboard model?
-   - Example: AT/PS2 keyboard needs AT/PS2 protocol firmware
-   - Rebuild with correct `KEYBOARD` parameter if needed
+   - Example: An AT/PS2 keyboard needs AT/PS2 protocol firmware
+   - Rebuild with the correct `KEYBOARD` parameter if needed
 
-3. **Check hardware connections**:
-   - Verify CLK and DATA connections from [Hardware Setup](hardware-setup.md)
-   - Ensure level shifter is powered (3.3V and 5V)
+3. **Check your hardware connections**:
+   - Verify the CLOCK and DATA connections from [Hardware Setup](hardware-setup.md)
+   - Make sure the level shifter is powered (3.3V and 5V)
    - Check keyboard power (5V to device)
 
 4. **Try a different keyboard** (if available):
-   - Confirms if issue is firmware or hardware
-   - Same protocol (e.g., another AT/PS2 keyboard)
+   - This confirms if the issue is firmware or hardware
+   - Use the same protocol (e.g., another AT/PS2 keyboard)
 
 ---
 
-### ❌ Computer doesn't recognize converter as keyboard
+### ❌ Computer doesn't recognise converter as keyboard
 
 **What this means**: RP2040 is powered, but USB HID interface not working.
 
@@ -469,27 +467,27 @@ Running into issues? Here are common problems and solutions:
 
 ### ❌ Some keys don't work or produce wrong characters
 
-**What this means**: Keymap mismatch or scancode issue.
+**What this means**: There's a keymap mismatch or scancode issue.
 
 **How to fix it**:
 
-1. **Verify keyboard configuration**:
+1. **Verify your keyboard configuration**:
    - Are you using the right keyboard model?
-   - Example: Model M Enhanced vs Model M Classic have different layouts
+   - Example: A Model M Enhanced vs Model M Classic have different layouts
    - Check [Supported Keyboards](../keyboards/README.md) for your exact model
 
-2. **Test systematic pattern**:
+2. **Test for a systematic pattern**:
    - Do specific keys consistently fail (e.g., all Function keys)?
-   - Do keys produce wrong but consistent output (e.g., 'A' types 'B')?
-   - This helps identify scancode vs keymap issues
+   - Do keys produce the wrong but consistent output (e.g., 'A' types 'B')?
+   - This helps identify whether it's a scancode or keymap issue
 
-3. **Check for protocol mismatch**:
-   - AT/PS2 keyboard needs AT/PS2 protocol firmware
-   - XT keyboard needs XT protocol firmware
-   - Protocol mismatch causes unpredictable key behavior
+3. **Check for a protocol mismatch**:
+   - An AT/PS2 keyboard needs AT/PS2 protocol firmware
+   - An XT keyboard needs XT protocol firmware
+   - A protocol mismatch causes unpredictable key behaviour
 
-4. **Consult keyboard documentation**:
-   - Some vintage keyboards have quirks or variations
+4. **Have a look at your keyboard documentation**:
+   - Some keyboards have quirks or variations
    - See `src/keyboards/<your-keyboard>/README.md` for details
 
 ---
@@ -499,39 +497,38 @@ Running into issues? Here are common problems and solutions:
 If none of these solutions work:
 
 1. **Enable debug output**:
-   - Connect UART adapter to RP2040 (see [Hardware Deep Dive](../hardware/README.md#uart-debug))
+   - Connect UART adapter to RP2040 GPIO 0 (TX) and GPIO 1 (RX)
    - Use Command Mode ('D' key) to set debug level to 3 (DEBUG)
    - Watch serial output for error messages
 
 2. **Try a known-good configuration**:
-   - Build firmware with `modelm/enhanced` (most tested config)
+   - Build firmware with `modelm/enhanced` (standard AT/PS2 configuration)
    - Test with a standard PS/2 keyboard if available
    - Rules out configuration-specific issues
 
 3. **Ask for help**: Visit [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) with:
    - Your keyboard model and protocol
    - Build command you used
-   - Any error messages or unexpected behavior
+   - Any error messages or unexpected behaviour
    - UART debug output (if available)
 
 ---
 
 ## What's Next?
 
-Congratulations! You now have a fully working vintage keyboard converter. 🎉
+Brilliant! You've now got yourself a fully working keyboard converter. 🎉
 
 ### Using Your Converter
 
-Your converter is now ready for daily use:
-- Plug in your vintage keyboard
-- Connect RP2040 to your computer via USB
-- Type away! Your vintage keyboard works with modern computers
+Your converter's ready for daily use:
+- Plug in your keyboard
+- Connect the RP2040 to your computer via USB
+- That's it—start typing! Your keyboard now works with modern computers
 
 ### Exploring Features
 
 Learn more about what your converter can do:
 - **[Command Mode](../features/command-mode.md)** - Full guide to all Command Mode features
-- **[LED Status Indicators](../features/led-indicators.md)** - Understanding LED colors and patterns
 - **[Keyboard Layouts](../keyboards/README.md)** - Details about specific keyboard models
 
 ### Customization and Advanced Use
@@ -544,7 +541,6 @@ Ready to go deeper?
 ### Getting Help
 
 If you run into issues or have questions:
-- 📖 [Troubleshooting Guide](../advanced/troubleshooting.md) - Comprehensive problem-solving
 - 💬 [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) - Community support
 - 🐛 [Report Issues](https://github.com/PaulW/rp2040-keyboard-converter/issues) - Bug reports and feature requests
 

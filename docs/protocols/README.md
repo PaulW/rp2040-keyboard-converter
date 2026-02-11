@@ -1,8 +1,8 @@
 # Protocol Documentation
 
-**Status**: ✅ Complete | **Last Updated**: 27 October 2025
+Early keyboards used different communication protocols. With no standardised interface in the early computer marketplace, each manufacturer developed their own approach. As I've collected different keyboards over time, I've implemented support for multiple protocols to get them working with modern systems, and I hope to add more as and when I get hold of anything new.
 
-This converter supports a variety of keyboard and mouse protocols from the 1980s and early 1990s. Each protocol has its own detailed documentation with historical context, technical specifications, timing diagrams, and implementation notes.
+Below you'll find details on each protocol, plus quick reference tables if you're not sure which one your keyboard uses.
 
 ---
 
@@ -10,18 +10,18 @@ This converter supports a variety of keyboard and mouse protocols from the 1980s
 
 ### Keyboard Protocols
 
-| Protocol | Era | Direction | Typical Keyboards | Documentation |
-|----------|-----|-----------|-------------------|---------------|
-| **AT/PS2** | 1984-2000s | Bidirectional | IBM Model M, Most PC keyboards | **[→ Full Guide](at-ps2.md)** |
-| **XT** | 1981-1987 | Unidirectional | IBM Model F (XT), Early PC keyboards | **[→ Full Guide](xt.md)** |
-| **Amiga** | 1985-1996 | Bidirectional | Commodore Amiga A500/A1000/A2000/A3000/A4000 | **[→ Full Guide](amiga.md)** |
-| **Apple M0110** | 1984-1987 | Poll-based | Macintosh M0110, M0110A, M0110B | **[→ Full Guide](m0110.md)** |
+| Protocol | Typical Keyboards | Documentation |
+|----------|-------------------|---------------|
+| **AT/PS2** | IBM Model M, Most PC keyboards | **[→ Full Guide](at-ps2.md)** |
+| **XT** | IBM Model F (XT), Early PC keyboards | **[→ Full Guide](xt.md)** |
+| **Amiga** | Commodore Amiga A500/A1000/A2000/A3000 | **[→ Full Guide](amiga.md)** |
+| **Apple M0110** | Macintosh M0110, M0110A, M0110B | **[→ Full Guide](m0110.md)** |
 
 ### Mouse Protocols
 
-| Protocol | Era | Description | Documentation |
-|----------|-----|-------------|---------------|
-| **AT/PS2 Mouse** | 1987-2000s | 3/4-byte packets, IntelliMouse support | **[→ Full Guide](at-ps2.md#mouse-implementation)** |
+| Protocol | Documentation |
+|----------|---------------|
+| **AT/PS2 Mouse** | **[→ Full Guide](at-ps2.md#mouse-implementation)** |
 
 **Note**: Mouse protocol documentation is included in the AT/PS2 guide, as both keyboard and mouse use the same underlying protocol with different data formats.
 
@@ -29,7 +29,7 @@ This converter supports a variety of keyboard and mouse protocols from the 1980s
 
 ## Quick Protocol Selection
 
-**Don't know which protocol your keyboard uses?** Use this quick reference:
+If you're not sure which protocol your keyboard uses, this table should help:
 
 | Your Keyboard | Protocol |
 |---------------|----------|
@@ -46,25 +46,9 @@ This converter supports a variety of keyboard and mouse protocols from the 1980s
 
 ---
 
-## Why Multiple Protocols?
+## Feature Comparison
 
-Vintage keyboards use different communication protocols depending on when and by whom they were designed. Unlike modern USB, the early computing era (1980s-1990s) had no universal standard—each manufacturer designed protocols optimized for their specific hardware and design philosophy:
-
-- **IBM XT (1981)**: Simplest protocol—keyboard sends scancodes, no host commands, no LEDs
-- **IBM AT/PS2 (1984)**: Bidirectional—host can send commands, control LEDs, configure keyboard
-- **Commodore Amiga (1985)**: Custom handshake and bit rotation for safety and reliability
-- **Apple M0110 (1984)**: Poll-based—host requests keys, keyboard responds on demand
-
-Each protocol reflects different engineering priorities: cost, simplicity, features, or integration with specific computer architectures.
-
----
-
-## Protocol Comparison
-
----
-
-
-### Feature Comparison
+Here's how the protocols stack up against each other:
 
 | Feature | AT/PS2 | XT | Amiga | M0110 |
 |---------|--------|-----|-------|-------|
@@ -72,28 +56,11 @@ Each protocol reflects different engineering priorities: cost, simplicity, featu
 | **LED Control** | ✅ Yes | ❌ No | ✅ Yes (special) | ❌ No |
 | **Error Detection** | ✅ Parity | ❌ None | ✅ Handshake | ❌ Minimal |
 | **Host Commands** | ✅ Yes | ❌ No | ✅ Limited | ✅ Yes |
-| **Clock Source** | Device/Host | Device only | Device only | Host only |
 | **Complexity** | High | Low | High | Medium |
 
 **For detailed technical specifications, timing diagrams, and implementation notes, see each protocol's dedicated documentation.**
 
----
-
-## Implementation Notes
-
-All protocols are implemented using the RP2040's **PIO (Programmable I/O)** hardware for precise timing:
-
-- **Microsecond accuracy**: Hardware-driven timing independent of CPU load
-- **Non-blocking**: Protocols run in parallel with main firmware
-- **IRQ-driven**: Scancodes trigger interrupts for processing
-- **Low CPU overhead**: PIO handles bit-level timing automatically
-
-⚠️ **CRITICAL: Level Shifting Required**
-- Keyboard/Mouse signals: **5V**
-- RP2040 GPIO: **3.3V** (NOT 5V tolerant)
-- **Solution**: Bidirectional level shifter (e.g., BSS138-based) on both CLK and DATA lines
-
-See **[Hardware Setup](../hardware/README.md)** for wiring and level shifter details.
+**Hardware note:** Most vintage keyboards and mice use 5V logic, but the RP2040's GPIO pins are 3.3V and not 5V tolerant. You'll need bidirectional level shifters (BSS138-based modules work well) on both the CLOCK and DATA lines. See the [Hardware Setup](../hardware/README.md) guide for wiring details.
 
 ---
 
@@ -111,8 +78,8 @@ See **[Hardware Setup](../hardware/README.md)** for wiring and level shifter det
 - **[Getting Started](../getting-started/README.md)** - Quick start guide
 
 **Advanced Topics:**
-- **[Architecture](../advanced/architecture.md)** - Implementation details and PIO programs
-- **[Troubleshooting](../advanced/troubleshooting.md)** - Protocol-specific debugging
+- **[Advanced Topics](../advanced/README.md)** - Implementation details and PIO programs
+- **[Scancode Sets](../scancodes/README.md)** - Scancode translation and encoding
 
 **Source Code:**
 - Protocol implementations: [`src/protocols/`](../../src/protocols/)
@@ -120,8 +87,5 @@ See **[Hardware Setup](../hardware/README.md)** for wiring and level shifter det
 
 ---
 
-## Need Help?
-
-- 📖 **[Troubleshooting Guide](../advanced/troubleshooting.md)** - Common issues and solutions
-- 💬 **[Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions)** - Ask questions
-- 🐛 **[Issue Tracker](https://github.com/PaulW/rp2040-keyboard-converter/issues)** - Report bugs
+**Questions or stuck on something?**  
+Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.

@@ -1,52 +1,24 @@
 # Amiga Protocol
 
-**Status**: ✅ Production | **Last Updated**: 28 October 2025
+The Amiga keyboard protocol is a bidirectional serial protocol used in Commodore Amiga computers. Unlike simpler unidirectional protocols like the IBM XT, every byte the Amiga keyboard sends requires a handshake response from the host. If it doesn't receive one within 143ms, the keyboard enters a resynchronization mode to recover, which ensures the keyboard and host stay in sync even if communication temporarily breaks down.
 
-The Amiga keyboard protocol represents one of the most **sophisticated and elegant 8-bit serial protocols** ever designed for consumer computers. Created for the original Amiga 1000 in 1985, this bidirectional protocol features mandatory handshaking, unique bit rotation for safety, and graceful error recovery—engineering decisions that showcase Commodore's attention to detail and robustness.
-
-What sets the Amiga protocol apart is its **mandatory bidirectional handshake**: every byte the keyboard transmits **must** be acknowledged by the host within 143ms, or the keyboard enters resynchronization mode. Combined with a clever bit rotation scheme (transmitting bits in order 6-5-4-3-2-1-0-7 instead of 0-7), this protocol achieves exceptional reliability while preventing dangerous failure modes where key-down codes could stick after sync loss.
-
----
-
-## Table of Contents
-
-- [Historical Context](#historical-context)
-- [Protocol Overview](#protocol-overview)
-- [Physical Interface](#physical-interface)
-- [Communication Protocol](#communication-protocol)
-- [Keyboard Operation](#keyboard-operation)
-- [Special Features](#special-features)
-- [Hardware Variants](#hardware-variants)
-- [Implementation Notes](#implementation-notes)
-- [Troubleshooting](#troubleshooting)
+The protocol uses bit rotation—instead of transmitting bits in the usual 0-7 order, it sends them as 6-5-4-3-2-1-0-7. This means bit 7 (which indicates whether a key is pressed or released) is transmitted last. According to the Commodore Hardware Reference Manual, this design reduces problems from lost synchronization.
 
 ---
 
 ## Historical Context
 
-### The Amiga Revolution
+The Amiga keyboard protocol is consistent across the Amiga product line, with all models using the same core protocol: identical timing, handshake requirements, and bit rotation design. The protocol is well-documented in Commodore's official hardware reference manual (Appendix H).
 
-**1985 - Amiga 1000**: When Commodore launched the Amiga 1000, they weren't just building another home computer—they were creating a multimedia powerhouse. The keyboard protocol reflected this ambition: instead of settling for simple unidirectional communication (like the IBM XT), Commodore engineers designed a robust bidirectional protocol with error recovery and safety features.
+### Protocol Variations
 
-**1987 - Amiga 500/2000**: The Amiga 500 and Amiga 2000 cemented Amiga's position in both home and professional markets. The keyboard protocol remained unchanged, demonstrating its excellent original design. These models popularized the Amiga platform and established the protocol as a de facto standard for Amiga-compatible systems.
+Whilst the core protocol remains consistent, there are practical differences between Amiga keyboard models:
 
-**1990 - Amiga 3000**: The high-end Amiga 3000 brought workstation-class performance while maintaining complete protocol compatibility. The ability to use any Amiga keyboard with any Amiga model—from A1000 to A4000—showcased the protocol's forward-thinking design.
+**Physical Connectors**: Different Amiga models used various physical connectors (RJ-10, 5-pin DIN, internal headers), which means adapters may be needed when mixing keyboards and systems. The A500 keyboard is integrated into the computer's case and connects internally. External keyboards from other models can often be used interchangeably with appropriate cable adapters.
 
-**1992 - Amiga 4000**: The final flagship Amiga, the A4000, continued using the same keyboard protocol, now nearly a decade old but still more sophisticated than many contemporary designs. This longevity is testament to the protocol's robustness and well-considered architecture.
+**Scancode Variations**: Core keys (letters, numbers, modifiers) are identical across all models. Differences appear in the numeric keypad and function keys—some models use different scancodes for the same physical keys. The A1000 lacks a Help key but supports the reset warning feature (CTRL + both Amiga keys). The A500 adds a Help key but doesn't support reset warning codes (using the RESET pin instead). When implementing support, verify scancode mappings for your specific keyboard model rather than assuming uniformity.
 
-**Legacy**: While Amiga production ended in the mid-1990s, the platform maintains a dedicated community. Modern Amiga enthusiasts, FPGA recreations (MiSTer, Minimig), and emulation projects all benefit from the protocol's excellent documentation and predictable behavior. The protocol's influence can be seen in later bidirectional protocols that adopted similar handshaking concepts.
-
-### Design Philosophy
-
-The Amiga protocol embodies several key design principles:
-
-1. **Reliability First**: Mandatory handshaking ensures no data loss
-2. **Safe Failure**: Bit rotation means sync loss produces key-up codes, never stuck keys
-3. **Clear Communication**: Keyboard explicitly signals error conditions (lost sync, overflow)
-4. **User Safety**: Reset warning gives 10 seconds to change mind before hard reset
-5. **Deterministic**: Precise timing specifications enable reliable implementations
-
-These weren't theoretical concerns—they were practical solutions to real problems observed in earlier keyboard protocols.
+**Documentation Coverage**: The official Commodore Hardware Reference Manual documents the A1000, A500, A2000, and A3000. Later models like the A4000, A600, and A1200 aren't covered in that specification, so protocol compatibility for those models cannot be confirmed from official documentation.
 
 ---
 
@@ -65,7 +37,7 @@ These weren't theoretical concerns—they were practical solutions to real probl
 
 Transmitting bit 7 (key up/down flag) **last** prevents stuck-key failures:
 - If sync lost mid-byte: Incomplete data interpreted as key-down
-- Next sync point likely has bit 7 set (key-up)
+- Next sync point has bit 7 set (key-up)
 - Result: Brief transient, not catastrophic stuck modifier
 
 **Active-Low Logic**: HIGH=0, LOW=1 (open-drain design, noise immunity)
@@ -78,55 +50,110 @@ Transmitting bit 7 (key up/down flag) **last** prevents stuck-key failures:
 
 ### Connectors and Pinouts
 
-**Amiga 1000/2000/3000**
+**Important Note**: Different Amiga models used various physical connector types. The protocol is electrically identical across all models, but physical adapters may be required.
 
 ![Amiga Connector Pinout](../images/connectors/kbd_connector_amiga.png)
 
 *Image credit: [KbdBabel Vintage Keyboard Documentation](http://kbdbabel.org/conn/index.html)*
 
-Amiga keyboards use different connectors depending on the model:
+**Standard 4-Wire Interface**
 
-**Amiga 1000: RJ-10 4P4C Connector**
+All Amiga keyboards use a 4-wire interface regardless of physical connector:
 
-**Pinout** (looking at female socket):
-- Pin 1: VCC - +5V power
-- Pin 2: KCLK - Keyboard Clock (keyboard drives, output)
-- Pin 3: KDAT - Keyboard Data (bidirectional)
-- Pin 4: GND - Ground (0V reference)
+- **CLOCK** - Clock (keyboard drives, unidirectional output)
+- **DATA** - Data (bidirectional: keyboard transmits, host acknowledges)
+- **VCC** - +5V power supply
+- **GND** - Ground reference (0V)
 
-**Amiga 2000/3000: DIN-5 Connector (180°)**
+**Common Connector Types**
 
-**Pinout**:
-- Pin 1: KCLK - Keyboard Clock
-- Pin 2: KDAT - Keyboard Data
-- Pin 3: N/C - Not connected
-- Pin 4: GND - Ground
-- Pin 5: VCC - +5V power
+Amiga systems used various physical connectors across different models.
 
-**Amiga 500/500+: 8-pin PCB Connector**
+**A1000 - RJ-10 Connector (4P4C)**
 
-![Amiga A500 Internal Connector](../images/connectors/kbd_connector_amiga_a500_internal.png)
+The A1000 used a 4-position modular connector (RJ-10, 4P4C):
 
-*Image credit: [English Amiga Board](https://eab.abime.net/showthread.php?t=96725)*
+Pin | Signal | Description
+----|--------|-------------
+ 1  | +5V    | Power supply (+5 volts)
+ 2  | CLOCK  | Keyboard Clock (output from keyboard)
+ 3  | DATA   | Keyboard Data (bidirectional)
+ 4  | GND    | Ground reference (0V)
 
-**Pinout** (internal 8-pin header):
-- Pin 1: KCLK - Keyboard Clock (keyboard drives, output)
-- Pin 2: KDAT - Keyboard Data (bidirectional)
-- Pin 3: RESET - Reset line (not used by most keyboards)
-- Pin 4: VCC - +5V power
-- Pin 5: KEY - Not connected (keying pin)
-- Pin 6: GND - Ground (0V reference)
-- Pin 7: Power LED - Not used by converter
-- Pin 8: Drive LED - Not used by converter
+**A2000, A3000 - DIN-5 Connector (180° Configuration)**
 
-**Connector Availability:**
-- **A1000 (RJ-10)**: Readily available - standard 4P4C modular connectors from electronics suppliers
-- **A2000/3000 (DIN-5)**: Readily available - same as IBM PC/XT/AT connectors, vintage electronics suppliers
-- **A500/500+ (8-pin PCB)**: Standard 2.54mm (0.1") pitch male pin header (keyboard has female socket) - readily available from electronics suppliers
+These models used a 5-pin DIN connector (180° configuration):
 
-**Alternative for A500/500+**: Use standard 8-pin dupont-style jumper wires for prototyping
+Pin | Signal | Description
+----|--------|-------------
+ 1  | CLOCK  | Keyboard Clock (output from keyboard)
+ 2  | DATA   | Keyboard Data (bidirectional)
+ 3  | NC     | Not Connected
+ 4  | GND    | Ground reference (0V)
+ 5  | +5V    | Power supply (+5 volts)
 
-**Important**: Verify your specific Amiga keyboard model connector type before wiring. The converter implementation uses the KCLK (Clock) and KDAT (Data) signals, which are consistent across all variants.
+**Note**: Some very early Amiga 2000 keyboards may have a different pinout.
+
+**A4000T - DIN-5 Connector (180° Configuration)**
+
+The A4000T uses a 5-pin DIN connector:
+
+Pin | Signal | Description
+----|--------|-------------
+ 1  | CLOCK  | Keyboard Clock (output from keyboard)
+ 2  | DATA   | Keyboard Data (bidirectional)
+ 3  | NC     | Not Connected
+ 4  | GND    | Ground reference (0V)
+ 5  | +5V    | Power supply (+5 volts)
+
+**A4000 - 6-Pin Mini-DIN Connector**
+
+The A4000 uses a 6-pin mini-DIN connector (similar to PS/2 style):
+
+Pin | Signal | Description
+----|--------|-------------
+ 1  | I/O    | Input/Output (function varies by configuration)
+ 2  | NC     | Not Connected
+ 3  | GND    | Ground reference (0V)
+ 4  | +5V    | Power supply (+5 volts, 100mA)
+ 5  | CLOCK  | Keyboard Clock (output from keyboard)
+ 6  | NC     | Not Connected
+
+**Note**: The A4000 and A4000T are not covered in the official Commodore Hardware Manual specification, so protocol compatibility cannot be guaranteed.
+
+**A500 - Internal 8-Pin Header**
+
+![A500 Internal Connector](../images/connectors/kbd_connector_amiga_a500_internal.png)
+
+The A500 used an internal 8-pin header connector:
+
+Pin | Signal    | Description
+----|-----------|-------------
+ 1  | CLOCK       | Keyboard Clock (output from keyboard)
+ 2  | DATA      | Keyboard Data (bidirectional)
+ 3  | RESET     | Reset signal
+ 4  | VCC       | Power supply (+5 volts)
+ 5  | KEY       | Keying pin (no connection)
+ 6  | GND       | Ground reference (0V)
+ 7  | Power LED | Power LED signal
+ 8  | Drive LED | Drive LED signal
+
+**Note**: LED signals on the A500 connector are optional and not required for basic keyboard operation. The protocol itself does not define LED control; if present, these are system-specific implementations.
+
+**Wiring for Converter Projects**
+
+For the RP2040 converter implementation, you need only the 4 essential signals:
+
+1. **CLOCK** → Connect to GPIO (e.g., pin N + 1, must be adjacent to DATA)
+2. **DATA** → Connect to GPIO (e.g., pin N, the base data pin)
+3. **+5V** → Connect to 5V power supply
+4. **GND** → Connect to ground
+
+Additional pins on multi-pin connectors (RESET, LED signals, etc.) can be left unconnected for basic keyboard functionality.
+
+**Connector Compatibility Note**
+
+While the protocol is identical, different physical connectors may require adapters or custom cables to connect a keyboard from one Amiga model to another Amiga system or to converter hardware. Always verify your specific keyboard's connector type before wiring.
 
 ### Electrical Characteristics
 
@@ -141,7 +168,7 @@ LOW (Logic 1 / Active):
 - Voltage: 0V to 0.8V
 - Interpretation: Active assertion, transmission
 
-Pull-Up: Both KCLK and KDAT lines have pull-up resistors (4.7kΩ typical)
+Pull-Up: Both CLOCK and DATA lines have pull-up resistors (4.7kΩ typical)
 ```
 
 **Signal Characteristics**:
@@ -149,7 +176,7 @@ Pull-Up: Both KCLK and KDAT lines have pull-up resistors (4.7kΩ typical)
 ```
 Type: Open-Drain (or Open-Collector)
 Pull-Up Location: Host motherboard (not in keyboard)
-Idle State: Both KCLK and KDAT HIGH (pulled up)
+Idle State: Both CLOCK and DATA HIGH (pulled up)
 Active State: Keyboard or host pulls line LOW (sinks current)
 ```
 
@@ -166,9 +193,9 @@ Startup: May draw up to 150mA during power-on initialization
 | Parameter | Value | Notes |
 |-----------|-------|-------|
 | **Bit Period** | ~60µs | Keyboard-generated (approximately 16.7 kHz) |
-| **Setup Phase** | ~20µs | KCLK HIGH, KDAT stable before transition |
-| **Clock Low** | ~20µs | KCLK LOW, data active |
-| **Clock High** | ~20µs | KCLK HIGH, host samples KDAT |
+| **Setup Phase** | ~20µs | CLOCK HIGH, DATA stable before transition |
+| **Clock Low** | ~20µs | CLOCK LOW, data active |
+| **Clock High** | ~20µs | CLOCK HIGH, host samples DATA |
 | **Handshake Duration** | 85µs min, 110µs actual | Our PIO: 100µs calculated, 110µs measured |
 | **Handshake Timeout** | 143ms | Keyboard enters resync if no response |
 | **PIO Clock Divider** | 500 | 4µs per cycle (125 MHz / 500) |
@@ -191,7 +218,7 @@ The active-low open-drain architecture provides good noise immunity:
 **Recommended Protection**:
 
 ```
-- Series resistors: 100Ω on KCLK and KDAT (limit current, protect against shorts)
+- Series resistors: 100Ω on CLOCK and DATA (limit current, protect against shorts)
 - ESD protection: Transient voltage suppressors (TVS diodes) on signal lines
 - Power filtering: 0.1µF ceramic + 10µF electrolytic capacitors near keyboard
 ```
@@ -204,9 +231,11 @@ The active-low open-drain architecture provides good noise immunity:
 
 Each byte transmission consists of **8 bits transmitted in rotated order** with precise timing defined in the Commodore Amiga Hardware Reference Manual:
 
-> **From Official Specification**:  
-> "The keyboard processor sets the KDAT line about **20 microseconds** before it pulls KCLK low. KCLK stays low for about **20 microseconds**, then goes high again. The processor waits another **20 microseconds** before changing KDAT. Therefore, the bit rate during transmission is about **60 microseconds per bit**, or 17 kbits/sec."  
+> **From Official Specification** *(using Commodore's original signal names CLOCK/DATA)*:  
+> "The keyboard processor sets the DATA line about **20 microseconds** before it pulls CLOCK low. CLOCK stays low for about **20 microseconds**, then goes high again. The processor waits another **20 microseconds** before changing DATA. Therefore, the bit rate during transmission is about **60 microseconds per bit**, or 17 kbits/sec."  
 > — *Amiga Hardware Reference Manual, Appendix H*
+> 
+> **Note**: For consistency across our project, we use **CLOCK** and **DATA** instead of the original KCLK/KDAT naming.
 
 ```
 Timing Diagram (One Bit Period ~60µs):
@@ -214,14 +243,14 @@ Timing Diagram (One Bit Period ~60µs):
          Setup      Data Low    Data High
        |←20µs→|     |←20µs→|     |←20µs→|
        ________     ________     ________
-KCLK           \___/        \___/
+CLOCK          \___/        \___/
        
        _______________________
-KDAT   ______________________/     (Example: Transmitting 1-bit)
+DATA   ______________________/     (Example: Transmitting 1-bit)
 
-Phase 1: Setup    - KCLK HIGH, KDAT transitions to value (20µs)
-Phase 2: Data Low - KCLK falls, KDAT stable (20µs)
-Phase 3: Data High- KCLK rises, host samples KDAT (20µs)
+Phase 1: Setup     - CLOCK HIGH, DATA transitions to value (20µs)
+Phase 2: Data Low  - CLOCK falls, DATA stable (20µs)
+Phase 3: Data High - CLOCK rises, host samples DATA (20µs)
 Total bit period: 60µs (as specified in hardware manual)
 ```
 
@@ -254,20 +283,20 @@ Total: 480µs per byte
 ```
 Normal Byte Transmission (Keyboard → Host):
 
-    ___   ___   ___   ___   ___   ___   ___   ___   _______
-KCLK   \_/   \_/   \_/   \_/   \_/   \_/   \_/   \_/
+      ___   ___   ___   ___   ___   ___   ___   ___   _______
+CLOCK    \_/   \_/   \_/   \_/   \_/   \_/   \_/   \_/
 
-    _______________________________________________________
-KDAT      \_____x_____x_____x_____x_____x_____x_____x_____/
-            (6)   (5)   (4)   (3)   (2)   (1)   (0)   (7)
+      _______________________________________________________
+DATA        \_____x_____x_____x_____x_____x_____x_____x_____/
+              (6)   (5)   (4)   (3)   (2)   (1)   (0)   (7)
 
          First bit                               Last bit
          transmitted                             transmitted
 
 Timing per bit:
-- Bit setup:   ~20µs (KDAT stable before KCLK falls)
-- Clock low:   ~20µs (KCLK held low)
-- Clock high:  ~20µs (KCLK returns high, data sampled)
+- Bit setup:   ~20µs (DATA stable before CLOCK falls)
+- Clock low:   ~20µs (CLOCK held low)
+- Clock high:  ~20µs (CLOCK returns high, data sampled)
 - Total:       ~60µs per bit
 - Bit rate:    ~16.67 kHz (approximately 17 kbit/sec)
 ```
@@ -277,22 +306,22 @@ Timing per bit:
 ```
 Host Acknowledgment After Receiving Byte:
 
-    __________________________________________________
-KCLK                                               ↑
+      __________________________________________________
+CLOCK                                                ↑
                                              8th rising edge
 
-    _____________________             ________________
-KDAT                     \___________/
-                         ↑           ↑
-                         |           |
-                      Start         End
-               (within 1µs)         (85µs minimum hold)
+      _____________________             ________________
+DATA                       \___________/
+                           ↑           ↑
+                           |           |
+                        Start         End
+                 (within 1µs)         (85µs minimum hold)
 
 Handshake Requirements:
-- Start: Within 1µs of 8th KCLK rising edge
+- Start: Within 1µs of 8th CLOCK rising edge
 - Duration: 85µs minimum (mandatory for all keyboard models)
 - Hardware detection: Keyboard latches pulses ≥1µs
-- Release: KDAT returns HIGH via pull-up resistor
+- Release: DATA returns HIGH via pull-up resistor
 ```
 
 **Power-Up Synchronization Sequence**:
@@ -300,11 +329,11 @@ Handshake Requirements:
 ```
 Keyboard Power-On (Finding Sync):
 
-    ___     ___     ___     ___     ___     ___
-KCLK   \___/   \___/   \___/   \___/   \___/   \___  (Continuous 1-bits)
+      ___     ___     ___     ___     ___     ___
+CLOCK    \___/   \___/   \___/   \___/   \___/   \___  (Continuous 1-bits)
 
-    _______     _______     _______     _______
-KDAT       \___/       \___/       \___/       \___  (Waiting for handshake)
+      _______     _______     _______     _______
+DATA         \___/       \___/       \___/       \___  (Waiting for handshake)
 
 Process:
 1. Keyboard clocks out 1-bits slowly (~60µs per bit)
@@ -314,13 +343,13 @@ Process:
 
 After Handshake Received:
 
-    __________________________________________________
-KCLK                                                  (Idle)
+      __________________________________________________
+CLOCK                                                   (Idle)
 
-    _____________________             ________________
-KDAT                     \___________/
-                         ↑           ↑
-                      Handshake   Sync Achieved
+      _____________________             ________________
+DATA                       \___________/
+                           ↑           ↑
+                        Handshake   Sync Achieved
 
 Result: Keyboard and host now synchronized, normal operation begins
 ```
@@ -332,23 +361,23 @@ Example: "B" Key Pressed (Scancode 0x35 = 00110101 binary)
 
 Transmitted order after rotation: 01101010
 
-    ___   ___   ___   ___   ___   ___   ___   ___   ______
-KCLK   \_/   \_/   \_/   \_/   \_/   \_/   \_/   \_/
+      ___   ___   ___   ___   ___   ___   ___   ___   ______
+CLOCK    \_/   \_/   \_/   \_/   \_/   \_/   \_/   \_/
 
-    _______            ______     ______      ____________
-KDAT       \__________/      \____/      \____/
+      _______            ______      ______      ___________
+DATA         \__________/      \____/      \____/
 
-         0     1     1     0     1     0     1     0
+           0     1     1     0     1     0     1     0
 
 Bit sequence sent: 6→5→4→3→2→1→0→7 = 0,1,1,0,1,0,1,0
 
 After receiving all 8 bits, host sends handshake:
-    _________________________________________________
-KCLK
+      _________________________________________________
+CLOCK
 
-    __________________            ___________________
-KDAT                  \__________/
-                      ← 85µs →
+      __________________            ___________________
+DATA                    \__________/
+                          ← 85µs →
 ```
 
 ### Handshake Protocol
@@ -362,9 +391,9 @@ Keyboard transmits 8 bits (480µs)
          ↓
 Keyboard waits for handshake (0-143ms timeout)
          ↓
-Host pulls KDAT LOW for 85µs minimum
+Host pulls DATA LOW for 85µs minimum
          ↓
-Host releases KDAT (goes HIGH)
+Host releases DATA (goes HIGH)
          ↓
 Keyboard ready for next transmission
 ```
@@ -378,7 +407,29 @@ Keyboard ready for next transmission
 | **Implementation** | ~110µs | PIO: 100µs calculated, 110µs measured |
 | **Maximum Delay** | 143ms | Timeout triggers resync mode |
 
-**Why 85µs?** While hardware detects ≥1µs pulses, different keyboard models vary. The 85µs spec ensures universal compatibility (A1000/A500/A2000/A3000/A4000). Our 110µs provides +29% safety margin.
+**Why 85µs?** While hardware detects ≥1µs pulses, different keyboard models vary. The 85µs spec ensures universal compatibility (A1000/A500/A2000/A3000). Our 110µs provides +29% safety margin.
+
+#### No Frame Validation Required
+
+**Critical Protocol Characteristic**: The official Commodore Amiga Hardware Reference Manual specifies **no parity checking, no checksums, and no error detection mechanism** for individual data frames. The host must always send the handshake pulse after receiving 8 clock pulses, regardless of data validity.
+
+**From Official Specification**:
+> "When the computer has received the eighth bit, it must pulse KDAT low for at least 1 (one) microsecond, as a handshake signal to the keyboard."
+> — *Amiga Hardware Reference Manual, Appendix H*
+
+The specification provides no conditions under which the handshake should be withheld. The host acknowledges reception of 8 bits, not validation of data correctness.
+
+**Error Detection Mechanism**: The protocol's error recovery relies entirely on **timing**, not data validation:
+
+| Condition | Detection Method | Recovery Action |
+|-----------|------------------|------------------|
+| **Bad data** | None - not detected | Host accepts whatever was received |
+| **Missing handshake** | 143ms timeout (keyboard-side) | Keyboard enters resync mode |
+| **Lost sync** | Handshake timeout during transmission | Keyboard sends 0xF9, retransmits byte |
+
+The keyboard's 143ms timeout is the **only error detection mechanism** in the protocol. If the keyboard doesn't receive the handshake pulse within 143ms, it assumes synchronization is lost and enters resynchronization mode (transmitting continuous 1-bits until acknowledged).
+
+**Implementation Consequence**: Hardware implementations (such as PIO-based receivers) can safely acknowledge every received byte automatically without software validation. The protocol specification requires this behaviour.
 
 ### Error Recovery: Resynchronization Mode
 
@@ -391,6 +442,13 @@ If handshake timeout (143ms) occurs, keyboard enters resync mode:
 5. Normal operation resumes
 
 The 0xF9 code notifies host to discard partial data and reset receive state.
+
+**Timing-Based Recovery**: Resynchronization is triggered **only** by missing handshake timeout, not by detecting bad data. The protocol has no mechanism for the keyboard to determine if transmitted data was corrupted. The keyboard assumes:
+
+- If handshake received: Host successfully received the byte (regardless of actual data quality)
+- If handshake not received within 143ms: Communication failure, enter resync
+
+Noise or glitches that corrupt data bits but don't prevent the host from sending the handshake will result in the corrupted data being accepted by both keyboard and host.
 
 ---
 
@@ -528,7 +586,7 @@ Example:
   0xB5 = B key released (0x35 | 0x80)
 ```
 
-**Note**: For complete scancode tables including all keys, modifiers, function keys, and keyboard variants, see the **[Amiga Scancode Set](../../src/scancodes/amiga/README.md)** documentation.
+**Note**: For complete scancode tables including all keys, modifiers, function keys, and keyboard variants, see the **[Amiga Scancode Set](../scancodes/amiga.md)** documentation.
 
 ---
 
@@ -567,23 +625,26 @@ The converter implements smart synchronization by comparing keyboard LED state a
 
 **Synchronization Logic**:
 ```c
-// Extract from keyboard_interface.c (lines 270-295)
-bool kbd_led_on = (data_byte & 0x80) == 0;  // Bit 7=0 means LED ON
+// Extract from keyboard_interface.c (lines 266-292)
+bool kbd_led_on = (data_byte & AMIGA_BREAK_BIT_MASK) == 0;  // Bit 7=0 means LED ON
 bool hid_caps_on = lock_leds.keys.capsLock; // Current USB HID state
 
-if (kbd_led_on != hid_caps_on) {
-    // States differ - queue toggle event
-    ringbuf_put(AMIGA_CAPSLOCK_KEY);        // Press (0x62)
-    // Start non-blocking timer for 125ms delay
-    caps_lock_timing.state = CAPS_PRESS_SENT;
-    caps_lock_timing.press_time_ms = to_ms_since_boot(get_absolute_time());
-    // Release sent after delay by timing state machine
+if (kbd_led_on == hid_caps_on) {
+    // States match - keyboard and HID are synchronized
+    // Do nothing - no HID events needed
 } else {
-    // States match - discard (already synchronized)
+    // States differ - need to toggle HID to synchronize
+    // Queue press event (bit 7=0)
+    if (!ringbuf_is_full()) {
+        ringbuf_put(AMIGA_CAPSLOCK_KEY);        // Press (0x62)
+        // Start timing state machine - release will be sent after delay
+        caps_lock_timing.state = CAPS_PRESS_SENT;
+        caps_lock_timing.press_time_ms = to_ms_since_boot(get_absolute_time());
+    }
 }
 ```
 
-- **Implementation Note**: See [`keyboard_interface.c`](../../src/protocols/amiga/keyboard_interface.c) lines 270-295 for complete state comparison and non-blocking timing state machine
+- **Implementation Note**: See [`keyboard_interface.c`](../../src/protocols/amiga/keyboard_interface.c) lines 266-305 for complete state comparison logic and non-blocking timing state machine
 
 **Example: Reboot Desync Recovery**
 
@@ -604,12 +665,12 @@ The Amiga protocol includes a graceful reset mechanism preventing accidental dat
 **Protocol Sequence**:
 
 1. **First 0x78**: Keyboard sends first reset warning → Host **must** handshake normally (85µs)
-2. **Second 0x78**: Keyboard sends second warning → Host **must** pull KDAT LOW within 250ms
-3. **Grace Period**: Host keeps KDAT LOW for up to 10 seconds (emergency cleanup time)
+2. **Second 0x78**: Keyboard sends second warning → Host **must** pull DATA LOW within 250ms
+3. **Grace Period**: Host keeps DATA LOW for up to 10 seconds (emergency cleanup time)
 4. **Completion**:
-   - User holds keys 10 seconds → Hard reset (keyboard pulls KCLK LOW for 500ms)
+   - User holds keys 10 seconds → Hard reset (keyboard pulls CLOCK LOW for 500ms)
    - User releases keys → Keyboard sends 0xF8 (reset aborted), normal operation resumes
-   - Host pulls KDAT HIGH → Immediate hard reset
+   - Host pulls DATA HIGH → Immediate hard reset
 
 **Compatibility**: A500 keyboards do **not** support reset warning (no 0x78 codes)
 
@@ -627,137 +688,28 @@ The Amiga protocol includes a graceful reset mechanism preventing accidental dat
 
 ---
 
-## Hardware Variants
-
-The Amiga keyboard protocol remained consistent across all Amiga models, but keyboard hardware varied in form factor, layout, and features.
-
-### Amiga 1000 Keyboard
-
-**Type**: External keyboard (first generation)
-
-**Characteristics**:
-- Separate keyboard connected via RJ-10/RJ-11 cable
-- Full-size layout with separate numeric keypad
-- 10 function keys (F1-F10)
-- Reset warning feature: ✅ **Supported**
-- Unique beige/cream color scheme matching A1000
-
-**Protocol**: Fully compatible with specification
-
-**Connector**: RJ-10 (4P4C) or RJ-11 (6P4C, only 4 pins used)
-
-**Notes**: Original Amiga keyboard design, became template for later models. Some early units may have minor timing variations.
-
-### Amiga 500 / 500+ Keyboard
-
-**Type**: Integrated keyboard (built into computer case)
-
-**Characteristics**:
-- Keyboard integrated into A500 case top
-- Compact layout with integrated numeric keypad
-- 10 function keys (F1-F10)
-- Reset warning feature: ❌ **NOT Supported**
-- Internal 8-pin PCB connection (not externally accessible)
-
-**Protocol**: Fully compatible (except no 0x78 reset warning)
-
-**Connector**: 8-pin 2.54mm pitch header (internal connection)
-
-**Notes**: Most popular Amiga model. Keyboard cannot be easily separated from computer case. Some numeric keypad keys use different scancodes than A1000.
-
-### Amiga 2000 Keyboard
-
-**Type**: External keyboard (professional model)
-
-**Characteristics**:
-- Separate keyboard connected via 5-pin DIN cable
-- Full-size professional layout
-- Separate numeric keypad with dedicated keys
-- 10 function keys (F1-F10)
-- Reset warning feature: ✅ **Supported**
-- Enhanced build quality for professional use
-
-**Protocol**: Fully compatible with specification
-
-**Connector**: 5-pin DIN (same physical connector as IBM PC/XT/AT)
-
-**Notes**: Designed for professional/business use. High-quality construction. Often considered the best Amiga keyboard.
-
-### Amiga 3000 Keyboard
-
-**Type**: External keyboard (workstation-class)
-
-**Characteristics**:
-- Separate keyboard connected via 5-pin DIN cable
-- Enhanced layout with additional keys
-- Full numeric keypad
-- 10 function keys (F1-F10) + Help key
-- Reset warning feature: ✅ **Supported**
-- Workstation-quality construction
-
-**Protocol**: Fully compatible with specification
-
-**Connector**: 5-pin DIN
-
-**Notes**: Backward compatible with all earlier Amigas. Can be used on A1000, A500, A2000 with appropriate cable adapter.
-
-### Amiga 4000 Keyboard
-
-**Type**: External keyboard (final flagship model)
-
-**Characteristics**:
-- Separate keyboard connected via 5-pin DIN cable
-- Enhanced layout (similar to A3000)
-- Full numeric keypad
-- 10 function keys (F1-F10) + Help key
-- Reset warning feature: ✅ **Supported**
-- High-quality construction
-
-**Protocol**: Fully compatible with specification
-
-**Connector**: 5-pin DIN
-
-**Notes**: Final production Amiga keyboard. Fully backward compatible with all previous models.
-
-### Cross-Compatibility
-
-**Protocol Level**: ✅ All keyboards use identical electrical protocol
-
-**Physical Level**: Requires cable adapters:
-- A1000 (RJ-10/RJ-11) ↔ A2000/A3000/A4000 (DIN-5): Adapter available
-- A500 (internal 8-pin) ↔ External models: Requires modification
-- Any external keyboard works on any external-keyboard Amiga with correct cable
-
-**Scancode Level**: Minor differences:
-- Core keys (letters, numbers, modifiers): Identical across all models
-- Numeric keypad: A500 uses some different codes than A1000/A2000
-- Special keys: A3000/A4000 may have additional keys not present on earlier models
-
-**Best Practice**: Always verify scancode mappings for specific keyboard model when implementing protocol support.
-
----
-
 ## Implementation Notes
 
 ### Overview
 
-This implementation handles the Amiga protocol entirely in hardware using the RP2040's PIO (Programmable I/O) peripheral, with minimal software overhead. The design follows these principles:
+This implementation handles the Amiga protocol almost entirely in hardware using the RP2040's PIO (Programmable I/O) peripheral. The PIO does the heavy lifting—receiving the 8 bits in their rotated order and automatically sending the handshake pulse. Software overhead is minimal.
 
-1. **PIO State Machine**: Receives 8 bits in rotated order, automatically sends 100µs handshake
-2. **Interrupt Handler**: De-rotates bits, processes special codes, queues to ring buffer
-3. **Main Loop**: Processes scan codes when USB HID ready
-4. **2-State Machine**: UNINITIALISED → INITIALISED (special codes handled in event processor)
+The architecture is simple: the PIO state machine receives each byte and generates the 100µs handshake pulse entirely in hardware—before the interrupt handler even fires. When a complete byte arrives, an interrupt handler fires to de-rotate the bits back into normal order, check for any special codes, and queue the result into a ring buffer. The main loop then processes these scan codes whenever the USB HID interface is ready to accept them.
+
+The state machine itself is deliberately simple—just two states: UNINITIALISED (waiting for the first byte after power-up) and INITIALISED (normal operation). The transition happens on the first byte received, whatever that may be. Special codes like 0xF9 (lost sync) or 0x78 (reset warning) are handled in the event processor rather than as separate states, which keeps the logic clean and maintainable.
 
 ### Key Implementation Files
 
 - **[`keyboard_interface.pio`](../../src/protocols/amiga/keyboard_interface.pio)**: PIO assembly for bit reception and handshake
 - **[`keyboard_interface.h`](../../src/protocols/amiga/keyboard_interface.h)**: Protocol constants and inline helpers
 - **[`keyboard_interface.c`](../../src/protocols/amiga/keyboard_interface.c)**: State machine and event processing
-- **[`src/scancodes/amiga/`](../../src/scancodes/amiga/)**: Scancode to HID keycode translation
+- **[Amiga Scancode Set](../scancodes/amiga.md)**: Scancode to HID keycode translation
 
 ### Bit De-Rotation
 
-The PIO receives bits in the transmitted order (6-5-4-3-2-1-0-7). The interrupt handler de-rotates:
+Since the Amiga keyboard transmits bits in rotated order (6-5-4-3-2-1-0-7 instead of the standard 0-7 sequence), we need to de-rotate them back to normal byte order before processing. The PIO receives the bits exactly as transmitted, and the interrupt handler performs the de-rotation using a simple inline helper function.
+
+The rotation exists to prevent stuck keys when synchronization is lost—bit 7 (which indicates key up/down) is transmitted last, so incomplete bytes are more likely to be interpreted as transient key presses rather than stuck modifiers. But for our scancode processing, we need the bits back in standard order where bit 7 is in its normal position.
 
 ```c
 // Inline helper from keyboard_interface.h
@@ -771,237 +723,74 @@ static inline uint8_t amiga_derotate_byte(uint8_t rotated) {
 }
 ```
 
+This de-rotation happens once per byte in the interrupt handler, keeping it fast and efficient.
+
 ### PIO Handshake Implementation
 
-The handshake is generated entirely in PIO hardware after receiving 8 bits:
+The handshake pulse is generated entirely in PIO hardware immediately after receiving all 8 bits. This is where the RP2040's PIO peripheral really shines—we can generate precise timing without any software intervention, which means no blocking operations in the main code and deterministic timing regardless of what else the CPU is doing.
 
 ```assembly
 ; From keyboard_interface.pio
 ; After 8 bits received, send 100µs handshake pulse
 
-set pins, 0         ; Pull KDAT low
-set pindirs, 1      ; Set KDAT as output
+set pins, 0         ; Pull DATA low
+set pindirs, 1      ; Set DATA as output
 set x, 24           ; Loop counter (25 iterations: 24→0)
 
 handshake_loop:
     jmp x--, handshake_loop  ; 1 cycle per iteration
 
-set pindirs, 0      ; Release KDAT (goes high via pull-up)
+set pindirs, 0      ; Release DATA (goes high via pull-up)
 ```
 
+The timing works out like this: we're using a clock divider of 500, which gives us 4µs per PIO cycle (125 MHz ÷ 500). The loop runs 25 iterations (counting from 24 down to 0), which gives us exactly 100µs for the handshake pulse.
+
 **Timing Calculation**:
-- Clock divider: 500 (optimized for 20µs KCLK pulse detection)
+- Clock divider: 500 (optimized for 20µs CLOCK pulse detection)
 - PIO cycle time: 125 MHz / 500 = 4µs per cycle
 - Loop iterations: 25 (counts 24→0)
 - Handshake duration: 25 × 4µs = 100µs
 
-**Why This Works**:
-- Above 85µs minimum ✓
-- Well below 143ms timeout ✓
-- No blocking operations in software ✓
-- Hardware-precise timing ✓
+This meets all the requirements: it's well above the 85µs minimum the keyboard needs, comfortably below the 143ms timeout, and because it's pure hardware, there are no blocking operations in software and the timing is absolutely precise.
 
 ### State Machine
 
+The state machine is deliberately kept simple with just two states. There's no need for complex state tracking here because the PIO and interrupt handler take care of the protocol mechanics.
+
 ```c
-// From keyboard_interface.c
+// From keyboard_interface.c (lines 119-128)
 static enum {
   UNINITIALISED,    // Initial state, waiting for first byte
   INITIALISED       // Normal operation
 } keyboard_state = UNINITIALISED;
 ```
 
-### State Machine
+When the converter powers up, it starts in UNINITIALISED state. The keyboard will be sending synchronization pulses (1-bits) until it receives a handshake from the PIO. Once we get that first valid byte—whatever it may be—we transition to INITIALISED state (lines 205-207). From that point on, it's just normal operation—receiving scancodes and processing them.
 
-```c
-static enum {
-  UNINITIALISED,    // Initial state, waiting for first byte
-  INITIALISED       // Normal operation
-} keyboard_state = UNINITIALISED;
-```
-
-- **UNINITIALISED** → **INITIALISED** on first byte received
-- Special codes (0xF9, 0xFA, 0xFC, 0xFD, 0xFE, 0x78) handled in event processor, not as separate states
-
-### Performance Characteristics
-
-| Metric | Value | Notes |
-|--------|-------|-------|
-| **Keystroke Latency** | ~590µs | Byte transmission (480µs) + handshake (110µs) |
-| **Max Throughput** | ~1,695 keys/sec | Theoretical maximum |
-| **CPU Usage** | 0.055% | At typical 5 keys/sec (60 WPM) |
-| **Ring Buffer** | 32 bytes | Adequate for burst handling |
+You might expect to see separate states for things like "waiting for handshake" or "processing special codes", but those are handled elsewhere. The PIO takes care of handshaking automatically in hardware (before the ISR even fires), and special codes (like 0xF9 for lost sync or 0x78 for reset warning) are processed in the event handler based on the received byte value rather than as distinct state machine states. This keeps the state machine focused on initialization vs. normal operation, which makes the code easier to follow and maintain.
 
 ---
 
 ## Troubleshooting
 
-### Diagnostic Tools
+The Amiga protocol's bidirectional handshake requires correct timing and connector pinout (several different connectors exist across the Amiga line). For general hardware setup troubleshooting, check the **[Hardware Setup Guide](../getting-started/hardware-setup.md)**.
 
-**Logic Analyzer:**
-Capture KCLK and KDAT to verify:
-- Bit period: ~60µs (±10µs acceptable)
-- Bit order: 6→5→4→3→2→1→0→7 (rotated transmission)
-- Handshake: 85µs LOW pulse on KDAT after 8 bits
-- Active-low: KDAT LOW during data = logic 1
+**Basic voltage checks with a multimeter:**
+- VCC: 5.0V ±5%
+- GND: 0V
+- Idle CLOCK/DATA: ~5V (pulled HIGH)
 
-**Oscilloscope:**
-Verify signal integrity:
-- Power: 5.0V ±0.25V
-- Idle levels: 4.5-5.5V (pulled HIGH)
-- Active levels: < 0.8V (driven LOW)
-- Handshake pulse: ≥85µs width (measure at 50% threshold)
+### Common Issues
 
-### Common Issues and Solutions
-
-**1. No Keyboard Response**
-
-Symptoms: Keyboard appears dead, no scan codes received
-
-Causes and Solutions:
-- **Power**: Verify +5V on keyboard connector (30-80mA draw)
-- **Pull-Ups**: Both KCLK and KDAT need 4.7kΩ pull-up resistors to +5V
-- **Logic Inversion**: Verify active-low handling (LOW=1, HIGH=0)
-- **Initial Sync**: Keyboard may be in sync mode (sending 1-bits), needs handshake to exit
-- **Ground**: Check continuity between keyboard GND and converter GND
-
-Debug Steps:
-```
-1. Multimeter: Measure VCC=5V, KCLK idle ~5V, KDAT idle ~5V
-2. Power-cycle keyboard, watch for KCLK pulses (indicates sync mode)
-3. If KCLK pulsing: Verify PIO sends 85µs handshake after each byte
-4. Check for 0xF9 code after first valid handshake (sync recovered)
-```
-
-**2. Garbled Scan Codes**
-
-Symptoms: Random or incorrect key codes, wrong characters
-
-Causes and Solutions:
-- **Bit Order Wrong**: Must receive 6-5-4-3-2-1-0-7 (rotated), not standard 0-7
-- **De-Rotation Missing**: Verify `amiga_derotate_byte()` called on received data
-- **Logic Not Inverted**: Check active-low handling in PIO (LOW=1, HIGH=0)
-- **Wrong Clock Edge**: Verify sampling KDAT when KCLK falls (not rises)
-- **Timing Drift**: Clock divider misconfigured, sampling off-center
-
-Debug Steps:
-```
-1. Logic analyzer: Verify bit period 50-70µs (60µs ±17%)
-2. Check PIO: First bit should be bit 6, last bit should be bit 7
-3. Test: Press known key (e.g., 'A'=0x20), verify code before/after de-rotation
-4. Verify active-low: KDAT LOW during transmission = logic 1-bit
-```
-
-**3. Keyboard Freezes After First Keys**
-
-Symptoms: Initial keys work correctly, then keyboard stops responding
-
-Causes and Solutions:
-- **Missing Handshake**: PIO not sending 85µs KDAT LOW pulse after each byte
-- **Pulse Too Short**: Handshake < 85µs not recognized, keyboard times out (143ms)
-- **Wrong Pin Direction**: KDAT not configured as output during handshake
-- **Handshake Too Long**: Excessive pulse duration (should be 85-200µs range)
-
-Debug Steps:
-```
-1. Oscilloscope: Measure handshake pulse on KDAT after each byte
-2. Verify pulse width: ≥85µs (85-150µs optimal range)
-3. Check PIO state machine: Handshake loop executing (25 iterations × 4µs)
-4. Test: If no handshake, keyboard enters resync within 143ms (continuous 1-bits)
-```
-
-**4. Continuous Resync Loop**
-
-Symptoms: Keyboard sends continuous pulses, never transmits normal data
-
-Causes and Solutions:
-- **Handshake Not Detected**: Keyboard doesn't see LOW on KDAT
-- **Pin Direction Error**: KDAT stays input during handshake (not driven)
-- **Insufficient Pull-Down**: GPIO can't pull KDAT below ~1V threshold
-- **Ground Issue**: Poor ground connection prevents voltage swing
-
-Debug Steps:
-```
-1. Oscilloscope: Verify KDAT goes below 0.8V during handshake
-2. Check pin config: KDAT must be OUTPUT during handshake, INPUT otherwise
-3. Measure current: KDAT should sink ~1mA when driven LOW (5V / 4.7kΩ)
-4. Watch for 0xF9 after valid handshake (indicates sync recovered)
-```
-
-**5. CAPS LOCK Not Working**
-
-Symptoms: CAPS LOCK key press doesn't toggle state, LED issues
-
-Causes and Solutions:
-- **Protocol Misunderstanding**: Keyboard only sends on press, never release
-- **Bit 7 Meaning**: Indicates LED state (0=ON, 1=OFF), not key up/down
-- **Missing Synchronization**: Not comparing keyboard LED vs USB HID state
-- **Timing Issue**: Release sent too quickly (needs 125ms hold for MacOS)
-
-Debug Steps:
-```
-1. Capture scancode: Should be 0x62 (LED ON) or 0xE2 (LED OFF)
-2. Verify logic: Only send toggle if keyboard state ≠ USB state
-3. Test reboot case: Keyboard LED stays ON, USB resets OFF → sync on first press
-4. Check timing: Release sent after 125ms (CAPS_LOCK_TOGGLE_TIME_MS)
-```
-
-### Signal Quality Checklist
-
-Essential requirements for reliable operation:
-
-- ✅ **Clean 5V power** with low ripple (<100mV p-p)
-- ✅ **Solid ground** connection (check continuity: <1Ω)
-- ✅ **Pull-up resistors** on KCLK and KDAT (4.7kΩ typical, 1kΩ-10kΩ range)
-- ✅ **Short cables** (1-2 meters max, shorter better for signal integrity)
-- ✅ **Active-low logic** correctly implemented (LOW=1, HIGH=0)
-- ✅ **Handshake timing** verified (≥85µs, <143ms)
-
-### Debug Techniques
-
-**Logic Analyzer Capture**:
-```
-Configuration:
-  Trigger: KCLK falling edge
-  Signals: KCLK + KDAT
-  Sample rate: 1 MHz minimum (≥16× bit rate)
-  Duration: 50-100ms (captures multiple keys)
-
-Analysis:
-  - Bit period: 50-70µs (60µs typical)
-  - Bit count: 8 bits per frame
-  - Bit order: 6→5→4→3→2→1→0→7
-  - Handshake: 85-150µs LOW on KDAT after bit 7
-  - Inter-byte gap: 1-10ms between frames
-```
-
-**Oscilloscope Measurements**:
-```
-Voltage Levels:
-  - VCC: 5.0V ±0.25V (4.75-5.25V acceptable)
-  - KDAT idle: 4.5-5.5V (pulled HIGH via resistor)
-  - KDAT active: < 0.8V (driven LOW)
-  - KCLK idle: 4.5-5.5V (pulled HIGH)
-  - KCLK active: < 0.8V (driven LOW)
-
-Signal Quality:
-  - Rise time: < 2µs (10% to 90%, faster better)
-  - Fall time: < 2µs (90% to 10%, faster better)
-  - Overshoot: < 15% of VCC (ringing dampened)
-  - Handshake: Clean rectangle, no glitches
-```
-
-**Protocol Analyzer**:
-```
-Frame Decoding:
-  1. Detect KCLK pulses (falling edges)
-  2. Sample KDAT on each falling edge (8 times)
-  3. Invert bits (active-low): LOW=1, HIGH=0
-  4. De-rotate: [6 5 4 3 2 1 0 7] → [7 6 5 4 3 2 1 0]
-  5. Separate bit 7 (up/down) from bits 6-0 (key code)
-  6. Verify handshake: KDAT LOW for ≥85µs after bit 7
-  7. Decode special codes: 0x78, 0xF9, 0xFA, 0xFC, 0xFD, 0xFE
-```
+| Symptom | Likely Cause | What to Check |
+|---------|--------------|---------------|
+| No response | Power issue, bad connections | Check VCC, GND, verify connector pinout |
+| Continuous resync (0xF9) | Missing handshake | Verify PIO handshake pulse (100µs), check DATA output |
+| Garbled scancodes | Wrong bit order, no de-rotation | Verify bit de-rotation (6-5-4-3-2-1-0-7 → 7-6-5-4-3-2-1-0) |
+| CAPS LOCK desync | LED encoding mismatch | Check bit 7 manipulation for LED state |
+| Missing key events | Handshake too short | Ensure handshake ≥ 85µs (implementation uses 100µs) |
+| Initialization fails | Wrong connector | Verify pinout: RJ-10 (A1000), DIN-5 (A2000/A3000), header (A500) |
+| Reset warning issues | Model doesn't support | A500 doesn't support 0x78 codes, uses RESET pin instead |
 
 ---
 
@@ -1009,36 +798,60 @@ Frame Decoding:
 
 - **[Hardware Setup](../hardware/README.md)** - Physical connections and wiring
 - **[Keyboards](../keyboards/README.md)** - Supported Amiga keyboards
-- **[Amiga Scancode Set](../../src/scancodes/amiga/README.md)** - Complete scancode reference
-- **[Architecture](../advanced/architecture.md)** - Implementation details
+- **[Amiga Scancode Set](../scancodes/amiga.md)** - Complete scancode reference
 
 ---
 
 ## References
 
-### Official Documentation
+### Official Commodore Documentation
 
-1. **Commodore Amiga Hardware Reference Manual** - Appendix H: Keyboard Interface Specification (1985-1992)
-2. **[Amiga Hardware Reference - Keyboard Appendix](http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0172.html)** - Official Amiga Developer CD 2.1 documentation
-   - [Keyboard Communications](http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0173.html) - Timing specifications (20µs phases, 60µs bit period)
-   - [Out-of-Sync Condition](http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0176.html) - Handshake timeout and resynchronization
-   - [Special Codes](http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node017B.html) - Protocol special codes (0x78, 0xF9, etc.)
-3. **Amiga Hardware Programmer's Guide** - Detailed keyboard implementation and timing specifications
+1. **[Commodore Amiga Hardware Reference Manual - Appendix H](http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0172.html)** - Official keyboard interface specification (Amiga Developer CD 2.1)
+   - [Keyboard Communications](http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0173.html) - Complete timing specifications:
+     * 20µs setup, clock low, clock high phases (60µs bit period)
+     * 85µs minimum handshake pulse requirement  
+     * 143ms handshake timeout
+     * Bit rotation specification (6-5-4-3-2-1-0-7 transmission order)
+   - [Out-of-Sync Condition](http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0176.html) - Resynchronization behavior
+   - [Special Codes](http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node017B.html) - Protocol special codes (0x78, 0xF9, 0xFA, 0xFC, 0xFD, 0xFE)
 
-### Protocol Validation
+### Historical and Hardware Information
 
-4. All timing specifications verified against Commodore hardware reference manual
-5. Handshake requirements (85µs minimum, 143ms timeout) from official documentation  
-6. Special codes (0x78, 0xF9, 0xFA, 0xFC, 0xFD, 0xFE) confirmed in Appendix H
-7. Reset warning sequence and hard reset timing verified in hardware specifications
+2. **[Big Book of Amiga Hardware - A4000T](https://bigbookofamigahardware.com/bboah/product.aspx?id=4)** - Verified DIN-5 keyboard connector on A4000T
+
+3. **[KbdBabel Vintage Keyboard Documentation](http://kbdbabel.org/conn/index.html)** - Connector pinout information and diagrams
+
+4. **[SACC Amiga Keyboard Documentation](https://sacc.org/demo/keyboard/a-keyboard.html)** - Detailed pinout information for various Amiga models (A1000, A2000, A3000, A4000, CDTV, CD32)
 
 ### Our Implementation
 
-8. **[`keyboard_interface.pio`](../../src/protocols/amiga/keyboard_interface.pio)** - RP2040 PIO state machine for bit reception and handshake
-9. **[`keyboard_interface.c`](../../src/protocols/amiga/keyboard_interface.c)** - C implementation, state machine, and CAPS LOCK synchronization
-10. **[`keyboard_interface.h`](../../src/protocols/amiga/keyboard_interface.h)** - Protocol constants, inline bit de-rotation helper
+This converter implementation is based entirely on the official Commodore specifications with no reverse-engineering required:
+
+5. **[`keyboard_interface.pio`](../../src/protocols/amiga/keyboard_interface.pio)** - RP2040 PIO state machine implementing:
+   - 8-bit serial reception with CLOCK monitoring
+   - Automatic 100µs handshake pulse (exceeds 85µs minimum requirement)
+   - Timing calculations verified against 60µs bit period specification
+
+6. **[`keyboard_interface.c`](../../src/protocols/amiga/keyboard_interface.c)** - Protocol implementation:
+   - Bit de-rotation (received 6-5-4-3-2-1-0-7 → standard 7-6-5-4-3-2-1-0)
+   - CAPS LOCK synchronization logic (handles keyboard LED encoding)
+   - Special code processing (0xF9 resync, 0x78 reset warning, etc.)
+   - State machine for keyboard initialization sequence
+
+7. **[`keyboard_interface.h`](../../src/protocols/amiga/keyboard_interface.h)** - Protocol constants from official specification:
+   - Timing constants (85µs handshake, 143ms timeout)
+   - Special code definitions
+   - Inline bit de-rotation helper function
+
+### Implementation Validation
+
+8. All timing specifications implemented per official Commodore documentation
+9. Handshake pulse (100µs actual) exceeds 85µs minimum requirement with safety margin
+10. Special codes handling matches Appendix H specification
+11. Tested with actual Amiga keyboards (implementation validated against hardware)
 
 ---
 
-**Status**: This protocol is fully implemented and tested. The converter reliably handles the bidirectional handshake, bit rotation, CAPS LOCK LED encoding, reset warning system, and resynchronization mode, providing complete compatibility with all Amiga keyboard models from A1000 through A4000.
+**Questions or stuck on something?**  
+Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.
 

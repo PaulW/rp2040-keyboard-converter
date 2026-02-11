@@ -1,39 +1,18 @@
 # AT/PS2 Protocol
 
-**Status**: ✅ Production | **Last Updated**: 28 October 2025
-
-The AT/PS2 protocol is a bidirectional, synchronous serial communication protocol that revolutionized PC peripherals in the 1980s. Originally developed for the IBM PC/AT keyboard in 1984, it was later standardized with the PS/2 connector in 1987 and became the universal interface for both keyboards and mice until USB adoption in the late 1990s.
-
----
-
-## Table of Contents
-
-- [Historical Context](#historical-context)
-- [Protocol Overview](#protocol-overview)
-- [Physical Interface](#physical-interface)
-- [Communication Protocol](#communication-protocol)
-- [Keyboard Implementation](#keyboard-implementation)
-- [Mouse Implementation](#mouse-implementation)
-- [Implementation Notes](#implementation-notes)
-- [Troubleshooting](#troubleshooting)
+The AT/PS2 protocol is a bidirectional, synchronous serial communication protocol used in PC keyboards and mice. Originally developed for the IBM PC/AT keyboard, it was later standardized with the PS/2 connector and became the universal interface for both keyboards and mice until USB adoption.
 
 ---
 
 ## Historical Context
 
-### The Evolution of PC Input Devices
+The AT/PS2 protocol evolved from earlier unidirectional keyboard protocols. Early PC keyboards transmitted scancodes one-way with no LED control, host-to-device communication, or error recovery.
 
-**1981 - IBM PC**: The original IBM PC used a simple unidirectional protocol (later known as XT protocol) where the keyboard could only send data to the computer. The host had no ability to communicate back—no LED control, no configuration, no error recovery.
+The IBM PC/AT introduced a bidirectional keyboard interface. The computer could send commands to the keyboard for LED control, scancode set selection, and retransmission requests. This bidirectional capability became the defining characteristic of the AT protocol.
 
-**1984 - IBM PC/AT Revolution**: The introduction of the IBM PC/AT brought a revolutionary new keyboard protocol. For the first time, communication was bidirectional—the computer could send commands to the keyboard, enabling LED control, scan code set selection, and sophisticated error handling. This represented a massive improvement in functionality and reliability.
+The PS/2 connector standardized the interface with a compact 6-pin mini-DIN design, replacing the AT keyboard's 5-pin DIN connector. The protocol remained electrically identical to the AT specification—only the physical connector changed. This is why the protocol is often referred to as "AT/PS2" interchangeably.
 
-**1987 - PS/2 Standardization**: IBM's PS/2 line of computers standardized the interface with a new, smaller 6-pin mini-DIN connector (compared to the larger 5-pin DIN used on AT keyboards). The connector design prevented incorrect insertion and provided a more robust mechanical connection. The protocol remained largely unchanged from AT, ensuring backward compatibility.
-
-**1990s - Universal Adoption**: Throughout the 1990s and early 2000s, the PS/2 interface became ubiquitous. Nearly every PC motherboard included PS/2 ports (often color-coded: purple for keyboard, green for mouse), and countless millions of keyboards and mice used this protocol. Its robustness, simplicity, and well-defined specification made it the de facto standard.
-
-**2000s - USB Transition**: As USB emerged and matured, PS/2 gradually declined. However, the protocol's influence persists—many USB keyboards still use PS/2-style scan codes internally, and USB HID specifications drew heavily from PS/2 concepts. Even today, PS/2 remains relevant for BIOS/UEFI firmware, retro computing, and embedded systems.
-
-**Present Day**: While new keyboards rarely feature PS/2 connectors, millions of vintage and collectible keyboards still use this protocol. The converter project preserves these devices, allowing enthusiasts to use premium mechanical keyboards from the golden age of PC peripherals on modern systems.
+Whilst USB keyboards use their own HID scancode system, the AT/PS2 protocol remains relevant in BIOS/UEFI environments where USB support may not be fully initialised. Many systems rely on PS/2 compatibility for pre-boot keyboard access.
 
 ---
 
@@ -41,9 +20,9 @@ The AT/PS2 protocol is a bidirectional, synchronous serial communication protoco
 
 ### Key Characteristics
 
-The AT/PS2 protocol is fundamentally different from its predecessor (XT) and successors (USB):
+The AT/PS2 protocol includes bidirectional communication capabilities not present in the earlier XT protocol.
 
-**Bidirectional Communication**: Unlike the unidirectional XT protocol, both the host (computer) and device (keyboard/mouse) can initiate communication. This enables:
+**Bidirectional Communication**: Both the host computer and the device (keyboard or mouse) can initiate communication:
 - Host commands: LED control, configuration changes, device identification requests
 - Device responses: Acknowledgments, error codes, status information
 - Error recovery: The host can request retransmission if parity errors occur
@@ -53,13 +32,13 @@ The AT/PS2 protocol is fundamentally different from its predecessor (XT) and suc
 - **Data**: Sampled on clock edges, providing noise immunity
 - **Frame-Based**: Each byte transmitted as an 11-bit frame with start, parity, and stop bits
 
-**Open-Drain Signalling**: Both CLK and DATA lines use open-drain outputs with pull-up resistors:
+**Open-Drain Signalling**: Both CLOCK and DATA lines use open-drain outputs with pull-up resistors:
 - Either device can pull lines LOW (active drive)
 - Neither device drives lines HIGH (passive pull-up)
 - This allows bidirectional communication without direction control signals
 - Prevents bus conflicts—if both devices drive LOW simultaneously, no damage occurs
 
-**Error Detection**: Odd parity bit ensures data integrity:
+**Error Detection**: Odd parity bit for data integrity:
 - Parity calculated over 8 data bits
 - Receiver verifies parity and can request retransmission on error
 - Framing errors detected by invalid start/stop bits
@@ -67,18 +46,7 @@ The AT/PS2 protocol is fundamentally different from its predecessor (XT) and suc
 **Flow Control**: Hardware-level inhibit mechanism:
 - Host can hold CLOCK LOW indefinitely to prevent device transmission
 - Device acknowledges host commands by briefly pulling DATA LOW
-- Provides reliable handshaking without complex protocols
-
-### Why This Protocol Succeeded
-
-The AT/PS2 protocol's longevity stems from several design strengths:
-
-1. **Simplicity**: Two-wire interface (plus power/ground) keeps hardware costs low
-2. **Robustness**: Clock-synchronized transmission immune to timing variations between devices
-3. **Flexibility**: Bidirectional communication enables sophisticated features without redesigning hardware
-4. **Error Handling**: Parity checking and retransmission prevent data corruption
-5. **Low Latency**: Direct hardware interface with microsecond-level response times
-6. **Universal Compatibility**: Standardized connector and protocol ensure interoperability
+- Simple handshaking without complex protocols
 
 ---
 
@@ -88,20 +56,20 @@ The AT/PS2 protocol's longevity stems from several design strengths:
 
 The AT/PS2 interface uses two connector types with identical electrical characteristics:
 
-**PS/2 Connector (6-pin mini-DIN)** - Standard from 1987 onward
+**PS/2 Connector (6-pin mini-DIN)**
 
 ![PS/2 Connector Pinout](../images/connectors/kbd_connector_ps2.png)
 
 *Image credit: [KbdBabel Vintage Keyboard Documentation](http://kbdbabel.org/conn/index.html)*
 
-Used by most AT/PS2 keyboards and all PS/2 mice. The compact mini-DIN connector provides a reliable mechanical connection with positive locking.
+AT/PS2 keyboards and all PS/2 mice use this connector. The compact mini-DIN connector has a reliable mechanical connection with positive locking.
 
 **Pinout** (looking at female socket on cable):
 - Pin 1: DATA - Data line (open-drain, bidirectional)
 - Pin 2: N/C - Not connected (reserved for future use)
 - Pin 3: GND - Ground (0V reference)
 - Pin 4: VCC - Power supply (+5V, typically 100-150mA)
-- Pin 5: CLK - Clock line (open-drain, bidirectional)
+- Pin 5: CLOCK - Clock line (open-drain, bidirectional)
 - Pin 6: N/C - Not connected (reserved for future use)
 
 **Color Coding** (on PC motherboards):
@@ -109,40 +77,34 @@ Used by most AT/PS2 keyboards and all PS/2 mice. The compact mini-DIN connector 
 - **Green** connector: Mouse
 - Electrically identical—color only indicates intended use
 
-**Availability**: Very common, inexpensive panel-mount sockets or cables readily available from electronics suppliers.
-
-**Note**: Mechanically identical to SDL connector but may have different pinout—always verify before connecting.
-
 ---
 
-**DIN-5 Connector (180° or 270°)** - Original AT keyboards (1984-1987)
+**DIN-5 Connector (180° or 240°)** - Original AT keyboards
 
 ![IBM PC/XT/AT DIN-5 Connector Pinout](../images/connectors/kbd_connector_ibmpc.png)
 
 *Image credit: [KbdBabel Vintage Keyboard Documentation](http://kbdbabel.org/conn/index.html)*
 
-Larger 5-pin DIN connector used before PS/2 standardization. Two variants exist with different pin arrangements (180° and 270°).
+Larger 5-pin DIN connector used before PS/2 standardization. Two variants exist with different pin arrangements (180° and 240°).
 
 **Pinout** (both variants):
-- Pin 1: CLK - Clock line
+- Pin 1: CLOCK - Clock line
 - Pin 2: DATA - Data line  
 - Pin 3: N/C - Not connected (or +5V reset on some keyboards)
 - Pin 4: GND - Ground
 - Pin 5: VCC - Power supply (+5V)
 
-**Important**: 180° and 270° DIN connectors are NOT mechanically interchangeable—the plug will not physically fit the wrong socket. Always verify which type your keyboard uses before ordering connectors.
-
-**Availability**: More difficult to source than PS/2, check vintage electronics suppliers or salvage from old motherboards.
+**Important**: 180° and 240° DIN connectors are NOT mechanically interchangeable—the plug will not physically fit the wrong socket. Always verify which type your keyboard uses before ordering connectors.
 
 ---
 
-**IBM Terminal Connectors** - IBM 3179, 318x, 319x Terminals
+**Terminal Keyboard Connectors**
 
-IBM terminals used specialized connectors that also support the AT protocol:
+Terminal keyboards may use specialized connectors with different pinouts from standard PC keyboards:
 
-**270° DIN-5 Terminal Connector**
+**240° DIN-5 Terminal Connector**
 
-![IBM Terminal 270° DIN-5 Connector Pinout](../images/connectors/kbd_connector_ibm3179_318x_319x.png)
+![Terminal 240° DIN-5 Connector Pinout](../images/connectors/kbd_connector_ibm3179_318x_319x.png)
 
 *Image credit: [KbdBabel Vintage Keyboard Documentation](http://kbdbabel.org/conn/index.html)*
 
@@ -151,11 +113,11 @@ IBM terminals used specialized connectors that also support the AT protocol:
 - Pin 2: GND - Ground
 - Pin 3: PE - Protective Earth (not used by converter)
 - Pin 4: DATA - Data line
-- Pin 5: CLK - Clock line
+- Pin 5: CLOCK - Clock line
 
 **RJ45 Terminal Connector**
 
-![IBM Terminal RJ45 Connector Pinout](../images/connectors/kbd_connector_ibmterm.png)
+![Terminal RJ45 Connector Pinout](../images/connectors/kbd_connector_ibmterm.png)
 
 *Image credit: [KbdBabel Vintage Keyboard Documentation](http://kbdbabel.org/conn/index.html)*
 
@@ -164,12 +126,10 @@ IBM terminals used specialized connectors that also support the AT protocol:
 - Pin 2: N/C - Not connected
 - Pin 3: VCC - Power supply (+5V)
 - Pin 4: DATA - Data line
-- Pin 5: CLK - Clock line
+- Pin 5: CLOCK - Clock line
 - Pin 6: GND - Ground
 - Pin 7: PE - Protective Earth (not used by converter)
 - Pin 8: N/C - Not connected
-
-**Availability**: Both terminal connectors are rare. May require custom cables or adapters from terminal keyboard cables.
 
 ### Electrical Characteristics
 
@@ -189,18 +149,18 @@ IBM terminals used specialized connectors that also support the AT protocol:
 - **Clock Pulse Width**: Minimum 30µs per IBM specification
 - **Data Setup/Hold**: Minimum 5µs before/after clock edge
 - **Frame Spacing**: Minimum 50µs between consecutive frames
-- **Host Inhibit**: 96µs minimum (CLK held LOW to stop device transmission)
+- **Host Inhibit**: 96µs typical (CLOCK held LOW to stop device transmission, must exceed bit period)
 
 **Power Requirements:**
 - **Voltage**: +5V ±5% (4.75V to 5.25V)
 - **Current**: 
-  - Keyboard: 50-150mA typical (peak 275mA during startup)
+  - Keyboard: 50-150mA typical (peak may reach 275mA during startup)
   - Mouse: 10-100mA typical
   - Combined: < 300mA total (well within USB 500mA limit)
 
 **Signal Integrity Considerations:**
 - **Cable Length**: Up to 6 meters typical (20 feet)—longer cables may require termination or buffering
-- **Capacitance**: Keep total CLK/DATA capacitance below 1000pF for reliable operation
+- **Capacitance**: Keep total CLOCK/DATA capacitance below 1000pF for reliable operation
 - **EMI Protection**: Shielded cables recommended for long runs or electrically noisy environments
 - **Connector Durability**: PS/2 connectors rated for 1,000+ insertion cycles
 
@@ -210,7 +170,7 @@ IBM terminals used specialized connectors that also support the AT protocol:
 
 ### Frame Structure
 
-Every data transmission—whether keyboard scancodes, mouse movement, commands, or responses—uses the same 11-bit frame format. This consistency simplifies implementation and ensures universal compatibility.
+Every data transmission—whether keyboard scancodes, mouse movement, commands, or responses—uses the same 11-bit frame format. This consistent format works with all devices.
 
 **Frame Composition:**
 
@@ -242,7 +202,7 @@ s  = Stop Bit (always 1)
 
 **Parity Bit (P):**
 - Odd parity calculated over data byte
-- Ensures odd total number of 1-bits (data bits + parity bit)
+- Total number of 1-bits (data bits + parity bit) must be odd
 - Example calculation:
   ```c
   uint8_t parity = 0;
@@ -251,30 +211,30 @@ s  = Stop Bit (always 1)
   }
   parity_bit = (parity & 1) ^ 1;  // XOR with 1 to ensure odd count
   ```
-- **Implementation Note**: This converter uses a precomputed 256-byte lookup table ([`interface_parity_table`](../../src/protocols/at-ps2/common_interface.c)) for O(1) parity calculation instead of runtime computation, significantly improving performance
+- **Implementation Note**: This converter uses a precomputed 256-byte lookup table ([`interface_parity_table`](../../src/protocols/at-ps2/common_interface.c)) for O(1) parity calculation instead of runtime computation
 - Example: For data 0x1C (3 ones), parity bit = 0 (3 is already odd)
 
 **Stop Bit (1):**
 - Always logic 1 (DATA line HIGH)
 - Signals end of frame
-- Provides idle time before next frame
+- Creates idle time before next frame
 - Some early devices may use 0 (non-standard)—implementation should handle both
 
 ### Device-to-Host Communication (Normal Operation)
 
-When a keyboard sends a scancode or a mouse sends movement data, the device controls the clock and timing. This is the most common communication direction—devices typically send data frequently, while host commands are rare.
+When a keyboard sends a scancode or a mouse sends movement data, the device controls the clock and timing.
 
 **Timing Diagram:**
 
 ```
-    ____ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _ A _ B _____
-CLK     \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
-    ___     ___ ___ ___ ___ ___ ___ ___ ___ ___ ________
-DATA   \___/___X___X___X___X___X___X___X___X___/
-         S   D0  D1  D2  D3  D4  D5  D6  D7  P   s
+      ____ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _ A _ B _____
+CLOCK     \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
+      ___     ___ ___ ___ ___ ___ ___ ___ ___ ___ ________
+DATA     \___/___X___X___X___X___X___X___X___X___/
+           S   D0  D1  D2  D3  D4  D5  D6  D7  P   s
 
 Legend:
-CLK   = Clock line (device generates pulses)
+CLOCK   = Clock line (device generates pulses)
 DATA  = Data line (device sets value before each clock edge)
 S     = Start bit (0)
 D0-D7 = Data bits (LSB-first)
@@ -284,35 +244,35 @@ s     = Stop bit (1)
 
 **Transmission Sequence:**
 
-1. **Idle State**: Both CLK and DATA are HIGH (pulled up by resistors)
+1. **Idle State**: Both CLOCK and DATA are HIGH (pulled up by resistors)
 
 2. **Frame Start**:
    - Device pulls DATA LOW (start bit = 0)
-   - Device pulls CLK LOW (begin first clock pulse)
-   - Host detects falling CLK edge, samples DATA (reads start bit)
+   - Device pulls CLOCK LOW (begin first clock pulse)
+   - Host detects falling CLOCK edge, samples DATA (reads start bit)
 
 3. **Data Transmission**:
    - For each of 8 data bits (D0-D7):
      - Device sets DATA to bit value (0 or 1)
-     - Device releases CLK HIGH (rising edge)
-     - **Critical timing**: DATA must be stable 5µs before falling CLK edge
-     - Device pulls CLK LOW (falling edge)
-     - Host samples DATA on falling CLK edge
+     - Device releases CLOCK HIGH (rising edge)
+     - **Critical timing**: DATA must be stable 5µs before falling CLOCK edge
+     - Device pulls CLOCK LOW (falling edge)
+     - Host samples DATA on falling CLOCK edge
      - Repeat for next bit
 
 4. **Parity Bit**:
    - Device sets DATA to parity value
-   - Device generates CLK pulse
-   - Host samples parity on falling CLK edge
+   - Device generates CLOCK pulse
+   - Host samples parity on falling CLOCK edge
    - Host verifies parity matches data
 
 5. **Stop Bit**:
    - Device sets DATA HIGH (stop bit = 1)
-   - Device generates final CLK pulse
-   - Host samples stop bit on falling CLK edge
+   - Device generates final CLOCK pulse
+   - Host samples stop bit on falling CLOCK edge
 
 6. **Return to Idle**:
-   - Device releases both CLK and DATA
+   - Device releases both CLOCK and DATA
    - Pull-ups return lines to HIGH
    - Frame complete, ready for next transmission
 
@@ -323,42 +283,42 @@ s     = Stop bit (1)
 
 ### Host-to-Device Communication (Commands)
 
-When the host needs to send commands (LED control, configuration, device ID request), it must "seize" the bus from the device. This is less common but essential for bidirectional functionality.
+When the host needs to send commands (LED control, configuration, device ID request), it must "seize" the bus from the device. This is less common but needed for bidirectional functionality.
 
-**The Challenge**: Normally, the device controls the clock. To send commands, the host must signal its intent, wait for the device to yield control, then transmit data synchronized to the device's clock (device still generates clock pulses even while receiving).
+Normally, the device controls the clock. To send commands, the host must signal its intent, wait for the device to yield control, then transmit data synchronized to the device's clock (device still generates clock pulses even while receiving).
 
 **Timing Diagram:**
 
 ```
-    __ I__R _ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _ A __ B _____
-CLK   \____/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/  \_/
-    ______     ___ ___ ___ ___ ___ ___ ___ ___ ______     ____
-DATA      \___/___X___X___X___X___X___X___X___X___/  \___/
-       H   I R  D0  D1  D2  D3  D4  D5  D6  D7  P   s ACK
+      __ I__R _ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _ A __ B _____
+CLOCK   \____/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/  \_/
+      ______     ___ ___ ___ ___ ___ ___ ___ ___ ______     ____
+DATA        \___/___X___X___X___X___X___X___X___X___/  \___/
+         H   I R  D0  D1  D2  D3  D4  D5  D6  D7  P   s ACK
 
 Legend:
-H   = Host/Idle state (both lines HIGH)
-I   = Inhibit phase (CLK held LOW by host, ~96µs)
-R   = Request-to-Send (DATA LOW, CLK released, doubles as start bit)
+H     = Host/Idle state (both lines HIGH)
+I     = Inhibit phase (CLOCK held LOW by host, ~96µs)
+R     = Request-to-Send (DATA LOW, CLOCK released, doubles as start bit)
 D0-D7 = Data bits (LSB-first)
-P   = Parity bit  
-s   = Stop bit
-ACK = Device acknowledgment (DATA briefly pulled LOW)
+P     = Parity bit  
+s     = Stop bit
+ACK   = Device acknowledgment (DATA briefly pulled LOW)
 ```
 
 **Transmission Sequence:**
 
 **Phase 1: Inhibit** (~96µs)
 - **Purpose**: Signal to device that host wants to transmit
-- Host pulls CLK LOW (inhibits device transmission)
+- Host pulls CLOCK LOW (inhibits device transmission)
 - Duration: ~96µs (must exceed typical bit period of 60-100µs)
-- Device stops any pending transmission when it detects sustained CLK LOW
+- Device stops any pending transmission when it detects sustained CLOCK LOW
 - Host maintains DATA HIGH during inhibit
 
 **Phase 2: Request-to-Send**
 - Host pulls DATA LOW (serves dual purpose: RTS signal and start bit)
-- Host releases CLK (returns HIGH via pull-up)
-- Device detects CLK HIGH with DATA LOW—recognizes host wants to send
+- Host releases CLOCK (returns HIGH via pull-up)
+- Device detects CLOCK HIGH with DATA LOW—recognizes host wants to send
 - Device prepares to receive and begins generating clock pulses
 
 **Phase 3: Data Transmission**
@@ -390,14 +350,14 @@ The PIO implementation ([`interface.pio`](../../src/protocols/at-ps2/interface.p
 
 ```pio
 bitLoopOut:
-    ; Inhibit Phase: Drive both CLK and DATA LOW for ~96µs
+    ; Inhibit Phase: Drive both CLOCK and DATA LOW for ~96µs
     ; Clock divider 750 → 6µs per cycle, 16 cycles = 96µs
-    set pindirs 3 [15]  ; Set both DATA (Pin 0) and CLK (Pin 1) to output
-    set pins, 0 [15]    ; Drive both LOW: CLK=Inhibit, DATA=RTS/Start Bit
+    set pindirs 3 [15]  ; Set both DATA (Pin 0) and CLOCK (Pin 1) to output
+    set pins, 0 [15]    ; Drive both LOW: CLOCK=Inhibit, DATA=RTS/Start Bit
 
-    ; Release CLK, keep DATA LOW
-    ; Keyboard detects CLK release and begins generating clock pulses
-    set pindirs 1       ; CLK → input (released HIGH), DATA → output (LOW)
+    ; Release CLOCK, keep DATA LOW
+    ; Keyboard detects CLOCK release and begins generating clock pulses
+    set pindirs 1       ; CLOCK → input (released HIGH), DATA → output (LOW)
 
     ; Send 8 data bits + 1 parity bit (9 total from OSR, LSB first)
     ; Start bit (0) is implicit in DATA LOW state from RTS phase
@@ -456,12 +416,12 @@ AT/PS2 keyboards support three different scancode sets (also called translation 
 - Used by: Some older keyboards, BIOS/firmware for compatibility
 
 **Set 2 (Default)**:
-- Most common, default for PS/2 keyboards
+- Default for PS/2 keyboards
 - Make code: 1-2 bytes (base scancode or 0xE0 + scancode)
 - Break code: 0xF0 + make code (e.g., 0x1C → 0xF0 0x1C)
 - Extended keys: 0xE0 prefix (some keys: 0xE0 0xF0 for break)
 - Pause key: Special 8-byte sequence (0xE1 0x14 0x77 ...)
-- Used by: Most keyboards, best documentation, most flexible
+- Flexible configuration
 
 **Set 3 (Terminal Keyboards)**:
 - Designed for simplicity and consistency
@@ -490,7 +450,7 @@ Device responds: 0xFA (ACK), then current set number (0x01/0x02/0x03)
 
 ### LED Control
 
-AT/PS2 keyboards typically have three LED indicators that the host controls via commands. This provides visual feedback for lock key states (Caps Lock, Num Lock, Scroll Lock).
+AT/PS2 keyboards typically have three LED indicators that the host controls via commands. These show lock key states (Caps Lock, Num Lock, Scroll Lock).
 
 **LED State Byte Format:**
 
@@ -594,10 +554,12 @@ While hot-swapping keyboards can cause state machine issues, graceful detection 
 | Device Type | ID Bytes | Description |
 |-------------|----------|-------------|
 | **Standard AT** | 0xAB 0x41 | Basic AT keyboard (83-key) |
-| **Enhanced AT/PS2** | 0xAB 0x83 | Enhanced keyboard (101/104-key, most common) |
+| **Enhanced AT/PS2** | 0xAB 0x83 | Enhanced keyboard (101/104-key) |
 | **Japanese** | 0xAB 0x90 or 0xAB 0x91 | Japanese layout variations |
 | **NCD N-97** | 0xAF 0xBF | NCD N-97 keyboard (rare) |
 | **Unknown** | Various | Non-standard keyboards may return different IDs |
+
+**Note**: Some keyboards may return 0x00 or fail to respond to ID requests. In such cases, fallback to default assumptions (e.g., assume enhanced keyboard) may be necessary for compatibility.
 
 ---
 
@@ -705,7 +667,7 @@ Mice identify themselves differently from keyboards and require special "magic" 
 
 **This Project's Approach:**
 
-The converter automatically detects and enables the highest supported mouse mode:
+The converter automatically detects and switches to the highest supported mouse mode:
 1. Attempt IntelliMouse Explorer detection (200-200-80 sequence)
 2. If ID = 0x04: Use 4-byte Explorer format
 3. If ID ≠ 0x04: Attempt standard IntelliMouse (200-100-80 sequence)
@@ -777,17 +739,17 @@ The converter uses RP2040's Programmable I/O (PIO) state machines for hardware-l
 
 ```
 Keyboard                    Mouse
-   ↓                          ↓
+     ↓                        ↓
 PIO SM (RX)              PIO SM (RX)
 PIO SM (TX)              PIO SM (TX)
-   ↓                          ↓
+     ↓                        ↓
 Ring Buffer (32B)        Ring Buffer (32B)
-   ↓                          ↓
+     ↓                        ↓
 Protocol Handler         Protocol Handler
-   ↓                          ↓
+     ↓                        ↓
 Scancode Processor       Packet Processor
-   ↓                          ↓
-      USB HID Interface
+     ↓                        ↓
+         USB HID Interface
 ```
 
 **Key Features:**
@@ -831,7 +793,7 @@ Both keyboard and mouse use the same PIO program ([`interface.pio`](../../src/pr
 check:
     ; Wait for incoming data, but jump to bitLoopOut if OSR has data to send
     jmp !OSRE, bitLoopOut
-    jmp pin, check      ; Loop if CLK still high
+    jmp pin, check      ; Loop if CLOCK still high
 
     ; Read Start bit
     in pins, 1
@@ -885,12 +847,12 @@ See [`interface.pio`](../../src/protocols/at-ps2/interface.pio) for the complete
 **No Communication:**
 - **Cause**: Incorrect wiring, damaged level shifter, wrong GPIO pins
 - **Solution**: Verify pinout with multimeter, test level shifter with logic analyzer
-- **Debug**: Check that CLK and DATA lines idle HIGH (5V on keyboard side, 3.3V on RP2040 side)
+- **Debug**: Check that CLOCK and DATA lines idle HIGH (5V on keyboard side, 3.3V on RP2040 side)
 
 **Parity Errors:**
 - **Cause**: Electrical noise, incorrect clock timing, failing level shifter
 - **Solution**: Shorter cables, shielded cables, verify clock frequency within 10-16.7 kHz
-- **Debug**: Logic analyzer to capture CLK/DATA signals, check timing against specification
+- **Debug**: Logic analyzer to capture CLOCK/DATA signals, check timing against specification
 
 **Keys Repeat or Stick:**
 - **Cause**: Missing break codes, scancode processor state machine confused
@@ -904,26 +866,18 @@ See [`interface.pio`](../../src/protocols/at-ps2/interface.pio) for the complete
 
 ## Troubleshooting
 
-### Diagnostic Tools
+The AT/PS2 protocol is pretty well-established, so most issues tend to be hardware-related rather than protocol issues. That said, there are a few protocol-specific things worth checking if you're running into problems. For general hardware troubleshooting, see the **[Hardware Setup Guide](../getting-started/hardware-setup.md)**.
 
-**Logic Analyzer:**
-Capture CLK and DATA lines to verify:
-- Clock frequency: 10-16.7 kHz
-- Pulse width: ≥30µs
-- Data setup/hold times: ≥5µs
-- Frame structure: Start=0, Parity correct, Stop=1
-
-**Multimeter:**
-Verify voltage levels:
+**Basic voltage checks with a multimeter:**
 - Keyboard VCC: 4.75-5.25V
-- Idle CLK/DATA (keyboard side): ~5V
-- Idle CLK/DATA (RP2040 side): ~3.3V
+- Idle CLOCK/DATA (keyboard side): ~5V
+- Idle CLOCK/DATA (RP2040 side): ~3.3V
 - Level shifter powered: LV=3.3V, HV=5V
 
-### Common Issues and Solutions
+### Common Issues
 
-| Symptom | Possible Cause | Solution |
-|---------|---------------|----------|
+| Symptom | Likely Cause | What to Check |
+|---------|--------------|---------------|
 | No response | Power issue, bad connections | Check VCC, GND, verify continuity |
 | Random characters | Parity errors, noise | Shorter cables, shielded cables, check level shifter |
 | Missing keypresses | Ring buffer overflow, bad connections | Improve connections, verify signal quality |
@@ -938,8 +892,8 @@ Verify voltage levels:
 - **[Hardware Setup](../hardware/README.md)** - Physical connections and level shifters
 - **[Custom PCB](../hardware/custom-pcb.md)** - Example internal installation
 - **[Keyboards](../keyboards/README.md)** - Supported AT/PS2 keyboards
-- **[Scancode Set 2](../../src/scancodes/set2/README.md)** - Scancode translation tables
-- **[Advanced Topics](../advanced/README.md)** - Architecture and implementation details
+- **[Scancode Set 2](../scancodes/set2.md)** - Scancode translation tables
+- **[Advanced Topics](../advanced/README.md)** - System architecture and implementation
 
 ---
 
@@ -947,24 +901,27 @@ Verify voltage levels:
 
 ### Official Documentation
 
-1. **IBM Technical Reference Manual** - PC/AT (1984) - AT keyboard protocol specification
-2. **IBM PS/2 Hardware Technical Reference** - PS/2 specification (1987) - Standardized connector and protocol
+1. **IBM Technical Reference Manual** - PC/AT - AT keyboard protocol specification
+2. **IBM PS/2 Hardware Technical Reference** - PS/2 specification - Standardized connector and protocol
 3. **Microsoft PS/2 Mouse Programmer's Reference** - Mouse protocol details and IntelliMouse extensions
 4. **Intel 8042 Controller Datasheet** - Keyboard controller implementation reference
 5. **IBM 84F9735** - PS/2 Hardware Interface Technical Reference (timing specifications)
 
 ### Implementation References
 
-6. **[KbdBabel Vintage Keyboard Documentation](http://kbdbabel.org/)** - Connector pinouts and protocol specifications
+6. **[The AT Keyboard Interface (Adam Chapweske)](https://www.tayloredge.com/reference/Interface/atkeyboard.pdf)** - AT/PS2 protocol specification and timing details
+7. **[TMK Keyboard Wiki - IBM PC AT Keyboard Protocol](https://github.com/tmk/tmk_keyboard/wiki/IBM-PC-AT-Keyboard-Protocol)** - Detailed protocol documentation with scancode tables and waveform analysis
+8. **[KbdBabel Vintage Keyboard Documentation](http://kbdbabel.org/)** - Connector pinouts and protocol specifications (connector diagrams used in this document)
 
 ### Our Implementation
 
-7. **[`interface.pio`](../../src/protocols/at-ps2/interface.pio)** - RP2040 PIO state machine for AT/PS2 protocol
-8. **[`keyboard_interface.c`](../../src/protocols/at-ps2/keyboard_interface.c)** - Keyboard C implementation, IRQ handlers, and state machine
-9. **[`mouse_interface.c`](../../src/protocols/at-ps2/mouse_interface.c)** - Mouse C implementation and packet processing
-10. **[`common_interface.c`](../../src/protocols/at-ps2/common_interface.c)** - Shared protocol functions and parity lookup table
-11. **[`pio_helper.c`](../../src/common/lib/pio_helper.c)** - Clock divider calculation utility
+9. **[`interface.pio`](../../src/protocols/at-ps2/interface.pio)** - RP2040 PIO state machine for AT/PS2 protocol
+10. **[`keyboard_interface.c`](../../src/protocols/at-ps2/keyboard_interface.c)** - Keyboard C implementation, IRQ handlers, and state machine
+11. **[`mouse_interface.c`](../../src/protocols/at-ps2/mouse_interface.c)** - Mouse C implementation and packet processing
+12. **[`common_interface.c`](../../src/protocols/at-ps2/common_interface.c)** - Shared protocol functions and parity lookup table
+13. **[`pio_helper.c`](../../src/common/lib/pio_helper.c)** - Clock divider calculation utility
 
 ---
 
-**Status**: This protocol is fully implemented and tested with multiple keyboards and mice. The converter reliably handles standard PS/2 mice, IntelliMouse (scroll wheel), and IntelliMouse Explorer (5-button) devices.
+**Questions or stuck on something?**  
+Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.

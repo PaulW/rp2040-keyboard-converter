@@ -1,69 +1,64 @@
 # Custom PCB Design
 
-**Status**: ✅ Current | **Last Updated**: 27 October 2025
-
-A custom PCB design specifically for the IBM Model F PC/AT keyboard (model 6450225), allowing the converter to be installed internally while maintaining the original aesthetic.
+When I found an IBM Model F PC/AT keyboard (model 6450225) in my parents' attic, I knew I wanted to convert it properly—not with an external adapter and messy cables, but with something that'd fit neatly inside the case. This custom PCB is the result of that project, and I'm sharing the design files and documentation here in case anyone else wants to build their own.
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Design Goals](#design-goals)
-- [Specifications](#specifications)
-- [PCB Designs](#pcb-designs)
+- [Why Build a Custom PCB?](#why-build-a-custom-pcb)
+- [Design and Specifications](#design-and-specifications)
+- [PCB Layout](#pcb-layout)
 - [Manufacturing](#manufacturing)
 - [Installation](#installation)
+- [Design Iterations](#design-iterations)
 - [Fabrication Files](#fabrication-files)
 - [Related Documentation](#related-documentation)
 
 ---
 
-## Overview
+## Why Build a Custom PCB?
 
-This custom PCB was designed to fit inside the IBM Model F PC/AT keyboard, providing a clean, internal conversion solution without requiring an external adapter or excessive cabling.
+The breadboard prototype worked perfectly well for testing, but it's not something you'd want to live with long-term. A custom PCB solves several problems:
 
-**Key Features:**
-- Compact form factor designed for internal keyboard installation
-- Integrated level shifting circuitry (5V ↔ 3.3V)
-- Direct connection to keyboard controller
+**What it gives you:**
+- Everything on one neat board—no loose wiring inside the keyboard
+- Fits in the available space without modifying the case
+- Only the USB cable exits the keyboard (looks stock from the outside)
+- Proper level shifting built in (no separate modules)
+- Reliable connections that won't work loose
+
+**What it includes:**
+- RP2040 microcontroller
+- Bi-directional level shifters (5V ↔ 3.3V)
 - USB Type-C connector
-- RP2040 microcontroller with all necessary support circuitry
+- All the supporting components (power regulation, decoupling, etc.)
 
 ---
 
-## Design Goals
+## Design and Specifications
 
-The custom PCB design addresses several key requirements:
+I designed this in EasyEDA, which is free and has decent integration with JLCPCB's manufacturing service. The board measures 40×30mm—specifically designed to fit inside the IBM Model F PC/AT (model 6450225) and mount using the existing screw holes on the internal frame.
 
-1. **Internal Installation** - Fits inside the keyboard case without modifications
-2. **Clean Aesthetic** - Preserves the original keyboard appearance
-3. **Minimal Cabling** - Only a single USB cable exits the keyboard
-4. **Reliable Operation** - Proper level shifting and signal conditioning
-5. **Easy Assembly** - SMT assembly service compatible
+**What's on the board:**
+- **RP2040 microcontroller** - Same chip as the Raspberry Pi Pico
+- **Level shifters** - BSS138 MOSFETs for bi-directional 5V ↔ 3.3V translation
+- **USB Type-C connector** - Much nicer than Micro-B
+- **Power regulation** - 3.3V for the RP2040 from USB 5V
+- **Decoupling capacitors** - Standard RP2040 requirements
+- **Crystal oscillator** - 12MHz for USB timing
 
----
-
-## Specifications
-
-**Board Dimensions:**
-- Custom-sized to fit IBM Model F PC/AT internal space
-- Compact layout optimises available room
-
-**Components:**
-- **Microcontroller**: RP2040 (Raspberry Pi Pico-compatible)
-- **Level Shifters**: Integrated 5V ↔ 3.3V bi-directional level shifters
-- **Power**: USB bus-powered (5V)
-- **Connector**: USB Type-C
-- **Assembly**: SMT components for JLCPCB assembly service
-
-**Connections:**
-- Keyboard CLK: GPIO 17
+**GPIO connections:**
+- Keyboard CLOCK: GPIO 17
 - Keyboard DATA: GPIO 16
-- USB: Native RP2040 USB
-- LED: Status indicator (optional)
+- Status LED: GPIO 25 (built-in RP2040 LED)
+- USB: Native RP2040 USB (GPIO 20/21)
+
+The PCB is 1.6mm thick (standard), 1oz copper, with HASL lead-free finish. Nothing exotic—just bog-standard PCB specs that any manufacturer can handle.
 
 ---
 
-## PCB Designs
+## PCB Layout
+
+Here's what the design looks like. I went through a couple of revisions before settling on this layout—the first attempt had terrible component placement and didn't fit the keyboard properly.
 
 ### PCB Trace Design (Top)
 ![PCB Trace Top](../images/hardware/PCB-Diag-Top.png)
@@ -87,22 +82,21 @@ The custom PCB design addresses several key requirements:
 
 ## Manufacturing
 
-The PCB was designed using **EasyEDA (Standard Edition)** and manufactured by **JLCPCB** with their SMT Assembly service.
+I used JLCPCB for fabrication and assembly. They're quite affordable compared to other manufacturers, and their SMT assembly service is really handy—you upload your Gerber files, BOM, and pick-and-place file, and they'll build the boards for you.
 
 ### Manufactured PCBs
 ![Manufactured PCBs from JLCPCB](../images/hardware/jlcpcb-boards.png)
 
-**Manufacturing Notes:**
-- PCB thickness: Standard (1.6mm)
-- Copper weight: 1 oz
-- Surface finish: HASL (lead-free)
-- Solder mask: Green
-- Silkscreen: White
+**The process:**
+1. Upload Gerber files to JLCPCB
+2. Select PCB specs (1.6mm, 1oz copper, HASL lead-free)
+3. Enable SMT assembly service
+4. Upload BOM and pick-and-place files
+5. Review component availability (some might be out of stock)
+6. Confirm and order
 
-**Assembly Service:**
-- SMT assembly for top-side components
-- Basic components from JLCPCB catalogue
-- No hand-soldering required (except optional through-hole components)
+**What you get:**
+Minimum order is 5 PCBs. I paid about £5 per board when ordering 5 with assembly (I had some SMT assembly vouchers at the time, so your price will vary), plus shipping. Lead time was about 2-3 weeks to the UK. Even at full price, it works out cheaper than buying all the individual components and spending hours soldering them yourself.
 
 ---
 
@@ -111,112 +105,71 @@ The PCB was designed using **EasyEDA (Standard Edition)** and manufactured by **
 ### Installed Converter Board
 ![Installed converter inside keyboard](../images/hardware/installed-board.png)
 
-The converter installs directly inside the IBM Model F PC/AT keyboard:
+Installing the board is simple—it mounts on the keyboard's internal frame, so you're not drilling or modifying anything permanent.
 
-1. **Preparation**:
-   - Disconnect keyboard from computer
-   - Open keyboard case (remove screws)
-   - Identify controller board location
+**Steps:**
+1. Open the keyboard case (see my [separate case video](https://www.paulbramhall.uk/bits-n-bobs/keyboards/1986-ibm-model-f-at/separating-the-case-of-the-ibm-model-f-at/) if you need help with this—it's a bit tricky)
+2. Locate the keyboard controller board
+3. Remove the existing cable from the controller
+4. Connect the converter to the controller's output connector
+5. Attach the Ground cable from the backplate to the converter board
+6. Route the USB cable through the existing cable channel
+7. Close the case
 
-2. **Installation**:
-   - Connect converter to keyboard controller connector
-   - Secure converter board (double-sided tape or mounting)
-   - Route USB cable through existing cable opening
-
-3. **Testing**:
-   - Connect USB cable to computer
-   - Verify keyboard functionality
-   - Check LED indicators
+From the outside, it looks completely stock. The only giveaway is the USB-C cable instead of the original DIN-5 connector.
 
 ### Fully Assembled Board
 ![Fully assembled converter board](../images/hardware/assembled_6450225_1.png)
 
 ---
 
+## Design Iterations
+
+This is actually Revision 2 of the design. The first version was more of a test-fit to get measurements—the component placement was terrible, and it didn't fit the keyboard case properly. Live and learn.
+
+**Changes in Rev 2:**
+- Completely redid component placement
+- Optimized trace routing (fewer vias, cleaner layout)
+- Adjusted board outline to fit the case better
+- Added proper level shifter circuit (Rev 1 didn't have this)
+
+If you're using the fabrication files, you're getting Rev 2—that's the current version that actually works properly.
+
+---
+
 ## Fabrication Files
 
-Complete fabrication files are available for manufacturing:
+All the files you need to manufacture this PCB are in the [`fabrication/`](fabrication/) directory:
 
-**Files Included:**
+**What's included:**
 - **[Schematic (PDF)](../images/hardware/Schematic.pdf)** - Complete electrical schematic
-- **BOM (Bill of Materials)** - Component list with part numbers
+- **Gerber files** - PCB manufacturing files (what the manufacturer uses to make the boards)
+- **BOM (Bill of Materials)** - Component list with JLCPCB part numbers
 - **Pick-and-Place** - Component placement coordinates for SMT assembly
-- **Gerber Files** - PCB manufacturing files
+- **EasyEDA project files** - If you want to modify the design
 
-**Location:** [`doc/fabrication/`](../../doc/fabrication/)
+**Using these files:**
+The Gerber, BOM, and pick-and-place files are what you'll upload to JLCPCB (or any other manufacturer). The schematic is there for reference if you want to understand how it works or make modifications.
 
-**Using These Files:**
-1. Upload Gerber files to PCB manufacturer (e.g., JLCPCB, PCBWay)
-2. Upload BOM and Pick-and-Place files for SMT assembly
-3. Review and confirm component availability
-4. Order PCBs with assembly service
-
-**Cost Estimate (as of 2025):**
-- PCB + SMT Assembly (5 units): ~£50-80
-- Shipping: Varies by location
-- Lead time: ~2-3 weeks
-
----
-
-## Pin Configuration
-
-For this custom PCB design, the following GPIO pins are used:
-
-| Function | GPIO Pin | Notes |
-|----------|----------|-------|
-| Keyboard CLK | GP17 | 5V tolerant with level shifter |
-| Keyboard DATA | GP16 | 5V tolerant with level shifter |
-| Status LED | GP25 | Built-in RP2040 LED |
-| USB D+ | GP20 | Native RP2040 USB |
-| USB D- | GP21 | Native RP2040 USB |
-
----
-
-## Revisions
-
-### Revision 2 (Current)
-- ✅ Improved component placement
-- ✅ Optimised trace routing
-- ✅ Better fit for keyboard case
-- ✅ Added level shifter circuit
-- **Status**: Production (current version)
-
-### Revision 1 (Obsolete)
-- Test-fit PCB for measurements
-- Poor component placement
-- **Status**: Superseded by Rev 2
+If you're ordering from JLCPCB, their website walks you through the process pretty clearly. You'll need to review the component availability—sometimes parts go out of stock, and you might need to find substitutes.
 
 ---
 
 ## Related Documentation
 
-**In This Documentation:**
-- [Hardware Overview](README.md) - All hardware options
-- [Breadboard Prototype](breadboard-prototype.md) - Simple alternative
-- [Pin Configurations](pin-configurations.md) - GPIO assignments
-- [Level Shifters](level-shifters.md) - Level shifting explained
+**For building your first converter:**
+- **[Hardware Overview](README.md)** - General hardware guide and component selection
+- **[Getting Started Guide](../getting-started/hardware-setup.md)** - Breadboard wiring for testing
 
-**Source Code:**
-- Configuration is keyboard-specific (see [`src/keyboards/ibm/modelf-pcat/`](../../src/keyboards/ibm/modelf-pcat/))
+**Keyboard-specific:**
+- Source code configuration: [`src/keyboards/modelf/pcat/`](../../src/keyboards/modelf/pcat/)
 
-**External Resources:**
-- [EasyEDA](https://easyeda.com/) - PCB design tool
-- [JLCPCB](https://jlcpcb.com/) - PCB manufacturer
-- [RP2040 Datasheet](https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf)
+**External resources:**
+- [EasyEDA](https://easyeda.com/) - Free PCB design tool (what I used)
+- [JLCPCB](https://jlcpcb.com/) - PCB manufacturer with SMT assembly
+- [RP2040 Datasheet](https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf) - If you want to modify the design
 
 ---
 
-## Future Improvements
-
-Potential enhancements for future revisions:
-
-- [ ] USB-C on both ends (keyboard and host)
-- [ ] Onboard USB hub for additional devices
-- [ ] RGB LED for status indication
-- [ ] Smaller form factor
-- [ ] Universal mounting for other keyboards
-
----
-
-**Questions or Suggestions?**  
-Please [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) or join the [discussion](https://github.com/PaulW/rp2040-keyboard-converter/discussions).
+**Questions or stuck on something?**  
+Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.

@@ -1,649 +1,383 @@
-# Hardware Documentation
+# Hardware Guide
 
-**Status**: 🔄 In Progress | **Last Updated**: 27 October 2025
+This guide covers everything you need to know about the hardware side of building the converter—from choosing the right components to understanding why certain design decisions were made. Whether you're planning a simple breadboard prototype or designing a custom PCB to fit inside your keyboard, you'll find what you need here. That said, the documentation may not cover every possible scenario or component combination, so if you're working with something unusual, feel free to ask in the discussions.
 
-This section covers everything you need to know about building hardware for the RP2040 Keyboard Converter. Whether you're prototyping on a breadboard, designing a custom PCB, or planning an internal keyboard installation, you'll find detailed information about components, connections, and practical considerations.
+---
 
-## Available Documentation
+## What's in This Guide
 
-Complete hardware guides covering different build approaches:
-
-- **[Breadboard Prototype](breadboard-prototype.md)** - Quick prototyping setup for testing and development
-- **[Custom PCB](custom-pcb.md)** - Professional PCB design for internal keyboard installation
-- **[Pin Configurations](pin-configurations.md)** - GPIO pin assignments for each protocol
-- **[Level Shifters](level-shifters.md)** - Understanding voltage level translation requirements
+- **[Build Approaches](#choosing-your-build-approach)** - Breadboard vs PCB: which is right for you?
+- **[Component Deep Dive](#understanding-components)** - Everything about RP2040 boards and level shifters
+- **[Connectors and Cables](#connectors-and-cables)** - Finding the right connectors and where to get them
+- **[Status LEDs](#status-leds)** - Adding visual feedback with WS2812B RGB LEDs
+- **[Breadboards and Prototyping Supplies](#breadboards-and-prototyping-supplies)** - What you need for breadboard builds
+- **[Custom PCB](#custom-pcb)** - Professional PCB design for internal installations
 
 ---
 
 ## Choosing Your Build Approach
 
-The converter's hardware can be built in several ways, each suited to different needs and skill levels. Understanding the trade-offs helps you choose the right approach for your project.
+There are a few different ways you can build this converter, and each has its trade-offs. I'd say it's worth taking a few minutes to think about what you're trying to achieve before you start buying components or wiring things up.
 
 ### Breadboard Prototype
 
-**Best for**: First-time builds, testing, development, supporting multiple keyboards
+**Best for**: First-time builds, testing, experimentation, or if you want to support multiple keyboards
 
-A breadboard-based converter is the ideal starting point for most users. It requires no soldering, uses readily available components, and can be assembled in 30-60 minutes. The temporary nature of breadboard connections makes it perfect for experimentation—you can easily swap keyboards, try different RP2040 boards, or modify connections during troubleshooting.
+A breadboard build is where I'd recommend starting. There's no soldering involved, you can put it together in under an hour, and if something's not working you can easily swap things around. It's forgiving, which is great if you're new to this or just want to test whether your keyboard actually works before you commit to anything permanent.
 
-**Advantages:**
-- **Quick Setup**: Assemble a working converter in under an hour without any permanent modifications
-- **No Soldering Required**: Everything connects via jumper wires and pre-assembled modules
-- **Easy Modifications**: Rewire connections, test different pin assignments, or swap components instantly
-- **Low Initial Cost**: ~£15-25 for all components (RP2040 board, level shifter, breadboard, wires)
-- **Reusable Components**: Disassemble and reuse parts for other projects or different keyboards
-- **Learning-Friendly**: See all connections clearly, understand signal flow, debug issues visually
+**What makes breadboards great:**
+- **Quick to set up**: 30-60 minutes and you're done
+- **No soldering needed**: Just jumper wires and pre-made modules
+- **Easy to modify**: Want to try different pins? Just pull it out and move it
+- **Low cost**: About £15-25 for everything
+- **Reusable**: Take it apart and use the bits for something else
+- **Great for learning**: You can actually see all the connections
 
-**Trade-offs:**
-- **External Enclosure**: Requires a separate project box since components can't fit inside most keyboards
-- **Less Reliable Connections**: Breadboard contacts can loosen over time or with movement/vibration
-- **More Wiring**: Jumper wires create a less tidy appearance compared to PCB traces
-- **Not Travel-Friendly**: Loose connections make transportation risky—wires can disconnect
+**The trade-offs:**
+- **Needs an external enclosure**: Breadboards require external housing
+- **Connections can work loose**: Breadboards are fine for testing, but they're not great for long-term reliability
+- **More wiring**: It's not as tidy as a PCB
+- **Not ideal for portability**: If you're taking your keyboard places, loose connections aren't brilliant
 
-**When to choose this approach:**
-- You're new to electronics and want a forgiving, reversible build
-- You plan to test multiple keyboards or protocols
-- You're developing new features or debugging issues
-- You want minimal commitment before deciding on a permanent solution
-- Budget is a primary concern
+**When this makes sense:**
+- You're new to electronics and want something forgiving
+- You're testing multiple keyboards or protocols
+- You're developing new features or troubleshooting issues
+- You want to try it out before committing to something permanent
+- Budget's a concern
 
-**See:** [Breadboard Prototype Guide](breadboard-prototype.md) for detailed assembly instructions, connection diagrams, and troubleshooting tips.
+For the step-by-step breadboard build, check out the **[Getting Started Guide](../getting-started/hardware-setup.md)**.
 
 ---
 
 ### Custom PCB
 
-**Best for**: Permanent installations, internal keyboard mounting, clean professional appearance
+**Best for**: Permanent installations, internal keyboard mounting, or if you want it to look professional
 
-A custom PCB provides the ultimate in reliability and aesthetics. By consolidating all components onto a single board, you eliminate loose wiring, improve signal integrity, and create an installation that looks factory-original. The example PCB design for the IBM Model F PC/AT demonstrates what's possible—a tiny board that mounts inside the keyboard case, completely invisible from the outside.
+If you have a keyboard you really care about—maybe it's a collectible, or just something you want to use long-term—a custom PCB is worth considering. Everything's on one neat board, no loose wiring, and if you design it right you can mount it inside the keyboard so it's completely hidden. I built one for my IBM Model F PC/AT, and you'd never know it was there from the outside.
 
-**Advantages:**
-- **Professional Appearance**: Clean, compact design that rivals commercial products
-- **Internal Installation**: Mount inside keyboard case—no external box, no visible converter
-- **Reliable Connections**: Soldered joints and PCB traces eliminate connection problems
-- **Compact Form Factor**: Custom boards can be designed to fit specific keyboard internal geometry
-- **Integrated Level Shifting**: On-board level shifter circuitry eliminates external modules
-- **Strain Relief**: Proper mounting prevents stress on connections from cable movement
+**What makes PCBs great:**
+- **Looks professional**: Clean and compact
+- **Internal installation**: Hide it inside the keyboard case—no external box
+- **Solid connections**: Soldered joints don't work loose
+- **Compact**: You can design boards to fit specific spaces
+- **Integrated**: Everything on one board—level shifter, RP2040, connectors
+- **Strain relief**: Proper mounting means cables aren't going to pull things apart
 
-**Trade-offs:**
-- **Higher Initial Cost**: PCB fabrication (~£20-40 for 5 boards) plus assembly time
-- **Requires PCB Skills**: Design knowledge (KiCad, EasyEDA) and soldering ability needed
-- **Less Flexible**: Changing protocols or pin assignments requires new board design
-- **Keyboard-Specific**: Most designs optimised for particular keyboard models
-- **Longer Development**: Design, order, receive, assemble cycle takes 2-4 weeks
+**The trade-offs though:**
+- **Higher upfront cost**: PCB fabrication is about £20-40 for a batch of 5 boards
+- **Needs PCB skills**: You'll need to know your way around KiCad or similar, and be comfortable soldering
+- **Less flexible**: If you want to change protocols or pins, you're designing a new board
+- **Keyboard-specific**: Designs are optimised for particular keyboards
+- **Takes longer**: Design, order, wait for delivery, assemble—you're looking at 2-4 weeks
 
-**When to choose this approach:**
-- You have a valuable or collectible keyboard deserving of a clean installation
-- You're comfortable with PCB design and soldering (or willing to learn)
+**When this makes sense:**
+- You have a valuable or collectible keyboard that deserves a proper installation
+- You're comfortable with PCB design and soldering (or keen to learn)
 - You want the converter to be invisible or minimally invasive
 - You have a specific keyboard in mind for permanent conversion
-- You plan to convert multiple units of the same keyboard model
+- You're planning to convert multiple units of the same keyboard
 
-**Real-World Example**: The custom PCB for IBM Model F PC/AT (documented in this section) measures just 40×30mm and mounts on the keyboard's internal metal frame using existing screw holes. It includes integrated level shifting, USB-C connector, and RP2040 chip with all necessary components—everything needed for a complete, invisible conversion. Total cost: ~£25 for 5 fully assembled boards from JLCPCB including SMT assembly service (£5 per board).
+**Real example**: My custom PCB for the IBM Model F PC/AT is only 40×30mm and mounts on the keyboard's internal frame using existing screw holes. It's got the level shifter, USB-C, RP2040, everything—completely invisible from outside. Total cost works out to about £5 per board when ordering 5 from JLCPCB with their SMT assembly service.
 
-**See:** [Custom PCB Guide](custom-pcb.md) for complete design files, fabrication instructions, assembly guide, and installation photos.
+Check out the **[Custom PCB Guide](custom-pcb.md)** for the full design, fabrication files, and installation photos.
 
 ---
 
-## Understanding Component Requirements
+## Understanding Components
 
-Every converter build requires the same essential components, regardless of whether you choose breadboard or PCB. Understanding why each component is necessary and how to select the right one ensures a successful build.
+Every converter needs the same core components, whether you're building on breadboard or designing a PCB. Let me walk you through what each one does and why it matters.
 
-### Essential Components
+### RP2040 Microcontroller Board
 
-#### RP2040 Microcontroller Board
+This is the brain of the whole operation. The RP2040 handles all the protocol translation, USB communication, and features like Command Mode and Keytest.
 
-The RP2040 is the heart of the converter, handling all protocol translation, USB communication, and feature implementation. Raspberry Pi's RP2040 chip offers unique capabilities that make it ideal for this application:
+**Why the RP2040 works so well for this:**
 
-**Key Features:**
-- **Dual ARM Cortex-M0+ Cores**: Two 125MHz processors (though this project uses only one for simplicity)
-- **264KB SRAM**: Plenty of memory for code and data, allowing execution from RAM for optimal performance
-- **PIO State Machines**: Eight independent hardware state machines for microsecond-precision I/O—the "secret sauce" that enables reliable protocol handling
-- **Flexible GPIO**: 30 multipurpose pins that can be assigned to any function
-- **USB 1.1 Device**: Native USB support via TinyUSB stack
-- **Low Power**: ~2% CPU usage at maximum typing speed leaves headroom for future features
+Other converters use Atmel AVR chips (like in Arduino Pro Micro boards), and they work fine. But the RP2040 has something really useful: **PIO state machines**. These are like little independent hardware processors that can monitor signals with microsecond precision without the main CPU needing to do anything. This means the converter can handle keyboard timing without using much CPU at all.
 
-**Why PIO Matters:**
-Traditional microcontrollers handle protocols using software bit-banging or hardware peripherals (UART, SPI). Software approaches struggle with timing precision, while hardware peripherals lack flexibility. The RP2040's PIO (Programmable I/O) provides the best of both worlds—hardware-level timing precision with software-level flexibility. Each PIO state machine runs independently of the CPU, monitoring signals and extracting bits with microsecond accuracy. This architecture is why the converter achieves 350µs latency while using only 2% CPU time.
+Traditional microcontrollers either bit-bang protocols in software (struggles with timing) or use fixed hardware peripherals like UART or SPI (not flexible enough). PIO gives you hardware-level timing with software-level flexibility—each state machine runs independently, watching the CLOCK and DATA lines.
 
-**Board Selection Guide:**
+**Key specs:**
+- **Dual ARM Cortex-M0+ cores** running at 125MHz (we only use one)
+- **264KB SRAM** - plenty of room, we run the code from RAM for performance
+- **Eight PIO state machines** - hardware-level I/O with microsecond precision
+- **30 GPIO pins** - flexible, can be assigned to any function
+- **Native USB 1.1** support via TinyUSB
+- **Low power** - minimal CPU usage even when typing
 
-| Board | Size | USB | Price | Best For |
-|-------|------|-----|-------|----------|
-| **Raspberry Pi Pico** | 51×21mm | Micro-B | £4 | Breadboard prototyping, learning, most common choice |
-| **WaveShare RP2040-Zero** | 23.5×18mm | USB-C | £6 | Internal installations, compact builds, modern connector |
-| **Pimoroni Tiny 2040** | 22×18mm | USB-C | £8 | Space-constrained builds, built-in RGB LED |
-| **Adafruit Feather RP2040** | 51×23mm | USB-C | £12 | Battery power, portables, extensive I/O |
+**Which board should you get?**
 
-All boards provide identical functionality—choose based on your physical constraints, connector preference, and budget. The Raspberry Pi Pico is recommended for first builds due to widespread availability, extensive documentation, and lowest cost.
+They're all based on the same RP2040 chip, so they're functionally identical. It comes down to size, USB connector, and what you're planning to do with it.
 
-#### Bi-Directional Level Shifter
+| Board | Size | USB | Price | When to choose it |
+|-------|------|-----|-------|-------------------|
+| **Raspberry Pi Pico** | 51×21mm | Micro-B | ~£4 | Best starting point—cheap, widely available, tons of documentation |
+| **WaveShare RP2040-Zero** | 23.5×18mm | USB-C | ~£6 | Great for internal installs, tiny, has built-in RGB LED |
+| **Pimoroni Tiny 2040** | 22×18mm | USB-C | ~£8 | Similar to WaveShare but premium components, nice if you value quality |
+| **Adafruit Feather RP2040** | 51×23mm | USB-C | ~£12 | Premium option with battery power and expansion capabilities |
 
-**Critical Safety Component** - The level shifter prevents permanent damage to your RP2040 by translating between different voltage domains. Understanding why this component is essential helps avoid costly mistakes.
+**My recommendation**: Start with a Raspberry Pi Pico if you're breadboarding. It's the cheapest, you can get them anywhere, and there's loads of help available if you get stuck. If you're planning an internal installation, the Waveshare RP2040-Zero is what I use—it's tiny, has USB-C, and even comes with an RGB LED built in.
 
-**The Problem:**
-- Vintage keyboards operate at **5V logic levels** (0V = LOW, 5V = HIGH)
-- RP2040 GPIO pins operate at **3.3V logic levels** (0V = LOW, 3.3V = HIGH)
-- RP2040 GPIOs are **NOT 5V tolerant**—connecting them directly to 5V signals **will destroy the chip**
-- This isn't a gradual degradation—5V on a 3.3V pin causes immediate, permanent damage
+### Bi-Directional Level Shifter
 
-**The Solution:**
-A bi-directional level shifter sits between the keyboard and RP2040, automatically translating signals in both directions:
-- Keyboard → RP2040: Converts 5V HIGH signals down to 3.3V (safe for RP2040 input)
-- RP2040 → Keyboard: Converts 3.3V HIGH signals up to 5V (ensures keyboard sees valid logic levels)
+**This is the most important safety component** - don't skip it!
 
-**Why Bi-Directional?**
-Protocols like AT/PS2 and Amiga require two-way communication on the same wires (open-drain signalling). The keyboard can pull lines LOW, and the RP2040 can also pull lines LOW. A bi-directional level shifter handles this automatically without needing direction control signals.
+Here's the thing: your keyboard speaks 5V logic, but the RP2040 speaks 3.3V logic. The RP2040's GPIO pins are **NOT 5V tolerant**. If you connect 5V directly to them, you'll damage the chip. There's no "it might survive"—it just dies.
 
-**Recommended Modules:**
+**What it does:**
 
-**BSS138-Based 4-Channel Level Shifter** (Most Common)
-- **Chip**: BSS138 N-channel MOSFET (4 independent channels)
-- **Speed**: Fast enough for MHz signals (more than adequate for kHz keyboard protocols)
-- **Price**: £2-5 from Adafruit, SparkFun, or generic suppliers
-- **Advantages**: Simple, reliable, well-documented, widely available
-- **Usage**: Connect 2 channels (one for CLK, one for DATA). Two channels remain unused.
+It sits between your keyboard and the RP2040, translating voltages in both directions:
+- Keyboard → RP2040: Converts 5V down to 3.3V (safe for the RP2040)
+- RP2040 → Keyboard: Converts 3.3V up to 5V (proper logic levels for the keyboard)
+
+**Why bi-directional?**
+
+The AT/PS2 protocol uses open-drain signaling on both CLOCK and DATA lines—both the keyboard and host need to be able to pull the lines LOW. A bi-directional level shifter handles this automatically without needing any direction control signals.
+
+**Which level shifter should you get?**
+
+**BSS138-Based 4-Channel Level Shifter**
+
+This is what I'd recommend. It uses BSS138 N-channel MOSFETs and is simple to use:
+- **Price**: £2-5 from Adafruit, SparkFun, or generic suppliers on Amazon
+- **Speed**: Way faster than we need (MHz capable, we're only doing kHz)
+- **Channels**: 4 independent channels (you'll use 2 for CLOCK/DATA, leaving 2 spare)
+- **Widely available**: You can get these pretty much anywhere
+- **Well documented**: Loads of tutorials and examples online
 
 **TXB0104 4-Bit Level Shifter** (Alternative)
-- **Chip**: TXB0104 auto-direction sensing level translator
-- **Speed**: 100 Mbps data rate
-- **Price**: £3-6
-- **Advantages**: Slightly more compact, automatic direction detection
-- **Considerations**: Less common than BSS138 modules, similar performance
 
-**Connection Example (BSS138 Module):**
+This is another good option if you can find one:
+- **Price**: £3-6
+- **Chip**: TXB0104 with automatic direction sensing
+- **Speed**: 100 Mbps data rate
+- **Slightly more compact** than BSS138 modules
+- **Availability**: More specialized, works just as well
+
+**Important notes:**
+- Both sides need their voltage references (LV=3.3V, HV=5V)
+- All grounds must be tied together (keyboard, level shifter, RP2040)
+- Never connect keyboard signals directly to RP2040—always through the level shifter
+- GPIO pins are configurable in firmware (no fixed assignments)
+
+**How to wire it:**
+
 ```
 Level Shifter Module:
-LV (Low Voltage)  ─── Connect to RP2040 3V3 pin
-LV1 (Channel 1)   ─── RP2040 GPIO (e.g., GPIO 17 for CLK)
-LV2 (Channel 2)   ─── RP2040 GPIO (e.g., GPIO 16 for DATA)
-LV3, LV4          ─── Unused (available for future expansion)
-GND               ─── Common ground (RP2040 GND)
+LV (Low Voltage)  ─── RP2040 3V3 pin
+LV1 (Channel 1)   ─── RP2040 GPIO (you choose which one)
+LV2 (Channel 2)   ─── RP2040 GPIO (you choose which one)  
+LV3, LV4          ─── Unused (available for mouse or future expansion)
+GND               ─── Common ground
 
-HV (High Voltage) ─── Connect to keyboard +5V or RP2040 VSYS
-HV1 (Channel 1)   ─── Keyboard CLK line
+HV (High Voltage) ─── Keyboard +5V or RP2040 VSYS
+HV1 (Channel 1)   ─── Keyboard CLOCK line
 HV2 (Channel 2)   ─── Keyboard DATA line
 HV3, HV4          ─── Unused
-GND               ─── Common ground (keyboard GND)
+GND               ─── Common ground
 ```
 
-**Important Notes:**
-- Both LV and HV sides need their respective voltage reference (3.3V and 5V)
-- Ground must be common between all components
-- Never connect keyboard signals directly to RP2040—always through level shifter
-- Check module pinout diagram—manufacturers vary in pin arrangement
+---
 
-**See:** [Level Shifters Guide](level-shifters.md) for detailed wiring diagrams, troubleshooting, and alternatives.
+## Connectors and Cables
 
-#### Keyboard Connector
+The connector you need depends on your keyboard. IBM-compatible connectors are widely used, but other keyboards use different types entirely.
 
-The connector type depends entirely on your keyboard's original interface. Using the correct connector ensures reliable signal transmission and proper mechanical connection.
+### Most Common Connectors
 
-**Common Connector Types:**
+**PS/2 (Mini-DIN-6)**
 
-**PS/2 Connector (6-pin mini-DIN)**
-- **Used By**: Most AT/PS2 protocol keyboards from late 1980s onward, PS/2 mice
-- **Physical**: 6-pin mini-DIN, ~13mm diameter, keyed to prevent incorrect insertion
-- **Pinout** (looking at female socket on keyboard cable, numbers marked on connector):
-  ```
-       ___
-    6 |   | 5
-   4  | o |  1
-    3 |___| 2
-  
-  Pin 1: DATA
-  Pin 2: N/C (not connected)
-  Pin 3: GND
-  Pin 4: VCC (+5V)
-  Pin 5: CLK
-  Pin 6: N/C (not connected)
-  ```
-- **Availability**: Very common, inexpensive panel-mount sockets or cables available
-- **Note**: Mechanically identical to SDL connector but may have different pinout—verify!
+This is what you'll find on AT/PS2 keyboards and mice from the late 1980s onwards. It's a 6-pin round connector that was widespread through the '90s and 2000s.
 
-**DIN-5 Connector (180° or 270°)**
-- **Used By**: Older AT keyboards, IBM Model F keyboards
-- **Physical**: 5-pin DIN, ~13.2mm diameter, two variants:
-  - **180° DIN**: Pins arranged in semicircle (most common)
-  - **270° DIN**: Pins arranged in 270° arc (less common, IBM keyboards)
-- **Pinout** (180° DIN, looking at female socket):
-  ```
-      ___
-    3| o |2
-   4 |o o| 1
-      |___|5
-  
-  Pin 1: CLK
-  Pin 2: DATA
-  Pin 3: N/C
-  Pin 4: GND
-  Pin 5: VCC (+5V)
-  ```
-- **Warning**: 180° and 270° DIN are NOT interchangeable—connector won't physically fit
-- **Availability**: More difficult to source than PS/2, check vintage electronics suppliers
+- **Used by**: AT/PS2 keyboards and mice
+- **Availability**: Pretty easy to find—eBay, electronics distributors, or just buy a PS/2 extension cable and cut it in half
 
-**SDL Connector (also called 6-pin mini-DIN)**
-- **Used By**: Some IBM Model M variants (e.g., 1391401 Enhanced Keyboard)
-- **Physical**: Identical to PS/2 connector (6-pin mini-DIN)
-- **Pinout**: May differ from PS/2 standard—check keyboard documentation
-- **Confusion Factor**: Looks exactly like PS/2 but pinout can be different
-- **Advice**: Measure voltages and identify signals before assuming PS/2 pinout
+**DIN-5 (180°)**
 
-**Amiga Keyboard Connector (Proprietary 5-pin)**
-- **Used By**: Commodore Amiga computers (A500, A1000, A2000, etc.)
-- **Physical**: Proprietary rectangular connector, ~8mm width
-- **Pinout**: 
-  ```
-  Pin 1: CLK
-  Pin 2: DATA
-  Pin 3: RESET
-  Pin 4: GND
-  Pin 5: VCC (+5V)
-  ```
-- **Availability**: Difficult to find original connectors, custom cables or breakout boards often needed
-- **Alternative**: Cut and splice original keyboard cable (not ideal for collectible keyboards)
+The older, larger connector you'll find on IBM PC/XT and early AT keyboards. It's got a 180° pin arrangement (not the 240° arrangement used for audio equipment—don't mix them up).
 
-**Apple M0110 Connector (Proprietary 4-pin)**
-- **Used By**: Apple Macintosh M0110, M0110A keyboards
-- **Physical**: Proprietary 4-pin coiled cable connector
-- **Pinout**: Unique to Apple keyboards
-- **Availability**: Very rare, usually requires cable modification
-- **Advice**: Consider non-destructive adapter cable if keyboard is collectible
+- **Used by**: IBM PC/XT and early AT keyboards
+- **Availability**: eBay, or salvage from old motherboards
 
-**Sourcing Connectors:**
-- **Pre-made Cables**: Search for "[protocol] extension cable" or "[protocol] breakout board"
-- **Panel Mount Sockets**: Available from electronics distributors (Mouser, Digi-Key, Farnell)
-- **Salvage**: Desoldering from damaged motherboards or broken keyboards (free, requires skill)
-- **Custom PCBs**: Design connector footprint directly into custom converter boards
+**Other Keyboards**
 
-**See:** Protocol-specific documentation for exact pinouts and wiring details.
+Some keyboards use completely different connectors—telephone-style modular jacks, internal PCB headers, or proprietary designs. You'll need to identify what your specific keyboard uses and find the pinout.
 
-#### USB Cable
+### Where to Get Connectors
 
-Connects your RP2040 board to the computer, providing both power and data communication.
+**Easiest option**: Buy a keyboard extension cable on eBay and cut it in half. You get a connector with wires already attached.
 
-**Cable Selection:**
+**Other options:**
+- **Breakout boards**: Search for "PS/2 breakout Arduino"—these give you screw terminals or pin headers
+- **Salvage**: Desolder connectors from damaged motherboards or old keyboards (free, but needs desoldering skills)
+- **Distributors**: Mouser, Digi-Key, or Farnell stock panel mount sockets if you want something proper
+
+### Finding Your Keyboard's Pinout
+
+The documentation might help—check if there's a specific page for your keyboard model in the **[protocol documentation](../protocols/README.md)**. If not, you'll need to trace the connections yourself or search online for pinout diagrams.
+
+### USB Cables
+
+Don't forget you'll need a USB cable to connect the RP2040 to your computer!
+
+**What you need depends on your board:**
 - **Raspberry Pi Pico**: USB-A to Micro-B
-- **WaveShare RP2040-Zero, Pimoroni Tiny 2040**: USB-A to USB-C
-- **Modern computers**: May need USB-C to USB-C
+- **WaveShare RP2040-Zero / Pimoroni Tiny 2040**: USB-A to USB-C (or USB-C to USB-C for modern computers)
 
-**Quality Matters:**
-Cheap cables (often bundled with smartphones for charging only) may lack data wires or have poor shielding. This causes mysterious connection problems—the converter appears to work intermittently or not at all. Invest in a quality cable (£3-5) with good reviews specifically mentioning data transfer capability.
-
-**Length Considerations:**
-- **Short cables (30-50cm)**: Less voltage drop, better for breadboard prototypes on desk
-- **Longer cables (1-2m)**: More flexibility for permanent installations, ensure rated for data
-
-**Verify Your Cable:**
-After assembly, if the converter doesn't enumerate (computer doesn't recognize USB device), try a different cable before troubleshooting hardware. Cable issues are surprisingly common and easily misdiagnosed as converter problems.
+**Quality matters**: Cheap charging-only cables won't work—make sure it's rated for data transfer. If your converter isn't being recognised by your computer, try a different cable before you start troubleshooting everything else. Cable issues can be easy to miss.
 
 ---
 
-### Optional Components
+## Status LEDs
 
-These components enhance functionality or improve the user experience but aren't required for basic operation.
+The converter supports WS2812B addressable RGB LEDs for visual feedback. This is completely optional, but it's useful—you can see at a glance what state the converter's in without needing to check your computer.
 
-#### Breadboard and Jumper Wires
+### What the LED Shows
 
-**For Prototyping:**
-- **Half-Size Breadboard**: 400 tie-points (30 rows), ~£3-5. Sufficient for all converter components.
-- **Jumper Wire Kit**: Assorted lengths in multiple colours, ~£5-10. Colour coding helps track signals:
-  - Red: Power (VCC, 5V, 3.3V)
-  - Black: Ground (GND)
-  - Yellow: Clock (CLK)
-  - Green: Data (DATA)
-  - Other colours: Optional signals, status LEDs, etc.
+**Status Colors:**
+- **🟢 Green**: Everything's working, converter's ready
+- **🟠 Orange**: Waiting for keyboard initialization
+- **🟣 Magenta**: Bootloader mode (ready for firmware flashing)
+- **💚💙 Flashing Green/Blue**: Command Mode active
+- **💚💖 Flashing Green/Pink**: Log level selection mode  
+- **🌈 Rainbow**: Brightness adjustment mode
 
-**Wire Types:**
-- **Male-to-Male**: Breadboard to breadboard connections
-- **Male-to-Female**: Breadboard to GPIO pin headers (RP2040, level shifter modules)
-- **Female-to-Female**: Between modules with pin headers (less common for this project)
+**Lock Indicators:**
+If you use 4 LEDs instead of 1, the extra 3 show lock key states:
+- **LED 2**: Num Lock
+- **LED 3**: Caps Lock
+- **LED 4**: Scroll Lock
 
-**Quality Tip**: Pre-formed wire kits with consistent quality are worth the small premium over loose wire assortments. Bad connections cause intermittent failures that are maddening to debug.
+### What You Need
 
-#### Enclosure
+**WS2812B LEDs** (also called "NeoPixels"):
+- **Individual LEDs**: Around £1-2 each, easiest for breadboard
+- **LED strips**: £5-8, useful if you want multiple LEDs (just use the first 1-4)
+- **Breakout boards**: £2-5, pre-mounted LEDs with easier connections
 
-**Breadboard Builds:**
-Protect your converter and prevent accidental short circuits:
-- **Project Boxes**: Hammond 1591 series, Takachi cases, generic ABS boxes (£5-15)
-- **Size Guide**: ~100×60×25mm minimum for RP2040 + breadboard + level shifter
-- **Considerations**: Access to USB port, strain relief for keyboard cable, ventilation (not critical—converter runs cool)
+**Where to buy**: Adafruit, SparkFun, Amazon, eBay—just search for "WS2812B" or "NeoPixel"
 
-**3D Printed Cases:**
-Custom designs for specific RP2040 boards available on Thingiverse, Printables, and other repositories. Search for "[board name] case" (e.g., "Raspberry Pi Pico case"). Many designs include mounting for breadboards or custom PCBs.
+### Wiring
 
-**Design Your Own:**
-FreeCAD, Fusion 360, OnShape, and other CAD tools enable custom enclosure design. Measure your components, add 2-3mm clearance, design mounting features (standoffs, clips, screw posts), and export STL files for printing or ordering.
+The WS2812B is 3.3V tolerant, so you can connect it straight to the RP2040:
 
-#### Status LED (WS2812B RGB)
+```
+WS2812B LED:
+3.3V  ──→ RP2040 3V3 (not 5V!)
+GND   ──→ RP2040 GND
+DIN   ──→ RP2040 GPIO 29 (default, can be changed)
+```
 
-**Optional Visual Feedback:**
-The firmware supports WS2812B "NeoPixel" individually addressable RGB LEDs for status indication:
-- **Command Mode**: Rapid flashing (Green/Blue, Green/Pink, or Rainbow depending on submode)
-- **Keytest Mode**: Blink on each keypress (visual confirmation without computer)
-- **Error States**: Red flash patterns for protocol errors
-- **Power On**: Boot animation (can be disabled)
+**Important**: Use DIN (Data In), not DOUT (Data Out).
 
-**Implementation:**
-- **Cost**: £1-2 per LED, available as individual modules or strips
-- **Connection**: Single data wire to RP2040 GPIO, plus power and ground
-- **Configuration**: Enabled/disabled in firmware config, brightness adjustable via Command Mode
-- **Power**: Each LED draws ~60mA at full white brightness—use dimmer colours or lower brightness to reduce consumption
+### Multiple LEDs (For Lock Indicators)
 
-**Note**: Most RP2040 boards include a built-in LED (usually connected to GPIO 25) that can be used for basic status indication without external components. The WS2812B provides more sophisticated visual feedback with colour coding.
+Chain them together by connecting DOUT of one LED to DIN of the next:
 
-#### Connectors and Headers
+```
+GPIO 29 ──→ LED1 DIN
+            LED1 DOUT ──→ LED2 DIN
+                         LED2 DOUT ──→ LED3 DIN
+                                      LED3 DOUT ──→ LED4 DIN
 
-**For Permanent Builds:**
-- **2.54mm Pin Headers**: Standard spacing, compatible with breadboards and DuPont connectors
-- **Screw Terminals**: Tool-free connections, good for thick keyboard cables (16-22 AWG)
-- **JST Connectors**: Small, positive-locking connectors for internal wiring (1.25mm, 2.0mm, or 2.54mm pitch)
-- **Heat Shrink Tubing**: Insulate exposed connections, provide strain relief, improve appearance
+All LEDs share 3.3V and GND in parallel
+```
 
-**Crimping Tools** (if using custom cables):
-- **DuPont Crimping Tool**: For 2.54mm connectors (~£15-30)
-- **JST Crimping Tool**: For JST connectors (~£20-40)
-- **Alternative**: Pre-crimped wires available from many suppliers (easier, slightly more expensive)
+**LED assignments:**
+1. Status LED
+2. Num Lock indicator
+3. Caps Lock indicator
+4. Scroll Lock indicator
+
+### Using LED Strips
+
+For WS2812B LED strips:
+1. Cut after the 4th LED (if you want 4 total)
+2. Find the input end (arrows show data direction)
+3. Connect 3.3V, GND, and DIN to the first LED
+4. The strip's already chained internally
+
+**Tip**: LED strips often use JST connectors—you can either get a JST breakout adapter or solder wires directly to the pads.
+
+### Changing the GPIO Pin
+
+Default is GPIO 29 (defined in [`src/config.h`](../../src/config.h)). To change it:
+
+1. Edit [`src/config.h`](../../src/config.h)
+2. Find `#define LED_PIN 29`
+3. Change to your preferred GPIO
+4. Rebuild firmware
 
 ---
 
-## Supported RP2040 Boards
+## Breadboards and Prototyping Supplies
 
-The converter firmware runs on any RP2040-based board. Here's a detailed comparison to help you choose:
+If you're building a breadboard prototype (which I'd recommend for your first build), here's what you'll want to get.
 
-### Raspberry Pi Pico
+### Breadboards
 
-**The Reference Platform**
+**Half-size breadboard** (400 tie-points, ~30 rows): About £3-5, and it's plenty big enough for the converter plus level shifter and RP2040 board. Full-size breadboards work too, but they're overkill unless you're planning to add loads of extra stuff.
 
-The official Raspberry Pi Pico is the most widely used and best-documented RP2040 board, making it the ideal choice for first-time builders.
+### Jumper Wires
 
-**Specifications:**
-- **Dimensions**: 51×21mm (2.0×0.8 inches)
-- **Mounting**: 2.54mm pin headers (20 pins per side, breadboard-compatible)
-- **USB**: Micro-B connector
-- **Power**: 1.8-5.5V input on VSYS or 5V via USB
-- **LEDs**: Single green LED on GPIO 25
-- **Debug**: 3-pin SWD header for advanced debugging
-- **Cost**: ~£4 (official), ~£2-3 (compatible clones)
+Get yourself an assorted kit with different lengths—you're looking at £5-10 for a decent set. Colour coding really helps keep track of what's what:
+- **Red**: Power (VCC, 5V, 3.3V)
+- **Black**: Ground
+- **Yellow**: Clock signals
+- **Green**: Data signals
+- **Other colors**: Whatever else you need
 
-**Advantages:**
-- **Universal Compatibility**: Works with all tutorials, examples, and development tools
-- **Breadboard-Friendly**: Pin headers fit standard breadboards perfectly
-- **Extensive Documentation**: Official Pico SDK examples, community resources, troubleshooting guides
-- **Wide Availability**: Sold by virtually every electronics distributor worldwide
-- **Cost-Effective**: Lowest price point for RP2040 boards
+**Wire types you'll want:**
+- **Male-to-Male**: Breadboard-to-breadboard connections
+- **Male-to-Female**: Breadboard to pin headers (on the RP2040 or level shifter)
+- **Female-to-Female**: Less common for this project, but sometimes handy
 
-**Considerations:**
-- Larger form factor may not fit inside compact keyboards
-- Micro-B USB is becoming less common (adapters widely available)
-- Through-hole pin headers add height (can use low-profile socket if needed)
+**Tip**: Pre-formed wire kits are worth the small extra cost over loose assortments. Poor connections cause intermittent faults that can be difficult to debug.
 
-**Best For**: Learning, breadboard prototypes, development, most builds where space isn't critically constrained.
+### Enclosures (Optional but Recommended)
 
-### WaveShare RP2040-Zero
+Once you have everything working, you'll want to protect it and stop things from shorting out:
 
-**Compact Powerhouse**
+**Project boxes**: Hammond 1591 series, Takachi cases, or generic ABS boxes run about £5-15. You'll want something around 100×60×25mm minimum to fit the RP2040, breadboard, and level shifter comfortably. Make sure you can access the USB port and route the keyboard cable properly.
 
-WaveShare's ultra-compact board packs the same RP2040 power into a tiny footprint, perfect for internal keyboard installations.
+**3D printed cases**: Loads of designs on Thingiverse and Printables for specific RP2040 boards. Search for "[your board name] case" and you'll find plenty of options. Some even include mounting for breadboards.
 
-**Specifications:**
-- **Dimensions**: 23.5×18.4mm (0.9×0.7 inches)—less than half the Pico's area
-- **Mounting**: Castellated pads for direct PCB soldering, optional pin headers
-- **USB**: USB-C connector (modern, reversible)
-- **Power**: 5V via USB or external power on pads
-- **LEDs**: WS2812B RGB LED built-in (fully programmable)
-- **Reset**: Physical reset button
-- **Cost**: ~£6
-
-**Advantages:**
-- **Tiny Form Factor**: Fits inside most keyboards with minimal space requirements
-- **USB-C**: Modern connector, more durable than Micro-B, no orientation worries
-- **Built-in RGB LED**: Eliminates need for external status LED, full colour programming
-- **Castellated Pads**: Enable direct PCB mounting for ultra-compact designs
-- **Pin-Compatible**: Can use pin headers for breadboard prototyping like Pico
-
-**Considerations:**
-- Less common than Pico (may have longer shipping times)
-- Castellated pads require soldering skills for direct mounting
-- Smaller size makes hand-wiring more fiddly
-
-**Best For**: Internal keyboard installations, space-constrained builds, projects requiring built-in RGB LED, modern USB-C preference.
-
-### Pimoroni Tiny 2040
-
-**Smallest with Style**
-
-Pimoroni's contribution to the RP2040 ecosystem emphasizes minimal size and elegant design with quality components.
-
-**Specifications:**
-- **Dimensions**: 22×18.3mm (similar to WaveShare but narrower)
-- **Mounting**: Castellated edges, optional pin headers via castellations
-- **USB**: USB-C connector with ESD protection
-- **Power**: 5V via USB, 3.3V and 5V output pads
-- **LEDs**: WS2812B RGB LED (high-quality, bright)
-- **Additional**: Reset button, BOOTSEL button accessible
-- **Cost**: ~£8
-
-**Advantages:**
-- **Premium Components**: High-quality USB connector, improved ESD protection
-- **Bright RGB LED**: Excellent visibility for status indication
-- **Good Documentation**: Pimoroni provides clear guides and Python/C++ examples
-- **Additional GPIO Access**: Pads expose additional pins not on pin headers
-- **Aesthetics**: Purple PCB with clean silkscreen (if appearance matters)
-
-**Considerations:**
-- Higher cost than WaveShare or Pico
-- Less common in stock (Pimoroni production runs can sell out)
-- Castellated mounting requires soldering skills
-
-**Best For**: Premium builds, users who value aesthetics, projects requiring maximum GPIO access, support for Pimoroni's ecosystem.
-
-### Adafruit Feather RP2040
-
-**Feature-Rich Platform**
-
-Adafruit's Feather form factor adds battery management, extensive I/O, and accessory compatibility for portable or expandable projects.
-
-**Specifications:**
-- **Dimensions**: 51×23mm (Feather form factor standard)
-- **Mounting**: Pin headers, Feather-compatible mounting holes
-- **USB**: USB-C connector
-- **Power**: LiPo battery support with on-board charger, voltage regulator
-- **LEDs**: NeoPixel RGB LED, red charge indicator
-- **Additional**: STEMMA QT connector (I2C), extra GPIO, voltage output selection
-- **Cost**: ~£12
-
-**Advantages:**
-- **Battery Operation**: Built-in LiPo charger enables portable operation without external power
-- **Expandable**: Compatible with Feather accessory ecosystem (displays, sensors, LoRa, etc.)
-- **More GPIO**: 21 GPIO pins vs Pico's 26 (more than adequate for converter)
-- **STEMMA QT**: Easy connection to I2C devices without soldering
-- **Versatile Power**: Choose 3.3V or 5V output for peripherals
-
-**Considerations:**
-- Significantly more expensive than other options
-- Larger form factor (standard Feather size)
-- Extra features unnecessary for basic converter function
-- Higher power consumption (battery charging circuitry always active)
-
-**Best For**: Portable builds (keyboard + battery), projects requiring expansion, integration with existing Feather-based systems, learning platform for future IoT projects.
+**DIY**: If you have access to CAD software (FreeCAD, Fusion 360, OnShape), you can design your own. Just measure your components, add a few mm clearance, design some mounting features, and export the STL.
 
 ---
 
-## Connection Overview
+## Custom PCB
 
-Understanding signal flow and voltage levels ensures safe, reliable operation.
+For detailed information about designing and building custom PCBs, including a complete worked example for the IBM Model F PC/AT, see the dedicated **[Custom PCB Guide](custom-pcb.md)**.
 
-### Signal Path Diagram
-
-```
-┌─────────────────────────┐
-│   Vintage Keyboard       │
-│   (5V Logic Levels)      │
-│                          │
-│   CLK  ──────┐          │
-│   DATA ──────┼──────┐   │
-│   GND  ──────┼──────┼─┐ │
-│   VCC  ──────┼──────┼─┼─│─── +5V (from RP2040 VSYS or external)
-└──────────────┼──────┼─┼─┘
-               │      │ │
-               ▼      ▼ ▼
-       ┌──────────────────────┐
-       │  Level Shifter        │
-       │                       │
-       │  HV Side (5V)         │
-       │  HV1 (CLK)  ◄────────┼──── LV1 ◄──── RP2040 GPIO 17
-       │  HV2 (DATA) ◄────────┼──── LV2 ◄──── RP2040 GPIO 16
-       │  HV (5V ref) ◄───────┼──── LV (3.3V) ◄─── RP2040 3V3 pin
-       │  GND         ◄───────┼──── GND ◄──────── RP2040 GND
-       └──────────────────────┘
-               │      │
-               │      │  Voltage Translation
-               │      │  Bi-directional
-               ▼      ▼
-       ┌──────────────────────┐
-       │   RP2040 Board        │
-       │   (3.3V Logic)        │
-       │                       │
-       │   GPIO 17 (CLK)       │─┐
-       │   GPIO 16 (DATA)      │ ├─── PIO State Machine 0
-       │   3V3 (Power Out)     │─┘     (Hardware Protocol)
-       │   GND (Ground)        │
-       │   VSYS (5V In)        │◄──── USB 5V Power
-       │                       │
-       │   USB Port            │
-       └───────────┬───────────┘
-                   │
-                   │ USB Data + Power
-                   │
-          ┌────────▼────────┐
-          │  Modern Computer │
-          │  (USB Host)      │
-          └─────────────────┘
-```
-
-**Signal Explanation:**
-
-1. **Keyboard Output (5V)**:
-   - Keyboard generates CLK and DATA signals at 5V logic levels
-   - Open-drain signalling: either device can pull lines LOW, pull-ups bring HIGH
-   - Keyboard receives power: +5V on VCC, Ground on GND
-
-2. **Level Translation**:
-   - **HV Side** (High Voltage): Connected to keyboard, 5V reference
-   - **LV Side** (Low Voltage): Connected to RP2040, 3.3V reference
-   - Automatic bi-directional translation: 
-     - 5V HIGH → 3.3V HIGH (keyboard to RP2040)
-     - 3.3V HIGH → 5V HIGH (RP2040 to keyboard)
-     - Either side can pull LOW (0V)
-
-3. **RP2040 Processing**:
-   - GPIO pins receive safe 3.3V signals
-   - PIO state machine monitors CLK/DATA, extracts protocol frames
-   - Main CPU processes scancodes, generates USB HID reports
-   - USB stack communicates with host computer
-
-4. **USB Connection**:
-   - Computer provides 5V power on USB VBUS
-   - RP2040 distributes power: internal 3.3V regulator, VSYS provides 5V
-   - USB data lines (D+/D−) carry HID reports to computer
-
-**Critical Points:**
-- ⚠️ **Never** connect 5V keyboard signals directly to RP2040 GPIO
-- ✓ **Always** use level shifter between different voltage domains
-- ✓ **Common ground** required: keyboard GND = level shifter GND = RP2040 GND
-- ✓ **Both voltage references** needed: level shifter HV=5V, LV=3.3V
-
----
-
-## GPIO Pin Assignments
-
-Pin assignments vary by protocol and are defined in each keyboard's configuration file. Understanding the assignment system helps with troubleshooting and custom builds.
-
-### Default Pin Assignments
-
-**AT/PS2 Protocol (Most Common):**
-```c
-// Keyboard
-#define KEYBOARD_CLOCK_PIN  17
-#define KEYBOARD_DATA_PIN   16
-
-// Mouse (if enabled)
-#define MOUSE_CLOCK_PIN     19
-#define MOUSE_DATA_PIN      18
-```
-
-**Amiga Protocol:**
-```c
-#define KEYBOARD_CLOCK_PIN  17
-#define KEYBOARD_DATA_PIN   16
-#define KEYBOARD_RESET_PIN  15  // Amiga-specific reset line
-```
-
-**XT Protocol:**
-```c
-#define KEYBOARD_CLOCK_PIN  17
-#define KEYBOARD_DATA_PIN   16
-// XT is unidirectional (keyboard → host only)
-```
-
-**Apple M0110 Protocol:**
-```c
-#define KEYBOARD_CLOCK_PIN  17
-#define KEYBOARD_DATA_PIN   16
-// Poll-based protocol (host requests, keyboard responds)
-```
-
-### Why These Pins?
-
-GPIO pins 16 and 17 are chosen as defaults for several reasons:
-- **Physically adjacent**: Simplifies wiring, reduces chance of mistakes
-- **PIO-capable**: All RP2040 GPIO pins can be assigned to PIO, no restrictions
-- **Not used by built-in peripherals**: Avoids conflicts with UART, I2C, SPI on their default pins
-- **Accessible on all boards**: Present on pin headers of Pico, WaveShare, Pimoroni, and Feather
-
-### Custom Pin Assignment
-
-You can change pin assignments in keyboard configuration files if needed:
-
-**When to change pins:**
-- Physical layout constraints in custom PCB designs
-- Avoiding conflicts with additional peripherals (UART logging, I2C displays, SPI sensors)
-- Personal preference or existing wiring
-
-**How to change:**
-1. Open `src/keyboards/<your_keyboard>/keyboard.h`
-2. Modify `#define KEYBOARD_CLOCK_PIN` and `#define KEYBOARD_DATA_PIN`
-3. Rebuild firmware with your keyboard configuration
-4. Rewire hardware to match new pin assignments
-
-**Limitations:**
-- PIO programs may assume specific pin ordering (e.g., DATA = CLK - 1)
-- Check PIO program requirements before changing pins
-- Some protocols use multiple consecutive pins for efficiency
-
-**See:** [Pin Configurations Guide](pin-configurations.md) for complete pin tables, protocol-specific requirements, and custom assignment examples.
+That guide covers:
+- Complete PCB design process (schematic, layout, fabrication)
+- Bill of materials and component selection
+- Fabrication options (JLCPCB SMT assembly, DIY soldering)
+- Installation guide with photos
+- Cost breakdown (about £5 per board for quantities of 5)
 
 ---
 
 ## Related Documentation
 
-**In This Documentation:**
-- [Getting Started](../getting-started/README.md) - Setup guide
-- [Protocols](../protocols/README.md) - Protocol details
-- [Keyboards](../keyboards/README.md) - Supported keyboards
+**For building your first converter:**
+- **[Getting Started Guide](../getting-started/README.md)** - Step-by-step build instructions
+- **[Hardware Setup](../getting-started/hardware-setup.md)** - Detailed breadboard wiring guide
 
-**Source Code:**
+**Protocol-specific information:**
+- **[Protocols Overview](../protocols/README.md)** - All supported protocols
+
+**Keyboard configurations:**
+- **[Supported Keyboards](../keyboards/README.md)** - Keyboard-specific configs and quirks
+
+**Source code:**
 - Keyboard configurations: [`src/keyboards/`](../../src/keyboards/)
 - Protocol implementations: [`src/protocols/`](../../src/protocols/)
 
 ---
 
-## Need Help?
+**Questions or stuck on something?**  
+Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.
 
-- 📖 [Troubleshooting](../advanced/troubleshooting.md)
-- 💬 [Ask Questions](https://github.com/PaulW/rp2040-keyboard-converter/discussions)
-- 🐛 [Report Hardware Issues](https://github.com/PaulW/rp2040-keyboard-converter/issues)
-
----
-
-**Status**: Documentation in progress. More guides coming soon!

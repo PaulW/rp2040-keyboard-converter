@@ -1,8 +1,6 @@
 # Features Documentation
 
-**Status**: 🔄 In Progress | **Last Updated**: 27 October 2025
-
-Complete documentation for all converter features.
+The converter includes several features that make it practical for daily use whilst keeping the architecture clean and non-blocking. This page gives you an overview of what's available—each feature has its own detailed guide linked below if you want to dive deeper.
 
 ## Core Features
 
@@ -10,21 +8,15 @@ Complete documentation for all converter features.
 
 **[USB HID Guide](usb-hid.md)**
 
-Modern USB HID boot protocol support:
+The converter uses standard USB HID Boot Protocol, which means it works everywhere without drivers—BIOS screens, UEFI setup, Windows, macOS, Linux, BSD, and other operating systems. The Boot Protocol is intentionally simple and universally supported, which is exactly what you want when converting keyboards.
 
-- ✅ **Full NKRO**: All keys reported simultaneously (no ghosting)
-- ✅ **Boot Protocol**: Compatible with BIOS/UEFI and legacy systems
-- ✅ **Mouse Support**: Simultaneous keyboard + mouse conversion
-- ✅ **LED Indicators**: Caps Lock, Num Lock, Scroll Lock synchronization
-- ✅ **Multiple OS**: Works with Windows, macOS, Linux, BSD
+The interface reports up to 6 simultaneous regular keys plus all 8 modifiers (both Shift, Ctrl, Alt, and GUI keys). This is called 6-Key Rollover (6KRO), and whilst modern gaming keyboards often tout N-Key Rollover, it's not actually relevant for these keyboards. Most keyboards have hardware limitations—their key matrices can only detect 2-3 simultaneous keys before ghosting occurs anyway. The 6KRO limit never comes up in practice.
 
-**Performance:**
-- 350μs latency (PIO IRQ → USB transmission)
-- 30 CPS reliable throughput (360 WPM)
-- ~2% CPU usage at maximum load
-- 10ms USB polling interval (host-driven)
+The converter provides low-latency keyboard conversion with minimal processing overhead. The non-blocking architecture ensures responsive keystroke handling without dropped inputs.
 
-**See:** [USB HID Guide](usb-hid.md)
+The converter can handle simultaneous keyboard and mouse conversion if you have an AT/PS2 mouse to connect. LED indicators (Caps Lock, Num Lock, Scroll Lock) synchronize properly with the host OS, so the keyboard's lock LEDs update when you press the lock keys—assuming your keyboard protocol supports LED control.
+
+**See:** [USB HID Guide](usb-hid.md) for complete technical details about report formats, timing, and USB polling
 
 ---
 
@@ -32,46 +24,26 @@ Modern USB HID boot protocol support:
 
 **[Command Mode Guide](command-mode.md)**
 
-Special mode for firmware management and testing:
+Command Mode provides access to special functions without requiring firmware reflashing or device disconnection. This allows you to adjust settings and perform system operations during normal use.
 
-**Activation**: Hold **Left Shift + Right Shift** during boot
+**Activation:**
+- Hold both shift keys for 3 seconds
+- LED begins alternating between green and blue
+- Mode auto-exits after 3 seconds of inactivity or immediately after executing a command
 
-**Features:**
-- 🔄 **Bootloader Entry**: Flash new firmware (press 'B')
-- 🧪 **Keytest Mode**: Verify all keys work (press 'T')
-- 🎨 **LED Test**: Test indicator LEDs (automatic)
-- ⚙️ **Configuration**: View/modify persistent settings (planned)
+**Available Commands:**
+- 🔄 **'B'**: Enter bootloader (BOOTSEL mode for firmware updates)
+- 🐛 **'D'**: Change log level (then press 1/2/3 for ERROR/INFO/DEBUG)
+- ⚙️ **'F'**: Factory reset (restore default configuration and reboot)
+- 💡 **'L'**: LED brightness (then press +/- to adjust, 0=off to 10=max)
 
-**LED Indicators:**
-- All LEDs flash rapidly = Command mode active
-- Num Lock LED blinks = Keytest mode active
-- Normal operation = Command mode disabled
+**LED Feedback:**
+- Alternating green/blue - Command Mode active
+- Solid green - Normal operation resumed
 
-**See:** [Command Mode Guide](command-mode.md)
+Command Mode provides a handy method for adjusting settings during testing or troubleshooting without interrupting workflow.
 
----
-
-### Keytest Mode
-
-**[Keytest Mode Guide](keytest-mode.md)**
-
-Interactive key testing interface:
-
-**Purpose**: Verify all keys register correctly without external software
-
-**How to Use:**
-1. Enter Command Mode (Left Shift + Right Shift during boot)
-2. Press 'T' to activate Keytest Mode
-3. Press each key - LED blinks on press
-4. Press Escape to exit and reboot
-
-**Indicators:**
-- Num Lock LED blinks on each keypress
-- Works with any keyboard layout
-- Tests make/break events
-- No computer required (works standalone)
-
-**See:** [Keytest Mode Guide](keytest-mode.md)
+**See:** [Command Mode Guide](command-mode.md) for complete activation instructions and command reference
 
 ---
 
@@ -79,51 +51,40 @@ Interactive key testing interface:
 
 **[Configuration Storage Guide](config-storage.md)**
 
-Persistent configuration stored in flash memory:
+Configuration settings persist across reboots using the flash storage system. LED brightness, log level, and protocol settings are saved to the last 4KB sector of internal flash memory, eliminating the need for reconfiguration after power cycling.
 
-**Current Settings:**
-- Protocol-specific parameters
-- LED brightness (planned)
-- Custom key mappings (planned)
-- Debounce timing (planned)
+The implementation uses a dual-copy redundancy system for data integrity. Two copies (A and B) are stored, each with CRC validation to detect corruption. Writes alternate between the copies for wear leveling, which extends flash life to about 10,000 write cycles per location before degradation. That's plenty for configuration updates that happen occasionally rather than continuously.
 
-**Storage:**
-- Flash memory (separate from firmware)
-- Survives power cycles
-- Reset to defaults via Command Mode
-- 4KB reserved sector
+Currently stored settings include your log level (ERROR, INFO, or DEBUG), LED brightness level (0-10 scale), protocol initialization parameters, and timing thresholds. The storage system's extensible too, so future features like custom key mappings, macros, or debounce timing adjustments can slot right in without architectural changes.
 
-**Status**: ⚠️ Basic implementation, extended features planned
-
-**See:** [Configuration Storage Guide](config-storage.md)
+**See:** [Configuration Storage Guide](config-storage.md) for technical details about flash allocation and redundancy
 
 ---
 
 ### LED Indicators
 
-**[LED Support Guide](led-support.md)**
+**[LED Indicators Guide](led-indicators.md)**
 
-Full LED support for keyboard indicators:
+LED indicators provide visual feedback about converter status, including operational state, Command Mode activation, and error conditions. Every converter requires at least one status LED, with optional WS2812 RGB LEDs available for enhanced visibility.
 
-**Supported LEDs:**
-- ✅ Caps Lock
-- ✅ Num Lock
-- ✅ Scroll Lock
-- ✅ Compose (if keyboard supports)
-- ✅ Kana (if keyboard supports)
+**Converter Status Indicators:**
+- Status LED (RGB): Shows operational state and command mode
+- Power indication
+- Error states and protocol issues
 
-**Protocol Support:**
-- AT/PS2: Full LED control
-- XT: No LED control (unidirectional protocol)
-- Amiga: Caps Lock sync via pulse
-- M0110: No LED control
+The status LED shows different colours depending on what's happening. Solid green means everything's working normally. Solid orange appears briefly during startup whilst firmware initializes. Alternating green and blue indicates Command Mode is active and waiting for you to press a command key. Solid magenta means bootloader mode (firmware flash mode). These patterns make it easy to tell what's going on without needing to connect debug tools.
+
+**Keyboard Lock Indicators:**
+
+For keyboard lock indicators (Caps Lock, Num Lock, Scroll Lock), the converter handles synchronization automatically. When a lock key is pressed, the host OS sends LED states back through the HID protocol. The converter forwards these states to the keyboard using the appropriate LED command format for the protocol—AT/PS2 keyboards receive the 0xED command, Amiga keyboards use handshake timing variations, whilst XT and M0110 keyboards don't support LED control (unidirectional protocols).
 
 **Optional WS2812 RGB LED:**
-- Status indicator (Command Mode, Keytest)
+- Status indicator (Command Mode)
 - Configurable brightness
-- Disabled by default (saves power)
 
-**See:** [LED Support Guide](led-support.md)
+WS2812 RGB LEDs (NeoPixels) can be added for enhanced visual feedback. These connect to GPIO 29 by default and support configurable brightness through Command Mode. WS2812 support is optional and disabled by default to conserve power.
+
+**See:** [LED Indicators Guide](led-indicators.md) for wiring diagrams, colour patterns, and technical details
 
 ---
 
@@ -131,14 +92,13 @@ Full LED support for keyboard indicators:
 
 **[Mouse Support Guide](mouse-support.md)**
 
-AT/PS2 mouse protocol conversion:
+Mouse support allows connection of a mouse alongside the keyboard, providing complete period-accurate input hardware. The mouse operates independently from the keyboard using separate GPIO pins and a separate PIO state machine, preventing any signal interference.
 
-**Features:**
-- ✅ Standard 3-byte packets (buttons, X, Y)
-- ✅ 4-byte extended packets (scroll wheel - IntelliMouse)
-- ✅ Independent hardware lines (separate CLK/DATA)
-- ✅ Works with any keyboard protocol
-- ✅ Simultaneous keyboard + mouse
+AT/PS2 protocol mice are currently supported, covering most mice from the mid-1980s through early 2000s. The converter handles standard 3-byte packets (buttons, X movement, Y movement) and extended 4-byte packets for mice with scroll wheels (IntelliMouse protocol). Scroll wheel detection occurs automatically during initialization.
+
+Mouse support is protocol-agnostic and works with any keyboard protocol. An AT/PS2 mouse can be paired with XT, Amiga, or M0110 keyboards because the mouse uses dedicated hardware lines (CLOCK and DATA separate from keyboard lines), allowing parallel operation without coordination. Press keys whilst moving the mouse, scroll whilst holding modifier keys, click whilst typing—everything works as expected because the signals never cross paths.
+
+To enable mouse support, add the MOUSE environment variable when building firmware:
 
 **Example:**
 ```bash
@@ -146,29 +106,27 @@ AT/PS2 mouse protocol conversion:
 docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
 ```
 
-**Pin Configuration:**
-- Mouse CLK: GPIO 19
-- Mouse DATA: GPIO 18
+**Hardware Requirements:**
+- Separate CLOCK and DATA lines for mouse (independent from keyboard)
 - Level shifters required (5V → 3.3V)
+- GPIO pins configured in [`config.h`](../../src/config.h)
 
-**See:** [Mouse Support Guide](mouse-support.md)
+**See:** [Mouse Support Guide](mouse-support.md) for complete wiring instructions and protocol details
 
 ---
 
-### Logging & Debugging
+### Logging
 
 **[Logging Guide](logging.md)**
 
-UART-based logging for development and troubleshooting:
+The converter provides detailed UART-based logging to help you understand what it's doing and diagnose problems. This is particularly useful when you're adding support for a new keyboard or troubleshooting protocol issues—you can watch the raw scancodes come in, see how they're processed, and spot where things go wrong.
 
-**Features:**
-- DMA-driven UART (non-blocking)
-- Configurable log levels (INFO, DEBUG, ERROR)
-- Protocol state information
-- Error tracking
-- Performance metrics
+The logging implementation uses DMA-driven UART, which means log messages transmit in the background without blocking keyboard processing. Even at DEBUG log level (which outputs every scancode), logging never adds latency to your keystrokes. The UART operates completely independently from USB, so debug output keeps working even if the USB connection has problems—exactly when you need it most.
 
-**Output Example:**
+You can adjust the log level through Command Mode without reflashing firmware. Press D in Command Mode, then 1 for ERROR (just critical errors), 2 for INFO (initialization and state changes), or 3 for DEBUG (everything including individual scancodes). The setting persists across reboots, so you only need to set it once.
+
+Log output looks like this:
+
 ```
 [INFO] Keyboard interface initialized (AT/PS2)
 [DBG] Scancode: 0x1C (Make)
@@ -176,78 +134,22 @@ UART-based logging for development and troubleshooting:
 [INFO] Command mode activated
 ```
 
-**Connection:**
-- TX: GPIO 0
-- RX: GPIO 1 (optional)
-- Baud: 115200
-- Use USB-UART adapter for monitoring
+To view logs, connect a USB-to-UART adapter to GPIO 0 (TX) and GPIO 1 (RX, optional) with a shared ground connection. Set your terminal program to 115200 baud, 8 data bits, no parity, 1 stop bit. Any standard terminal program works—screen, minicom, PuTTY, or CoolTerm.
 
-**See:** [Logging Guide](logging.md)
+**See:** [Logging Guide](logging.md) for complete wiring instructions, terminal setup, and log format reference
 
 ---
 
-## Feature Comparison
+## Architectural Principles
 
-| Feature | AT/PS2 | XT | Amiga | M0110 | Mouse |
-|---------|--------|----|----|-------|-------|
-| **Full NKRO** | ✅ | ✅ | ✅ | ✅ | N/A |
-| **LED Control** | ✅ | ❌ | Caps only | ❌ | N/A |
-| **Bidirectional** | ✅ | ❌ | ✅ | ❌ | ✅ |
-| **Command Mode** | ✅ | ✅ | ✅ | ✅ | N/A |
-| **Keytest Mode** | ✅ | ✅ | ✅ | ✅ | N/A |
-| **Config Storage** | ✅ | ✅ | ✅ | ✅ | ✅ |
-
----
-
-## Planned Features
-
-### Coming Soon
-
-- 🔄 **Extended Config Options** - Custom key mappings, debounce timing, LED brightness
-- 🔄 **WebHID Interface** - Browser-based configuration tool (no drivers needed)
-- 🔄 **Macro Support** - Custom key macros and sequences
-- 🔄 **Multiple Layouts** - Switch between layouts without reflashing
-- 🔄 **Advanced Mouse** - Acceleration profiles, button remapping
-
-### Under Consideration
-
-- 📋 **IBM 4704 Protocol** - Support for Model F 4704 keyboards
-- 📋 **ADB Protocol** - Apple Desktop Bus keyboards
-- 📋 **Serial Mouse** - 9-pin serial mouse support
-- 📋 **Bluetooth** - Wireless conversion (hardware dependent)
-
----
-
-## Feature Request Process
-
-Have an idea for a new feature?
-
-1. **Search**: Check [existing discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) and [issues](https://github.com/PaulW/rp2040-keyboard-converter/issues)
-2. **Discuss**: Start a [feature request discussion](https://github.com/PaulW/rp2040-keyboard-converter/discussions/new?category=ideas)
-3. **Provide Details**:
-   - Use case description
-   - Expected behavior
-   - Hardware requirements (if any)
-   - Priority level
-
-**Architecture Constraints:**
-- ⚠️ Single-core only (Core 0)
-- ⚠️ Non-blocking operations required
-- ⚠️ Must run from SRAM (not Flash)
-- ⚠️ Ring buffer capacity (32 bytes)
-- ⚠️ USB polling interval (10ms)
-
-**See:** [Architecture Guide](../advanced/architecture.md)
-
----
-
-## Implementation Details
-
-All features are designed with these principles:
+All these features follow the same architectural principles that keep the converter responsive and reliable.
 
 ### Non-Blocking Architecture
 
-**No** `sleep_ms()`, `busy_wait_us()`, or blocking operations:
+Nothing in the converter ever blocks. No `sleep_ms()`, no `busy_wait_us()`, no polling loops that halt execution. This is critical for maintaining the microsecond-level timing that keyboard protocols require. Even a brief blocking operation can cause the ring buffer to overflow and drop scancodes.
+
+Instead, everything uses non-blocking state machines with timeouts:
+
 ```c
 // ❌ BAD: Blocking
 sleep_ms(100);
@@ -259,44 +161,38 @@ if (to_ms_since_boot(get_absolute_time()) - state_start > 100) {
 }
 ```
 
-**See:** [Architecture Guide](../advanced/architecture.md)
+This pattern appears throughout the codebase—protocol handlers, Command Mode, LED updates, configuration storage. The main loop runs continuously without blocking, checking state machines and processing events as they occur. It's a bit more code than just calling `sleep()`, but it's what keeps the converter working reliably under all conditions.
+
+**See:** [Architecture Guide](../advanced/architecture.md) for complete details about the non-blocking design
 
 ---
 
 ### Performance Optimization
 
-**Resource constraints:**
-- ~2% CPU usage at 30 CPS (97.9% idle)
-- 32-byte ring buffer (adequate for burst handling)
-- 350μs end-to-end latency
-- 264KB SRAM (132KB used)
+The converter runs on modest hardware—an RP2040 microcontroller with 264KB SRAM and a 125MHz ARM Cortex-M0+ core. Resource constraints matter here, so the implementation is designed for efficiency.
 
-**See:** [Performance Guide](../advanced/performance.md)
+The 32-byte ring buffer provides adequate burst handling—it can queue up several scancodes before the main loop processes them. The non-blocking architecture ensures the converter remains responsive even under continuous input.
+
+Memory usage is about 132KB of the available 264KB SRAM, which leaves plenty of headroom for future features. Flash usage varies by configuration (which protocols and features you enable), but typically sits around 80-120KB out of 2MB available.
+
+**See:** [Advanced Topics](../advanced/README.md) for detailed performance analysis and measurements
 
 ---
 
 ## Related Documentation
 
-**In This Documentation:**
-- [Getting Started](../getting-started/README.md) - Basic setup
-- [Protocols](../protocols/README.md) - Protocol details
-- [Architecture](../advanced/architecture.md) - Implementation details
-- [Development](../development/README.md) - Contributing guide
+If you want to dive deeper into how these features work or understand the implementation details, have a look at these guides:
 
-**Source Code:**
+**Getting Started:**
+- [Getting Started Guide](../getting-started/README.md) - Initial setup and first firmware build
+- [Hardware Setup](../getting-started/hardware-setup.md) - Wiring diagrams and connections
+
+**Technical Details:**
+- [Protocols Overview](../protocols/README.md) - How keyboard protocols work
+- [Advanced Topics](../advanced/README.md) - System architecture and troubleshooting
+- [Development Guide](../development/README.md) - Contributing and code standards
+
+**Source Code References:**
 - Command Mode: [`src/common/lib/command_mode.[ch]`](../../src/common/lib/command_mode.c)
 - HID Interface: [`src/common/lib/hid_interface.[ch]`](../../src/common/lib/hid_interface.c)
 - Config Storage: [`src/common/lib/config_storage.[ch]`](../../src/common/lib/config_storage.c)
-
----
-
-## Need Help?
-
-- 📖 [Troubleshooting](../advanced/troubleshooting.md)
-- 💬 [Ask Questions](https://github.com/PaulW/rp2040-keyboard-converter/discussions)
-- 🐛 [Report Issues](https://github.com/PaulW/rp2040-keyboard-converter/issues)
-- 💡 [Feature Requests](https://github.com/PaulW/rp2040-keyboard-converter/discussions/new?category=ideas)
-
----
-
-**Status**: Documentation in progress. Feature-specific guides coming soon!

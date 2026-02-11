@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
 # CodeRabbit Configuration for RP2040 Keyboard Converter
 # Complete reference: https://docs.coderabbit.ai/reference/configuration
 
@@ -5,15 +7,24 @@
 # GLOBAL SETTINGS
 # =============================================================================
 
-language: "en-GB"
+language: "en-GB"  # British English to match documentation style
+early_access: false
 
 # Set assertive profile for embedded systems - we need strict reviews
 reviews:
   profile: "assertive"
+  request_changes_workflow: false
   
   # Generate comprehensive review summaries
   high_level_summary: true
   high_level_summary_placeholder: "@coderabbitai summary"
+  high_level_summary_in_walkthrough: false
+  poem: false  # Professional tone for technical project
+  review_status: true
+  review_details: true  # Show ignored files, extra context, suppressed comments
+  commit_status: true
+  fail_commit_status: true
+  in_progress_fortune: false
   
   # Enable all walkthrough features
   collapse_walkthrough: false
@@ -109,6 +120,17 @@ reviews:
         - Verify state machine transitions
         - Ensure proper synchronization between PIO and CPU
     
+    - path: "docs/**/*.md"
+      instructions: |
+        DOCUMENTATION STANDARDS (CRITICAL):
+        - 100% fact-driven content - verify ALL technical details against source code
+        - NO unverified quantifications: "most", "typically", "usually", "common", "popular", "straightforward"
+        - Conversational British English: "whilst", "colour", "initialise", "behaviour"
+        - Natural prose flow - avoid bullet lists for processes/workflows
+        - NEVER reference docs-internal/ directory
+        - Point to directories (src/protocols/, src/keyboards/) instead of listing protocols
+        - Explain WHY not just WHAT
+    
     - path: ".github/workflows/**"
       instructions: |
         - Verify all keyboard configurations in build matrix are valid paths
@@ -122,6 +144,12 @@ reviews:
         - Check proper linking of protocol/keyboard/scancode modules
         - Validate PIO header generation
   
+  # Abort in-progress review if PR closed
+  abort_on_close: true
+  
+  # Disable cache for fresh analysis (small project, performance not critical)
+  disable_cache: false
+  
   # Auto review configuration
   auto_review:
     enabled: true
@@ -132,6 +160,12 @@ reviews:
       - "wip"
       - "DO NOT MERGE"
       - "DNM"
+    base_branches:
+      - main
+      - develop
+  
+  # Enable AI agent prompts for code generation assistance
+  enable_prompt_for_ai_agents: true
   
   # Finishing touches
   finishing_touches:
@@ -237,7 +271,11 @@ reviews:
     checkmake:
       enabled: true
     
-    # AST-grep for custom patterns
+    # Trivy for vulnerability scanning
+    trivy:
+      enabled: true
+    
+    # AST-grep for custom patterns (C code analysis)
     ast-grep:
       essential_rules: true
       rule_dirs: []
@@ -256,7 +294,13 @@ reviews:
       enabled: true
       timeout_ms: 720000  # 12 minutes (max is 15 minutes)
     
-    # Disable tools not relevant to this project
+    # Disable tools not relevant to this C embedded project
+    blinter:
+      enabled: false
+    fortitudeLint:
+      enabled: false
+    tflint:
+      enabled: false  # No Terraform
     ruff:
       enabled: false  # No Python source code
     phpstan:

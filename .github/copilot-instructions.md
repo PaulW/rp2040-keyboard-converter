@@ -1,6 +1,12 @@
 # RP2040 Keyboard Converter - AI Instructions
 
-Embedded firmware converting vintage keyboard/mouse protocols (AT/PS2, XT, Apple M0110, Amiga) to USB HID using RP2040's PIO hardware. **Single-core only** (Core 0), runs from SRAM for performance.
+Embedded firmware converting keyboard/mouse protocols (AT/PS2, XT, Apple M0110, Amiga) to USB HID using RP2040's PIO hardware. **Single-core only** (Core 0), runs from SRAM for performance.
+
+**Key Documentation:**
+- [Contributing Guide](../docs/development/contributing.md) - PR process, commit format, contribution types
+- [Code Standards](../docs/development/code-standards.md) - Coding conventions, testing scenarios, PIO standards
+- [Adding Keyboards](../docs/development/adding-keyboards.md) - Step-by-step keyboard support guide
+- [Custom Keymaps](../docs/development/custom-keymaps.md) - Keymap modification guide
 
 ---
 
@@ -18,15 +24,16 @@ Embedded firmware converting vintage keyboard/mouse protocols (AT/PS2, XT, Apple
 ### Architecture Summary:
 - **Non-blocking**: Main loop runs at ~100kHz, protocols need microsecond timing → use `to_ms_since_boot(get_absolute_time())`
 - **IRQ Safety**: IRQ (producer) → Ring Buffer → Main Loop (consumer). Use `volatile` + `__dmb()` memory barriers
-- **USB**: Always check `tud_hid_ready()` before sending HID reports (10ms host polling)
+- **USB**: Always check `tud_hid_ready()` before sending HID reports (8ms host polling - bInterval=8)
 - **Platform**: RP2040 (ARM Cortex-M0+, 125MHz), 32-byte ring buffer, 350μs max latency
 
 ### Self-Verification Protocol (Run Before EVERY Response):
 1. **"Did I read the full relevant section of copilot-instructions.md?"**
 2. **"Am I about to violate any Critical Rules?"**
 3. **"Should I verify this with the user before proceeding?"**
-4. **"Did I check enforcement tool output (`./tools/lint.sh`)?"**
+4. **"Did I check enforcement tool output (if modifying code)?"** - Run `./tools/lint.sh` for code changes only, not documentation
 5. **"Am I making assumptions, or do I have verified context?"**
+6. **"For documentation work: Is content fact-driven with conversational British English flow?"**
 
 ### ⛔ STOP - Operations Requiring Explicit User Confirmation:
 **Always ask user before:**
@@ -66,7 +73,7 @@ Embedded firmware converting vintage keyboard/mouse protocols (AT/PS2, XT, Apple
 - [ ] Always check `tud_hid_ready()` before sending reports
 - [ ] Verify USB descriptor matches report structure
 - [ ] Test with multiple host OSes (Windows, macOS, Linux)
-- [ ] Validate NKRO behavior under high throughput (30 CPS test)
+- [ ] Validate 6KRO (Boot Protocol) behavior under high throughput (30 CPS test)
 
 ### ⛔ Before Adding/Modifying Time-Based Code
 - [ ] Using `to_ms_since_boot(get_absolute_time())` (non-blocking)
@@ -295,8 +302,21 @@ void my_task(void) {
 3. Protocol state machine in `keyboard_interface_task()`: initialization, error recovery, LED commands
 4. Reference: `at-ps2/` (complex bidirectional), `xt/` (simple unidirectional)
 
+**See also:** Each protocol's README.md contains timing diagrams and implementation details.
+
+### Adding Keyboard Support
+For adding a new keyboard using an existing protocol, see the comprehensive guide in `docs/development/adding-keyboards.md`. Quick overview:
+1. Create `src/keyboards/<brand>/<model>/` with four files: `keyboard.config`, `keyboard.h`, `keyboard.c`, `README.md`
+2. Define KEYBOARD_PROTOCOL, KEYBOARD_CODESET, KEYBOARD_LAYOUT in keyboard.config
+3. Create keymap using KEYMAP_*() macros matching physical layout
+4. Test with actual hardware
+
+### Modifying Keymaps
+For remapping keys or creating alternative layouts, see `docs/development/custom-keymaps.md`. The keymap is just an array - change the HID keycode at any position to remap that physical key.
+
 ### Keyboard-Specific Overrides
-Command Mode keys (bootloader entry): Default is Left Shift + Right Shift. Override in `keyboard.h` **before includes**:
+
+Command Mode keys (bootloader entry) default to Left Shift + Right Shift. For keyboards with unusual layouts (e.g., single shift key), override in `keyboard.h` **before includes**:
 
 ```c
 // keyboards/apple/m0110a/keyboard.h - single shift key issue
@@ -307,11 +327,23 @@ Command Mode keys (bootloader entry): Default is Left Shift + Right Shift. Overr
 
 **Why "before includes":** `#ifndef` guards in `command_mode.c` implement "first definition wins". Keyboard definition takes precedence over defaults.
 
-### Debugging
-- **UART output**: `printf()` uses DMA-driven UART (non-blocking) - connect GPIO pins to USB-UART adapter
-- **Error patterns**: `[ERR]` prefix, `[DBG]` for development, `[INFO]` for initialization
-- **State machine issues**: Look for `!INIT!` messages indicating unexpected scancode sequences
-- **Build with debug**: All `printf()` statements active in normal builds
+**See also:** `docs/development/adding-keyboards.md` covers all keyboard-specific customization options.
+
+### Debugging and Testing
+
+**UART Debug Output:**
+- `printf()` uses DMA-driven UART (non-blocking) - connect GPIO 0/1 to USB-UART adapter
+- Error patterns: `[ERR]` prefix, `[DBG]` for development, `[INFO]` for initialization
+- State machine issues: Look for `!INIT!` messages indicating unexpected scancode sequences
+- All `printf()` statements active in normal builds
+
+**Testing Scenarios** (see `docs/development/code-standards.md` for details):
+1. **Basic functionality** - Normal typing, verify keys work as expected
+2. **Stress test** - Fast typing at 30+ CPS to test pipeline and buffering
+3. **Command Mode** - Hold both shifts for 3 seconds, verify activation
+4. **LEDs** - Test Caps/Num/Scroll Lock updates (if protocol supports)
+5. **Error recovery** - Power cycle keyboard mid-operation, verify recovery
+6. **Multi-OS testing** - Test on Windows, macOS, Linux for HID compatibility
 
 ---
 
@@ -334,10 +366,10 @@ Measured with IBM Model M Enhanced keyboard (AT/PS2 protocol):
 ### Resource Usage
 - **CPU Utilization:** 2.1% at 30 CPS maximum throughput (97.9% idle)
 - **RAM Usage:** ~50% of 264KB SRAM (132KB used for code + data + stack)
-- **Flash Usage:** ~200KB for program + const data
+- **Flash Usage:** ~80-120KB for program + const data (varies by configuration)
 - **Ring Buffer:** 32 bytes (adequate for burst handling)
 
-**Key Finding:** USB polling (10ms) is the only bottleneck. Processing (350 μs) is NOT a limiting factor.
+**Key Finding:** USB polling (8ms - bInterval=8) is the only bottleneck. Processing (350 μs) is NOT a limiting factor.
 
 ---
 
@@ -397,6 +429,55 @@ Use: to_ms_since_boot(get_absolute_time()) for timing
 - ❌ **NEVER**: Reference docs-internal/ in public documentation, commit messages, or PR descriptions
 - 📍 **Purpose**: Local-only knowledge base for deep dives, investigations, and development context
 
+### Documentation Writing Style
+
+**Critical Guidelines for Public Documentation:**
+
+1. **100% Fact-Driven Content**
+   - NO assumptions about what protocols/keyboards are supported—point to directories (`src/protocols/`, `src/keyboards/`)
+   - NO marketing language: Remove "pleased to know", "straightforward", "simply", "convenient", superlatives
+   - NO protocol/feature enumeration in opening paragraphs—readers can check directories
+   - Verify ALL technical details against codebase (file paths, function names, configuration options)
+
+2. **Natural Conversational Flow**
+   - Write flowing prose, NOT bullet-point lists (unless listing actual options/commands)
+   - Use natural transitions: "First up", "Next", "Right, let's", "Now", "Finally"
+   - Explain WHY not just WHAT: "This is important because...", "The reason for this..."
+   - Self-aware about difficulties: "It's tedious work, I'll grant you", "trust me, you'll forget"
+   - Conversational asides: "I know it might seem", "you'd be surprised"
+
+3. **British English Throughout**
+   - Use: "whilst", "colour", "initialise", "behaviour", "favour", "analyse"
+   - NOT: "while", "color", "initialize", "behavior", "favor", "analyze"
+   - Natural British phrasing: "have a look", "quite often", "at odd hours", "a bit of"
+
+4. **Reference Style Examples**
+   - Good: "Check `src/protocols/` for available protocol implementations"
+   - Bad: "The project supports AT/PS2, XT, Amiga, and Apple M0110 protocols"
+   - Good: "You'll create a new directory under `src/keyboards/<brand>/<model>/` and add four files"
+   - Bad: "Create the following files: 1. keyboard.config, 2. keyboard.h, 3. keyboard.c, 4. README.md"
+
+5. **Avoid These Patterns**
+   - ❌ "You'll be pleased to know..."
+   - ❌ "It's fairly straightforward..."
+   - ❌ "Simply do X and Y..."
+   - ❌ Numbered step lists when narrative flow works better
+   - ❌ Bold headers for every subsection (use sparingly)
+   - ❌ Listing all project features/protocols in introductions
+
+6. **When to Use Bullet Lists**
+   - ✅ Reference material (keycode tables, command options)
+   - ✅ Actual configuration options from files
+   - ✅ Quick checklists for verification
+   - ❌ Explaining processes or workflows (use flowing prose)
+   - ❌ Describing what to do step-by-step (use narrative)
+
+**Style References:**
+- docs/getting-started/building-firmware.md - Conversational, explains context
+- docs/getting-started/hardware-setup.md - Natural flow with "Right, let's get"
+- docs/development/contributing.md - British English, self-aware tone
+- docs/development/code-standards.md - Explains why, not just what
+
 ---
 
 ## Code Quality and Maintenance
@@ -450,8 +531,9 @@ external/pico-sdk/         # Pico SDK submodule
 1. ✅ Read relevant copilot-instructions.md section completely?
 2. ✅ Will this violate Critical Rules (blocking, multicore, Flash)?
 3. ✅ Should I ask user before proceeding?
-4. ✅ Did I run/verify ./tools/lint.sh?
+4. ✅ Did I run/verify ./tools/lint.sh (for code changes only, NOT documentation)?
 5. ✅ Am I citing facts, or making assumptions?
+6. ✅ For documentation: Is this 100% fact-driven with natural conversational flow in British English?
 
 **High-risk operations:**
 - Adding blocking call → **ASK USER FIRST**
@@ -477,6 +559,7 @@ external/pico-sdk/         # Pico SDK submodule
 - **Plan before coding**: Think through approach, then reflect on the plan after implementation
 - **Maintain architectural purity**: All USB/HID logic runs on Core 0 - ensure no blocking operations introduced
 - **Remember PIO files**: Protocols (and libraries like WS2812) use PIO assembly files - ensure correctly referenced
+- **Documentation style matters**: Public docs must be fact-driven, naturally flowing, British English—never list protocols/features, verify all technical claims against codebase
 
 ---
 

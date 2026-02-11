@@ -1,301 +1,187 @@
 # Hardware Setup
 
-**Time Required**: 30-60 minutes  
-**Difficulty**: Beginner-friendly  
-**Last Updated**: 29 October 2025
+By the end of this guide, you should have a working converter ready to connect whichever device you're using (keyboard, mouse, or both) and get it working on your computer.
 
-This guide walks you through connecting your vintage keyboard or mouse to an RP2040 board using a breadboard prototype. By the end, you'll have a fully wired converter ready for firmware installation.
+I'm not going to dive into the deep technical details of how everything works here (that's what the [Hardware Documentation](../hardware/README.md) is for), but rather give you a simple, step-by-step guide to get you up and running as quickly as possible.
 
 ---
 
-## What You'll Build
+## What We're Building
 
-A simple breadboard circuit that safely connects your vintage device (5V logic) to the RP2040 (3.3V logic) using a level shifter for voltage translation. No soldering required—everything uses jumper wires and pre-assembled modules.
+To keep things simple, we'll be setting everything up on a breadboard that you can connect your device to. It'll handle the necessary voltage level shifting between the keyboard and the Raspberry Pi Pico, then connect to your computer via USB. This is actually the exact setup I used when I originally started development—it's simple to build, easy to modify and test different configurations.
 
-![Breadboard Schematic](../images/hardware/breadboard-schematic.png)
-
-*The breadboard schematic above shows: WaveShare RP2040-Zero, BSS138 level shifter, and a 5-pin 180° DIN socket for keyboard connection. This example demonstrates keyboard-only setup (no mouse attached).*
-
-**Your completed setup will have:**
-- Vintage device connected via its original connector
-- Level shifter translating between 5V and 3.3V
-- RP2040 board ready to run converter firmware
-- USB connection to your computer for power and data
+**When you're done, you'll have:**
+- No messy wiring or splicing cables to connect things up
+- A level shifter handling the different voltage levels between 5V and 3.3V
+- The Raspberry Pi Pico connected and ready to go
 
 ---
 
-## Parts List
+## What You'll Need
 
-Before starting, gather these components:
+**The essentials:**
+- A PS/2 keyboard (or whichever supported device you're working with)
+- An RP2040 board. I've used a WaveShare RP2040-Zero for mine, but a Raspberry Pi Pico or any similar board should work just fine—the only real difference between them is the pinout and physical size
+- A breadboard and jumper wires (a 400-point half-size breadboard should do nicely)
+- A bi-directional level shifter module (I'd really recommend one using BSS138 level shifters—I use the Adafruit one listed below and find it much easier and more compact than mucking about with a bunch of resistors)
+- Whichever breakout or connector you need to connect your device (a PS/2 Mini-DIN-6 socket for PS/2 keyboards, a 5-pin DIN-5 socket for older AT/XT keyboards, that sort of thing)
 
-### Essential Components
+**Quick shopping list:**
 
-| Component | Quantity | Example | Price |
-|-----------|----------|---------|-------|
-| **RP2040 Board** | 1 | Raspberry Pi Pico or WaveShare RP2040-Zero | £4-8 |
-| **Level Shifter Module** | 1 | BSS138-based 4-channel bidirectional | £2-5 |
-| **Device Connector** | 1 | PS/2, DIN-5, or protocol-specific | £2-10 |
-| **USB Cable** | 1 | USB-A to Micro-B (Pico) or USB-C (RP2040-Zero) | £1-5 |
-| **Breadboard** | 1 | Half-size (400 tie-points) | £3-5 |
-| **Jumper Wires** | 1 set | Male-to-male and male-to-female assortment | £5-10 |
+| Component | Quantity | Approx Cost |
+|-----------|----------|-------------|
+| [Waveshare RP2040-Zero](https://amzn.eu/d/bZ0RDjV) | 1 | £8-12 |
+| [Level shifter module](https://thepihut.com/products/adafruit-4-channel-i2c-safe-bi-directional-logic-level-converter) | 1 | £2-5 |
+| PS/2 connector/adapter (Mini-DIN-6) | 1 | £2-10 |
+| USB cable (Micro USB or USB-C depending on your RP2040 board) | 1 | £1-5 |
+| [Breadboard](https://thepihut.com/products/raspberry-pi-breadboard-half-size) | 1 | £3-5 |
+| [Jumper wires](https://thepihut.com/products/premium-male-male-jumper-wires-20-x-6-150mm) | 1 set | £2-5 |
 
-**Total Cost**: Approximately £15-40 depending on board and connector choices
+**Total**: Around £15-40 depending on what you choose and what you might already have lying about. I know it might seem like a bit of an expense just to try this out, but these components are all fairly reusable for other projects too, so they won't go to waste.
 
-### Where to Buy
-
-- **RP2040 Boards**: [Raspberry Pi Store](https://www.raspberrypi.com/products/), [Pimoroni](https://shop.pimoroni.com/), [Adafruit](https://www.adafruit.com/)
-- **Level Shifters**: [Adafruit](https://www.adafruit.com/product/757), [SparkFun](https://www.sparkfun.com/products/12009), Amazon (search "BSS138 level shifter")
-- **Connectors**: eBay (search "[protocol] extension cable" or "breakout board"), electronics distributors
-- **Other Components**: Any electronics supplier (Amazon, eBay, local electronics shops)
+**Where to buy**: Adafruit, SparkFun, Pimoroni, Amazon, eBay—all the usual suspects.
 
 ---
 
-## Safety First: Why Level Shifters Matter
+## What Do We Need the Level Shifter For?
 
-⚠️ **Critical**: Never connect your vintage device directly to the RP2040!
+⚠️ **This is important**: Don't connect your device directly to the RP2040!
 
-- **Vintage devices use 5V logic** - Their CLK and DATA lines output 5V when HIGH
-- **RP2040 uses 3.3V logic** - GPIO pins expect maximum 3.3V input
-- **RP2040 GPIOs are NOT 5V tolerant** - Connecting 5V directly will **permanently destroy the chip**
+Older keyboards and mice operate at 5V, which is far too high for the RP2040 to handle directly. If you connect them straight in without a level shifter (or some other way to step down the voltages, like resistors), you'll damage the RP2040.
 
-The level shifter sits between them, automatically translating voltages in both directions:
-- Device → RP2040: Converts 5V HIGH to 3.3V HIGH (safe)
-- RP2040 → Device: Converts 3.3V HIGH to 5V HIGH (ensures device sees valid logic)
+The level shifter sits between them, translating voltages automatically in both directions:
+- Device → RP2040: Converts 5V HIGH down to a safe 3.3V HIGH
+- RP2040 → Device: Converts 3.3V HIGH up to 5V HIGH
 
-This isn't optional—it's essential for protecting your RP2040.
+This isn't optional—it's essential for protecting your hardware! Now, there are other ways to handle this (like using step-down resistors), but for simplicity I decided to use a dedicated level shifter module.
+
+Another reason I use the BSS138-based level shifter modules is that they're bi-directional. Some keyboard and mouse protocols send data in both directions (from device to RP2040, and from RP2040 back to device), so having a bi-directional level shifter makes the wiring much simpler.
 
 ---
 
 ## Step 1: Identify Your Device's Connector
 
-Find out which connector type your device uses. This determines the wiring in later steps.
+Now, I know we're focusing on PS/2 keyboards for this guide, but it's worth knowing how to identify your device's connector type and pinout if you want to use something different. I've added a quick overview of some of the different connector types and pinouts below, but just be aware your mileage may vary—even though different keyboards or mice might use the same connector, the pinouts can differ slightly between manufacturers. AT/PS2 keyboards and mice will all use the same standard pinout. It's just when you start looking at other devices, like Amiga or Apple M0110 keyboards, where things can differ a bit more.
 
-### Common Connector Types
+**Working out the pinout:**
 
-**PS/2 (Mini-DIN-6)**: Most common for AT/PS2 keyboards and mice
-- 6-pin round connector
-- Female on device cable, male on motherboard
-- Used from late 1980s through 2000s
+You'll need to know which wires carry the power and signal lines. Have a look at the **[Protocol Documentation](../protocols/README.md)** for whichever type of device you're wanting to use, as they contain specific information about wiring layouts and pinouts for each protocol.
 
-**DIN-5 (180°)**: Older AT and XT keyboards
-- 5-pin circular connector (larger than PS/2)
-- 180° pin arrangement (not 240° audio DIN-5)
-- Used in 1980s IBM PC/XT and PC/AT
-
-**RJ-10/RJ-11 (4P4C)**: Amiga 1000 and Apple M0110 keyboards
-- Telephone-style modular jack
-- 4 conductors (4P4C)
-- Looks like small phone connector
-
-**8-pin PCB Header**: Amiga 500/600/1200 internal keyboards
-- Straight pin header on keyboard PCB
-- Requires custom cable or adapter
-
-### Connector Pinouts
-
-Your device's pinout determines which wires carry CLK, DATA, power, and ground. Check your specific protocol documentation:
-
-- **[AT/PS2 Protocol](../protocols/at-ps2.md#connectors-and-pinouts)** - PS/2 and DIN-5 pinouts
-- **[XT Protocol](../protocols/xt.md#connector-and-pinout)** - DIN-5 pinout
-- **[Amiga Protocol](../protocols/amiga.md#connectors-and-pinouts)** - RJ-10 and 8-pin header pinouts
-- **[M0110 Protocol](../protocols/m0110.md#connector-and-pinout)** - RJ-10 pinout
-
-**Tip**: If you have an extension cable or breakout board, use a multimeter to verify which wire corresponds to each pin before connecting.
+**Tip**: It's always handy to have a multimeter to hand—it'll help you verify which wire corresponds to each pin before connecting things up.
 
 ---
 
 ## Step 2: Set Up the Breadboard
 
-Insert your components into the breadboard, leaving space for wiring.
-
 ### Component Placement
 
-```
-Breadboard Layout (Top View):
+![Breadboard Schematic](../images/hardware/breadboard-schematic.png)
 
-     [===========================================]
-     | + Rail (Red)                              |  ← Connect to +5V
-     | - Rail (Blue/Black)                       |  ← Connect to GND
-     |                                           |
-     |    [RP2040 Board]                         |  ← Left side of breadboard
-     |    (spanning center)                      |
-     |                                           |
-     |                   [Level Shifter Module]  |  ← Right side of breadboard
-     |                   (4-channel BSS138)      |
-     |                                           |
-     | + Rail (Red)                              |  ← Connect to +5V
-     | - Rail (Blue/Black)                       |  ← Connect to GND
-     [===========================================]
-```
+*The breadboard schematic above shows a WaveShare RP2040-Zero, a BSS138 level shifter, and a 5-pin 180° DIN socket for the keyboard connection (you can use whatever connector you need though—it just depends on your specific keyboard or mouse). This particular example is keyboard-only (no mouse), but the principle's the same if you're adding mouse support too.*
 
-**Placement Guidelines:**
-1. Insert RP2040 board on left side, spanning the center gap (pins on both sides)
-2. Insert level shifter module on right side, leaving several rows between it and RP2040
-3. Leave the top and bottom power rails accessible for connections
-4. Orient modules so pin labels are visible
+**How to lay things out:**
+1. Place the RP2040 board on the left side, spanning the centre gap (so the pins are accessible on both sides)
+2. Place the level shifter module on the right side, leaving a few rows between it and the RP2040
+3. Keep the top and bottom power rails accessible for connections
+4. Orient the modules so the pin labels are visible
 
-**Tip**: Take a photo of your layout for reference when troubleshooting later.
+**Tip**: Take a photo of your layout for reference when troubleshooting. That way, if you do move anything around, you have a visual record to compare against.
 
 ---
 
-## Step 3: Connect Power Rails
+## Step 3: Connect the Power Lines
 
-Establish power distribution across the breadboard.
-
-### Power Connections
-
-**Connect these wires:**
+First, connect the power and ground connections to all the components.
 
 | From | To | Wire Color | Purpose |
 |------|-----|------------|---------|
-| RP2040 **3V3** pin | Top **+ rail** (one section) | Red | 3.3V for level shifter LV side |
-| RP2040 **VSYS** pin | Top **+ rail** (different section) | Red | 5V for level shifter HV side and device |
-| RP2040 **GND** pin | Top **- rail** | Black | Common ground |
-| Top **- rail** | Bottom **- rail** | Black | Extend ground to both rails |
+| RP2040 **VSYS** pin | Power Rail **Upper** | Red | 5V for level shifter HV side and device |
+| RP2040 **GND** pin | Power Rail **Lower** | Black | Common ground |
+| RP2040 **3V3** pin | BSS138 **LV** | Yellow | 3.3V for level shifter LV side |
+| Power Rail **Upper** | BSS138 **HV** | Red | Connect HV Power to level shifter |
+| Power Rail **Lower** | BSS138 **GND** | Black | Common Ground to level shifter |
+| Power Rail **Upper** | Device **VCC** pin* | Red | Power for device (5V) |
+| Power Rail **Lower** | Device **GND** pin* | Black | Common ground |
 
-**Important**: Most breadboards have power rails split in the middle. Connect the 3.3V and 5V to **different rail sections** to avoid shorts. Use jumper wires to bridge rail sections if needed.
+**Important**: Different breadboards might have slightly different layouts—I'm basing this on the one I've got, so make sure to verify the power rails on your own breadboard. Also, with the WaveShare RP2040-Zero, pins 9 to 15 shouldn't be used or connected to anything. Because they're all positioned horizontally, they'll end up on the same row on the breadboard and might cause shorts if you connect them.
 
-### Verify Power
+***Device VCC/GND pins**: These will depend on the connector you're using for your device. Check the pinout for your specific connector to work out which pins are VCC and GND.
 
-Before proceeding:
-1. Connect USB cable from RP2040 to your computer
-2. RP2040's onboard LED should light up (usually green or red)
-3. If no LED lights, check USB cable quality (data cables, not charge-only)
-4. Disconnect USB after verification
+**Don't power anything on yet** - we've still got the signal lines to connect, so hold off on plugging in the USB for now.
 
 ---
 
-## Step 4: Wire the Level Shifter
+## Step 4: Connect the Signal Lines
 
-Connect the level shifter to power and ground, preparing it for signal translation.
+With the power lines connected, we can now wire up the signal lines. These carry the data and clock signals between the RP2040 ↔ Level Shifter ↔ Device.
 
-### Level Shifter Pinout
+### Level Shifter
 
-Most BSS138 modules have this pinout:
+As we're using the Adafruit Level Shifter, the pinout is as follows:
 
 ```
    [Level Shifter Module]
    
-                     LV ──┐────┌── HV
-   Low Voltage Side LV1 ──┤    |── HV1   High Voltage Side
-   (3.3V - RP2040)  LV2 ──┤    |── HV2   (5V - Device side)
-                    LV3 ──┤    |── HV3
-                    LV4 ──┤    |── HV4
-                    GND ──┘────└── GND
+                    LV ──┐────┌── HV
+ Low Voltage Side   A1 ──┤    |── B1   High Voltage Side
+ (3.3V - RP2040)    A2 ──┤    |── B2   (5V - Device side)
+                    A3 ──┤    |── B3
+                    A4 ──┤    |── B4
+                   GND ──┘────└── GND
 ```
 
-### Power and Ground Connections
+We should've already connected the LV, HV and GND pins in the previous step, so now we just need to connect the signal lines. It's important we make sure the LV side connects to the RP2040, and the HV side connects to the device. For the PS/2 keyboard example, we'll only be connecting the data and clock lines.
 
-| Level Shifter Pin | Connect To | Wire Color | Purpose |
-|-------------------|------------|------------|---------|
-| **LV** | 3.3V power rail | Red | Low voltage reference |
-| **LV GND** | Ground rail | Black | Common ground |
-| **HV** | 5V power rail | Red | High voltage reference |
-| **HV GND** | Ground rail | Black | Common ground |
+### Signal Line Connections
 
-**Note**: Both GND pins connect to the same common ground rail. All grounds must be connected together.
+| From | To | Wire Color | Purpose |
+|------|----|------------|---------|
+| RP2040 **DATA** pin | Level Shifter **A1** | Green | DATA signal (3.3V side) |
+| RP2040 **CLOCK** pin | Level Shifter **A2** | Green | CLOCK signal (3.3V side) |
+| Level Shifter **B1** | Device **DATA** pin | Green | DATA signal (5V side) |
+| Level Shifter **B2** | Device **CLOCK** pin | Green | CLOCK signal (5V side) |
 
----
+**Note**: The Adafruit level shifter has 4 channels (A1/B1 to A4/B4)—A1-A4 are the 3.3V low voltage side, and B1-B4 are the 5V high voltage side.
 
-## Step 5: Connect Signal Lines
-
-Wire the CLK and DATA lines through the level shifter.
-
-### GPIO Pin Configuration
-
-The breadboard schematic above uses GPIO 6 and 7 as an example configuration:
-
-| Signal | RP2040 GPIO | Level Shifter LV | Level Shifter HV | Device Connection |
-|--------|-------------|------------------|------------------|-------------------|
-| **Data** | GPIO 6 | LV1 | HV1 | Device DATA |
-| **Clock** | GPIO 7 | LV2 | HV2 | Device CLK |
-
-**Important**: You can wire to **any available GPIO pins** on the RP2040—the pins shown above are just one example. Before building firmware, check and update the pin definitions in [`src/config.h`](../../src/config.h) to match your actual wiring:
+**One hardware constraint to be aware of**: The firmware expects the clock pin to be data pin + 1. So if data is on `GPIO 2`, then clock needs to be on `GPIO 3`. This means you can use pairs like `2`/`3`, `6`/`7`, `10`/`11`, etc. If you follow the breadboard schematic with `GPIO 6`/`7`, you'd update `KEYBOARD_DATA_PIN` to `6` in the [`src/config.h`](../../src/config.h) file before building.
 
 ```c
-#define KEYBOARD_DATA_PIN 2  // Change to match your DATA pin
-#define MOUSE_DATA_PIN 6     // Change to match your mouse DATA pin (if using mouse)
-#define LED_PIN 29           // Change to match your LED data pin (if using LEDs)
+#define KEYBOARD_DATA_PIN 6  // Change this to match your DATA pin
+#define MOUSE_DATA_PIN 10    // Change this if you're using a mouse too
+#define LED_PIN 29           // Change this if you're adding LEDs
 ```
 
-**Hardware constraint**: The firmware expects CLOCK pin to be DATA pin + 1 for PIO efficiency (e.g., if DATA=2, then CLK=3). This means you can use GPIO pairs like 2/3, 6/7, 10/11, etc. If you follow the breadboard schematic above with GPIO 6/7, update `KEYBOARD_DATA_PIN` to `6` before building.
+### Example: Wiring a PS/2 Keyboard
 
-### Wiring Steps
-
-**1. RP2040 to Level Shifter (LV side):**
-
-| From | To | Wire Color (Suggested) |
-|------|-----|------------------------|
-| RP2040 **GPIO 6** | Level Shifter **LV1** | Green |
-| RP2040 **GPIO 7** | Level Shifter **LV2** | Yellow |
-
-**2. Level Shifter (HV side) to Device Connector:**
-
-| From | To | Notes |
-|------|-----|-------|
-| Level Shifter **HV1** | Device **DATA** pin | Check pinout for your connector |
-| Level Shifter **HV2** | Device **CLK** pin | Check pinout for your connector |
-
-**3. Device Power and Ground:**
-
-| Device Pin | Connect To | Notes |
-|------------|-----------|-------|
-| **VCC** or **+5V** | 5V power rail | Powers the device |
-| **GND** | Ground rail | Common ground |
-
-### Example: AT/PS2 Keyboard (PS/2 Connector)
-
-PS/2 pinout (female connector on cable, looking at pins):
+PS/2 pinout (this is the female connector on the cable, looking at the pins):
 
 ![PS/2 Connector Pinout](../images/connectors/kbd_connector_ps2.png)
 
-**Connections:**
-- Pin 1 (DATA) → Level Shifter HV1
-- Pin 3 (GND) → Ground rail
-- Pin 4 (VCC) → 5V power rail
-- Pin 5 (CLK) → Level Shifter HV2
-
-### Protocol-Specific Differences
-
-**For Amiga keyboards**: You'll also need to connect the RESET line (GPIO 4 by default, which is DATA pin + 2) through the level shifter to the device's RESET pin. See [Amiga Protocol Guide](../protocols/amiga.md).
-
-**For Mouse support**: If building with keyboard + mouse, you'll need a second set of signal connections using GPIO 6 (mouse DATA) and GPIO 7 (mouse CLK). Wire these through unused level shifter channels (LV3/HV3 and LV4/HV4).
-
 ---
 
-## Step 6: Add Status LED (Optional but Recommended)
+## Step 5: Adding a Status LED (Optional but Recommended)
 
-The converter uses an addressable WS2812B RGB LED to show its operational status. This is completely optional, but highly recommended—it provides instant visual feedback about the converter's state without needing to check your computer.
+This might go a bit beyond the basic setup we're working towards (and it's completely optional), but I wanted to mention it here because it's a really useful addition to have.
 
-### Why Add an LED?
+The converter can use an addressable WS2812B RGB LED to show you what's going on, providing useful visual feedback about what the converter's doing.
 
-The status LED shows different colors for different states (these are the most common ones you may see):
-- **🟢 Green**: Converter ready (device initialized and working)
-- **🟠 Orange**: Not ready (waiting for device initialization)
-- **🟣 Magenta**: Bootloader mode (ready for firmware flashing when triggered from the Command Mode option)
-- **💚💙 Flashing Green/Blue**: Command Mode active (waiting for command selection)
-- **💚💖 Flashing Green/Pink**: Log level selection mode (choose debug verbosity)
-- **🌈 Rainbow**: Brightness adjustment mode (use +/- keys to adjust LED brightness)
+**What the LED shows:**
+- **🟢 Green**: Converter's ready and working
+- **🟠 Orange**: Waiting for device initialisation
+- **🟣 Magenta**: Bootloader mode (ready for firmware flashing)
+- **💚💙 Flashing Green/Blue**: Command mode active
+- **💚💖 Flashing Green/Pink**: Log level selection mode
+- **🌈 Rainbow**: Brightness adjustment mode
 
-Additionally, if you use 4 LEDs instead of 1, the extra 3 LEDs can show lock key states (Num Lock, Caps Lock, Scroll Lock).
+You can also use 4 LEDs if you want to show the lock key states (Num Lock, Caps Lock, Scroll Lock).
 
 ### What You Need
 
-| Component | Quantity | Notes |
-|-----------|----------|-------|
-| **WS2812B LED** | 1-4 | Addressable RGB LED (also called "NeoPixel") |
-| **Jumper wires** | 3 | For VCC, GND, and Data connections |
+Just a WS2812B LED (or 'NeoPixel') and 3 jumper wires. Cost is around £2-8 depending on whether you get individual LEDs, a strip, or a breakout board. The **[Hardware Guide](../hardware/README.md#status-leds)** has detailed info on where to buy them and the different options available.
 
-**Where to buy**: Search for "WS2812B" or "NeoPixel" on Adafruit, SparkFun, Amazon, or eBay. They come in various forms:
-- Individual LEDs with leads (easiest for breadboard)
-- LED strips (can use just the first 1-4 LEDs)
-- Breakout boards with built-in LEDs
+### Wiring It Up
 
-**Cost**: £2-8 depending on format
-
-### Wiring the LED
-
-The WS2812B is 3.3V tolerant, so you can connect it directly to the RP2040 without level shifting.
+The WS2812B is 3.3V tolerant, so you can wire it straight to the RP2040.
 
 **LED Pinout** (typical WS2812B):
 ```
@@ -314,216 +200,140 @@ DIN ─┤     X     ├─ DOUT
 
 | WS2812B Pin | Connect To | Wire Color | Notes |
 |-------------|------------|------------|-------|
-| **VCC** | 3.3V power rail | Red | Use 3.3V, not 5V |
-| **GND** | Ground rail | Black | Common ground |
-| **DIN** (Data In) | RP2040 GPIO 29 | Any color | Default data pin |
+| **VCC** | RP2040 **3V3** pin | Red | Use 3.3V, not 5V |
+| **GND** | Power Rail **Lower** | Black | Common ground |
+| **DIN** (Data In) | RP2040 **`GPIO 29`** | Any color | Default data pin |
 
-**Important**: 
-- Use the **DIN** (Data In) pin, not DOUT (Data Out)
+**A couple of things to note**: 
+- Use the **DIN** (Data In) pin, not DOUT (Data Out). You'd only use DOUT if you're chaining multiple LEDs together.
 - The default GPIO is pin 29 (defined in [`src/config.h`](../../src/config.h))
-- If using a LED strip, connect to the first LED's DIN pin
+- If you're using an LED strip, connect to the first LED's DIN pin
 
-### Multiple LEDs (Optional)
-
-If you want lock indicator LEDs (Num Lock, Caps Lock, Scroll Lock), use 4 WS2812B LEDs:
-
-**Chain them together:**
-1. First LED: Connect as shown above (GPIO 29 → LED1 DIN)
-2. Connect LED1 DOUT → LED2 DIN
-3. Connect LED2 DOUT → LED3 DIN
-4. Connect LED3 DOUT → LED4 DIN
-5. All LEDs share the same VCC and GND (parallel connection)
-
-**LED Assignment:**
-- **LED 1**: Status (ready/not ready/bootloader)
-- **LED 2**: Num Lock indicator
-- **LED 3**: Caps Lock indicator
-- **LED 4**: Scroll Lock indicator
-
-**Note**: You need to enable lock LEDs in the build configuration. This is covered in the [Building Firmware](building-firmware.md) guide.
-
-### Alternative: Using LED Strips
-
-If you have a WS2812B LED strip:
-1. Cut the strip after the 4th LED (if you want 4 total)
-2. Identify the **input end** (usually has arrows showing data direction)
-3. Connect the input end's VCC, GND, and DIN to your RP2040
-4. The strip already has LEDs chained internally—just wire the first connection
-
-**Tip**: LED strips often have JST connectors. You can buy a JST connector breakout or solder jumper wires directly to the strip's pads.
-
-### Customizing the GPIO Pin
-
-If GPIO 29 conflicts with your setup, you can change it before building firmware:
-
-1. Edit [`src/config.h`](../../src/config.h)
-2. Find `#define LED_PIN 29`
-3. Change to your preferred GPIO (must be a free pin)
-4. Save and rebuild firmware
+**For multiple LEDs or changing the GPIO pin**, have a look at the **[Hardware Guide - Status LEDs section](../hardware/README.md#status-leds)** for detailed instructions on chaining LEDs and customising pin assignments.
 
 ---
 
-## Step 7: Double-Check Your Wiring
+## Step 6: Verify Connections
 
-Before powering on, verify all connections carefully.
+Before we power things up, let's just check everything we've connected.
 
-### Verification Checklist
+### Things to Check
 
-- [ ] **Power connections secure**: 3.3V and 5V rails properly connected to RP2040
-- [ ] **Ground common**: All grounds connected together (RP2040, level shifter, device)
-- [ ] **No voltage shorts**: 3.3V and 5V rails are separate, not touching
-- [ ] **Level shifter powered**: LV connected to 3.3V, HV connected to 5V
-- [ ] **Signal paths correct**: GPIO → LV pins → HV pins → Device
-- [ ] **GPIO pins match config.h**: Verify your wiring matches the pin definitions in [`src/config.h`](../../src/config.h) (or update config.h to match your wiring)
-- [ ] **Device connector correct**: CLK and DATA wires match your connector's pinout
-- [ ] **No loose wires**: All connections firmly inserted into breadboard
-- [ ] **LED connected (if using)**: WS2812B VCC to 3.3V, GND to ground, DIN to correct GPIO (check LED_PIN in config.h)
+- [ ] **Power connections are solid**: 3.3V and 5V rails properly connected to the RP2040
+- [ ] **All grounds tied together**: RP2040, level shifter, and device all sharing common ground
+- [ ] **No voltage shorts**: 3.3V and 5V rails are separate and not touching each other
+- [ ] **Level shifter powered correctly**: LV connected to 3.3V, HV connected to 5V
+- [ ] **Signal paths look right**: GPIO → LV pins → HV pins → Device
+- [ ] **GPIO pins match config.h**: Check your wiring matches the pin definitions in [`src/config.h`](../../src/config.h) (or update config.h to match your wiring)
+- [ ] **Device connector is correct**: Clock and data wires match your connector's pinout
+- [ ] **Nothing's loose**: All connections are firmly seated in the breadboard
+- [ ] **LED connected properly (if using one)**: WS2812B VCC to 3.3V, GND to ground, DIN to the right GPIO (check LED_PIN in [`src/config.h`](../../src/config.h))
 
-### Visual Inspection
+### Visual Verification
 
-Compare your breadboard to the wiring diagram above. Take a photo and trace each connection with a different colored marker if helpful.
+Compare your breadboard to the wiring diagram earlier in this guide. Take a photo and trace each connection with different coloured markers if it helps.
 
-**Common Mistakes to Avoid:**
-- ❌ Connecting device CLK/DATA directly to RP2040 (bypassing level shifter)
-- ❌ Swapping CLK and DATA lines
-- ❌ Forgetting to connect level shifter power references (LV and HV pins)
-- ❌ Using separate grounds (all grounds must be common)
-- ❌ Poor breadboard connections (wiggle wires to ensure they're seated)
+**Common mistakes to watch out for:**
+- ❌ Connecting the device clock/data straight to the RP2040 (bypassing the level shifter)
+- ❌ Swapping clock and data lines around
+- ❌ Forgetting to connect the level shifter power references (those LV and HV pins)
+- ❌ Using separate grounds (remember, all grounds need to be common)
+- ❌ Dodgy breadboard connections (give the wires a little wiggle to make sure they're properly seated)
 
 ---
 
-## Step 8: Test Your Hardware
+## Step 7: Test the Hardware
 
-Power up and verify connections before flashing firmware.
+Now power everything up to verify it's working before we flash the firmware.
 
-### Initial Power-Up
+### Powering Up for the First Time
 
-1. **Connect USB cable** from RP2040 to your computer
-2. **RP2040 LED should light** (indicates board is powered)
-3. **Device should power on** (keyboard might flash LEDs briefly during self-test)
-4. **WS2812B LED should light up** (if installed—may show orange or off until firmware is loaded)
-5. **No smoke, no burning smell** (if you smell anything, disconnect immediately)
+1. **Connect the USB cable** from the RP2040 to your computer
+2. **The RP2040 LED (if there is one) should light up** - shows the board's getting power
+3. **Your device should power on** - keyboards might flash their LEDs briefly during self-test
+4. **No smoke, no burning smell** - Unless you have something seriously wrong, or something's damaged, you shouldn't see or smell anything bad
 
-### Expected Behavior (Before Firmware)
+### What to Expect (Before Firmware is Loaded)
 
-Without firmware, the RP2040 won't respond to the device yet. This is normal! You should see:
+Without the firmware, the RP2040 won't respond to your device yet. This is completely normal. Here's what you should see:
 
-✅ **RP2040 board LED lit** (power indicator)  
-✅ **Device powered** (LEDs may illuminate if keyboard has always-on indicators)  
-✅ **WS2812B LED powered** (if installed—may be off or dim until firmware loaded)  
-✅ **RP2040 appears as USB device** (computer may show "RP2 Boot" or similar)  
+✅ **RP2040 board LED is lit** (the power indicator)  
+✅ **Device has power** (LEDs might light up if your keyboard has always-on indicators)  
+✅ **RP2040 shows up as a USB device** (if it's not already flashed with firmware, it might show up as a mass storage device)  
 
-❌ **Keyboard does nothing when you type** (no firmware loaded yet—this is expected!)  
-❌ **Computer doesn't recognize it as a keyboard** (normal—you haven't flashed firmware)
+❌ **Keyboard does nothing when you type** (no firmware loaded yet)  
+❌ **No WS2812B LED activity** (if you're using one, firmware's needed to control it, otherwise it won't light)  
+❌ **Computer doesn't see it as a keyboard** (normal—you haven't flashed the firmware yet)
 
-### Troubleshooting Power Issues
+### If Something's Not Working
 
-**RP2040 LED not lit?**
-- Check USB cable (try a different cable known to work for data)
-- Verify RP2040 board isn't damaged
-- Check USB port on computer (try different port)
+**RP2040 LED not lighting up?**
+- Does it even have one? (Some boards don't)
+- Check the USB cable (try a different one that you know works for data)
+- Make sure the RP2040 board isn't damaged
+- Try a different USB port on your computer
+- If all else fails, try removing the RP2040 from the breadboard and just powering it on its own to see if the issue is with the board or the wiring
 
 **Device not powering on?**
-- Verify 5V connection from VSYS to device VCC
-- Check device connector pinout (VCC and GND correct?)
-- Test continuity with multimeter if available
+- Check the 5V connection from VSYS to the device VCC
+- Double-check the device connector pinout (make sure VCC and GND are correct)
+- If you have a multimeter, test for continuity
+- Your computer might not be supplying enough power (try a powered USB hub or a different computer)
 
-**Device LEDs flickering or behaving strangely?**
-- Normal during self-test on some keyboards
-- If continuous flickering, may indicate power issue (check 5V connection)
+**Device LEDs flickering or acting strange?**
+- Some keyboards do this during self-test, so it might be perfectly normal
+- If it's constantly flickering, check for a power issue (verify that 5V connection is solid)
+- It might indicate that the device itself is faulty or has an issue (try a different keyboard if you have one)
 
 ---
 
-## Step 9: What's Next?
+## Step 8: Next Steps
 
-Your hardware is complete! Now you'll build and flash firmware.
+Your hardware's ready! Now you need to build and flash the firmware to get everything working.
 
-### Ready to Continue
+### Where to Go From Here
 
-With working hardware, proceed to:
+With the hardware sorted:
 
-1. **[Building Firmware](building-firmware.md)** - Compile firmware for your specific device
-2. **[Flashing Firmware](flashing-firmware.md)** - Install firmware on the RP2040
-3. **Testing and verification** - Confirm everything works together
+1. **[Build the Firmware](building-firmware.md)** - Compile the firmware for your specific device
+2. **[Flash the Firmware](flashing-firmware.md)** - Get the firmware installed on the RP2040
+3. **Test it all out** - Make sure everything works together
 
-### If Something's Not Right
+### If Things Still Aren't Right
 
-Hardware issues are usually wiring mistakes. Common fixes:
+Hardware issues can be caused by wiring mistakes or component failures. Things to check:
 
-- **Review the verification checklist** - Did you miss a connection?
-- **Check pinout diagrams** - Are CLK and DATA swapped?
-- **Verify level shifter orientation** - Are HV and LV sides correct?
-- **Test continuity** - Use multimeter to check connections
-- **Check for shorts** - Make sure no adjacent breadboard holes are bridged
-- **WS2812B not lighting?** - Verify 3.3V power, check DIN connection to GPIO 29
+- **Go through the verification checklist again** - Did you miss a connection somewhere?
+- **Check the pinout diagrams** - Are clock and data swapped?
+- **Double-check the level shifter orientation** - Are the HV and LV sides the right way round?
+- **Test continuity** - If you have a multimeter, check the connections
+- **Look for shorts** - Make sure no adjacent breadboard holes are accidentally bridged
+- **WS2812B not lighting up?** - Check it's getting 3.3V power, and that DIN's connected to the right GPIO pin
 
 **Need more help?**
-- 📖 [Hardware Deep Dive](../hardware/README.md) - Detailed component information
-- 📖 [Troubleshooting Guide](../advanced/troubleshooting.md) - Common issues and solutions
-- 💬 [Ask on GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) - Community support
-- 🐛 [Report Issues](https://github.com/PaulW/rp2040-keyboard-converter/issues) - If you found a bug
+- 📖 **[Hardware Deep Dive](../hardware/README.md)** - More detailed component information
+- 📖 **[Advanced Topics](../advanced/README.md)** - System architecture and implementation details
+- 💬 **[Ask on GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions)** - Community support
+- 🐛 **[Report Issues](https://github.com/PaulW/rp2040-keyboard-converter/issues)** - Found a bug? Let me know!
 
 ---
 
 ## Complete Wiring Diagram
 
-Here's a complete reference showing all connections:
-
-```
-                     Vintage Device (e.g., PS/2 Keyboard)
-                              ┌──────────┐
-                              │  Pins:   │
-                              │  CLK ────┼───────┐
-                              │  DATA────┼─────┐ │
-                              │  VCC ────┼───┐ │ │
-                              │  GND ────┼─┐ │ │ │
-                              └──────────┘ │ │ │ │
-                                           │ │ │ │
-                                           │ │ │ │
-                    ┌──────────────────────┘ │ │ │
-                    │  ┌─────────────────────┘ │ │
-                    │  │  ┌────────────────────┘ │
-                    │  │  │  ┌───────────────────┘
-                    │  │  │  │
-    Breadboard:     │  │  │  │
-                    │  │  │  │
-    [GND Rail]──────┴──┴──┴──┴─────────────────────[GND]
-                    │  │  │                           │
-    [5V Rail]───────┴──┴──┴───────────────────────[VSYS]
-                       │  │                           │
-                       │  │    Level Shifter          │
-                       │  │   ┌──────────┐            │
-                       │  │   │ HV   LV  │            │
-                       │  │   │ HV1  LV1 │────────[GPIO X] CLK*
-                       │  └───│ HV2  LV2 │────────[GPIO X+1] DATA*
-                       │      │ GND  GND │            │
-                       │      └──────────┘            │
-                       │          │    │              │
-    [GND Rail]─────────┴──────────┴────┴───────────[GND]
-                                       │              │
-    [3.3V Rail]────────────────────────┘           [3V3]
-                                                      │
-                                              ┌───────┴───────┐
-                                              │   RP2040      │
-                                              │   Board       │
-                                              │               │
-                                              │   [USB Port]  │
-                                              └───────┬───────┘
-                                                      │
-                                                      └─── To Computer
-```
+Here's everything in one place as a reference:
+![Complete Wiring Diagram](../images/hardware/completed-wiring-diagram-gs.png)
 
 **Connection Summary:**
 - Device VCC → 5V Rail → RP2040 VSYS
 - Device GND → GND Rail (common to all)
 - Device DATA → Level Shifter HV1 → Level Shifter LV1 → RP2040 GPIO (your DATA pin)*
-- Device CLK → Level Shifter HV2 → Level Shifter LV2 → RP2040 GPIO (your CLK pin)*
+- Device CLOCK → Level Shifter HV2 → Level Shifter LV2 → RP2040 GPIO (your CLOCK pin)*
 - Level Shifter HV → 5V Rail
-- Level Shifter LV → 3.3V Rail → RP2040 3V3
-- Level Shifter GND → GND Rail (both sides)
+- Level Shifter LV → RP2040 3V3
+- Level Shifter GND → GND Rail
 
-**\* GPIO pin assignment**: The diagram shows example GPIO connections. Your actual pin numbers will match what you defined in [`src/config.h`](../../src/config.h) (KEYBOARD_DATA_PIN and KEYBOARD_DATA_PIN+1). The hardware requires CLK pin to be DATA pin + 1.
+**\* A note on GPIO pins**: The diagram shows example GPIO connections. Your actual pin numbers will match whatever you've defined in [`src/config.h`](../../src/config.h) (KEYBOARD_DATA_PIN). The hardware requires the clock pin to be data pin + 1.
 
 ---
 
-**Next**: [Building Firmware →](building-firmware.md)
+**[← Previous: Getting Started](README.md)** | **[Next: Building Firmware →](building-firmware.md)**
