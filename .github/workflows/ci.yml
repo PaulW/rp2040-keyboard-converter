@@ -133,7 +133,7 @@ jobs:
 
             if [ $i -lt $MAX_RETRIES ]; then
               echo "⚠ Installation failed, retrying in ${RETRY_DELAY}s..."
-              sleep $RETRY_DELAY
+              sleep "$RETRY_DELAY"
             fi
           done
 
@@ -195,7 +195,7 @@ jobs:
           MAX_RETRIES=3
           RETRY_DELAY=10
 
-          for i in $(seq 1 $MAX_RETRIES); do
+          for i in $(seq 1 "$MAX_RETRIES"); do
             echo "Attempt $i of $MAX_RETRIES: Installing ARM toolchain..."
 
             if sudo apt-get update && \
@@ -204,9 +204,9 @@ jobs:
               exit 0
             fi
 
-            if [ $i -lt $MAX_RETRIES ]; then
+            if [ "$i" -lt "$MAX_RETRIES" ]; then
               echo "⚠ Installation failed, retrying in ${RETRY_DELAY}s..."
-              sleep $RETRY_DELAY
+              sleep "$RETRY_DELAY"
             fi
           done
 
@@ -263,14 +263,14 @@ jobs:
               echo "  RAM:   ${RAM_KB}KB (${RAM_USAGE} bytes)"
 
               # Check limits
-              if [ $FLASH_USAGE -gt $MAX_FLASH ]; then
+              if [ "$FLASH_USAGE" -gt "$MAX_FLASH" ]; then
                 echo "  ❌ FLASH EXCEEDS LIMIT (max: 230KB)"
                 FAILED=$((FAILED + 1))
               else
                 echo "  ✓ Flash within limit"
               fi
 
-              if [ $RAM_USAGE -gt $MAX_RAM ]; then
+              if [ "$RAM_USAGE" -gt "$MAX_RAM" ]; then
                 echo "  ❌ RAM EXCEEDS LIMIT (max: 150KB)"
                 FAILED=$((FAILED + 1))
               else
