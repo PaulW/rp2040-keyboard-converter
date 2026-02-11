@@ -2,729 +2,185 @@
 [![Test Building of Converter Firmware](https://github.com/PaulW/rp2040-keyboard-converter/actions/workflows/ci.yml/badge.svg)](https://github.com/PaulW/rp2040-keyboard-converter/actions/workflows/ci.yml)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/PaulW/rp2040-keyboard-converter?style=flat)
 
-A USB HID converter for vintage keyboards and mice, using the RP2040's PIO (Programmable I/O) hardware to support multiple protocols.
-
-## Overview
-
-This project started as a way to use an IBM Model F PC/AT keyboard on modern hardware, and has grown to support keyboards and mice from various manufacturers and eras. The goal is to provide a non-invasive interface solution that preserves original hardware.
+A USB HID converter for keyboards and mice, using the RP2040's PIO (Programmable I/O) hardware to support multiple protocols.
 
 **Features:**
-- Multi-protocol support via PIO state machines
+- Multi-protocol support (AT/PS2, XT, Amiga, Apple M0110)
 - Simultaneous keyboard and mouse conversion
 - USB HID Boot Protocol for BIOS/UEFI compatibility
-- Per-keyboard configuration with layer support and macros
-- Persistent configuration storage (settings survive reboots and firmware updates)
+- Command Mode for firmware updates without physical access
+- Persistent configuration storage
 
-**Why RP2040?**
+**Quick Links:** [📖 Full Documentation](docs/README.md) | [🚀 Getting Started](docs/getting-started/README.md) | [🔧 Hardware Setup](docs/hardware/README.md) | [💬 Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions)
 
-Most existing converters use Atmel AVR or ARM Cortex-M microcontrollers (TMK/QMK/VIAL, Soarer's Converter). The RP2040 offers some interesting advantages:
-- PIO state machines for hardware-accelerated protocol handling
-- Dual-core architecture for parallel processing (although we don't use that currently)
-- Low cost and wide availability
-- Active SDK support
+---
 
-This project is also a learning exercise in RP2040 hardware, pico-sdk, and TinyUSB implementation.
+## 📚 Documentation
 
-## Hardware Setup
+Complete documentation is available in the [`docs/`](docs/) directory. Here's what's covered:
 
-### Quick Start - Breadboard Prototype
+**For Users:**
+- [Getting Started](docs/getting-started/README.md) - Setup, building, and flashing firmware
+- [Hardware Setup](docs/hardware/README.md) - Wiring diagrams and connector information
+- [Supported Protocols](docs/protocols/README.md) - AT/PS2, XT, Amiga, M0110 specifications
+- [Supported Keyboards](docs/keyboards/README.md) - Compatible keyboards and configurations
+- [Features Guide](docs/features/README.md) - Command Mode, LED support, configuration
 
-For testing and development, connect your RP2040 board to the keyboard using a simple level shifter circuit:
+**For Developers:**
+- [Development Guide](docs/development/README.md) - Contributing, code standards, adding keyboards/protocols
+- [Advanced Topics](docs/advanced/README.md) - Architecture, performance analysis, troubleshooting
 
-**Required Components:**
-- RP2040 board ([Raspberry Pi Pico](https://www.raspberrypi.com/products/raspberry-pi-pico/), [WaveShare RP2040-Zero](https://www.waveshare.com/rp2040-zero.htm), or similar)
-- Bi-directional logic level converter (e.g., [BSS138-based 4-channel converter](https://www.adafruit.com/product/757))
-- Appropriate connector for your keyboard protocol
+**Quick Reference:**
 
-**Connection Overview:**
+| I want to... | See... |
+|--------------|--------|
+| Build and flash firmware | [Getting Started](docs/getting-started/README.md) |
+| Connect my keyboard | [Hardware Setup](docs/hardware/README.md) |
+| Check compatibility | [Supported Keyboards](docs/keyboards/README.md) |
+| Use Command Mode | [Features Guide](docs/features/README.md) |
+| Contribute code | [Development Guide](docs/development/README.md) |
+
+---
+
+## ⚡ Quick Start
+
+### 1. Clone Repository
+
+```bash
+git clone --recurse-submodules https://github.com/PaulW/rp2040-keyboard-converter.git
+cd rp2040-keyboard-converter
 ```
-Keyboard (5V) <---> Level Shifter <---> RP2040 (3.3V)
-    CLK/DAT             HV/LV            GPIO Pins
+
+### 2. Build Firmware
+
+```bash
+# Build Docker container (one-time setup)
+docker compose build
+
+# Compile firmware for your keyboard
+docker compose run --rm -e KEYBOARD="modelm/enhanced" builder
+
+# Optional: Add mouse support
+docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
 ```
 
-![Breadboard Schematic](doc/breadboard-schematic.png)
+### 3. Flash to RP2040
 
-**Pin Configuration:**
-Protocol-specific GPIO assignments are defined in each keyboard's configuration file. Refer to the [Keyboards README](src/keyboards/README.md) for details.
+1. Hold **BOOT** button, press **RESET**, release **BOOT**
+2. Copy `build/rp2040-converter.uf2` to the `RPI-RP2` drive
+3. Device reboots automatically with new firmware
 
-### Hardware
+**📖 Detailed Instructions:** See [Getting Started Guide](docs/getting-started/README.md)
 
-**Custom PCB for IBM Model F PC/AT Keyboard:**
-This is where the project started! An early experimental custom PCB was designed specifically to fit inside the IBM Model F PC/AT keyboard (model 6450225), providing:
-- Integrated level shifting circuitry
-- Compact form factor designed to fit inside the keyboard case
-- Direct connector interface to keyboard controller
+---
 
-See the [Custom PCB Design](doc/custom_pcb.md) for schematics, PCB renders, fabrication files, and photos of the installed converter.
-
-**Universal Inline Connector (In Development):**
-I'm currently working on a universal inline adaptor which will allow various different connectors and devices to be used.
-
-## Supported Hardware
+## 🔌 Supported Hardware
 
 ### Protocols
 
-The converter supports multiple vintage keyboard and mouse protocols through PIO state machines:
+| Protocol | Type | Status | Documentation |
+|----------|------|--------|---------------|
+| **AT/PS2** | Keyboard & Mouse | ✅ Full Support | [Specification](docs/protocols/at-ps2.md) |
+| **XT** | Keyboard | ✅ Full Support | [Specification](docs/protocols/xt.md) |
+| **Amiga** | Keyboard | ✅ Full Support | [Specification](docs/protocols/amiga.md) |
+| **M0110** | Keyboard | ⚠️ Partial Support | [Specification](docs/protocols/m0110.md) |
 
-| Protocol | Type | Description | Status |
-|----------|------|-------------|--------|
-| **AT/PS2** | Keyboard & Mouse | IBM PC/AT and PS/2 protocol (bidirectional synchronous) | ✅ Full Support |
-| **XT** | Keyboard | IBM PC/XT protocol (unidirectional synchronous) | ✅ Full Support |
-| **Apple M0110** | Keyboard | Apple M0110/M0110A protocol (unique to these models) | ⚠️ Partial Support |
-| **Amiga** | Keyboard | Commodore Amiga protocol (bidirectional with handshake) | ✅ Full Support |
+### Example Keyboards
 
-See [Protocols Documentation](src/protocols/) for technical details and PIO implementation.
+| Manufacturer | Models | Protocol |
+|--------------|--------|----------|
+| **IBM** | Model F (PC/AT), Model M (Enhanced/122-key) | AT/PS2 |
+| **Cherry** | G80-0614H, G80-1104H | XT |
+| **Commodore** | Amiga A500/A2000 | Amiga |
+| **Apple** | M0110/M0110A | M0110 |
 
-### Keyboards
+**📋 Complete List:** See [Supported Keyboards](docs/keyboards/README.md)
 
-Supported keyboards with per-device configuration:
+---
 
-| Manufacturer | Models | Protocol | Scancode Set |
-|--------------|--------|----------|--------------|
-| **IBM** | Model F (PC/AT) | AT/PS2 | Set 2 |
-| **IBM** | Model M (Enhanced) | AT/PS2 | Set 2 |
-| **IBM** | Model M (122-key) | AT/PS2 | Set 3 |
-| **Cherry** | G80-0614H, G80-1104H | XT | Set 1 |
-| **Microswitch** | 122ST13 | AT/PS2 | Set 3 |
-| **Commodore** | Amiga A500/A2000 | Amiga | Amiga |
+## 🛠️ Available Build Configurations
 
-See [Keyboards Documentation](src/keyboards/) for configuration details and adding new keyboards.
-
-### Mice
-
-Mouse support is protocol-based. Specify the protocol when building:
-
-| Protocol | Features |
-|----------|----------|
-| **AT/PS2** | 3-button, scroll wheel, extended buttons |
-
-### Scancode Sets
-
-The converter translates between different scancode sets (can vary depending on keyboard):
-
-| Scancode Set | Used By | Description |
-|--------------|---------|-------------|
-| **Set 1** | XT, AT/PS2 | Original IBM PC/XT codes (make code + 0x80 for break) |
-| **Set 2** | AT/PS2 (default) | Most common, uses F0 prefix for break codes |
-| **Set 3** | AT/PS2 (rare) | Uniform make/break structure |
-| **Amiga** | Commodore Amiga | Scancode Set compatible with Amiga A500/A2000 |
-
-**Implementation:** Sets 1, 2, and 3 are handled by a unified, configuration-driven processor (`src/scancodes/set123/scancode.{h,c}`) that consolidates common XT/AT protocol logic while maintaining per-set behavior. See [Scancodes Documentation](src/scancodes/) for complete tables.
-
-## Getting Started
-
-### Clone Repository
+Configure firmware for your specific keyboard when building:
 
 ```bash
-# Clone with submodules (includes Pico SDK 2.2.0)
-git clone --recurse-submodules https://github.com/PaulW/rp2040-keyboard-converter.git
+# IBM keyboards
+docker compose run --rm -e KEYBOARD="modelf/pcat" builder
+docker compose run --rm -e KEYBOARD="modelm/enhanced" builder
+docker compose run --rm -e KEYBOARD="modelm/m122" builder
 
-# Or if already cloned:
-git submodule update --init --recursive
+# Other keyboards
+docker compose run --rm -e KEYBOARD="cherry/G80-0614H" builder
+docker compose run --rm -e KEYBOARD="amiga/a500" builder
+docker compose run --rm -e KEYBOARD="apple/m0110a" builder
 ```
 
-**Note:** The Pico SDK submodule is optional for Docker builds (SDK is built into the Docker image) but useful for local development and IDE integration.
+**🔍 See all configurations:** [`src/keyboards/`](src/keyboards/)
 
-### Local Development Setup (Optional)
+---
 
-For IDE integration with IntelliSense, CMake, and syntax checking, you can set up a local development environment. **This is completely optional** - Docker builds work without any local tooling.
+## ⚙️ Key Features
 
-**Prerequisites:**
-- CMake 3.13+ ([Installation Guide](https://cmake.org/install/))
-- ARM GCC Toolchain ([Installation Guide](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm))
+### Command Mode
+Access firmware functions without physical board access:
+- **Bootloader Mode** - Update firmware via USB (press B)
+- **Debug Logging** - Adjust UART output level (press D)
+- **Factory Reset** - Restore default settings (press F)
+- **LED Brightness** - Adjust status LED (press L)
 
-**Platform-Specific Setup:**
+**Activation:** Hold both Shift keys for 3 seconds
 
-<details>
-<summary><strong>macOS</strong></summary>
-
-```bash
-# Install CMake and ARM GCC toolchain via Homebrew
-brew install cmake
-brew install --cask gcc-arm-embedded
-```
-
-Toolchain location: `/opt/homebrew/bin/arm-none-eabi-gcc` (Apple Silicon) or `/usr/local/bin/arm-none-eabi-gcc` (Intel)
-
-</details>
-
-<details>
-<summary><strong>Linux</strong></summary>
-
-```bash
-# Debian/Ubuntu
-sudo apt-get install cmake gcc-arm-none-eabi
-
-# Fedora
-sudo dnf install cmake arm-none-eabi-gcc-cs
-
-# Arch Linux
-sudo pacman -S cmake arm-none-eabi-gcc
-```
-
-Toolchain location: `/usr/bin/arm-none-eabi-gcc`
-
-</details>
-
-<details>
-<summary><strong>Windows</strong></summary>
-
-1. **CMake**: Download from [cmake.org](https://cmake.org/download/) or `winget install Kitware.CMake`
-2. **ARM GCC**: Download from [ARM Developer](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm)
-
-Typical toolchain location: `C:\Program Files (x86)\GNU Arm Embedded Toolchain\<version>\bin\arm-none-eabi-gcc.exe`
-
-</details>
-
-**VS Code Configuration:**
-
-The repository includes example VS Code configuration files in `.vscode.example/`. To use them:
-
-```bash
-# Copy example configurations
-cp -r .vscode.example/ .vscode/
-
-# Generate compile_commands.json for IntelliSense
-mkdir -p .build-cache && cd .build-cache
-cmake -DCMAKE_BUILD_TYPE=Debug \
-      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-      -DKEYBOARD=modelm/enhanced \
-      -DMOUSE=at-ps2 \
-      ../src
-cp compile_commands.json ..
-
-# Reload VS Code window (Cmd+Shift+P -> "Developer: Reload Window")
-```
-
-**What You Get:**
-- ✅ IntelliSense autocomplete for Pico SDK functions
-- ✅ Go to Definition for SDK headers
-- ✅ Real-time error checking
-- ✅ Symbol navigation and refactoring
-- ✅ CMake integration in VS Code
-
-**Notes:**
-- `.vscode/` and `compile_commands.json` are in `.gitignore` (not committed)
-- Your local settings won't affect other developers
-- Docker builds remain the canonical build method
-- ARM toolchain paths vary by platform - see `.vscode.example/README.md` for details
-- VS Code will automatically select the correct configuration based on your OS
-
-## Building Firmware
-
-The project uses Docker to provide a consistent build environment across platforms.
-
-### Initial Setup
-
-Build the Docker container with all required tools and libraries:
-
-```bash
-docker compose build builder
-```
-
-### Compile Firmware
-
-Build firmware for your specific keyboard and (optionally) mouse:
-
-```bash
-# Keyboard only
-docker compose run -e KEYBOARD="modelf/pcat" builder
-
-# Keyboard + Mouse
-docker compose run -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
-```
-
-**Build Options:**
-- `KEYBOARD`: Required. Path to keyboard configuration (relative to `src/keyboards/`)
-- `MOUSE`: Optional. Protocol for mouse support (currently only `at-ps2` supported)
-
-**Output:**
-The compiled firmware is placed in `./build/rp2040-converter.uf2` and ready to flash to your RP2040.
-
-### Available Keyboards
-
-| Path | Description |
-|------|-------------|
-| `modelf/pcat` | IBM Model F PC/AT (6450225) |
-| `modelm/enhanced` | IBM Model M Enhanced (101-key) |
-| `modelm/m122` | IBM Model M 122-key |
-| `cherry/G80-0614H` | Cherry G80-0614H |
-| `cherry/G80-1104H` | Cherry G80-1104H |
-| `microswitch/122st13` | Microswitch 122ST13 |
-| `amiga/a500` | Commodore Amiga A500/A2000 |
-
-See [Keyboards README](src/keyboards/README.md) for adding new keyboard configurations.
-
-## Flashing & Updating
-
-### Initial Flash
-
-1. **Enter Bootloader Mode**: 
-   - Hold the **BOOT** button on your RP2040 board
-   - Press and release the **RESET** button
-   - Release the **BOOT** button
-   - The RP2040 will mount as a USB drive named `RPI-RP2`
-
-2. **Flash Firmware**:
-   - Copy `build/rp2040-converter.uf2` to the `RPI-RP2` drive
-   - The drive will automatically unmount and the RP2040 will reboot with new firmware
-
-### Firmware Updates (Keyboard Build Only)
-
-Once flashed, the converter provides **Command Mode** to access special functions without physical access to the RP2040 board.
-
-#### Entering Command Mode
-
-To enter Command Mode, press and hold **ONLY** both shift keys (Left Shift + Right Shift) simultaneously:
-
-1. **Press and hold both shift keys** - Hold for 3 seconds
-   - Normal typing continues during this time
-   - No other keys must be pressed (including Function keys, modifiers, etc.)
-2. **Command Mode activated** - Status LED flashes Green/Blue rapidly (100ms intervals)
-   - All keys are released from the host's perspective
-   - You can now release the shift keys
-   - Mode automatically times out after 3 seconds of inactivity
-3. **Execute command** - Press a command key:
-   - **B** = Enter Bootloader Mode (for firmware updates)
-   - **D** = Log Level Selection (for debugging - see below)
-   - **F** = Factory Reset (restore default configuration - see below)
-   - **L** = LED Brightness Control (adjust status LED brightness - see below)
-
-#### Command: Bootloader Mode ('B' key)
-
-Press 'B' in Command Mode to enter bootloader mode for firmware updates without physical access to the BOOT button.
-
-#### Command: Log Level Selection ('D' key)
-
-Press 'D' in Command Mode to change the UART debug output level:
-
-1. **Press 'D' in Command Mode**
-   - Status LED changes to Green/Pink flashing
-   - UART shows: `[INFO] Log level selection: Press 1=ERROR, 2=INFO, 3=DEBUG`
-2. **Select level:**
-   - **'1'** = ERROR only (critical errors)
-   - **'2'** = INFO (default - startup info + errors)
-   - **'3'** = DEBUG (all messages - verbose)
-3. **Confirmation:**
-   - Command mode exits automatically
-   - UART shows confirmation message
-   - New level takes effect immediately
-
-**Log Level Details:**
-- **ERROR (1):** Critical failures only - minimal output
-- **INFO (2):** Normal operation - initialization and state changes (default)
-- **DEBUG (3):** Verbose - all protocol details, scancode processing (for troubleshooting)
-
-This feature is useful for field debugging without reflashing firmware. Connect a UART adapter to see diagnostic output at the selected level.
-
-#### Command: Factory Reset ('F' key)
-
-Press 'F' in Command Mode to restore all configuration settings to factory defaults:
-
-1. **Press 'F' in Command Mode**
-   - Configuration storage is completely erased
-   - UART shows: `[INFO] Factory reset complete - rebooting...`
-2. **Automatic reboot:**
-   - Device automatically restarts with factory defaults
-   - All custom settings (log level, etc.) are reset
-
-**When to use Factory Reset:**
-- Troubleshooting configuration issues
-- Resetting to known good state before testing
-- Clearing all custom settings
-
-**Note:** Factory reset only affects runtime configuration settings. It does not modify keyboard layouts, keymaps, or firmware code. The device reboots automatically after reset.
-
-#### Command: LED Brightness Control ('L' key)
-
-Press 'L' in Command Mode to adjust the status LED brightness (only available when `CONVERTER_LEDS` is enabled):
-
-1. **Press 'L' in Command Mode**
-   - Status LED starts cycling through rainbow colors (smooth transitions)
-   - UART shows: `[INFO] LED brightness selection: Press +/- to adjust (0-10), current=X`
-2. **Adjust brightness:**
-   - **'+'** or **'='** key = Increase brightness (up to level 10)
-   - **'-'** key = Decrease brightness (down to level 0)
-   - Level 0 = LEDs off, Level 10 = Maximum brightness
-   - Each press increments/decrements by 1 level
-   - Changes are applied immediately (visible in rainbow effect)
-3. **Save and exit:**
-   - Mode times out after 3 seconds of inactivity
-   - If brightness changed, automatically saved to flash
-   - New brightness persists across reboots
-
-**Brightness Levels:**
-- **0**: LEDs completely off (useful for dark environments)
-- **1-4**: Dim (low visibility, good for night use)
-- **5**: Default (balanced brightness for most environments)
-- **6-9**: Bright (high visibility)
-- **10**: Maximum (full LED brightness)
-
-**Visual Feedback:**
-The rainbow cycling effect during brightness selection allows you to see the immediate impact of your changes. Each color in the spectrum is displayed at the current brightness level.
-
-**Note:** This command is only available when the firmware is built with LED support (`CONVERTER_LEDS` defined in `config.h`). If unavailable, pressing 'L' displays a warning message on UART.
-
-#### Visual Feedback
-
-The Status LED provides feedback during the Command Mode sequence:
-
-| State | LED Behavior | Description |
-|-------|-------------|-------------|
-| **Waiting** | Normal (Green if ready, Orange if not) | Holding shifts, waiting for 3 seconds |
-| **Command Mode Active** | Flashing Green/Blue (100ms) | Ready to accept command keys (B/D/F/L), 3 second timeout |
-| **Log Level Selection** | Flashing Green/Pink (100ms) | Waiting for level selection (1/2/3), 3 second timeout |
-| **Brightness Selection** | Rainbow Cycling (50ms) | Adjusting LED brightness (+/-), displays current brightness level |
-| **Bootloader Mode** | Solid Magenta | Bootloader active, ready for firmware update |
-
-#### Design Rationale
-
-Command Mode was designed to work with 2-key rollover (2KRO) keyboards, which cannot detect 3+ simultaneous keypresses. The time-based approach ensures:
-- Compatible with all keyboard types (2KRO, 6KRO, NKRO)
-- Prevents accidental activation (requires deliberate 3-second hold)
-- Works without Function key layer support
-- Strict entry requirement (only shifts, no other keys) prevents false triggers during normal typing
-
-**Note**: Command Mode is only available when the firmware includes keyboard support. Mouse-only builds require manual bootloader entry (hold BOOT during power-on or reset).
+**📖 Details:** [Command Mode Documentation](docs/features/command-mode.md)
 
 ### Configuration Storage
+Settings persist across reboots and firmware updates:
+- Log level preferences
+- LED brightness
+- Future: Macros and key remapping
 
-The converter includes a persistent configuration storage system that survives reboots and firmware updates. Configuration data is stored in the last 4KB of the RP2040's flash memory, completely separate from the firmware code.
+**📖 Details:** [Configuration Storage](docs/features/README.md#configuration-storage)
 
-**Current Settings Stored:**
-- **Log Level**: ERROR/INFO/DEBUG setting persists across power cycles
-- **LED Brightness**: Status LED brightness level (0-10) persists across power cycles
-- **Reserved Space**: 2KB available for future enhancements (keyboard macros, remapping, etc.)
+### USB HID Boot Protocol
+6-key rollover for maximum compatibility:
+- Works in BIOS/UEFI
+- Compatible with all operating systems
+- No driver installation required
 
-**Architecture:**
-- **Storage Location**: Last 4KB flash sector (0x101FF000-0x101FFFFF)
-- **Dual-Copy Redundancy**: Two copies (A and B) for power-loss protection
-- **Automatic Versioning**: Forward-compatible migration when structure changes
-- **Performance**: Config loaded to RAM at boot (~100µs), zero-overhead runtime reads
-- **Write Endurance**: Wear leveling via alternating copy writes (~10,000 cycles per sector)
+**📖 Details:** [USB HID Documentation](docs/features/usb-hid.md)
 
-**How it Works:**
-1. **Boot**: Configuration loaded from flash to RAM
-2. **Runtime**: All reads access RAM (zero overhead)
-3. **Changes**: Settings marked dirty, saved to flash when changed
-4. **Power Loss Protection**: Dual-copy system ensures at least one valid copy survives
+---
 
-**Factory Reset:**
-Use Command Mode 'F' key to erase all configuration and restore factory defaults. This is useful for:
-- Troubleshooting configuration issues
-- Resetting to known good state
-- Testing with clean configuration
+## 🔍 Debugging & Development
 
-**Firmware Updates:**
-Configuration storage is preserved across firmware updates because it resides in a separate flash region. Your settings (log level, LED brightness, future macros, etc.) will survive when you flash new firmware versions.
+For troubleshooting and development information:
+- **UART Debug Output** - Connect USB-UART adapter to GPIO 0/1 for diagnostics
+- **Command Mode** - Adjust log levels without reflashing (press D in Command Mode)
+- **Architecture Details** - See [Advanced Topics](docs/advanced/README.md) for system architecture
+- **Development Tools** - See [Development Guide](docs/development/README.md) for lint scripts and testing
 
-**Technical Details:**
-For implementation details, see `src/common/lib/config_storage.h`. The storage system uses:
-- CRC-16/CCITT validation for data integrity
-- Sequence numbers for wear leveling and conflict resolution
-- Size-based automatic version migration (no explicit migration functions needed)
+---
 
-## Important Usage Notes
+## 🤝 Contributing
 
-### ⚠️ Hot-Swapping Keyboards Not Really Supported
-
-**Do NOT connect or disconnect keyboards while the converter is powered on.**
-
-While AT/PS2 and XT keyboards may be electrically compatible with hot-plugging, the protocol's state machine is not designed for mid-operation keyboard changes. Hot-swapping can cause:
-
-- Key misinterpretation for several keypresses after swap
-- State machine stuck in incomplete multi-byte sequences (E0, E1, F0 prefixes)
-- Debug messages like `[DBG] !INIT!` appearing in console output, and the converter then getting into a hung state
-- Incorrect keyboard identification if swap occurs during initialization
-
-**Why This Matters:**
-- The protocol layer handles keyboard initialization (self-test, ID detection)
-- The scancode processor maintains persistent state across multi-byte sequences
-- Configuration is determined once during initialization based on keyboard ID
-- No automatic state cleanup occurs when a keyboard is disconnected
-- Any layout changes (switching from 101-key to 122-key for example) would cause keymapping assignment issues when built against the wrong layout
-
-## Architecture & Data Flow
-
-Understanding how the converter processes keyboard input:
-
-### Signal Flow
-
-```
-┌─────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────┐
-│  Keyboard   │────▶│ PIO State    │────▶│  Ring Buffer │────▶│ Protocol │
-│  Hardware   │     │  Machine     │     │  (32 bytes)  │     │  Handler │
-└─────────────┘     └──────────────┘     └──────────────┘     └──────────┘
-     5V Logic        Hardware Decode      IRQ→Main Queue        Validation
-                     Timing Control       Thread-Safe FIFO      Error Check
-                                                                     │
-                                                                     ▼
-┌─────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────┐
-│  USB Host   │◀────│  USB HID     │◀────│   Keymap     │◀────│ Scancode │
-│  Computer   │     │  Interface   │     │  Translation │     │  Decoder │
-└─────────────┘     └──────────────┘     └──────────────┘     └──────────┘
-   6-Key Report     Boot Protocol        Layout Layers        Set 1/2/3
-   Consumer/System  BIOS Compatible      Macro Support        Make/Break
-```
-
-### Processing Stages
-
-1. **PIO State Machine** (Hardware): Captures keyboard CLK/DATA signals, validates bits, interrupts CPU with scancodes
-2. **Ring Buffer** (IRQ Context): 32-byte lock-free FIFO queue for burst typing
-3. **Protocol Handler** (Main Loop): Processes multi-byte sequences, manages keyboard state
-4. **Scancode Decoder** (Main Loop): Translates protocol-specific scancodes to key positions
-5. **Keymap Translation** (Main Loop): Maps positions to HID keycodes, handles layers and macros
-6. **USB HID Interface** (USB Context): Generates USB reports, handles host LED state
-
-### Thread Safety
-
-The converter operates across multiple execution contexts (IRQ, main loop, USB callbacks). Thread safety is maintained through volatile qualifiers, lock-free ring buffer design, and non-blocking operations.
-
-## Debugging & Development
-
-### Serial UART Output
-
-Connect a USB-UART adapter to the RP2040's UART pins for runtime diagnostics:
-
-```
---------------------------------
-[INFO] RP2040 Keyboard Converter
-[INFO] RP2040 Serial ID: E66160F423782037
-[INFO] Build Time: 2024-03-02 13:40
---------------------------------
-[INFO] Keyboard Make: IBM
-[INFO] Keyboard Model: 1390131
-[INFO] Keyboard Description: Model M (101-key)
-[INFO] Keyboard Protocol: at
-[INFO] Keyboard Scancode Set: set2
---------------------------------
-[INFO] RP2040 Clock Speed: 125000KHz
-[INFO] Interface Polling Interval: 50us
-[INFO] PIO SM Interface program loaded at 7
---------------------------------
-[DBG] Keyboard Self Test OK!
-[DBG] Keyboard ID: 0xAB83
-[DBG] Keyboard Initialised!
-```
-
-**Runtime diagnostics can include:**
-- Scancode sequences (make/break codes)
-- Ring buffer overflow warnings
-- Protocol errors
-- Layer switching events
-
-### USB Device Enumeration
-Here we see the output from `lsusb -v` for when the converter is configured for both Keyboard and Mouse support. The converter only exposes interfaces for features included at build time:
-```
-Bus 002 Device 001: ID 5515:400c
-Device Descriptor:
-  bLength                18
-  bDescriptorType         1
-  bcdUSB               1.10
-  bDeviceClass            0 (Defined at Interface level)
-  bDeviceSubClass         0
-  bDeviceProtocol         0
-  bMaxPacketSize0        64
-  idVendor           0x5515
-  idProduct          0x400c
-  bcdDevice            1.00
-  iManufacturer           1 paulbramhall.uk
-  iProduct                2 RP2040 Device Converter
-  iSerial                 3 E66160F423782037
-  bNumConfigurations      1
-  Configuration Descriptor:
-    bLength                 9
-    bDescriptorType         2
-    wTotalLength           84
-    bNumInterfaces          3
-    bConfigurationValue     1
-    iConfiguration          0
-    bmAttributes         0x80
-      (Bus Powered)
-    MaxPower              250mA
-    Interface Descriptor:
-      bLength                 9
-      bDescriptorType         4
-      bInterfaceNumber        0
-      bAlternateSetting       0
-      bNumEndpoints           1
-      bInterfaceClass         3 Human Interface Device
-      bInterfaceSubClass      1 Boot Interface Subclass
-      bInterfaceProtocol      1 Keyboard
-      iInterface              0
-        HID Device Descriptor:
-          bLength                 9
-          bDescriptorType        33
-          bcdHID               1.11
-          bCountryCode            0 Not supported
-          bNumDescriptors         1
-          bDescriptorType        34 Report
-          wDescriptorLength      67
-         Report Descriptors:
-           ** UNAVAILABLE **
-      Endpoint Descriptor:
-        bLength                 7
-        bDescriptorType         5
-        bEndpointAddress     0x81  EP 1 IN
-        bmAttributes            3
-          Transfer Type            Interrupt
-          Synch Type               None
-          Usage Type               Data
-        wMaxPacketSize     0x0008  1x 8 bytes
-        bInterval               8
-    Interface Descriptor:
-      bLength                 9
-      bDescriptorType         4
-      bInterfaceNumber        1
-      bAlternateSetting       0
-      bNumEndpoints           1
-      bInterfaceClass         3 Human Interface Device
-      bInterfaceSubClass      0 No Subclass
-      bInterfaceProtocol      0 None
-      iInterface              0
-        HID Device Descriptor:
-          bLength                 9
-          bDescriptorType        33
-          bcdHID               1.11
-          bCountryCode            0 Not supported
-          bNumDescriptors         1
-          bDescriptorType        34 Report
-          wDescriptorLength      25
-         Report Descriptors:
-           ** UNAVAILABLE **
-      Endpoint Descriptor:
-        bLength                 7
-        bDescriptorType         5
-        bEndpointAddress     0x82  EP 2 IN
-        bmAttributes            3
-          Transfer Type            Interrupt
-          Synch Type               None
-          Usage Type               Data
-        wMaxPacketSize     0x0010  1x 16 bytes
-        bInterval               8
-    Interface Descriptor:
-      bLength                 9
-      bDescriptorType         4
-      bInterfaceNumber        2
-      bAlternateSetting       0
-      bNumEndpoints           1
-      bInterfaceClass         3 Human Interface Device
-      bInterfaceSubClass      1 Boot Interface Subclass
-      bInterfaceProtocol      2 Mouse
-      iInterface              0
-        HID Device Descriptor:
-          bLength                 9
-          bDescriptorType        33
-          bcdHID               1.11
-          bCountryCode            0 Not supported
-          bNumDescriptors         1
-          bDescriptorType        34 Report
-          wDescriptorLength      79
-         Report Descriptors:
-           ** UNAVAILABLE **
-      Endpoint Descriptor:
-        bLength                 7
-        bDescriptorType         5
-        bEndpointAddress     0x83  EP 3 IN
-        bmAttributes            3
-          Transfer Type            Interrupt
-          Synch Type               None
-          Usage Type               Data
-        wMaxPacketSize     0x0040  1x 64 bytes
-        bInterval               8
-Device Status:     0x0000
-  (Bus Powered)
-```
-
-**Interface Breakdown:**
-- **Interface 0**: HID Keyboard (Boot Protocol, 6-key rollover)
-- **Interface 1**: HID Consumer/System Control (media keys, power control)
-- **Interface 2**: HID Mouse (Boot Protocol, 5-button + scroll)
-
-Boot Protocol is used for BIOS/UEFI compatibility (6-key rollover, NKRO not supported).
-
-## Development Guidelines
-
-### Code Quality & Architecture Enforcement
-
-The project includes automated enforcement tools to maintain code quality and architectural purity:
-
-**Lint Script** - Detects violations of critical architecture rules:
-```bash
-# Run locally before committing
-./tools/lint.sh
-
-# Run in strict mode (warnings cause failure)
-./tools/lint.sh --strict
-```
-
-**Git Hooks** - Automatic checks during commits:
-- Pre-commit: Prevents staging of internal documentation
-- Commit-msg: Blocks references to internal docs in commit messages
-
-**CI Pipeline** - GitHub Actions runs on every PR:
-- Architecture lint checks
-- Build matrix (8+ keyboard/mouse configurations)
-- Memory usage validation
-- Commit message verification
-
-**Setup** (one-time for contributors):
-```bash
-# Configure git hooks
-git config core.hooksPath .githooks
-chmod +x .githooks/*
-
-# Configure commit template with reminders
-git config commit.template .gitmessage
-
-# Test the tools
-./tools/test-enforcement.sh
-```
-
-**What's Enforced:**
-- ❌ No blocking operations (`sleep_ms`, `busy_wait_us`)
-- ❌ No multicore APIs (single-core architecture)
-- ❌ No `printf()` in IRQ context
-- ✅ Volatile + memory barriers for IRQ-shared variables
-- ✅ `tud_hid_ready()` checked before sending HID reports
-
-See [`.github/copilot-instructions.md`](.github/copilot-instructions.md) for complete architecture rules and [tools/TESTING.md](tools/TESTING.md) for testing documentation.
-
-## Contributing
-
-Contributions welcome! Areas for expansion:
-
-- New keyboard configurations
-- New Protocol implementations
-- Feature development (NKRO, dynamic keymaps)
-- Hardware designs (PCBs, inline adapters, cases)
+Contributions are welcome! The project welcomes:
+- New keyboard/protocol support
+- Feature development (NKRO, dynamic keymaps, etc.)
+- Hardware designs (PCBs, adapters, cases)
 - Documentation improvements
 
 **Before submitting PRs:**
-1. Run `./tools/lint.sh` to check for violations
-2. Ensure builds succeed for your configuration
-3. Follow the PR template checklist
-4. Review `.github/copilot-instructions.md` for architecture rules
+1. Run `./tools/lint.sh` (must pass with zero errors/warnings)
+2. Test your configuration builds successfully
+3. Review [Development Guide](docs/development/README.md) for coding standards
 
-## Future Development
+---
 
-Planned improvements:
-
-- [ ] NumLock emulation for Mac keyboards
-- [ ] Dynamic keymap switching
-- [ ] Additional protocols
-- [ ] Universal inline adapter hardware
-- [ ] Configuration interface via USB
-
-## License
+## 📜 License
 
 The project is licensed under **GPLv3** or later. Third-party libraries and code used in this project have their own licenses as follows:
 
 * **Pico-SDK (https://github.com/raspberrypi/pico-sdk)**: License information can be found in the Pico-SDK repository.
 
 * **TinyUSB (https://github.com/hathach/tinyusb)**: License information can be found in the TinyUSB repository. These licenses remain intact in any included portions of code from those shared resources.
-
-* **Pico-Simon (https://github.com/Zheoni/pico-simon)**: Portions of code from the Pico-Simon project are used under the MIT License. A copy of the MIT License can be found in the Pico-Simon repository.
 
 * **Ringbuffer implementation (source files: ringbuf.c, etc.)**:
   * Based on code originally created by Hasu@tmk for the TMK Keyboard Firmware project.
