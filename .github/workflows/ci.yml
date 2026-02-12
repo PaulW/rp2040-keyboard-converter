@@ -84,7 +84,7 @@ jobs:
           tags: tardis-io/rp2040-kbd-converter:latest
           outputs: type=docker,dest=/tmp/rp2040-builder.tar
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=min
 
       - name: Upload Docker image artifact
         uses: actions/upload-artifact@v4
