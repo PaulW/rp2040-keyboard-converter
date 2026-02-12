@@ -49,10 +49,42 @@ jobs:
           fi
           echo "✓ No docs-internal references in commit messages"
 
+  docker-build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and cache Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          tags: rp2040-builder:latest
+          outputs: type=docker,dest=/tmp/rp2040-builder.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Upload Docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp/rp2040-builder.tar
+          retention-days: 1
+
   build-matrix:
     name: Build Configuration Matrix
     runs-on: ubuntu-latest
-    timeout-minutes: 20  # Add job-level timeout to prevent indefinite hangs
+    needs: docker-build
+    timeout-minutes: 10  # Reduced from 20 since Docker build is cached
     strategy:
       fail-fast: false
       matrix:
@@ -85,9 +117,14 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Build Docker image
-        timeout-minutes: 10  # Docker build should complete within 10 minutes
-        run: docker compose build builder
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Load Docker image
+        run: docker load --input /tmp/rp2040-builder.tar
 
       - name: Build firmware - ${{ matrix.config.name }}
         timeout-minutes: 5  # Firmware build should complete within 5 minutes
@@ -114,38 +151,6 @@ jobs:
           fi
           echo "✓ Build successful"
           ls -lh build/rp2040-converter.*
-
-      - name: Install ARM toolchain for memory analysis
-        timeout-minutes: 5  # Explicit timeout for apt operations
-        run: |
-          # Retry logic for apt-get to handle transient network issues
-          MAX_RETRIES=3
-          RETRY_DELAY=10
-
-          for i in $(seq 1 $MAX_RETRIES); do
-            echo "Attempt $i of $MAX_RETRIES: Installing ARM toolchain..."
-
-            if sudo apt-get update && \
-               sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi binutils-arm-none-eabi; then
-              echo "✓ ARM toolchain installed successfully"
-              exit 0
-            fi
-
-            if [ $i -lt $MAX_RETRIES ]; then
-              echo "⚠ Installation failed, retrying in ${RETRY_DELAY}s..."
-              sleep "$RETRY_DELAY"
-            fi
-          done
-
-          echo "❌ Failed to install ARM toolchain after $MAX_RETRIES attempts"
-          exit 1
-
-      - name: Extract memory usage
-        run: |
-          if [ -f build/rp2040-converter.elf ]; then
-            echo "Memory usage for ${{ matrix.config.name }}:"
-            arm-none-eabi-size build/rp2040-converter.elf
-          fi
 
       - name: Prepare artifact name
         id: artifact-name

@@ -247,8 +247,26 @@ while IFS= read -r file; do
                     func_start=$(grep -n "^void __isr ${isr_func}" "$file" | head -1 | cut -d: -f1)
                     
                     if [ -n "$func_start" ]; then
-                        # Extract from function start to first closing brace at column 1
-                        ISR_BODY=$(sed -n "${func_start},/^}/p" "$file")
+                        # Extract complete function body by tracking brace nesting
+                        # Handles inner blocks with closing braces at column 1
+                        ISR_BODY=$(awk -v start="$func_start" '
+                            NR < start { next }
+                            NR == start { 
+                                brace_count = 0
+                                in_function = 1
+                            }
+                            in_function {
+                                # Count opening and closing braces
+                                for (i = 1; i <= length($0); i++) {
+                                    c = substr($0, i, 1)
+                                    if (c == "{") brace_count++
+                                    else if (c == "}") brace_count--
+                                }
+                                print
+                                # Exit when we close the function block
+                                if (brace_count == 0) exit
+                            }
+                        ' "$file")
                         if echo "$ISR_BODY" | grep -qw "$var_name"; then
                             VOLATILE_ISSUES="${VOLATILE_ISSUES}${file}:${line_num}: static ${var_name} (accessed in ${isr_func})\n"
                             break
@@ -304,8 +322,27 @@ while IFS= read -r file; do
                         # dmb_lines already computed once per file (hoisted outside loops)
                         for dmb_line in $dmb_lines; do
                             # Check next 5 lines after __dmb() for variable read (using awk)
-                            # Use flag variable to avoid exit/END block issues
-                            read_found=$(awk "BEGIN {found=0} NR>$dmb_line && NR<=$((dmb_line + 5)) && /([^a-zA-Z0-9_]|^)${var}([^a-zA-Z0-9_]|$)/ {found=1} END {print found}" "$file")
+                            # Pass var as awk variable to avoid regex metacharacter issues
+                            read_found=$(awk -v var="$var" -v start="$dmb_line" -v end="$((dmb_line + 5))" '
+                                BEGIN { found = 0 }
+                                NR > start && NR <= end {
+                                    # Use index() for literal string matching (safe from regex metacharacters)
+                                    if (index($0, var) > 0) {
+                                        # Verify word boundaries: check char before and after
+                                        pos = index($0, var)
+                                        len = length(var)
+                                        before = (pos == 1) ? "" : substr($0, pos - 1, 1)
+                                        after = substr($0, pos + len, 1)
+                                        # Check if surrounded by non-word chars or string boundaries
+                                        if ((before == "" || before !~ /[a-zA-Z0-9_]/) && 
+                                            (after == "" || after !~ /[a-zA-Z0-9_]/)) {
+                                            found = 1
+                                            exit
+                                        }
+                                    }
+                                }
+                                END { print found }
+                            ' "$file")
                             if [ "$read_found" = "1" ]; then
                                 has_read_barrier=true
                                 break
