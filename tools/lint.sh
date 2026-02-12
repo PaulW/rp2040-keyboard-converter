@@ -100,12 +100,11 @@ echo ""
 # Check 3: printf in IRQ Context
 echo -e "${BLUE}[3/14] Checking for printf in IRQ context...${NC}"
 # This is a heuristic check - finds functions with __isr attribute and checks for printf
-ISR_FUNCTIONS=$(grep -R --files-with-matches "${EXCLUDE_DIRS[@]}" --exclude="*.md" "__isr" src/ 2>/dev/null || true)
-
 PRINTF_IN_ISR=""
-if [ -n "$ISR_FUNCTIONS" ]; then
-    for file in $ISR_FUNCTIONS; do
-        # Find all __isr function names
+
+while IFS= read -r file; do
+    [ -z "$file" ] && continue
+    # Find all __isr function names
         ISR_NAMES=$(grep -o "__isr [a-zA-Z_][a-zA-Z0-9_]*" "$file" | awk '{print $2}' || true)
         
         for isr_name in $ISR_NAMES; do
@@ -117,8 +116,7 @@ if [ -n "$ISR_FUNCTIONS" ]; then
                 PRINTF_IN_ISR="${PRINTF_IN_ISR}${file}:${isr_name}\n"
             fi
         done
-    done
-fi
+done < <(grep -R "${EXCLUDE_DIRS[@]}" --exclude="*.md" --files-with-matches "__isr" src/ 2>/dev/null || true)
 
 if [ -n "$PRINTF_IN_ISR" ]; then
     echo -e "${YELLOW}WARNING: Possible printf in IRQ context:${NC}"
@@ -217,9 +215,8 @@ echo -e "${BLUE}[7/14] Checking for IRQ-shared variables...${NC}"
 VOLATILE_ISSUES=""
 BARRIER_ISSUES=""
 
-ISR_FILES=$(grep -R "${EXCLUDE_DIRS[@]}" --exclude="*.md" --files-with-matches "__isr" src/ 2>/dev/null || true)
-
-for file in $ISR_FILES; do
+while IFS= read -r file; do
+    [ -z "$file" ] && continue
     # Look for static variables that aren't volatile (potential IRQ-shared variables)
     # Pattern: "static" followed by type, then variable name, but NOT containing "volatile"
     NON_VOLATILE_STATIC=$(grep -n "^static " "$file" | grep -v "volatile" | grep -v "const" | grep -v "inline" | grep -E 'static (uint|int|bool|unsigned|_Atomic)' || true)
@@ -234,6 +231,9 @@ for file in $ISR_FILES; do
                 # Strip pointer asterisks and array brackets to get base name
                 var_name=$(echo "$line" | awk -F'[=;]' '{print $1}' | awk '{print $NF}' | sed 's/[*]//g' | sed 's/\[.*\]//')
                 line_num=$(echo "$line" | cut -d: -f1)
+                
+                # Skip if variable name extraction failed
+                [ -z "$var_name" ] && continue
                 
                 # Check for LINT:ALLOW annotation on this line
                 if sed -n "${line_num}p" "$file" | grep -q "// LINT:ALLOW non-volatile"; then
@@ -319,7 +319,7 @@ for file in $ISR_FILES; do
                 done
             done <<< "$VOLATILE_VAR_NAMES"
         fi
-done
+done < <(grep -R "${EXCLUDE_DIRS[@]}" --exclude="*.md" --files-with-matches "__isr" src/ 2>/dev/null || true)
 
 ISSUES_FOUND=false
 
