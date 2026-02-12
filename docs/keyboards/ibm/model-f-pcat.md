@@ -8,9 +8,8 @@
 
 ## Overview
 
-The IBM Model F PC/AT keyboard uses buckling spring over capacitive switch technology. It was designed for the IBM PC/AT (model 5170) released in August 1984, before ISO and ANSI layouts were standardized. This particular configuration is based on the UK layout variant (part number 6450225).
+The IBM Model F PC/AT keyboard uses buckling spring over capacitive switch technology. This keyboard was designed for the IBM PC/AT (model 5170), before ISO and ANSI layouts were standardized. This configuration is based on the UK layout variant.
 
-**Production Period**: August 1984–1986  
 **Part Number**: 6450225 (UK Layout)
 
 ---
@@ -198,7 +197,7 @@ See: [AT/PS2 Protocol Documentation](../../protocols/at-ps2.md) for complete tec
 
 ## History & Variants
 
-The Model F PC/AT was released in August 1984 alongside the IBM Personal Computer AT (model 5170). This 84-key layout was a transitional design that came before the standardized layouts we got with the Model M keyboards, and it turned out to be one of the last new Model F variants IBM would introduce.
+The Model F PC/AT was designed for the IBM Personal Computer AT (model 5170). This 84-key layout was a transitional design that came before the standardized layouts we got with the Model M keyboards, and it turned out to be one of the last new Model F variants IBM would introduce.
 
 The keyboard uses thick steel construction with dye-sublimated PBT keycaps. The buckling spring switches provide tactile and audible feedback. Unlike the later Model M which uses membrane assembly-based buckling springs, the Model F uses capacitive sensing where a change in capacitance is measured to register key presses.
 
