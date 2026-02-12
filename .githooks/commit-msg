@@ -10,7 +10,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 COMMIT_MSG_FILE=$1
-COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+# Filter out comment lines (lines starting with #) as these aren't part of the actual commit
+COMMIT_MSG=$(grep -v '^#' "$COMMIT_MSG_FILE")
 
 # Check for docs-internal references (case-insensitive)
 if echo "$COMMIT_MSG" | grep -qi "docs-internal"; then

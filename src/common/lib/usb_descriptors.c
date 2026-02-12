@@ -25,9 +25,11 @@
 
 #include "usb_descriptors.h"
 
-#include "config.h"
 #include "pico/unique_id.h"
+
 #include "tusb.h"
+
+#include "config.h"
 
 /* A combination of interfaces must have a unique product id, since PC will save device driver after
  * the first plug. Same VID/PID with different interface e.g MSC (first), then CDC (later) will

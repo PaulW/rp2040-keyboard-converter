@@ -65,7 +65,6 @@
 #define M0110_CMD_INQUIRY    0x10  /**< Inquiry command - requests key transitions from keyboard */
 #define M0110_CMD_INSTANT    0x14  /**< Instant command - requests immediate key state (not commonly used) */
 #define M0110_CMD_MODEL      0x16  /**< Model Number command - requests keyboard model and triggers reset */
-#define M0110_CMD_TEST       0x36  /**< Self Test command - initiates keyboard self-test (rarely used) */
 
 /**
  * @brief Apple M0110 Response Codes
@@ -75,7 +74,24 @@
  */
 #define M0110_RESP_NULL         0x7B  /**< Null response - no key pressed or released (0111 1011) */
 #define M0110_RESP_KEYPAD       0x79  /**< Keypad attached response - indicates external keypad present (0111 1001) */
-#define M0110_RESP_MODEL_M0110A 0x0B  /**< Model M0110A identification - enhanced keyboard with keypad (0000 0101) */
+
+/**
+ * @brief Apple M0110 Model Identification Codes
+ * 
+ * Model response format (based on observed values):
+ * - Bit 0: Always 1
+ * - Bits 1-3: Keyboard model number (1-8)
+ * - Bit 4: 1 if another device connected (keypad detection)
+ * - Bits 5-6: Next device model number when bit 4 set (keypad model)
+ * - Bit 7: Always 0 (reserved/unused)
+ */
+#define M0110_RESP_MODEL_M0110  0x03  /**< Model M0110(GS536) - original compact keyboard (0000 0011) */
+#define M0110_RESP_MODEL_M0110_ALT 0x09  /**< Model M0110(GS624) - original compact keyboard variant (0000 1001) */
+#define M0110_RESP_MODEL_M0110A 0x0B  /**< Model M0110A - enhanced keyboard with arrow keys (0000 1011) */
+#define M0110_RESP_MODEL_M0120  0x11  /**< Model M0120 - numeric keypad (0001 0001) */
+#define M0110_RESP_MODEL_M0110_M0120 0x13  /**< M0110(GS536) + M0120 keypad (0001 0011) */
+#define M0110_RESP_MODEL_M0110_M0120_ALT 0x19  /**< M0110(GS624) + M0120 keypad (0001 1001) */
+#define M0110_RESP_MODEL_M0110A_M0120 0x1B  /**< M0110A + M0120 keypad (0001 1011) */
 
 /**
  * @brief Protocol Timing Constants

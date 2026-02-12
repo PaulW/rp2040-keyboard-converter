@@ -25,14 +25,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "pico/unique_id.h"
+
 #include "bsp/board.h"
+#include "tusb.h"
+
 #include "command_mode.h"
 #include "config.h"
 #include "config_storage.h"
 #include "hid_interface.h"
 #include "log.h"
-#include "pico/unique_id.h"
-#include "tusb.h"
 #include "uart.h"
 
 #if KEYBOARD_ENABLED

@@ -21,15 +21,16 @@
 #include "hid_interface.h"
 
 #include <stdio.h>
-#include "log.h"
 
 #include "bsp/board.h"
+#include "tusb.h"
+
 #include "command_mode.h"
 #include "config.h"
 #include "hid_keycodes.h"
 #include "keymaps.h"
 #include "led_helper.h"
-#include "tusb.h"
+#include "log.h"
 #include "usb_descriptors.h"
 
 /**

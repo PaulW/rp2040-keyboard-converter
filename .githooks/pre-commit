@@ -31,7 +31,8 @@ fi
 # Check 2: Warn about docs-internal references in commit message
 # (This only works if commit message is already prepared, e.g., via -m flag or --file)
 if [ -f ".git/COMMIT_EDITMSG" ]; then
-    if grep -qi "docs-internal" ".git/COMMIT_EDITMSG"; then
+    # Filter out comment lines (lines starting with #) as these aren't part of the actual commit
+    if grep -v '^#' ".git/COMMIT_EDITMSG" | grep -qi "docs-internal"; then
         echo "${RED}WARNING: Commit message references 'docs-internal/'!${NC}"
         echo ""
         echo "${YELLOW}Commit messages are PUBLIC documentation (visible in git history).${NC}"

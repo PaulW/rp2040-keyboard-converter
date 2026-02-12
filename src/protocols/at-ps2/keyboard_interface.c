@@ -43,7 +43,7 @@
  * - Clock pulse width: minimum 30µs low, 30µs high
  * - Data setup time: minimum 5µs before clock falling edge
  * - Data hold time: minimum 5µs after clock falling edge
- * - Inhibit time: minimum 100µs CLOCK low stops transmission
+ * - Inhibit time: 96µs CLOCK low (exceeds max bit period, stops transmission)
  * 
  * State Machine:
  * 1. UNINITIALISED → Reset keyboard and wait for self-test
@@ -67,7 +67,7 @@
  * - Graceful handling of non-standard keyboards
  * 
  * Known Limitation:
- * - Some vintage or non-compliant keyboards (observed in a 1988 Cherry unit)
+ * - Some older or non-compliant keyboards (observed in a 1988 Cherry unit)
  *   emit a bare sequence for Pause that lacks the standard E1 prefix and can
  *   therefore be indistinguishable from an intentional Ctrl+NumLock sequence.
  *   Detecting this in firmware without introducing heuristics that risk breaking
@@ -80,10 +80,12 @@
 
 #include <math.h>
 
-#include "bsp/board.h"
-#include "common_interface.h"
 #include "hardware/clocks.h"
 #include "interface.pio.h"
+
+#include "bsp/board.h"
+
+#include "common_interface.h"
 #include "led_helper.h"
 #include "log.h"
 #include "pio_helper.h"
@@ -121,7 +123,7 @@ uint keyboard_data_pin;            /**< GPIO pin for DATA line (CLOCK = DATA + 1
 
 /* Protocol State and Configuration Variables */
 static volatile uint8_t keyboard_lock_leds = 0;     /**< Current LED state (Caps/Num/Scroll Lock) */
-static bool id_retry = false;                       /**< Flag indicating ID read retry attempt */
+static volatile bool id_retry = false;              /**< Flag indicating ID read retry attempt */
 
 /**
  * @brief Stop Bit Compliance Detection
@@ -236,13 +238,14 @@ static void keyboard_event_processor(uint8_t data_byte) {
   switch (keyboard_state) {
     case UNINITIALISED:
       id_retry = false;      // Clear retry flag - starting fresh initialization sequence
+      __dmb();  // Memory barrier - ensure volatile write completes before state change
       keyboard_id = ATPS2_KEYBOARD_ID_UNKNOWN;  // Reset keyboard ID to unknown state during initialization
       switch (data_byte) {
         case ATPS2_RESP_BAT_PASSED:
           // Power-on self-test completed successfully (Basic Assurance Test)
           // Keyboard passed internal diagnostics and is ready
           LOG_DEBUG("Keyboard Self Test OK!\n");
-          keyboard_lock_leds = 0;
+          keyboard_lock_leds = 0;  // LINT:ALLOW barrier - volatile provides atomic visibility on Cortex-M0+
           LOG_DEBUG("Waiting for Keyboard ID...\n");
           keyboard_state = INIT_READ_ID_1;
           break;
@@ -269,7 +272,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
       switch (data_byte) {
         case ATPS2_RESP_BAT_PASSED:
           LOG_DEBUG("Keyboard Self Test OK!\n");
-          keyboard_lock_leds = 0;
+          keyboard_lock_leds = 0;  // LINT:ALLOW barrier - volatile provides atomic visibility on Cortex-M0+
           // Proceed to keyboard identification phase for terminal keyboard detection
           LOG_DEBUG("Waiting for Keyboard ID...\n");
           keyboard_state = INIT_READ_ID_1;
@@ -358,7 +361,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
       switch (data_byte) {
         case 0xFA:
           if (lock_leds.value != keyboard_lock_leds) {
-            keyboard_lock_leds = lock_leds.value;
+            keyboard_lock_leds = lock_leds.value;  // LINT:ALLOW barrier - volatile provides atomic visibility on Cortex-M0+
             keyboard_command_handler((uint8_t)((lock_leds.keys.capsLock << 2) |
                                                (lock_leds.keys.numLock << 1) |
                                                lock_leds.keys.scrollLock));
@@ -369,7 +372,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
           break;
         default:
           LOG_DEBUG("SET_LOCK_LED FAILED (0x%02X)\n", data_byte);
-          keyboard_lock_leds = lock_leds.value;
+          keyboard_lock_leds = lock_leds.value;  // LINT:ALLOW barrier - volatile provides atomic visibility on Cortex-M0+
           keyboard_state = INITIALISED;
       }
       break;
@@ -456,6 +459,7 @@ static void __isr keyboard_input_event_handler() {
         LOG_DEBUG("Likely Keyboard Connect Event detected.\n");
         keyboard_state = UNINITIALISED;
         id_retry = false;
+        __dmb();  // Memory barrier - ensure volatile write completes
         pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
       }
       // Request data retransmission on parity error
@@ -465,6 +469,7 @@ static void __isr keyboard_input_event_handler() {
     // Frame validation failed - restart protocol state machine for clean recovery
     keyboard_state = UNINITIALISED;
     id_retry = false;
+    __dmb();  // Memory barrier - ensure volatile write completes
     pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
     return;
   }
@@ -556,10 +561,12 @@ void keyboard_interface_task() {
           case INIT_READ_ID_1 ... INIT_SETUP:
             if (detect_stall_count > 2) {
               // Initialization timeout detected during ID read or setup phase
+              __dmb();  // Memory barrier - ensure we see latest volatile value
               if (!id_retry) {
                 // First timeout - retry keyboard ID request before giving up
                 LOG_DEBUG("Keyboard ID/Setup Timeout, retrying...\n");
                 id_retry = true;
+                __dmb();  // Memory barrier - ensure volatile write visible to IRQ handler
                 keyboard_state = INIT_READ_ID_1;  // Return to ID read state for retry
                 keyboard_command_handler(ATPS2_CMD_GET_ID);   // Send keyboard identification request
                 detect_stall_count = 0;  // Reset timeout counter for retry attempt

@@ -26,8 +26,8 @@
  * systems (1981-1987). This is the simplest of the IBM keyboard protocols.
  * 
  * Protocol Characteristics:
- * - 1-wire interface: DATA only (no separate clock line)
- * - Keyboard generates its own clock signal on DATA line
+ * - 2-wire interface: separate DATA and CLOCK lines
+ * - Keyboard generates clock signal on dedicated CLOCK line
  * - Unidirectional communication (keyboard to host only)
  * - LSB-first bit transmission (bit 0 → bit 7)
  * - No parity, start, or stop bits
@@ -35,10 +35,15 @@
  * - No host commands or acknowledgments
  * 
  * Physical Interface:
- * - Single DATA line with pull-up resistor
- * - Keyboard pulls line low/high to generate clock and data
+ * - DATA line for keyboard-to-host data transmission
+ * - CLOCK line for keyboard-generated clock signal
+ * - Both lines have pull-up resistors
  * - 5V TTL logic levels
  * - 5-pin DIN connector on original IBM keyboards
+ * 
+ * Note: Unlike AT/PS2 protocol, the CLOCK line in XT is primarily keyboard-driven
+ * with no continuous host flow control. However, XT Type 2 keyboards support soft
+ * reset by pulling both CLOCK and DATA low simultaneously.
  * 
  * Timing Requirements:
  * - Keyboard-generated clock: approximately 10 kHz
@@ -114,7 +119,7 @@
  * communication. XT keyboards require minimal setup since they use
  * a simple unidirectional protocol.
  * 
- * @param data_pin GPIO pin for DATA line (single wire interface)
+ * @param data_pin GPIO pin for DATA line (2-wire interface)
  */
 void keyboard_interface_setup(uint data_pin);
 

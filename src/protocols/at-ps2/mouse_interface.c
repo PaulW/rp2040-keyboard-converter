@@ -22,11 +22,13 @@
 
 #include <math.h>
 
-#include "bsp/board.h"
-#include "common_interface.h"
 #include "hardware/clocks.h"
-#include "hid_interface.h"
 #include "interface.pio.h"
+
+#include "bsp/board.h"
+
+#include "common_interface.h"
+#include "hid_interface.h"
 #include "led_helper.h"
 #include "log.h"
 #include "pio_helper.h"

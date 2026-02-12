@@ -21,11 +21,13 @@
 #include "config_storage.h"
 
 #include <string.h>
+
 #include "hardware/flash.h"
 #include "hardware/sync.h"
 #include "pico/platform.h"
-#include "log.h"
+
 #include "config.h"
+#include "log.h"
 
 // --- Factory Default Configuration ---
 

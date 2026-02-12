@@ -1,22 +1,18 @@
 # Testing Enforcement Tools
 
-This guide explains how to test all enforcement mechanisms for the RP2040 Keyboard Converter project.
+This guide covers testing the enforcement mechanisms themselves—you'll need this when modifying lint.sh, git hooks, or CI checks. For regular development, just run `./tools/lint.sh` before committing (see [QUICKTEST.md](QUICKTEST.md)).
 
-## Quick Test: Automated Test Suite
+## Automated Test Suite
 
-Run the automated test suite:
+The meta-testing suite validates that enforcement tools detect violations correctly:
 
 ```bash
 ./tools/test-enforcement.sh
 ```
 
-This tests:
-- ✅ Lint script detection of violations
-- ✅ Git hooks (pre-commit and commit-msg)
-- ✅ CI checks simulation
-- ✅ Multiple violation scenarios
+This runs through multiple scenarios checking that the lint script catches violations, git hooks block problematic commits, and CI checks function correctly. You'll only need this when modifying the enforcement tools—not for regular keyboard development or bug fixes.
 
-**Expected Results**: All tests should pass, confirming tools work correctly.
+All tests should pass, confirming the enforcement tools work as expected.
 
 ---
 
@@ -29,16 +25,16 @@ This tests:
 ./tools/lint.sh
 ```
 
-**Current Expected Result**: 
-- ❌ 1 error (sleep_us in uart.c - under review)
-- ⚠️ 2 warnings (printf in IRQ, ringbuf_reset usage - both are correct/intentional)
+**Expected Result**:
+- ✅ Passes with 0 errors, 0 warnings
+- All intentional violations properly annotated with LINT:ALLOW comments
 
 #### Test 1.2: Strict Mode
 ```bash
 ./tools/lint.sh --strict
 ```
 
-**Expected Result**: Fails due to warnings (strict mode treats warnings as errors)
+**Expected Result**: Passes (codebase is clean with proper LINT:ALLOW annotations)
 
 #### Test 1.3: Create Violation and Test
 ```bash
@@ -187,69 +183,25 @@ cat .github/PULL_REQUEST_TEMPLATE.md
 
 ---
 
-## Test Scenarios by Violation Type
+## Common Violation Scenarios
 
-### Scenario 1: Blocking Operation Added
+These scenarios show how different violations get caught at various stages:
 
-**Violation**:
-```c
-// In any source file
-void my_function(void) {
-    sleep_ms(50);  // BAD
-}
-```
+**Adding blocking operations:**
 
-**Detection Points**:
-1. ❌ Lint script: `./tools/lint.sh` (detects immediately)
-2. ❌ CI: Fails lint check in GitHub Actions
-3. ⚠️ PR Review: Checklist reminds reviewer
+If you add `sleep_ms(50)` to any source file, the lint script will catch it immediately when you run `./tools/lint.sh`. CI will also fail the lint check in GitHub Actions, and the PR checklist reminds reviewers to watch for blocking operations.
 
----
+**Using multicore APIs:**
 
-### Scenario 2: Multicore API Used
+Code like `multicore_launch_core1(core1_entry)` gets detected by the same mechanisms—lint script locally, CI check remotely, and PR checklist review.
 
-**Violation**:
-```c
-#include "pico/multicore.h"
+**Referencing docs-internal in commits:**
 
-void bad_code(void) {
-    multicore_launch_core1(core1_entry);  // BAD
-}
-```
+A commit message like "Fix bug (see docs-internal/analysis.md)" won't make it past the commit-msg hook—it blocks immediately. CI also checks commit messages in PRs, and the commit template shows a reminder about this.
 
-**Detection Points**:
-1. ❌ Lint script: `./tools/lint.sh` (detects immediately)
-2. ❌ CI: Fails lint check
-3. ⚠️ PR Review: Checklist item #2
+**Committing docs-internal files:**
 
----
-
-### Scenario 3: docs-internal Reference in Commit
-
-**Violation**:
-```bash
-git commit -m "Fix bug (see docs-internal/analysis.md)"
-```
-
-**Detection Points**:
-1. ❌ Git hook: commit-msg blocks immediately
-2. ❌ CI: Checks commit messages in PR
-3. ⚠️ Commit template: Reminder visible
-
----
-
-### Scenario 4: docs-internal File Committed
-
-**Violation**:
-```bash
-git add -f docs-internal/notes.md  # Force add
-git commit -m "Add notes"
-```
-
-**Detection Points**:
-1. ❌ Git hook: pre-commit blocks before commit
-2. ❌ CI: Checks for docs-internal/ files in repo
-3. 🛡️ .gitignore: Prevents accidental staging
+If you force-add a docs-internal file with `git add -f docs-internal/notes.md`, the pre-commit hook blocks the commit before it happens. CI also checks for docs-internal files in the repository, and .gitignore prevents accidental staging in the first place.
 
 ---
 
@@ -285,112 +237,49 @@ echo "❌ Some tools not configured"
 
 ## Troubleshooting
 
-### Hooks Not Running
+**Hooks not running:**
 
-**Problem**: Commits go through without checks
+If commits go through without any checks, the hooks path probably isn't configured. Check with `git config core.hooksPath`—it should output `.githooks`. If it doesn't, set it with `git config core.hooksPath .githooks`. Also check the hooks are executable with `ls -la .githooks/`—you should see `-rwxr-xr-x` permissions. If not, run `chmod +x .githooks/*`.
 
-**Solutions**:
-```bash
-# 1. Check hooks path
-git config core.hooksPath
-# Should output: .githooks
+**Lint script fails on known issues:**
 
-# 2. Set if not configured
-git config core.hooksPath .githooks
+The current codebase has a known `sleep_us()` call in uart.c that's under review. For local development, run without `--strict`. CI is configured to handle this exception. This is tracked as issue #9.
 
-# 3. Check permissions
-ls -la .githooks/
-# Should show -rwxr-xr-x (executable)
+**Can't test PR template:**
 
-# 4. Make executable if needed
-chmod +x .githooks/*
-```
-
-### Lint Script Fails on Known Issues
-
-**Problem**: Current codebase has `sleep_us()` in uart.c
-
-**Solution**: This is under review. For now:
-- Local development: Run without `--strict`
-- CI: Configured to handle known exceptions
-- Issue tracked in todo list (#9)
-
-### Can't Test PR Template
-
-**Problem**: Need real PR to test template
-
-**Solution**:
-1. Create test branch locally
-2. Push to GitHub
-3. Open PR to see template
-4. Close PR without merging
-5. Delete branch
+You need an actual PR to see the template in action. Create a test branch locally, push to GitHub, open a PR to see the template, then close without merging and delete the branch.
 
 ---
 
-## Continuous Testing
+## Daily Usage
 
-### Daily Development
+Before each commit, run the lint script to catch violations early:
 
 ```bash
-# Before each commit
 ./tools/lint.sh
+```
 
-# After adding new code
+Before submitting a PR, run strict mode to match what CI will check:
+
+```bash
 ./tools/lint.sh --strict
 ```
 
-### Before PR
+Also verify recent commits don't reference docs-internal and nothing's staged from that directory:
 
 ```bash
-# Full check
-./tools/test-enforcement.sh
-
-# Manual verification
-git log --oneline -5  # Check no docs-internal in recent commits
-git status           # Check no docs-internal staged
-./tools/lint.sh      # Check no new violations
-```
-
-### After Merging
-
-```bash
-# On main branch
-./tools/lint.sh --strict
-# Should pass or have only known issues
+git log --oneline -5  # Check recent commit messages
+git status           # Check staged files
 ```
 
 ---
 
-## Expected Test Results Summary
+## Adding New Enforcement Rules
 
-| Test | Expected Result | Current Status |
-|------|----------------|----------------|
-| Lint clean code | Pass with known warnings | ✅ Working |
-| Lint detect blocking ops | Fail (detects violation) | ✅ Working |
-| Lint detect multicore | Fail (detects violation) | ✅ Working |
-| Lint strict mode | Fail on warnings | ✅ Working |
-| Pre-commit blocks docs-internal | Fail (blocks commit) | ✅ Working |
-| Commit-msg blocks docs-internal ref | Fail (blocks commit) | ✅ Working |
-| Commit-msg allows clean message | Pass (allows commit) | ✅ Working |
-| CI docs-internal check | Pass (no files found) | ✅ Working |
-| Build matrix | Pass (all configs build) | 🔄 Needs GitHub Actions |
-| Memory guards | Pass (within limits) | 🔄 Needs GitHub Actions |
+When you add a new architectural rule that needs enforcement:
 
-## Notes
-
-- ✅ = Tested and working locally
-- 🔄 = Requires GitHub Actions to test fully
-- ⚠️ = Known issue being tracked
-
----
-
-## Adding New Tests
-
-When adding enforcement rules:
-
-1. Add check to `tools/lint.sh`
-2. Add test case to `tools/test-enforcement.sh`
-3. Update this testing guide
-4. Update `.github/PULL_REQUEST_TEMPLATE.md`
-5. Document in `.github/copilot-instructions.md`
+1. Add the check logic to `lint.sh`
+2. Add test cases to `test-enforcement.sh` that verify the check catches violations
+3. Update this testing guide with the new scenarios
+4. Update `.github/PULL_REQUEST_TEMPLATE.md` with relevant checklist items
+5. Document the rule in `.github/copilot-instructions.md`

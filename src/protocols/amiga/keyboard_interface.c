@@ -27,11 +27,11 @@
  * 
  * Physical Interface:
  * - Two-wire bidirectional communication
- * - KCLK: Keyboard clock (unidirectional, keyboard-driven only)
- * - KDAT: Data line (bidirectional: keyboard transmits, computer acknowledges)
+ * - CLOCK: Keyboard clock (unidirectional, keyboard-driven only)
+ * - DATA: Data line (bidirectional: keyboard transmits, computer acknowledges)
  * - Open-collector design with pull-up resistors in both keyboard and computer
  * - 5V TTL logic levels
- * - 4-pin connector: KCLK, KDAT, +5V, GND
+ * - 4-pin connector: CLOCK, DATA, +5V, GND
  * 
  * Communication Protocol:
  * - Synchronous serial: 8-bit bytes with keyboard-generated clock
@@ -43,8 +43,8 @@
  * 
  * Timing Characteristics:
  * - Bit rate: ~17 kbit/sec (keyboard-controlled)
- * - Bit period: ~60µs (20µs setup + 20µs KCLK low + 20µs KCLK high)
- * - Handshake requirement: Computer must pulse KDAT low within 1µs of byte completion
+ * - Bit period: ~60µs (20µs setup + 20µs CLOCK low + 20µs CLOCK high)
+ * - Handshake requirement: Computer must pulse DATA low within 1µs of byte completion
  * - Handshake duration: MUST be 85µs (critical for compatibility with all keyboards)
  * - Timeout: 143ms without handshake triggers keyboard resync mode
  * - PIO sampling: 20µs interval for reliable signal detection
@@ -84,7 +84,7 @@
  * 
  * Limitations:
  * - Bit de-rotation required in software
- * - KDAT and KCLK must be adjacent GPIO pins (PIO requirement)
+ * - DATA and CLOCK must be adjacent GPIO pins (PIO requirement)
  * - No LED control from computer (except CAPS LOCK via key state)
  * - No typematic rate control or configuration
  */
@@ -93,11 +93,13 @@
 
 #include <math.h>
 
-#include "bsp/board.h"
-#include "config.h"
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "keyboard_interface.pio.h"
+
+#include "bsp/board.h"
+
+#include "config.h"
 #include "led_helper.h"
 #include "log.h"
 #include "pio_helper.h"
@@ -108,8 +110,8 @@
 uint keyboard_sm = 0;              /**< PIO state machine number */
 uint keyboard_offset = 0;          /**< PIO program memory offset */
 PIO keyboard_pio;                  /**< PIO instance (pio0 or pio1) */
-uint keyboard_data_pin;            /**< GPIO pin for KDAT (bidirectional) */
-uint keyboard_clock_pin;           /**< GPIO pin for KCLK (input only) */
+uint keyboard_data_pin;            /**< GPIO pin for DATA (bidirectional) */
+uint keyboard_clock_pin;           /**< GPIO pin for CLOCK (input only) */
 
 /**
  * @brief Amiga Protocol State Machine
@@ -155,7 +157,7 @@ static struct {
     CAPS_IDLE,       // No pending CAPS LOCK operation
     CAPS_PRESS_SENT, // Press sent, waiting to send release
   } state;
-  uint32_t press_time_ms;  // Time when press was sent
+  volatile uint32_t press_time_ms;  // Time when press was sent (written in IRQ, read in main)
 } caps_lock_timing = { .state = CAPS_IDLE, .press_time_ms = 0 };
 
 /**
@@ -360,8 +362,8 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * - Automatic recovery handled by protocol
  * 
  * Hardware Integration:
- * - KCLK monitored by PIO (keyboard-generated clock)
- * - KDAT read by PIO for data, driven by PIO for handshake
+ * - CLOCK monitored by PIO (keyboard-generated clock)
+ * - DATA read by PIO for data, driven by PIO for handshake
  * - Open-collector design with pull-ups in both keyboard and computer
  * - No host clock generation or timing control needed
  * 
@@ -400,8 +402,8 @@ static void __isr keyboard_input_event_handler() {
  * - Configures clock divider for ~20µs timing detection
  * 
  * GPIO Setup:
- * - KDAT (data_pin): Bidirectional, open-collector with pull-up
- * - KCLK (data_pin + 1): Input only, keyboard-driven, with pull-up
+ * - DATA (data_pin): Bidirectional, open-collector with pull-up
+ * - CLOCK (data_pin + 1): Input only, keyboard-driven, with pull-up
  * - Both pins initialized for PIO control
  * 
  * Interrupt Configuration:
@@ -409,11 +411,11 @@ static void __isr keyboard_input_event_handler() {
  * - Registers keyboard_input_event_handler as ISR
  * - IRQ priority set for timely handshake response
  * 
- * @param data_pin GPIO pin for KDAT (bidirectional data line)
- *                 KCLK is automatically assigned to data_pin + 1
+ * @param data_pin GPIO pin for DATA (bidirectional data line)
+ *                 CLOCK is automatically assigned to data_pin + 1
  */
 void keyboard_interface_setup(uint data_pin) {
-  // Store pin assignments - KCLK must be KDAT + 1 (PIO program requirement)
+  // Store pin assignments - CLOCK must be DATA + 1 (PIO program requirement)
   keyboard_data_pin = data_pin;
   keyboard_clock_pin = data_pin + 1;
   
@@ -518,6 +520,7 @@ void keyboard_interface_task() {
   // CAPS LOCK timing state machine - handle delayed release
   if (caps_lock_timing.state == CAPS_PRESS_SENT) {
     uint32_t now_ms = to_ms_since_boot(get_absolute_time());
+    __dmb();  // Memory barrier - ensure we see latest volatile timestamp from IRQ
     // Note: Unsigned subtraction handles wraparound correctly for time deltas
     // as long as elapsed time < 2^31 ms (~24 days). CAPS LOCK hold time is 125ms.
     if (now_ms - caps_lock_timing.press_time_ms >= CAPS_LOCK_TOGGLE_TIME_MS) {

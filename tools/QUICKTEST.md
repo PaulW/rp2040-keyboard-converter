@@ -64,8 +64,19 @@ rm docs-internal/test.md
 ## Before Every PR
 
 ```bash
-./tools/test-enforcement.sh && echo "✅ Ready for PR" || echo "❌ Tests failed"
+# Run the same checks as CI
+./tools/lint.sh --strict && echo "✅ Ready for PR" || echo "❌ Fix violations first"
 ```
+
+## Testing the Enforcement Tools (Optional)
+
+Only run this if you're modifying lint.sh, git hooks, or other enforcement tools:
+
+```bash
+./tools/test-enforcement.sh
+```
+
+This meta-tests the enforcement tools themselves—not needed for regular development.
 
 ## See Full Testing Guide
 

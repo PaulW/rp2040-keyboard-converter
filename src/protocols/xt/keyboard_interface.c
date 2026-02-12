@@ -26,8 +26,8 @@
  * IBM PC and PC/XT systems. This is the simplest keyboard protocol featuring:
  * 
  * Physical Interface:
- * - Single-wire DATA connection (no separate clock)
- * - Keyboard self-clocks on the DATA line
+ * - 2-wire interface: separate DATA and CLOCK lines
+ * - Keyboard generates clock signal on dedicated CLOCK line
  * - 5V TTL logic levels with pull-up resistor
  * - 5-pin DIN connector (original IBM design)
  * 
@@ -74,9 +74,11 @@
 
 #include <math.h>
 
-#include "bsp/board.h"
 #include "hardware/clocks.h"
 #include "keyboard_interface.pio.h"
+
+#include "bsp/board.h"
+
 #include "led_helper.h"
 #include "log.h"
 #include "pio_helper.h"
@@ -97,7 +99,7 @@
 uint keyboard_sm = 0;              /**< PIO state machine number */
 uint keyboard_offset = 0;          /**< PIO program memory offset */
 PIO keyboard_pio;                  /**< PIO instance (pio0 or pio1) */
-uint keyboard_data_pin;            /**< GPIO pin for DATA line (single wire) */
+uint keyboard_data_pin;            /**< GPIO pin for DATA line (2-wire interface) */
 
 /**
  * @brief IBM XT Protocol State Machine
@@ -377,8 +379,8 @@ void keyboard_interface_task() {
  * Hardware Setup:
  * - Finds available PIO instance (PIO0 or PIO1) with program space
  * - Claims unused state machine and loads XT protocol program  
- * - Configures single GPIO pin for DATA line (XT uses single-wire interface)
- * - No separate CLOCK pin needed (keyboard self-clocks on DATA line)
+ * - Configures GPIO pins for DATA and CLOCK lines (2-wire interface)
+ * - Keyboard generates clock signal on dedicated CLOCK line
  * 
  * PIO Configuration:
  * - Calculates clock divider for 30µs minimum pulse timing
@@ -422,9 +424,9 @@ void keyboard_interface_task() {
  * - Graceful failure if insufficient PIO resources available
  * - Logs successful initialization with configuration details
  * 
- * @param data_pin GPIO pin number for single DATA line (XT single-wire interface)
+ * @param data_pin GPIO pin number for DATA line (2-wire interface)
  * 
- * @note XT protocol uses single DATA line - no separate CLOCK pin needed
+ * @note XT protocol uses 2-wire interface: DATA and CLOCK lines
  * @note Function blocks until hardware initialization complete  
  * @note Much simpler setup than AT/PS2 due to XT protocol design
  * @note Call before any other XT keyboard interface operations

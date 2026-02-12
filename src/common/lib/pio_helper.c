@@ -22,9 +22,10 @@
 
 #include <math.h>
 #include <stdio.h>
-#include "log.h"
 
 #include "hardware/clocks.h"
+
+#include "log.h"
 
 /* Compile-time validation of PIO helper constants */
 _Static_assert(1, "PIO helper basic sanity check");  // Always true, validates _Static_assert works
