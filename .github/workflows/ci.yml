@@ -213,6 +213,8 @@ jobs:
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v7.0.0
+        with:
+          pattern: firmware-*  # Only download firmware artifacts, exclude docker-image and build summaries
 
       - name: Install ARM toolchain
         timeout-minutes: 5  # Explicit timeout for apt operations
