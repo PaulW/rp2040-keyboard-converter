@@ -67,15 +67,20 @@ jobs:
         run: |
           # Load PICO_SDK_VERSION from .env file
           if [ -f .env ]; then
-            export $(grep -v '^#' .env | xargs)
-            echo "PICO_SDK_VERSION=${PICO_SDK_VERSION}" >> $GITHUB_ENV
+            while IFS='=' read -r key value; do
+              # Skip comments and empty lines
+              [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
+              # Remove leading/trailing whitespace and quotes from value
+              value=$(echo "$value" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^["'\'']//' -e 's/["'\'']*$//')
+              echo "${key}=${value}" >> $GITHUB_ENV
+            done < .env
           else
             echo "ERROR: .env file not found"
             exit 1
           fi
 
       - name: Build and export Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
