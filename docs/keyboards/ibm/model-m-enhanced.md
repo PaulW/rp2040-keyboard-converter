@@ -8,9 +8,8 @@
 
 ## Overview
 
-The IBM Model M Enhanced Keyboard uses membrane-based buckling spring switches. IBM introduced the PC/AT Enhanced variant in 1986 (part numbers starting with 1390xxx), followed by the PS/2 Enhanced in 1987 (1391xxx series). Production ran through three manufacturers: IBM (1985–1999), Lexmark International (1991–1996, formed from IBM divestiture), and Unicomp (1996–present, formed by Lexmark employees).
+The IBM Model M Enhanced Keyboard uses membrane-based buckling spring switches. This is the standard 101/102-key IBM Enhanced Keyboard—the most common Model M variant.
 
-**Production Period**: 1985–1999 (IBM), 1991–1996 (Lexmark), 1996–present (Unicomp)  
 **Part Numbers**: 1390131 (PC/AT US), 1391401 (PS/2 ANSI), 1391403 (PS/2 ISO)
 
 ---
@@ -33,7 +32,7 @@ The IBM Model M Enhanced Keyboard uses membrane-based buckling spring switches. 
 
 ## Features
 
-The buckling spring switches give you tactile click and audible feedback—what the Model M's known for. The keyboard has a steel backplate with thick ABS plastic case and dye-sublimated PBT keycaps (later models switched to pad-printed to save costs). The layout's either 101-key ANSI or 102-key ISO depending on region, with LEDs for Caps Lock, Num Lock, and Scroll Lock.
+The buckling spring switches give tactile click and audible feedback. The keyboard has a steel backplate with thick ABS plastic case and dye-sublimated PBT keycaps (later models switched to pad-printed). The layout's either 101-key ANSI or 102-key ISO depending on region, with LEDs for Caps Lock, Num Lock, and Scroll Lock.
 
 SDL (Shielded Data Link) models come with a removable cable—either 6-pin mini-DIN or 5-pin DIN connector. Later production models moved to fixed cables.
 
@@ -227,11 +226,6 @@ See [AT/PS2 Protocol Documentation](../../protocols/at-ps2.md) for complete tech
 ### Production Timeline
 
 The Model M Enhanced first appeared in 1986 Q1 as the PC/AT Enhanced Keyboard (1390xxx series). The PS/2 Enhanced variant came along in 1987 Q2 (1391xxx series). The "M" designation refers to the membrane-based sensing mechanism—buckling springs still provide the tactile feedback, just a different sensing method underneath.
-
-Production shifted through three manufacturers:
-- **1985–1999**: IBM (manufacturing plants in Lexington KY, Greenock Scotland, and Guadalajara Mexico)
-- **1991–1996**: Lexmark International (formed March 1991 when IBM divested the division)
-- **1996–present**: Unicomp (formed by Lexmark employees who bought the tooling and kept production going)
 
 The keyboards came in either 101-key ANSI or 102-key ISO layouts.
 

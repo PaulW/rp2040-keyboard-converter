@@ -8,9 +8,8 @@
 
 ## Overview
 
-The IBM Model M M122 is a 122-key terminal keyboard with membrane-based buckling spring switches. The M122 keyboards were made for various IBM terminal systems including the 3270 and 5250 families. The specific keyboard featured here (part number 1390886) was made for the IBM 3197 Display Station.
+The IBM Model M M122 is a 122-key terminal keyboard with membrane-based buckling spring switches. Made for various IBM terminal systems including the 3270 and 5250 families. This specific keyboard (part number 1390886) was made for the IBM 3197 Display Station.
 
-**Production Period**: 1987 (Type 2, part 1390886)  
 **Part Numbers**: 1390876, 1390881, 1390886, 1390888 (Type 2)
 
 ---
@@ -34,7 +33,7 @@ The IBM Model M M122 is a 122-key terminal keyboard with membrane-based buckling
 
 ## Features
 
-The buckling spring switches give you tactile click and audible feedback—membrane-based like the regular Model M. The keyboard has a steel backplate with thick ABS plastic case and dye-sublimated PBT keycaps (or pad-printed on later models). The layout's 122 keys with 24 function keys (F1-F24) in two rows, full numeric keypad, and various terminal control keys.
+The buckling spring switches give tactile click and audible feedback—membrane-based like the regular Model M. The keyboard has a steel backplate with thick ABS plastic case and dye-sublimated PBT keycaps (or pad-printed on later models). The layout's 122 keys with 24 function keys (F1-F24) in two rows, full numeric keypad, and various terminal control keys.
 
 The keyboard's limited to 2-key rollover (2KRO)—only two non-modifier keys can be reliably detected at the same time. This comes from the membrane-based matrix design, same as the standard Model M keyboards. In normal typing you won't notice, but if you're pressing multiple keys simultaneously the keyboard may miss anything beyond the second key. There's a quirk though—depending on which row and column the keys are on, you can sometimes get more than two keys detected. That's just how the membrane matrix is wired, not a design feature.
 
@@ -224,11 +223,11 @@ The M122 keyboards were made for various IBM terminal systems—different varian
 
 IBM made the M122 in three main types:
 
-- **Type 1** (1985): Original terminal keyboard design
-- **Type 2** (1986): Modified with flip-out feet instead of two-setting risers
-- **Type 3** (1989): Redesigned with compact "battlecruiser" profile and wedge shape
+- **Type 1**: Original terminal keyboard design
+- **Type 2**: Modified with flip-out feet instead of two-setting risers
+- **Type 3**: Redesigned with compact "battlecruiser" profile and wedge shape
 
-This specific keyboard is Type 2. Type 4 (1990) was the Host Connected Keyboard for PC terminal emulation—different from the terminal variants.
+This specific keyboard is Type 2. Type 4 was the Host Connected Keyboard for PC terminal emulation—different from the terminal variants.
 
 ### Type 2 Part Numbers
 
