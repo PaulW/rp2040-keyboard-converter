@@ -217,7 +217,7 @@ See [AT/PS2 Protocol Documentation](../../protocols/at-ps2.md) for complete tech
 
 ### Terminal Keyboards
 
-The M122 keyboards were made for various IBM terminal systems—different variants for different terminal models in the 3270 and 5250 families, including the 3191, 3196, and 3197 Display Stations. This specific keyboard (part number 1390886) was made for the IBM 3197 Display Station in 1987.
+The M122 keyboards were made for various IBM terminal systems—different variants for different terminal models in the 3270 and 5250 families, including the 3191, 3196, and 3197 Display Stations. This specific keyboard (part number 1390886) was made for the IBM 3197 Display Station.
 
 ### Type Variants
 
@@ -231,12 +231,16 @@ This specific keyboard is Type 2. Type 4 was the Host Connected Keyboard for PC 
 
 ### Type 2 Part Numbers
 
+Example Type 2 part numbers:
+
 | Part Number | Description |
 |-------------|-------------|
 | **1390876** | Type 2 variant |
 | **1390881** | Type 2 variant |
 | **1390886** | Type 2 variant (featured) |
 | **1390888** | Type 2 variant |
+
+**Note**: This is not a comprehensive list. See [Admiral Shark's Keyboards](https://sharktastica.co.uk/keyboard-directory/iSNpxnhm) for complete Model M M122 directory.
 
 ---
 

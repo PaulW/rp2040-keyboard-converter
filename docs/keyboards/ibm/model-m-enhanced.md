@@ -225,17 +225,21 @@ See [AT/PS2 Protocol Documentation](../../protocols/at-ps2.md) for complete tech
 
 ### Production Timeline
 
-The Model M Enhanced first appeared in 1986 Q1 as the PC/AT Enhanced Keyboard (1390xxx series). The PS/2 Enhanced variant came along in 1987 Q2 (1391xxx series). The "M" designation refers to the membrane-based sensing mechanism—buckling springs still provide the tactile feedback, just a different sensing method underneath.
+The Model M Enhanced was introduced as the PC/AT Enhanced Keyboard (1390xxx series) followed by the PS/2 Enhanced variant (1391xxx series). The "M" designation refers to the membrane-based sensing mechanism—buckling springs still provide the tactile feedback, just a different sensing method underneath.
 
 The keyboards came in either 101-key ANSI or 102-key ISO layouts.
 
 ### Variants
+
+Example part numbers for this keyboard:
 
 | Part Number | Description | Keys | Layout |
 |-------------|-------------|------|--------|
 | **1390131** | PC/AT Enhanced (US) | 101 | ANSI |
 | **1391401** | PS/2 Enhanced (ANSI) | 101 | ANSI |
 | **1391403** | PS/2 Enhanced (ISO) | 102 | ISO |
+
+**Note**: This is not a comprehensive list. See [Admiral Shark's Keyboards Model M Enhanced](https://sharktastica.co.uk/wiki/model-m-enhanced) for complete part number directory.
 
 ---
 
@@ -285,8 +289,8 @@ The keyboards came in either 101-key ANSI or 102-key ISO layouts.
 ## External Resources
 
 ### Technical Documentation
-- **[Admiral Shark's Keyboards - IBM Personal Computer AT Enhanced Keyboard](https://sharktastica.co.uk/keyboard-directory/c8fMCqNx)** - PC/AT Enhanced variant (1986 Q1), part numbers 1390131–1390136
-- **[Admiral Shark's Keyboards - IBM Personal System/2 Enhanced Keyboard](https://sharktastica.co.uk/keyboard-directory/riGuZHSw)** - PS/2 Enhanced variant (1987 Q2), part numbers 1391401–1391413, 1391506
+- **[Admiral Shark's Keyboards - IBM Model M Enhanced](https://sharktastica.co.uk/wiki/model-m-enhanced)** - Complete Model M Enhanced documentation with part number directory
+- **[Admiral Shark's Keyboards - IBM Personal System/2 Enhanced Keyboard](https://sharktastica.co.uk/keyboard-directory/riGuZHSw)** - PS/2 Enhanced variant with comprehensive part number directory
 - **[Admiral Shark's Keyboards - IBM Model M Wiki](https://sharktastica.co.uk/wiki/ibm-model-m)** - Model M family history, design details, and variants
 - [Deskthority Wiki: IBM Model M](https://deskthority.net/wiki/IBM_Model_M) - Community-maintained technical information
 
