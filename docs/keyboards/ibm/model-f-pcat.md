@@ -203,11 +203,14 @@ The keyboard uses thick steel construction with dye-sublimated PBT keycaps. The 
 
 The F/AT introduced a few significant changes to IBM's keyboard lineup. It was the first to use the AT protocol with bidirectional communication, which enabled LED control (the earlier XT keyboards couldn't manage that). It also introduced the ANSI-style large left shift key and separated numeric keypad that would become standard on later keyboards.
 
+Example part numbers:
+
 | Part Number | Region | Notes |
 |-------------|--------|-------|
 | **6450225** | UK | Featured configuration, pre-ISO layout |
 | **6450200** | US | ANSI-predecessor layout |
-| Various | Multiple | German, French, Italian, and other regional layouts (seven part numbers known) |
+
+**Note**: Many regional variants exist. See [Admiral Shark's Keyboards](https://sharktastica.co.uk/keyboard-directory/Ink3GUEA) for comprehensive part number directory.
 
 ---
 
