@@ -234,8 +234,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
       break;
   }
   
-  // M0110 uses >= comparison because INITIALISED is not the final state
-  update_keyboard_ready_led(keyboard_state >= INITIALISED);
+  update_keyboard_ready_led(keyboard_state == INITIALISED);
 }
 
 /**
