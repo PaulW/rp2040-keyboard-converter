@@ -143,7 +143,19 @@ irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
 
 The IRQ number depends on which PIO instance you got (PIO0 or PIO1). Each has its own IRQ line. The handler must be marked `__isr` and must never block (no `sleep_ms()`, no `printf()`, no loops without exit conditions).
 
-### 10. IRQ Enable
+### 10. IRQ Priority Configuration
+
+Set the interrupt priority before enabling the IRQ. All keyboard protocols use priority 0x00 (highest) to ensure keyboard events are processed before other interrupts.
+
+```c
+irq_set_priority(pio_irq, 0x00);
+```
+
+The Pico SDK defaults to priority 0x80 (medium priority). Setting priority 0x00 elevates the keyboard interrupt above the default, ensuring minimal latency for keyboard events. The RP2040 only uses the top 2 bits of the priority value, so the four effective levels are 0x00 (highest), 0x40, 0x80, and 0xC0 (lowest).
+
+**Important:** Set priority *before* enabling the IRQ to avoid a race condition window where the handler could execute at default priority if a PIO event fires between enable and priority set.
+
+### 11. IRQ Enable
 
 Enable the interrupt so your handler will actually be called. Without this, the PIO can raise interrupts all day and nothing will happen.
 
@@ -151,17 +163,7 @@ Enable the interrupt so your handler will actually be called. Without this, the 
 irq_set_enabled(pio_irq, true);
 ```
 
-Enable the IRQ *after* setting the handler, never before. Otherwise you might get interrupts before the handler is configured, which will cause a hard fault.
-
-### 11. IRQ Priority Configuration
-
-Set the interrupt priority. All keyboard protocols use priority 0 (highest) to ensure keyboard events are processed before other interrupts.
-
-```c
-irq_set_priority(pio_irq, 0);
-```
-
-The Pico SDK defaults to priority 0x80 (medium priority). Setting priority 0 elevates the keyboard interrupt above the default, ensuring minimal latency for keyboard events. The RP2040 only uses the top 2 bits of the priority value, so the four effective levels are 0x00 (highest), 0x40, 0x80, and 0xC0 (lowest).
+Enable the IRQ *after* setting the handler and priority, never before. Otherwise you might get interrupts before the handler is configured (hard fault) or at the wrong priority (timing issues).
 
 ### 12. Setup Complete - Update LED State
 
@@ -353,8 +355,8 @@ If you skip steps or reorder them, you risk initialisation failures, race condit
 **Solution:** Use named constants defined in protocol header
 
 ### Missing IRQ priority
-**Problem:** Keyboard events handled at default priority (0x80) instead of high priority (0x00)  
-**Solution:** Always call `irq_set_priority(pio_irq, 0)` after enabling IRQ
+**Problem:** Keyboard events handled at default priority (0x80) instead of high priority (0x00), or handler executes at default priority during race condition window  
+**Solution:** Always call `irq_set_priority(pio_irq, 0x00)` *before* `irq_set_enabled()` to avoid timing window
 
 ### Wrong error message protocol name
 **Problem:** Confusing error messages when debugging  

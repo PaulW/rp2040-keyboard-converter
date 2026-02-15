@@ -610,7 +610,8 @@ program_init(pio, sm, offset, data_pin);
 
 // 4. Setup IRQ handler (if needed)
 pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
-irq_set_exclusive_handler(pio_irq, handler);
+irq_set_exclusive_handler(pio_irq, &handler);
+irq_set_priority(pio_irq, 0x00);        // Set priority before enabling
 irq_set_enabled(pio_irq, true);
 ```
 

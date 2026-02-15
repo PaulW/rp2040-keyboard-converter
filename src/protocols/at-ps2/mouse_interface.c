@@ -455,42 +455,43 @@ void mouse_interface_task() {
 void mouse_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
   converter.state.mouse_ready = 0;
-  update_converter_status();  // Always reset Converter Status here
+  update_converter_status();  // Initialize converter status LEDs to "not ready" state
 #endif
-  // First we need to determine which PIO to use for the Mouse Interface.
-  // To do this, we check each PIO to see if there is space to load the Mouse Interface program.
-  // If there is space, we claim the PIO and load the program.  If not, we continue to the next PIO.
-  // We can call `pio_can_add_program` to check if there is space for the program.
-  // `find_available_pio` is a helper function that will check both PIO0 and PIO1 for space.
-  // If the function returns NULL, then there is no space available, and we should return.
-  // mouse_state = INITIALISED;
+
+  // Find available PIO block
   mouse_pio = find_available_pio(&pio_interface_program);
   if (mouse_pio == NULL) {
-    LOG_ERROR("No PIO available for Mouse Interface Program\n");
+    LOG_ERROR("AT/PS2 Mouse: No PIO available for mouse interface\n");
     return;
   }
-
-  // Now we can claim the PIO and load the program.
+  
+  // Claim unused state machine
   mouse_sm = (uint)pio_claim_unused_sm(mouse_pio, true);
+  
+  // Load program into PIO instruction memory
   mouse_offset = pio_add_program(mouse_pio, &pio_interface_program);
+  
+  // Store pin assignment
   mouse_data_pin = data_pin;
-
-  // Define the IRQ for the PIO State Machine.
-  // This should either be set to PIO0_IRQ_0 or PIO1_IRQ_0 depending on the PIO used.
-  uint pio_irq = mouse_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
-
-  // Define the polling interval and cycles per clock for the state machine.
-  // This is determined from the shortest clock pulse width of the AT/PS2 protocol.
-  // According to the 84F9735 PS2 Hardware Interface Technical Reference from IBM:
-  //    https://archive.org/details/bitsavers_ibmpcps284erfaceTechnicalReferenceCommonInterfaces_39004874/page/n229/mode/2up?q=keyboard
-  // Clock Pulse Width can be anywhere between 30us and 50us.
-  float clock_div = calculate_clock_divider(ATPS2_TIMING_CLOCK_MIN_US);  // 30us minimum clock pulse width
-
+  
+  // Calculate clock divider for AT/PS2 timing (30µs minimum pulse width)
+  // Reference: IBM 84F9735 PS/2 Hardware Interface Technical Reference
+  float clock_div = calculate_clock_divider(ATPS2_TIMING_CLOCK_MIN_US);
+  
+  // Initialize PIO program with calculated clock divider
   pio_interface_program_init(mouse_pio, mouse_sm, mouse_offset, data_pin, clock_div);
-
+  
+  // Configure interrupt handling for PIO data reception
+  uint pio_irq = mouse_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+  
+  // Register interrupt handler for RX FIFO events
   irq_set_exclusive_handler(pio_irq, &mouse_input_event_handler);
+  
+  // Set highest interrupt priority for time-critical mouse protocol timing
+  irq_set_priority(pio_irq, 0x00);
+  
+  // Enable the IRQ
   irq_set_enabled(pio_irq, true);
-  irq_set_priority(pio_irq, 0);
 
   LOG_INFO(
       "PIO%d SM%d Interface program loaded at mouse_offset %d with clock divider of %.2f\n",

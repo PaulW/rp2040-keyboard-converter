@@ -459,11 +459,11 @@ void keyboard_interface_setup(uint data_pin) {
   // Register interrupt handler for RX FIFO events
   irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
   
+  // Set highest interrupt priority for time-critical keyboard protocol timing
+  irq_set_priority(pio_irq, 0x00);
+  
   // Enable the IRQ (PIO RX FIFO source already enabled in program_init above)
   irq_set_enabled(pio_irq, true);
-  
-  // Set highest interrupt priority for time-critical keyboard protocol timing
-  irq_set_priority(pio_irq, 0);
   
   LOG_INFO("PIO%d SM%d Amiga Keyboard Interface loaded at offset %d (clock div %.2f)\n",
            keyboard_pio == pio0 ? 0 : 1, keyboard_sm, keyboard_offset, clock_div);
