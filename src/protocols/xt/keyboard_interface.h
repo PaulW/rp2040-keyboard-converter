@@ -111,6 +111,7 @@
  */
 #define XT_TIMING_CLOCK_MIN_US      30    /**< Minimum pulse width for reliable detection (30µs) */
 #define XT_TIMING_BIT_PERIOD_US     100   /**< Typical bit period (~100µs at ~10 kHz) */
+#define XT_TIMING_SAMPLE_US         10    /**< PIO sampling interval for double-start-bit detection (10µs) */
 
 /**
  * @brief Initializes the IBM XT keyboard interface

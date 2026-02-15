@@ -715,7 +715,7 @@ void init_uart_dma() {
     uint32_t mask = 1u << uart_dma_chan;
     dma_hw->ints0 = mask;
 
-    irq_set_exclusive_handler(DMA_IRQ_0, dma_handler);   // Set our handler function  
+    irq_set_exclusive_handler(DMA_IRQ_0, &dma_handler);   // Set our handler function  
     irq_set_enabled(DMA_IRQ_0, true);                    // Enable the interrupt
     irq_set_priority(DMA_IRQ_0, 0xC0);                   // Low priority (0=highest, 255=lowest)
 

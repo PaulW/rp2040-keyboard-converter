@@ -610,7 +610,8 @@ program_init(pio, sm, offset, data_pin);
 
 // 4. Setup IRQ handler (if needed)
 pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
-irq_set_exclusive_handler(pio_irq, handler);
+irq_set_exclusive_handler(pio_irq, &handler);
+irq_set_priority(pio_irq, 0x00);        // Set priority before enabling
 irq_set_enabled(pio_irq, true);
 ```
 
@@ -724,6 +725,7 @@ If you're not sure about something, have a look at existing protocol implementat
 ## Related Documentation
 
 - [Contributing Guide](contributing.md) - Pull request process and commit format
+- [Protocol Implementation Guide](protocol-implementation.md) - Standard protocol setup pattern
 - [Adding Keyboards](adding-keyboards.md) - Step-by-step keyboard support guide
 - [Custom Keymaps](custom-keymaps.md) - Keymap modification guide
 - [Development Guide](README.md) - Overview and getting started

@@ -111,7 +111,7 @@ The buffer uses a single-producer/single-consumer model:
 
 When `head == tail`, the buffer's empty. When `(head + 1) % 32 == tail`, it's full. The implementation's lock-free because only one context writes each pointer.
 
-One thing to watch out for: you can't call `ringbuf_reset()` whilst interrupts are enabled. That would break the single-writer invariant. Resets only happen during initialization or state machine resets where the protocol handler's already disabled interrupts.
+One thing to watch out for: you can't call `ringbuf_reset()` whilst interrupts are enabled. That would break the single-writer invariant. Resets only happen during initialization or state machine resets where the protocol handler's already disabled interrupts. All keyboard protocols follow a standard setup pattern that includes `ringbuf_reset()` before enabling interrupts—see the [Protocol Implementation Guide](../development/protocol-implementation.md) for details.
 
 ### Scancode Processor
 
@@ -285,7 +285,9 @@ The ring buffer implements the critical data handoff between interrupt context (
 
 **Buffer sizing:** The capacity of 32 bytes (defined as [`RINGBUF_SIZE`](../../src/common/lib/ringbuf.h)) is deliberately small. The main loop polls frequently enough that scancodes move through the buffer within microseconds. Even multi-byte sequences rarely accumulate more than a few bytes before consumption. The small size keeps the buffer in cache and makes overflow immediately apparent rather than allowing problems to hide in deep queues.
 
-**Critical rule:** Never call `ringbuf_reset()` with interrupts enabled. This function resets both head and tail pointers to zero, which corrupts buffer state if an interrupt arrives during the reset operation. Only call this function during initialization before enabling interrupts, or after explicitly disabling interrupts for error recovery. The implementation appears in [`src/common/lib/ringbuf.c`](../../src/common/lib/ringbuf.c) and [`ringbuf.h`](../../src/common/lib/ringbuf.h).
+**Critical rule:** Never call `ringbuf_reset()` with interrupts enabled. This function resets both head and tail pointers to zero, which corrupts buffer state if an interrupt arrives during the reset operation. Only call this function during initialization before enabling interrupts, or after explicitly disabling interrupts for error recovery. 
+
+All keyboard protocols follow a standard 13-step setup sequence that includes `ringbuf_reset()` as step 2 (after LED initialization, before PIO/IRQ setup). This pattern ensures the buffer is clean before interrupts start firing. See the [Protocol Implementation Guide](../development/protocol-implementation.md) for the complete setup pattern and rationale. The implementation appears in [`src/common/lib/ringbuf.c`](../../src/common/lib/ringbuf.c) and [`ringbuf.h`](../../src/common/lib/ringbuf.h).
 
 ---
 

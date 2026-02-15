@@ -234,10 +234,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
       break;
   }
   
-#ifdef CONVERTER_LEDS
-  converter.state.kb_ready = (keyboard_state >= INITIALISED) ? 1 : 0;
-  update_converter_status();
-#endif
+  update_keyboard_ready_led(keyboard_state == INITIALISED);
 }
 
 /**
@@ -417,44 +414,48 @@ void keyboard_interface_setup(uint data_pin) {
   // Initialize ring buffer for key data communication between IRQ and main task
   ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Safe: IRQs not yet enabled during init
   
-  // Find and allocate available PIO instance for M0110 protocol handling
+  // Find available PIO block
   keyboard_pio = find_available_pio(&keyboard_interface_program);
   if (keyboard_pio == NULL) {
-    LOG_ERROR("No PIO available for Apple M0110 Interface Program\n");
+    LOG_ERROR("Apple M0110: No PIO available for keyboard interface\n");
     return;
   }
   
-  // Claim PIO resources for exclusive use by M0110 protocol
-  int sm = pio_claim_unused_sm(keyboard_pio, false);  // Don't panic on failure
+  // Claim unused state machine (don't panic on failure)
+  int sm = pio_claim_unused_sm(keyboard_pio, false);
   if (sm < 0) {
-    LOG_ERROR("No PIO state machine available for Apple M0110 Interface\n");
+    LOG_ERROR("Apple M0110: No PIO state machine available\n");
     return;
   }
   keyboard_sm = (unsigned int)sm;
+  
+  // Load program into PIO instruction memory
   keyboard_offset = (unsigned int)pio_add_program(keyboard_pio, &keyboard_interface_program);
+  
+  // Store pin assignment
   keyboard_data_pin = data_pin;
+  
+  // Calculate clock divider for M0110 timing requirements
+  // KEYBOARD→HOST: 330µs cycles (160µs low, 170µs high)
+  // HOST→KEYBOARD: 400µs cycles (180µs low, 220µs high)
+  // Using 160µs base timing ensures reliable detection of fastest keyboard signals
+  float clock_div = calculate_clock_divider(M0110_TIMING_KEYBOARD_LOW_US);
+  
+  // Initialize PIO program with calculated clock divider
+  keyboard_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, 
+                                     data_pin, clock_div);
   
   // Configure interrupt handling for PIO data reception
   uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
   
-  // Calculate PIO clock divider for M0110 timing requirements
-  // Apple M0110 timing specifications:
-  // - KEYBOARD→HOST: 330µs cycles (160µs low, 170µs high) ≈ 3.03kHz
-  // - HOST→KEYBOARD: 400µs cycles (180µs low, 220µs high) ≈ 2.5kHz  
-  // - Request-to-send: 840µs DATA low period to initiate host transmission
-  // - Data hold time: 80µs minimum after final clock edge
-  // 
-  // Using 160µs as base timing ensures reliable detection of fastest keyboard signals
-  float clock_div = calculate_clock_divider(M0110_TIMING_KEYBOARD_LOW_US);
-
-  // Initialize PIO state machine with calculated timing and pin configuration
-  keyboard_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, 
-                                     data_pin, clock_div);
-  
-  // Install and enable interrupt handler for keyboard data reception
+  // Register interrupt handler for RX FIFO events
   irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
+  
+  // Set highest interrupt priority for time-critical keyboard protocol timing
+  irq_set_priority(pio_irq, 0x00);
+  
+  // Enable the IRQ
   irq_set_enabled(pio_irq, true);
-  irq_set_priority(pio_irq, 0);
   
   LOG_INFO("PIO%d SM%u Apple M0110 Interface program loaded at offset %u with clock divider of %.2f\n",
          (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);

@@ -18,7 +18,7 @@ This script checks source code against the architectural rules defined in `.gith
 
 ### What It Checks
 
-The script runs through fourteen different checks, each targeting a specific architectural rule:
+The script runs through sixteen different checks, each targeting a specific architectural rule:
 
 1. **Blocking Operations** - Detects `sleep_ms()`, `sleep_us()`, `busy_wait_us()`, `busy_wait_ms()`
    - ❌ **Fails**: Any blocking call found in src/
@@ -82,10 +82,17 @@ The script runs through fourteen different checks, each targeting a specific arc
     - 💡 **Suggestion**: Consider adding compile-time checks for constants (see code-standards.md)
     - 📝 **Note**: This is advisory-only and doesn't affect pass/fail status
 
-### Exit Codes
+15. **Protocol Setup Consistency (Ring Buffer)** - Validates keyboard protocol setup pattern
+   - ⚠️ **Warns**: Missing `ringbuf_reset()` call in `keyboard_interface_setup()` (keyboard protocols only)
+   - 💡 **Fix**: Add `ringbuf_reset()` before PIO/IRQ setup as part of the standard 13-step initialization
+   - 📝 **Note**: Mouse protocols excluded (direct event processing, no ring buffer)
+   - 📚 **Reference**: See [Protocol Implementation Guide](../docs/development/protocol-implementation.md)
 
-- **0**: All checks passed (or warnings only in non-strict mode)
-- **1**: Errors found (or warnings in strict mode)
+16. **Protocol Setup Consistency (IRQ Priority)** - Validates interrupt priority configuration
+   - ⚠️ **Warns**: Missing `irq_set_priority()` call in protocol setup functions
+   - 💡 **Fix**: Add `irq_set_priority(pio_irq, 0)` after IRQ handler registration for time-critical protocols
+   - 📝 **Note**: Ensures highest priority for timing-sensitive keyboard/mouse protocols
+   - 📚 **Reference**: See [Protocol Implementation Guide](../docs/development/protocol-implementation.md)
 
 ### Integration
 

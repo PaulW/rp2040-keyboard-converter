@@ -111,11 +111,13 @@ Start by researching the protocol thoroughly—you need to understand timing (cl
 
 Create a directory structure at `src/protocols/<name>/` containing all the protocol-specific files. The PIO program (`<name>.pio`) implements the low-level bit timing and frame synchronization in PIO assembly—this hardware state machine handles clock edge detection, bit shifting, and interrupt generation without CPU involvement. The protocol interface (`keyboard_interface.h` and `keyboard_interface.c`) implements the state machine for protocol initialization, error recovery, and LED command handling. The common interface (`common_interface.c`) provides standardized `keyboard_init()`, `keyboard_task()`, and `keyboard_set_leds()` functions that the main loop calls, isolating protocol-specific details from the rest of the system.
 
+**Protocol Setup Pattern:** All protocol implementations follow a standard initialization sequence. See the [Protocol Implementation Guide](protocol-implementation.md) for the complete pattern and explanation of why each step matters. Following this pattern ensures consistency, proper resource allocation, and correct error handling across all protocols.
+
 Document the protocol comprehensively in a `README.md` file including timing diagrams, electrical specifications, state machine descriptions, and oscilloscope captures if available. This documentation helps future maintainers understand the protocol without reverse-engineering your code.
 
 Study the reference implementations to understand the patterns. The [`src/protocols/xt/`](../../src/protocols/xt/) implementation demonstrates simple unidirectional protocols (see [XT protocol docs](../protocols/xt.md) for details). The [`src/protocols/at-ps2/`](../../src/protocols/at-ps2/) implementation shows complex bidirectional communication with host-to-device commands (see [AT/PS2 protocol docs](../protocols/at-ps2.md)). The [`src/protocols/amiga/`](../../src/protocols/amiga/) implementation illustrates unique handshake timing (see [Amiga protocol docs](../protocols/amiga.md)). The [`src/protocols/apple-m0110/`](../../src/protocols/apple-m0110/) handles variable timing protocols (see [M0110 protocol docs](../protocols/m0110.md)).
 
-Finally, test with actual hardware—protocol timing issues only manifest with real keyboards, not in simulation. The [Protocols overview](../protocols/README.md) explains the overall protocol architecture, while the [PIO helper library](../../src/common/lib/pio_helper.c) provides utilities for loading and managing PIO programs.
+Finally, test with actual hardware—protocol timing issues only manifest with real keyboards, not in simulation. The [Protocols overview](../protocols/README.md) explains the overall protocol architecture, whilst the [PIO helper library](../../src/common/lib/pio_helper.c) provides utilities for loading and managing PIO programs.
 
 ---
 

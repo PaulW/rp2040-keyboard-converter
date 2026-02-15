@@ -181,10 +181,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
       // This ensures HID reports are sent from the correct context
       if (!ringbuf_is_full()) ringbuf_put(data_byte);
   }
-#ifdef CONVERTER_LEDS
-  converter.state.kb_ready = keyboard_state == INITIALISED ? 1 : 0;
-  update_converter_status();
-#endif
+  update_keyboard_ready_led(keyboard_state == INITIALISED);
 }
 
 /**
@@ -241,7 +238,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * @note Start bit filtering for clone keyboards handled in PIO code, not here
  * @note No software reset capability - reset via PIO restart only
  */
-static void __isr keyboard_input_event_handler() {
+static void __isr keyboard_input_event_handler(void) {
   io_ro_32 data_cast = keyboard_pio->rxf[keyboard_sm] >> 23;
   uint16_t data = (uint16_t)data_cast;
 
@@ -361,10 +358,7 @@ void keyboard_interface_task() {
         LOG_DEBUG("Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
         detect_stall_count = 0;
       }
-#ifdef CONVERTER_LEDS
-      converter.state.kb_ready = keyboard_state == INITIALISED ? 1 : 0;
-      update_converter_status();
-#endif
+      update_keyboard_ready_led(keyboard_state == INITIALISED);
     }
   }
 }
@@ -437,38 +431,44 @@ void keyboard_interface_setup(uint data_pin) {
   update_converter_status();  // Initialize converter status LEDs to "not ready" state
 #endif
 
+  // Initialize ring buffer for key data communication between IRQ and main task
   ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Safe: IRQs not yet enabled during init
-
-  // Locate available PIO instance with sufficient program memory space
-  // find_available_pio() searches PIO0 and PIO1 for program capacity
-  // Returns NULL if neither PIO has space for keyboard interface program
-
+  
+  // Find available PIO block
   keyboard_pio = find_available_pio(&keyboard_interface_program);
   if (keyboard_pio == NULL) {
-    LOG_ERROR("No PIO available for Keyboard Interface Program\n");
+    LOG_ERROR("XT: No PIO available for keyboard interface\n");
     return;
   }
-
-  // Allocate PIO resources and load XT protocol program
+  
+  // Claim unused state machine
   keyboard_sm = (uint)pio_claim_unused_sm(keyboard_pio, true);
+  
+  // Load program into PIO instruction memory
   keyboard_offset = pio_add_program(keyboard_pio, &keyboard_interface_program);
+  
+  // Store pin assignment
   keyboard_data_pin = data_pin;
-
-  // Configure PIO interrupt based on allocated instance (PIO0_IRQ_0 or PIO1_IRQ_0)
-  uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
-
-  // XT timing: ~10µs sampling interval for reliable double-start-bit detection
-  // IBM XT keyboards send two start bits (~40µs each), clone keyboards send one (~40µs)
-  // 10µs sampling ensures we capture both start bits within the 40µs window
-  // (4 samples per start bit allows reliable detection of the double-start-bit sequence)
-  // This is critical for distinguishing genuine IBM XT from clone keyboards
-  float clock_div = calculate_clock_divider(10);
-
+  
+  // XT timing: 10µs sampling interval for double-start-bit detection
+  // IBM XT keyboards send two 40µs start bits, clones send one
+  // 4 samples per start bit ensures reliable detection of genuine IBM vs clone keyboards
+  float clock_div = calculate_clock_divider(XT_TIMING_SAMPLE_US);
+  
+  // Initialize PIO program with calculated clock divider
   keyboard_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin, clock_div);
-
+  
+  // Configure interrupt handling for PIO data reception
+  uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+  
+  // Register interrupt handler for RX FIFO events
   irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
+  
+  // Set highest interrupt priority for time-critical keyboard protocol timing
+  irq_set_priority(pio_irq, 0x00);
+  
+  // Enable the IRQ
   irq_set_enabled(pio_irq, true);
-  irq_set_priority(pio_irq, 0);
 
   LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
          (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);

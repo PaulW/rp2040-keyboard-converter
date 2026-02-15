@@ -383,10 +383,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
       // This ensures HID reports are sent from the correct context
       if (!ringbuf_is_full()) ringbuf_put(data_byte);
   }
-#ifdef CONVERTER_LEDS
-  converter.state.kb_ready = keyboard_state == INITIALISED ? 1 : 0;
-  update_converter_status();
-#endif
+  update_keyboard_ready_led(keyboard_state == INITIALISED);
 }
 
 /**
@@ -430,7 +427,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * @note ISR function - no blocking operations allowed
  * @note PIO FIFO automatically handles timing and bit synchronization
  */
-static void __isr keyboard_input_event_handler() {
+static void __isr keyboard_input_event_handler(void) {
   io_ro_32 data_cast = keyboard_pio->rxf[keyboard_sm] >> 21;
   uint16_t data = (uint16_t)data_cast;
 
@@ -612,10 +609,7 @@ void keyboard_interface_task() {
         // Clear timeout counter while waiting for keyboard connection
         detect_stall_count = 0;
       }
-#ifdef CONVERTER_LEDS
-      converter.state.kb_ready = keyboard_state == INITIALISED ? 1 : 0;
-      update_converter_status();
-#endif
+      update_keyboard_ready_led(keyboard_state == INITIALISED);
     }
   }
 }
@@ -675,35 +669,43 @@ void keyboard_interface_setup(uint data_pin) {
   update_converter_status();  // Initialize converter status LEDs to "not ready" state
 #endif
 
+  // Initialize ring buffer for key data communication between IRQ and main task
   ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Safe: IRQs not yet enabled during init
-
-  // Locate available PIO instance with sufficient program memory space
-  // find_available_pio() searches PIO0 and PIO1 for program capacity
-  // Returns NULL if neither PIO has space for keyboard interface program
-
+  
+  // Find available PIO block
   keyboard_pio = find_available_pio(&pio_interface_program);
   if (keyboard_pio == NULL) {
-    LOG_ERROR("No PIO available for Keyboard Interface Program\n");
+    LOG_ERROR("AT/PS2 Keyboard: No PIO available for keyboard interface\n");
     return;
   }
-
-  // Allocate PIO resources and load AT/PS2 protocol program
+  
+  // Claim unused state machine
   keyboard_sm = (uint)pio_claim_unused_sm(keyboard_pio, true);
+  
+  // Load program into PIO instruction memory
   keyboard_offset = pio_add_program(keyboard_pio, &pio_interface_program);
+  
+  // Store pin assignment
   keyboard_data_pin = data_pin;
-
-  // Configure PIO interrupt based on allocated instance (PIO0_IRQ_0 or PIO1_IRQ_0)
-  uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
-
-  // AT/PS2 timing: 30µs minimum pulse width per IBM Technical Reference
+  
+  // Calculate clock divider for AT/PS2 timing (30µs minimum pulse width)
   // Reference: IBM 84F9735 PS/2 Hardware Interface Technical Reference
   float clock_div = calculate_clock_divider(ATPS2_TIMING_CLOCK_MIN_US);
-
+  
+  // Initialize PIO program with calculated clock divider
   pio_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin, clock_div);
-
+  
+  // Configure interrupt handling for PIO data reception
+  uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+  
+  // Register interrupt handler for RX FIFO events
   irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
+  
+  // Set highest interrupt priority for time-critical keyboard protocol timing
+  irq_set_priority(pio_irq, 0x00);
+  
+  // Enable the IRQ
   irq_set_enabled(pio_irq, true);
-  irq_set_priority(pio_irq, 0);
 
   LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
          (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);

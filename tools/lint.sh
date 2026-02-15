@@ -43,7 +43,7 @@ echo -e "${BLUE}========================================${NC}"
 echo ""
 
 # Check 1: Blocking Operations
-echo -e "${BLUE}[1/14] Checking for blocking operations...${NC}"
+echo -e "${BLUE}[1/16] Checking for blocking operations...${NC}"
 BLOCKING_CALLS=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "sleep_ms\(|sleep_us\(|busy_wait_us\(|busy_wait_ms\(" src/ 2>/dev/null || true)
 
 if [ -n "$BLOCKING_CALLS" ]; then
@@ -79,7 +79,7 @@ fi
 echo ""
 
 # Check 2: Multicore API Usage
-echo -e "${BLUE}[2/14] Checking for multicore API usage...${NC}"
+echo -e "${BLUE}[2/16] Checking for multicore API usage...${NC}"
 MULTICORE_USAGE=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "multicore_launch_core1|multicore_fifo_push_blocking|multicore_fifo_pop_blocking|multicore_fifo_drain|multicore_reset_core1|multicore_lockout" src/ 2>/dev/null || true)
 
 if [ -n "$MULTICORE_USAGE" ]; then
@@ -98,7 +98,7 @@ fi
 echo ""
 
 # Check 3: printf in IRQ Context
-echo -e "${BLUE}[3/14] Checking for printf in IRQ context...${NC}"
+echo -e "${BLUE}[3/16] Checking for printf in IRQ context...${NC}"
 # This is a heuristic check - finds functions with __isr attribute and checks for printf
 PRINTF_IN_ISR=""
 
@@ -135,7 +135,7 @@ fi
 echo ""
 
 # Check 4: ringbuf_reset() Usage
-echo -e "${BLUE}[4/14] Checking ringbuf_reset() usage...${NC}"
+echo -e "${BLUE}[4/16] Checking ringbuf_reset() usage...${NC}"
 # Exclude the ringbuf library itself (contains function definition)
 RINGBUF_RESET=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" --exclude-dir="ringbuf" "ringbuf_reset" src/ 2>/dev/null | grep -v "^src/common/lib/ringbuf\.[ch]:" || true)
 
@@ -174,7 +174,7 @@ fi
 echo ""
 
 # Check 5: docs-internal in Repository
-echo -e "${BLUE}[5/14] Checking for docs-internal/ files in repository...${NC}"
+echo -e "${BLUE}[5/16] Checking for docs-internal/ files in repository...${NC}"
 DOCS_INTERNAL=$(git ls-files | grep "^docs-internal/" 2>/dev/null || true)
 
 if [ -n "$DOCS_INTERNAL" ]; then
@@ -193,7 +193,7 @@ fi
 echo ""
 
 # Check 6: Flash Execution (check for missing copy_to_ram)
-echo -e "${BLUE}[6/14] Checking for copy_to_ram configuration...${NC}"
+echo -e "${BLUE}[6/16] Checking for copy_to_ram configuration...${NC}"
 COPY_TO_RAM=$(grep -R --exclude-dir=".git" --exclude-dir="build" --exclude-dir="external" --exclude-dir="docs-internal" "pico_set_binary_type.*copy_to_ram" . 2>/dev/null || true)
 
 if [ -z "$COPY_TO_RAM" ]; then
@@ -210,7 +210,7 @@ fi
 echo ""
 
 # Check 7: Volatile Usage on IRQ-Shared Variables
-echo -e "${BLUE}[7/14] Checking for IRQ-shared variables...${NC}"
+echo -e "${BLUE}[7/16] Checking for IRQ-shared variables...${NC}"
 
 VOLATILE_ISSUES=""
 BARRIER_ISSUES=""
@@ -391,7 +391,7 @@ fi
 echo ""
 
 # Check 8: Tab Characters
-echo -e "${BLUE}[8/14] Checking for tab characters...${NC}"
+echo -e "${BLUE}[8/16] Checking for tab characters...${NC}"
 TAB_USAGE=$(grep -R -E --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" $'^\t|[^\t]\t' src/ 2>/dev/null || true)
 
 if [ -n "$TAB_USAGE" ]; then
@@ -411,7 +411,7 @@ fi
 echo ""
 
 # Check 9: Header Guards in .h Files
-echo -e "${BLUE}[9/14] Checking header guards...${NC}"
+echo -e "${BLUE}[9/16] Checking header guards...${NC}"
 MISSING_GUARDS=""
 
 while IFS= read -r header; do
@@ -441,7 +441,7 @@ fi
 echo ""
 
 # Check 10: File Headers (GPL License)
-echo -e "${BLUE}[10/14] Checking file headers...${NC}"
+echo -e "${BLUE}[10/16] Checking file headers...${NC}"
 MISSING_HEADERS=""
 MIT_LICENSED_FILES=(
     "src/common/lib/usb_descriptors.c"
@@ -487,7 +487,7 @@ fi
 echo ""
 
 # Check 11: Naming Conventions (camelCase detection)
-echo -e "${BLUE}[11/14] Checking naming conventions...${NC}"
+echo -e "${BLUE}[11/16] Checking naming conventions...${NC}"
 CAMEL_CASE=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "^[a-z]+[A-Z][a-zA-Z]*\s*\(|^static\s+[a-z]+[A-Z][a-zA-Z]*\s+[a-z]" src/ 2>/dev/null | grep -v "typedef" | head -20 || true)
 
 if [ -n "$CAMEL_CASE" ]; then
@@ -507,7 +507,7 @@ fi
 echo ""
 
 # Check 12: Include Order (comprehensive check)
-echo -e "${BLUE}[12/14] Checking include order...${NC}"
+echo -e "${BLUE}[12/16] Checking include order...${NC}"
 WRONG_INCLUDE_ORDER=""
 GROUPING_ISSUES=""
 
@@ -611,7 +611,7 @@ fi
 echo ""
 
 # Check 13: Missing __isr Attribute
-echo -e "${BLUE}[13/14] Checking interrupt handler attributes...${NC}"
+echo -e "${BLUE}[13/16] Checking interrupt handler attributes...${NC}"
 MISSING_ISR=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "void.*_irq_handler\s*\(|void.*_interrupt_handler\s*\(|void.*_isr\s*\(" src/ 2>/dev/null | grep -v "__isr" | grep -v "\.h:" || true)
 
 if [ -n "$MISSING_ISR" ]; then
@@ -631,7 +631,7 @@ echo ""
 
 # Check 14: _Static_assert for Compile-Time Validation
 # NOTE: This is an advisory-only check that doesn't affect pass/fail status
-echo -e "${BLUE}[14/14] Checking for compile-time validation...${NC}"
+echo -e "${BLUE}[14/16] Checking for compile-time validation...${NC}"
 STATIC_ASSERT_COUNT=$(grep -R "${EXCLUDE_DIRS[@]}" --exclude="*.md" -c "_Static_assert\|#error" src/ 2>/dev/null | grep -vc ":0$" || true)
 
 if [ "$STATIC_ASSERT_COUNT" -gt 0 ]; then
@@ -640,6 +640,71 @@ else
     echo -e "${YELLOW}⚠ No _Static_assert or #error directives found${NC}"
     echo "  - Consider adding compile-time validation for constants"
     echo "  - See code-standards.md for examples"
+fi
+echo ""
+
+# Check 15: Protocol Setup Consistency - Ring Buffer Reset
+echo -e "${BLUE}[15/16] Checking protocol setup consistency (ring buffer)...${NC}"
+MISSING_RINGBUF_RESET=""
+
+while IFS= read -r protocol_file; do
+    protocol_name=$(basename "$(dirname "$protocol_file")")
+    
+    # Check if this file has keyboard_interface_setup function
+    if grep -q "keyboard_interface_setup" "$protocol_file"; then
+        # Check if ringbuf_reset() is called in the file
+        if ! grep -q "ringbuf_reset()" "$protocol_file"; then
+            MISSING_RINGBUF_RESET="${MISSING_RINGBUF_RESET}${protocol_name}: Missing ringbuf_reset() in keyboard_interface_setup\n"
+        fi
+    fi
+done < <(find src/protocols/ -name "keyboard_interface.c" 2>/dev/null)
+
+if [ -n "$MISSING_RINGBUF_RESET" ]; then
+    echo -e "${YELLOW}WARNING: Protocol setup missing ring buffer reset:${NC}"
+    echo ""
+    echo -e "$MISSING_RINGBUF_RESET"
+    echo ""
+    echo -e "${YELLOW}Setup pattern: All protocols must call ringbuf_reset() before IRQ setup${NC}"
+    echo "  - Clears stale data from previous session"
+    echo "  - Must be done before enabling IRQ handlers"
+    echo "  - See docs/development/protocol-implementation.md"
+    echo ""
+    WARNINGS=$((WARNINGS + 1))
+else
+    echo -e "${GREEN}✓ All protocols call ringbuf_reset() in setup${NC}"
+fi
+echo ""
+
+# Check 16: Protocol Setup Consistency - IRQ Priority
+echo -e "${BLUE}[16/16] Checking protocol setup consistency (IRQ priority)...${NC}"
+MISSING_IRQ_PRIORITY=""
+
+while IFS= read -r protocol_file; do
+    protocol_name=$(basename "$(dirname "$protocol_file")")
+    
+    # Check if this file has keyboard_interface_setup function
+    if grep -q "keyboard_interface_setup" "$protocol_file"; then
+        # Check if irq_set_priority() is called in the file
+        if ! grep -q "irq_set_priority" "$protocol_file"; then
+            MISSING_IRQ_PRIORITY="${MISSING_IRQ_PRIORITY}${protocol_name}: Missing irq_set_priority() in keyboard_interface_setup\n"
+        fi
+    fi
+done < <(find src/protocols/ -name "keyboard_interface.c" 2>/dev/null)
+
+if [ -n "$MISSING_IRQ_PRIORITY" ]; then
+    echo -e "${YELLOW}WARNING: Protocol setup missing IRQ priority configuration:${NC}"
+    echo ""
+    echo -e "$MISSING_IRQ_PRIORITY"
+    echo ""
+    echo -e "${YELLOW}Setup pattern: All protocols must set IRQ priority to 0 (highest)${NC}"
+    echo "  - Ensures minimal keyboard event latency"
+    echo "  - SDK default is 0x80 (medium priority)"
+    echo "  - Should be irq_set_priority(pio_irq, 0)"
+    echo "  - See docs/development/protocol-implementation.md"
+    echo ""
+    WARNINGS=$((WARNINGS + 1))
+else
+    echo -e "${GREEN}✓ All protocols configure IRQ priority in setup${NC}"
 fi
 echo ""
 
