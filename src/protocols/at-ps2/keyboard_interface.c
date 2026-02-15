@@ -383,10 +383,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
       // This ensures HID reports are sent from the correct context
       if (!ringbuf_is_full()) ringbuf_put(data_byte);
   }
-#ifdef CONVERTER_LEDS
-  converter.state.kb_ready = keyboard_state == INITIALISED ? 1 : 0;
-  update_converter_status();
-#endif
+  update_keyboard_ready_led(keyboard_state == INITIALISED);
 }
 
 /**
@@ -430,7 +427,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * @note ISR function - no blocking operations allowed
  * @note PIO FIFO automatically handles timing and bit synchronization
  */
-static void __isr keyboard_input_event_handler() {
+static void __isr keyboard_input_event_handler(void) {
   io_ro_32 data_cast = keyboard_pio->rxf[keyboard_sm] >> 21;
   uint16_t data = (uint16_t)data_cast;
 
@@ -612,10 +609,7 @@ void keyboard_interface_task() {
         // Clear timeout counter while waiting for keyboard connection
         detect_stall_count = 0;
       }
-#ifdef CONVERTER_LEDS
-      converter.state.kb_ready = keyboard_state == INITIALISED ? 1 : 0;
-      update_converter_status();
-#endif
+      update_keyboard_ready_led(keyboard_state == INITIALISED);
     }
   }
 }

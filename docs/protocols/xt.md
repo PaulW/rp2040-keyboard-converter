@@ -241,12 +241,12 @@ Both types have the same start bit pulse width of roughly 40µs. The typical bit
 
 **The Solution - Fast Sampling**:
 
-This implementation samples at 10µs intervals (see [Why 10µs Sampling is Critical](#why-10µs-sampling-is-critical) below for the full technical explanation):
+This implementation samples at 10µs intervals (defined as `XT_TIMING_SAMPLE_US` constant, see [Why 10µs Sampling is Critical](#why-10µs-sampling-is-critical) below for the full technical explanation):
 
 ```
 Minimum Pulse Detection: 10µs (not the 100µs typical bit period)
 RP2040 System Clock: 125 MHz
-Target Sampling: (1000 / 10µs) × 5 samples = 500 kHz
+Target Sampling: (1000 / XT_TIMING_SAMPLE_US) × 5 samples = 500 kHz
 Clock Divider: 125,000 kHz / 500 kHz = 250
 PIO Cycle Time: 2µs per cycle
 
@@ -450,8 +450,8 @@ sm_config_set_in_shift(&c, true, true, 9);  // Right-shift, autopush, 9 bits
 sm_config_set_in_pins(&c, keyboard_data_pin);  // DATA on base pin
 sm_config_set_jmp_pin(&c, keyboard_clock_pin); // CLOCK on base pin + 1
 
-// Clock divider for 10µs sampling (genuine vs clone detection)
-float clock_div = calculate_clock_divider(10);
+// Clock divider for genuine vs clone detection
+float clock_div = calculate_clock_divider(XT_TIMING_SAMPLE_US);  // 10µs sampling period
 sm_config_set_clkdiv(&c, clock_div);
 ```
 
@@ -487,6 +487,7 @@ static void __isr keyboard_input_event_handler() {
 - Start bit validation confirms frame synchronization
 - Ring buffer queues scancodes for main loop processing
 - Non-blocking architecture (IRQ → ring buffer → main task)
+- Standard protocol setup pattern (see [Protocol Implementation Guide](../development/protocol-implementation.md))
 
 ### RP2040 PIO Configuration
 

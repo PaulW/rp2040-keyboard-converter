@@ -181,10 +181,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
       // This ensures HID reports are sent from the correct context
       if (!ringbuf_is_full()) ringbuf_put(data_byte);
   }
-#ifdef CONVERTER_LEDS
-  converter.state.kb_ready = keyboard_state == INITIALISED ? 1 : 0;
-  update_converter_status();
-#endif
+  update_keyboard_ready_led(keyboard_state == INITIALISED);
 }
 
 /**
@@ -241,7 +238,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * @note Start bit filtering for clone keyboards handled in PIO code, not here
  * @note No software reset capability - reset via PIO restart only
  */
-static void __isr keyboard_input_event_handler() {
+static void __isr keyboard_input_event_handler(void) {
   io_ro_32 data_cast = keyboard_pio->rxf[keyboard_sm] >> 23;
   uint16_t data = (uint16_t)data_cast;
 
@@ -361,10 +358,7 @@ void keyboard_interface_task() {
         LOG_DEBUG("Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
         detect_stall_count = 0;
       }
-#ifdef CONVERTER_LEDS
-      converter.state.kb_ready = keyboard_state == INITIALISED ? 1 : 0;
-      update_converter_status();
-#endif
+      update_keyboard_ready_led(keyboard_state == INITIALISED);
     }
   }
 }
@@ -462,7 +456,7 @@ void keyboard_interface_setup(uint data_pin) {
   // 10µs sampling ensures we capture both start bits within the 40µs window
   // (4 samples per start bit allows reliable detection of the double-start-bit sequence)
   // This is critical for distinguishing genuine IBM XT from clone keyboards
-  float clock_div = calculate_clock_divider(10);
+  float clock_div = calculate_clock_divider(XT_TIMING_SAMPLE_US);
 
   keyboard_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin, clock_div);
 

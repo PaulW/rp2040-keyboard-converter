@@ -724,6 +724,7 @@ If you're not sure about something, have a look at existing protocol implementat
 ## Related Documentation
 
 - [Contributing Guide](contributing.md) - Pull request process and commit format
+- [Protocol Implementation Guide](protocol-implementation.md) - Standard protocol setup pattern
 - [Adding Keyboards](adding-keyboards.md) - Step-by-step keyboard support guide
 - [Custom Keymaps](custom-keymaps.md) - Keymap modification guide
 - [Development Guide](README.md) - Overview and getting started

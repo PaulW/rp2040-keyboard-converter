@@ -85,6 +85,47 @@ extern volatile bool cmd_mode_led_green;
  * - No synchronization needed
  */
 extern volatile bool log_level_selection_mode;
+
+// Forward declaration for inline function below
+void update_converter_status(void);
+
+/**
+ * @brief Update keyboard ready LED status
+ * 
+ * Inline helper function to update the keyboard ready LED indicator.
+ * Consolidates the common pattern used across all protocol implementations
+ * while allowing each protocol to maintain its specific ready condition.
+ * 
+ * Benefits:
+ * - Eliminates code duplication (4 protocols × multiple call sites = ~10 instances)
+ * - Centralizes LED update logic for keyboard state
+ * - Maintains protocol-specific condition flexibility
+ * - Zero overhead (inline, compiled away when CONVERTER_LEDS undefined)
+ * 
+ * Usage Examples:
+ * ```c
+ * // AT/PS2, XT, Amiga protocols:
+ * update_keyboard_ready_led(keyboard_state == INITIALISED);
+ * 
+ * // Apple M0110 protocol (uses >= comparison):
+ * update_keyboard_ready_led(keyboard_state >= INITIALISED);
+ * ```
+ * 
+ * @param ready true if keyboard is initialized and ready, false otherwise
+ * 
+ * @note Inline function provides zero-overhead abstraction
+ * @note Compiled to nothing when CONVERTER_LEDS is not defined
+ * @note ISR-safe: update_converter_status() only sets flags, no blocking I/O
+ */
+static inline void update_keyboard_ready_led(bool ready) {
+#ifdef CONVERTER_LEDS
+  converter.state.kb_ready = ready ? 1 : 0;
+  update_converter_status();
+#else
+  // Suppress unused parameter warning when LEDs disabled
+  (void)ready;
+#endif
+}
 #endif
 
 /**
@@ -145,7 +186,6 @@ uint32_t hsv_to_rgb(uint16_t hue, uint8_t saturation, uint8_t value);
 #endif
 
 void set_lock_values_from_hid(uint8_t lock_val);
-void update_converter_status(void);
 bool update_converter_leds(void);
 
 #endif /* LED_HELPER_H */

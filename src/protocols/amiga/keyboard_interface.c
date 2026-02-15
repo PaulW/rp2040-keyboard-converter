@@ -307,12 +307,9 @@ static void keyboard_event_processor(uint8_t data_byte) {
     }
   }
   
-#ifdef CONVERTER_LEDS
   // Update LED status - this pattern matches all other protocols
   // update_converter_status() is non-blocking and ISR-safe (only sets flags, no I/O)
-  converter.state.kb_ready = (keyboard_state == INITIALISED) ? 1 : 0;
-  update_converter_status();
-#endif
+  update_keyboard_ready_led(keyboard_state == INITIALISED);
 }
 
 /**
@@ -371,7 +368,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * @note PIO handles all timing-critical operations
  * @note No blocking operations in ISR
  */
-static void __isr keyboard_input_event_handler() {
+static void __isr keyboard_input_event_handler(void) {
   // Read byte from PIO RX FIFO (8-bit, rotated format)
   // PIO has already sent the handshake automatically
   uint8_t rotated_byte = (uint8_t)(keyboard_pio->rxf[keyboard_sm] & 0xFF);
@@ -415,9 +412,14 @@ static void __isr keyboard_input_event_handler() {
  *                 CLOCK is automatically assigned to data_pin + 1
  */
 void keyboard_interface_setup(uint data_pin) {
-  // Store pin assignments - CLOCK must be DATA + 1 (PIO program requirement)
-  keyboard_data_pin = data_pin;
-  keyboard_clock_pin = data_pin + 1;
+#ifdef CONVERTER_LEDS
+  // Initialize converter status LEDs to "not ready" state
+  converter.state.kb_ready = 0;
+  update_converter_status();
+#endif
+
+  // Initialize ring buffer for key data communication between IRQ and main task
+  ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Safe: IRQs not yet enabled during init
   
   // Find available PIO block
   keyboard_pio = find_available_pio(&keyboard_interface_program);
@@ -431,6 +433,10 @@ void keyboard_interface_setup(uint data_pin) {
   
   // Load program into PIO instruction memory
   keyboard_offset = pio_add_program(keyboard_pio, &keyboard_interface_program);
+  
+  // Store pin assignments - CLOCK must be DATA + 1 (PIO program requirement)
+  keyboard_data_pin = data_pin;
+  keyboard_clock_pin = data_pin + 1;
   
   // Calculate clock divider for 20µs minimum pulse detection
   float clock_div = calculate_clock_divider(AMIGA_TIMING_CLOCK_MIN_US);
@@ -447,18 +453,22 @@ void keyboard_interface_setup(uint data_pin) {
   keyboard_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset,
                                    data_pin, clock_div);
   
+  // Configure interrupt handling for PIO data reception
+  uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+  
   // Register interrupt handler for RX FIFO events
-  irq_set_exclusive_handler(
-      keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0,
-      keyboard_input_event_handler);
+  irq_set_exclusive_handler(pio_irq, keyboard_input_event_handler);
   
   // Enable the IRQ (PIO RX FIFO source already enabled in program_init above)
-  irq_set_enabled(keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0, true);
+  irq_set_enabled(pio_irq, true);
+  
+  // Set highest interrupt priority for time-critical keyboard protocol timing
+  irq_set_priority(pio_irq, 0);
   
   LOG_INFO("PIO%d SM%d Amiga Keyboard Interface loaded at offset %d (clock div %.2f)\n",
            keyboard_pio == pio0 ? 0 : 1, keyboard_sm, keyboard_offset, clock_div);
   
-  // Set initial state
+  // Set initial state - transition to INITIALISED happens in ISR on first byte
   keyboard_state = UNINITIALISED;
   
   LOG_INFO("Amiga keyboard interface initialized, waiting for first byte...\n");
@@ -552,9 +562,6 @@ void keyboard_interface_task() {
   // UNINITIALISED state: Waiting for keyboard power-up
   // No action needed here - transition happens in ISR on first byte received
   
-#ifdef CONVERTER_LEDS
   // Update LED status to reflect keyboard ready state
-  converter.state.kb_ready = (keyboard_state == INITIALISED) ? 1 : 0;
-  update_converter_status();
-#endif
+  update_keyboard_ready_led(keyboard_state == INITIALISED);
 }

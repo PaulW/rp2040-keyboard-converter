@@ -234,10 +234,8 @@ static void keyboard_event_processor(uint8_t data_byte) {
       break;
   }
   
-#ifdef CONVERTER_LEDS
-  converter.state.kb_ready = (keyboard_state >= INITIALISED) ? 1 : 0;
-  update_converter_status();
-#endif
+  // M0110 uses >= comparison because INITIALISED is not the final state
+  update_keyboard_ready_led(keyboard_state >= INITIALISED);
 }
 
 /**

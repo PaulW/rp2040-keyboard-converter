@@ -218,6 +218,8 @@ See [Adding Keyboards](adding-keyboards.md) for a detailed guide that walks thro
 
 If you're adding support for a new keyboard protocol, this is more involved. You'll create a new directory under [`src/protocols/`](../../src/protocols/)`<name>/` and write a PIO program (`.pio` file) that handles the protocol timing. Then implement the interrupt handler to extract scancodes and write them to the ring buffer. You'll also need to implement the protocol state machine for things like initialisation, LED commands, and error recovery. If the protocol uses multi-byte scancode sequences, you'll need to add a scancode processor for that. Finally, document the protocol with timing diagrams and implementation notes so others can understand how it works.
 
+**Protocol Setup Pattern:** All protocol implementations follow a standard 13-step initialization sequence. The [Protocol Implementation Guide](protocol-implementation.md) documents this pattern in detail, explaining why each step matters and how they work together. Following this pattern ensures consistency, proper resource allocation, and correct error handling across all protocols.
+
 Have a look at [`at-ps2/`](../../src/protocols/at-ps2/) or [`xt/`](../../src/protocols/xt/) for examples of how protocols are structured—they'll give you a sense of what's involved.
 
 ### Fixing Bugs
