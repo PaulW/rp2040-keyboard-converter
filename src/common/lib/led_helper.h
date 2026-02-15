@@ -85,6 +85,7 @@ extern volatile bool cmd_mode_led_green;
  * - No synchronization needed
  */
 extern volatile bool log_level_selection_mode;
+#endif
 
 // Forward declaration for inline function below
 void update_converter_status(void);
@@ -126,7 +127,6 @@ static inline void update_keyboard_ready_led(bool ready) {
   (void)ready;
 #endif
 }
-#endif
 
 /**
  * @brief Lock Key State Structure

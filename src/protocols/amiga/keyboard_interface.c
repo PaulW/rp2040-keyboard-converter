@@ -457,7 +457,7 @@ void keyboard_interface_setup(uint data_pin) {
   uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
   
   // Register interrupt handler for RX FIFO events
-  irq_set_exclusive_handler(pio_irq, keyboard_input_event_handler);
+  irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
   
   // Enable the IRQ (PIO RX FIFO source already enabled in program_init above)
   irq_set_enabled(pio_irq, true);
