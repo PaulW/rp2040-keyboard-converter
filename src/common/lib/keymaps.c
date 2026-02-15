@@ -27,15 +27,59 @@
 #include "log.h"
 #include "numpad_flip.h"
 
-static int keymap_layer = 0; /* TO-DO Add full Layer Switching Support */
-static bool action_key_pressed = false;
+// Layer state tracking
+static layer_state_t layer_state = {
+  .layer_state = 0x01,           // Bit 0 set = Layer 0 (base) active
+  .momentary_keys = {0, 0, 0},   // No MO keys held
+  .oneshot_layer = 0,            // No one-shot layer
+  .oneshot_active = false        // One-shot not active
+};
+
+/**
+ * @brief Resets layer state to base layer (layer 0)
+ * 
+ * Called during initialization and error recovery.
+ * Clears all layer activations and returns to base layer.
+ */
+void keymap_reset_layers(void) {
+  layer_state.layer_state = 0x01;     // Only layer 0 active
+  layer_state.momentary_keys[0] = 0;
+  layer_state.momentary_keys[1] = 0;
+  layer_state.momentary_keys[2] = 0;
+  layer_state.oneshot_layer = 0;
+  layer_state.oneshot_active = false;
+}
+
+/**
+ * @brief Gets the highest active layer number
+ * 
+ * Searches layer state bitmap from highest to lowest.
+ * One-shot layer takes priority if active.
+ * 
+ * @return Active layer number (0-7)
+ */
+uint8_t keymap_get_active_layer(void) {
+  // Check one-shot layer first (highest priority)
+  if (layer_state.oneshot_active && layer_state.oneshot_layer > 0) {
+    return layer_state.oneshot_layer - 1;  // oneshot_layer is 1-indexed
+  }
+  
+  // Search bitmap from highest to lowest
+  for (int8_t i = KEYMAP_MAX_LAYERS - 1; i >= 0; i--) {
+    if (layer_state.layer_state & (1 << i)) {
+      return i;
+    }
+  }
+  
+  // Fallback to layer 0 (should never reach here due to init)
+  return 0;
+}
 
 /**
  * @brief Searches for the key code in the keymap based on the specified row and column.
- * This function searches for the key code in the keymap based on the specified row and column. It
- * first checks the current layer, and if the key code is KC_TRNS (transparent), it searches through
- * the previous layers until a non-transparent key code is found. If no non-transparent key code is
- * found, it returns KC_NO (no key).
+ * 
+ * Starts from the active layer and falls through transparent keys to lower layers.
+ * Handles KC_TRNS (transparent) by searching down through layer stack.
  *
  * @param row The row index in the keymap.
  * @param col The column index in the keymap.
@@ -43,75 +87,137 @@ static bool action_key_pressed = false;
  * @return The key code found in the keymap.
  */
 static uint8_t keymap_search_layers(uint8_t row, uint8_t col) {
-  uint8_t key_code = keymap_map[keymap_layer][row][col];
+  uint8_t active_layer = keymap_get_active_layer();
+  uint8_t key_code = keymap_map[active_layer][row][col];
 
-  if (keymap_layer > 0 && key_code == KC_TRNS) {
-    uint8_t layer_key_code;
-    for (int i = keymap_layer; i >= 0; i--) {
-      layer_key_code = keymap_map[i][row][col];
+  // Handle transparent keys - fall through to lower layers
+  if (active_layer > 0 && key_code == KC_TRNS) {
+    for (int8_t i = active_layer - 1; i >= 0; i--) {
+      uint8_t layer_key_code = keymap_map[i][row][col];
       if (layer_key_code != KC_TRNS) {
         key_code = layer_key_code;
         break;
       }
     }
     if (key_code == KC_TRNS) {
-      /* This shouldn't happen! */
-      LOG_ERROR("KC_TRNS Detected as far as Base Layer!\n");
+      /* This shouldn't happen! Base layer should never have KC_TRNS */
+      LOG_ERROR("KC_TRNS detected in base layer at [%d][%d]!\n", row, col);
       key_code = KC_NO;
     }
   }
+  
   return key_code;
 }
 
 /**
+ * @brief Processes layer switching operations
+ * 
+ * Handles MO (momentary), TG (toggle), TO (switch to), and OSL (one-shot) operations.
+ * Updates layer_state based on keycode and make/break.
+ * 
+ * @param code The layer operation keycode (0xF0-0xFF)
+ * @param make True if key pressed, false if released
+ */
+static void process_layer_key(uint8_t code, bool make) {
+  uint8_t operation = GET_LAYER_OPERATION(code);  // 0=MO, 1=TG, 2=TO, 3=OSL
+  uint8_t target_layer = GET_LAYER_TARGET(code);  // 1-4
+  
+  switch (operation) {
+    case 0:  // MO (Momentary) - hold to activate
+      if (make) {
+        layer_state.layer_state |= (1 << target_layer);
+        // Track which MO key is held (for release detection)
+        if (target_layer <= 3) {
+          layer_state.momentary_keys[target_layer - 1] = code;
+        }
+      } else {
+        // Release momentary layer only if this specific MO key is released
+        if (target_layer <= 3 && layer_state.momentary_keys[target_layer - 1] == code) {
+          layer_state.layer_state &= ~(1 << target_layer);
+          layer_state.momentary_keys[target_layer - 1] = 0;
+        }
+      }
+      break;
+      
+    case 1:  // TG (Toggle) - press to toggle on/off
+      if (make) {  // Only act on key press, ignore release
+        if (layer_state.layer_state & (1 << target_layer)) {
+          layer_state.layer_state &= ~(1 << target_layer);  // Turn off
+        } else {
+          layer_state.layer_state |= (1 << target_layer);   // Turn on
+        }
+      }
+      break;
+      
+    case 2:  // TO (Switch to) - permanently switch to layer
+      if (make) {  // Only act on key press
+        // Clear all layers except base (layer 0)
+        layer_state.layer_state = 0x01;
+        // Activate target layer
+        if (target_layer > 0) {
+          layer_state.layer_state |= (1 << target_layer);
+        }
+        // Clear momentary tracking
+        layer_state.momentary_keys[0] = 0;
+        layer_state.momentary_keys[1] = 0;
+        layer_state.momentary_keys[2] = 0;
+      }
+      break;
+      
+    case 3:  // OSL (One-shot layer) - activate for next key only
+      if (make) {  // Only act on key press
+        layer_state.oneshot_layer = target_layer;
+        layer_state.oneshot_active = true;
+      }
+      break;
+  }
+}
+
+/**
  * @brief Retrieves the key value at the specified position in the keymap.
- * This function takes a position value and a boolean indicating whether the key is being pressed or
- * released. It calculates the row and column values from the position and searches the keymap for
- * the corresponding key code.
+ * 
+ * Main keymap lookup function. Handles:
+ * - Layer switching operations (MO/TG/TO/OSL)
+ * - Transparent key fallthrough
+ * - Numpad flip translation
+ * - Shift-override (if keyboard defines keymap_shifted_keycode)
+ * - One-shot layer consumption
+ * 
+ * @param pos  The position of the key in the keymap (upper nibble = row, lower nibble = col).
+ * @param make True if key pressed, false if released.
  *
- * If the key code is KC_FN, it sets the action_key_pressed flag and returns KC_NO. Otherwise, if
- * the action_key_pressed flag is set, it checks if there is an action key code at the specified
- * position in the action key map. If there is, it updates the key code with the action key code.
- *
- * If the key code is KC_NFLP, it searches the keymap again to get the flip key code and converts it
- * to the corresponding numpad flip code. Finally, it returns the key code.
- *
- * @param pos  The position of the key in the keymap.
- * @param make A boolean indicating whether the key is being pressed (true) or released (false).
- *
- * @return The key code at the specified position in the keymap.
+ * @return The HID keycode to send, or KC_NO if consumed by layer operation.
  */
 uint8_t keymap_get_key_val(uint8_t pos, bool make) {
   const uint8_t row = (pos >> 4) & 0x0F;
   const uint8_t col = pos & 0x0F;
   uint8_t key_code = keymap_search_layers(row, col);
 
-  if (key_code == KC_FN) {
-    action_key_pressed = make;
-    return KC_NO;
-  } else {
-    if (action_key_pressed) {
-      /* We need to process an Action Key event from a seperate map */
-      const uint8_t action_key_code = keymap_actions[0][row][col];
-      if (action_key_code != KC_TRNS) {
-        key_code = action_key_code;
-      }
-    }
-
-    if (key_code == KC_NFLP) {
-      const uint8_t flip_key_code = keymap_search_layers(row, col);
-      key_code = numpad_flip_code(flip_key_code);
-    }
-
-    return key_code;
+  // Handle layer switching keycodes (0xF0-0xFF)
+  if (IS_LAYER_KEY(key_code)) {
+    process_layer_key(key_code, make);
+    return KC_NO;  // Layer keys don't generate HID events
   }
-}
 
-/**
- * @brief Checks if the action key is currently pressed.
- * This function returns a boolean value indicating whether the action key is currently pressed or
- * not.  This ensures we only expose this value read-only to the rest of the code.
- *
- * @return true if the action key is pressed, false otherwise.
- */
-bool keymap_is_action_key_pressed(void) { return action_key_pressed; }
+  // Consume one-shot layer after any non-layer key press
+  if (layer_state.oneshot_active && make && key_code != KC_TRNS) {
+    layer_state.oneshot_active = false;
+    layer_state.oneshot_layer = 0;
+  }
+
+  // Handle numpad flip (KC_NFLP toggles numpad behavior)
+  if (key_code == KC_NFLP) {
+    const uint8_t flip_key_code = keymap_search_layers(row, col);
+    key_code = numpad_flip_code(flip_key_code);
+  }
+
+  // TODO: Shift-override support (Phase 2)
+  // if (keymap_shifted_keycode != NULL && shift_is_pressed()) {
+  //   uint8_t override = keymap_shifted_keycode[key_code];
+  //   if (override != 0) {
+  //     key_code = override;
+  //   }
+  // }
+
+  return key_code;
+}

@@ -53,7 +53,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     F3,    F4,        TAB,   Q,     W,     E,     R,     T,     Y,     U,     I,     O,     P,     LBRC,  RBRC,  ENT,   P7,    P8,    P9,    PMNS, \
     F5,    F6,        LCTL,  A,     S,     D,     F,     G,     H,     J,     K,     L,     SCLN,  QUOT,  BSLS,         P4,    P5,    P6,          \
     F7,    F8,        LSFT,  NUBS,  Z,     X,     C,     V,     B,     N,     M,     COMM,  DOT,   SLSH,  RSFT,  PSCR,  P1,    P2,    P3,    PPLS, \
-    FN,    LGUI,      LALT,                                     SPC,                                      CAPS,         P0,           PDOT  // clang-format on
+    MO_1,  LGUI,      LALT,                                     SPC,                                      CAPS,         P0,           PDOT  // clang-format on
               ),
     KEYMAP_XT(      /* Numlock Off (MacOS Compatibility Layer) */
               // clang-format off
@@ -63,12 +63,11 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS, \
     TRNS,  TRNS,      TRNS,                                     TRNS,                                     TRNS,         TRNS,         TRNS  // clang-format on
               ),
-};
-
-/* Define Action Layers */
-const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS] = {
-    KEYMAP_XT(      /* Function Key Pressed */
-              // clang-format off
+  KEYMAP_XT( \
+    /* Layer 1: Function Layer (activated by MO(1) - formerly KC_FN)
+     * Provides F9-F12, media controls, arrow key navigation, and application key
+     */
+    // clang-format off
     F9,    F10,       TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS, \
     F11,   F12,       TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS, \
     VOLD,  VOLU,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,  UP,    TRNS, \

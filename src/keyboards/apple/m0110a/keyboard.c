@@ -65,18 +65,6 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
 
 };
 
-const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS] = {
-  KEYMAP_M0110A(\
-    /* Function Key Pressed */
-    // clang-format off
-    TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,    TRNS,  TRNS, TRNS,  TRNS, \
-    TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,    TRNS,  TRNS, TRNS,  TRNS, \
-    TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,    TRNS,  TRNS, TRNS,  TRNS, \
-    TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,    TRNS,  TRNS, TRNS,  TRNS, \
-    TRNS,         TRNS,                       TRNS,                       TRNS,  TRNS,  TRNS,  TRNS,           TRNS,  TRNS // clang-format on
-  ),
-};
-
 /* 
  * Key mapping notes for Apple M0110A:
  * 

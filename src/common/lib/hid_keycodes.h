@@ -167,6 +167,70 @@
 #define KC_SPECIAL_BOOT 0xD4
 #define KC_BOOT KC_SPECIAL_BOOT
 
+/* ============================================================================
+ * INTERNAL LAYER SWITCHING KEYCODES (0xF0-0xFF range)
+ * 
+ * These values are NEVER sent to the HID interface. They are consumed by
+ * keymap_get_key_val() and trigger internal layer state changes.
+ * 
+ * These exist in the keymap OUTPUT space (returned FROM keymap lookup),
+ * not the scancode INPUT space (consumed by scancode state machine).
+ * Protocol scancodes like PS/2's 0xF0 "break prefix" are consumed by the
+ * scancode processor before reaching the keymap - no conflict exists.
+ * 
+ * If future USB HID specifications define keycodes in this range, these
+ * internal values can be remapped without affecting keyboards (they're
+ * purely implementation details, not part of keyboard definitions).
+ * ============================================================================ */
+
+// Layer operation base values (0xF0-0xFF range)
+// Rationale: 0xE8-0xEF marked as "special" in IS_SPECIAL macro
+//            0xF0-0xFF is safest for internal use
+#define KC_LAYER_MO_BASE   0xF0  // MO(n): Momentary layer while held
+#define KC_LAYER_TG_BASE   0xF4  // TG(n): Toggle layer on/off
+#define KC_LAYER_TO_BASE   0xF8  // TO(n): Switch to layer permanently
+#define KC_LAYER_OSL_BASE  0xFC  // OSL(n): One-shot layer (next key only)
+
+// Individual layer keycodes (layers 1-3 supported for each operation)
+// MO (Momentary) - 0xF0-0xF3
+#define KC_MO_1   (KC_LAYER_MO_BASE + 0)   // MO(1)
+#define KC_MO_2   (KC_LAYER_MO_BASE + 1)   // MO(2)
+#define KC_MO_3   (KC_LAYER_MO_BASE + 2)   // MO(3)
+// 0xF3 reserved for future MO(4)
+
+// TG (Toggle) - 0xF4-0xF7
+#define KC_TG_1   (KC_LAYER_TG_BASE + 0)   // TG(1)
+#define KC_TG_2   (KC_LAYER_TG_BASE + 1)   // TG(2)
+#define KC_TG_3   (KC_LAYER_TG_BASE + 2)   // TG(3)
+// 0xF7 reserved for future TG(4)
+
+// TO (Switch to) - 0xF8-0xFB
+#define KC_TO_1   (KC_LAYER_TO_BASE + 0)   // TO(1)
+#define KC_TO_2   (KC_LAYER_TO_BASE + 1)   // TO(2)
+#define KC_TO_3   (KC_LAYER_TO_BASE + 2)   // TO(3)
+// 0xFB reserved for future TO(4)
+
+// OSL (One-shot) - 0xFC-0xFF
+#define KC_OSL_1  (KC_LAYER_OSL_BASE + 0)  // OSL(1)
+#define KC_OSL_2  (KC_LAYER_OSL_BASE + 1)  // OSL(2)
+#define KC_OSL_3  (KC_LAYER_OSL_BASE + 2)  // OSL(3)
+// 0xFF reserved for future OSL(4)
+
+// Convenience macros for keymaps (layers 1-3)
+#define MO(n)   (KC_LAYER_MO_BASE + ((n) - 1))   // n: 1-3
+#define TG(n)   (KC_LAYER_TG_BASE + ((n) - 1))   // n: 1-3
+#define TO(n)   (KC_LAYER_TO_BASE + ((n) - 1))   // n: 1-3
+#define OSL(n)  (KC_LAYER_OSL_BASE + ((n) - 1))  // n: 1-3
+
+// Helper macros for layer key detection and parsing
+#define IS_LAYER_KEY(code) ((code) >= KC_LAYER_MO_BASE)  // 0xF0-0xFF range
+#define GET_LAYER_OPERATION(code) (((code) - KC_LAYER_MO_BASE) >> 2)  // 0=MO, 1=TG, 2=TO, 3=OSL
+#define GET_LAYER_TARGET(code)    ((((code) - KC_LAYER_MO_BASE) & 0x03) + 1)  // Returns 1-4
+
+/* Migration note: If future HID spec uses 0xF0-0xFF, simply change the
+ * KC_LAYER_*_BASE values above. No keyboard files need updating since
+ * they use MO(n)/TG(n)/TO(n)/OSL(n) macros. */
+
 /* HID Usage Tables */
 /* HID Generic Desktop Usage Page (0x01) */
 enum hid_generic_desktop_usage_page {

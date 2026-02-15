@@ -26,11 +26,23 @@
 
 #define KEYMAP_ROWS 8
 #define KEYMAP_COLS 16
+#define KEYMAP_MAX_LAYERS 8
+
+// Layer state management
+typedef struct {
+  uint8_t layer_state;        // Bitmap of active layers (bit 0 = layer 0, etc.)
+  uint8_t momentary_keys[3];  // Track which layer keys are held down (MO only)
+  uint8_t oneshot_layer;      // One-shot layer (0 = none, 1-8 = active layer)
+  bool oneshot_active;        // True if one-shot layer is waiting for next key
+} layer_state_t;
 
 uint8_t keymap_get_key_val(uint8_t pos, bool make);
-bool keymap_is_action_key_pressed(void);
+void keymap_reset_layers(void);
+uint8_t keymap_get_active_layer(void);
 
 extern const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS];
-extern const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS];
+
+// Optional: Shift-override sparse array (weak symbol, keyboards can override)
+extern const uint8_t keymap_shifted_keycode[256] __attribute__((weak));
 
 #endif /* KEYMAPS_H */

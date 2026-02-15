@@ -58,19 +58,6 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
                ),
 };
 
-const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS] = {
-    KEYMAP_AMIGA( \
-        /* Function Key Layer - currently transparent (no Fn key on Amiga) */
-        // clang-format off
-        TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,     TRNS,  TRNS,  TRNS,  TRNS,  TRNS, \
-        TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,     TRNS,  TRNS,     TRNS,  TRNS,  TRNS,  TRNS, \
-        TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,                       TRNS,  TRNS,  TRNS,  TRNS, \
-        TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,                   TRNS,      TRNS,  TRNS,  TRNS,  TRNS, \
-        TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,        TRNS,     TRNS,  TRNS,  TRNS,     TRNS,  TRNS,  TRNS,  TRNS, \
-                      TRNS,  TRNS,                    TRNS,                          TRNS,  TRNS,                                          TRNS,  TRNS  // clang-format on
-               ),
-};
-
 /* 
  * Key mapping notes for Commodore Amiga 500/2000:
  * 
