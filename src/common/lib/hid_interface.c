@@ -345,6 +345,39 @@ void handle_keyboard_report(uint8_t rawcode, bool make) {
 }
 
 /**
+ * @brief Checks if either Shift key is currently pressed
+ * 
+ * This function checks the modifier field of the current keyboard report
+ * to determine if Left Shift (0xE1) or Right Shift (0xE5) is pressed.
+ * 
+ * Modifier Bit Positions:
+ * - Bit 0: Left Control (0xE0)
+ * - Bit 1: Left Shift (0xE1)      <-- checked
+ * - Bit 2: Left Alt (0xE2)
+ * - Bit 3: Left GUI (0xE3)
+ * - Bit 4: Right Control (0xE4)
+ * - Bit 5: Right Shift (0xE5)     <-- checked
+ * - Bit 6: Right Alt (0xE6)
+ * - Bit 7: Right GUI (0xE7)
+ * 
+ * Use Case:
+ * - Shift-override system (keyboards with non-standard shift legends)
+ * - Some terminal keyboards have different shift characters than standard
+ * - E.g., key has '6' legend but sends scancode for '7'
+ * 
+ * @return true if Left Shift OR Right Shift is currently pressed
+ * @return false if neither shift key is pressed
+ * 
+ * @note Called from keymap_get_key_val() during shift-override processing
+ * @note Thread-safe: only called from main task context
+ */
+bool hid_is_shift_pressed(void) {
+  // Check bits 1 (Left Shift) and 5 (Right Shift)
+  const uint8_t shift_mask = (1 << 1) | (1 << 5);
+  return (keyboard_report.modifier & shift_mask) != 0;
+}
+
+/**
  * @brief Sends an empty keyboard report to release all keys
  * 
  * This function sends a HID keyboard report with no keys pressed and no

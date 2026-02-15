@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "hid_interface.h"
 #include "hid_keycodes.h"
 #include "log.h"
 #include "numpad_flip.h"
@@ -211,13 +212,16 @@ uint8_t keymap_get_key_val(uint8_t pos, bool make) {
     key_code = numpad_flip_code(flip_key_code);
   }
 
-  // TODO: Shift-override support (Phase 2)
-  // if (keymap_shifted_keycode != NULL && shift_is_pressed()) {
-  //   uint8_t override = keymap_shifted_keycode[key_code];
-  //   if (override != 0) {
-  //     key_code = override;
-  //   }
-  // }
+  // Shift-override support (Phase 3)
+  // Some keyboards have non-standard shift legends (e.g., terminal keyboards)
+  // The sparse array keymap_shifted_keycode[] maps base keycode → override keycode
+  // Only keyboards with non-standard legends define this array (weak symbol)
+  if (keymap_shifted_keycode != NULL && hid_is_shift_pressed()) {
+    uint8_t override = keymap_shifted_keycode[key_code];
+    if (override != 0) {
+      key_code = override;
+    }
+  }
 
   return key_code;
 }
