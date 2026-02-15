@@ -177,17 +177,23 @@ The keycodes come from `hid_keycodes.h` and are passed **without** the `KC_` pre
 - Function: `F1` through `F24`
 - Navigation: `INS`, `DEL`, `HOME`, `END`, `PGUP`, `PGDN`
 
-You can set up multiple layers too—useful for NumLock states or Function key alternatives:
+You can set up multiple layers too—useful for media controls, alternative key functions, or NumLock states. Define additional layers in the `keymap_map` array, then add layer switching keys to your base layer:
 
 ```c
-const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS] = {
-    KEYMAP( /* Function layer when FN key is held */
-        TRNS, VOLD, VOLU, BRTD, BRTI, /* ... rest of layout ... */
+const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
+    // Layer 0: Base layer
+    KEYMAP(
+        ESC,  F1,   F2,   /* ... */, MO_1,  /* momentary layer 1 when held */
+    ),
+    
+    // Layer 1: Function layer
+    KEYMAP(
+        TRNS, F13,  F14,  /* ... */, TRNS,  /* ... rest of layout ... */
     ),
 };
 ```
 
-Use `TRNS` (transparent) for keys that should behave the same as the base layer.
+Layer switching keycodes: `MO_1` (momentary Layer 1 when held), `TG_1` (toggle Layer 1 on/off), `TO_1` (switch to Layer 1). Use `TRNS` (transparent) for keys that should behave the same as the base layer. More details in the [Custom Keymaps Guide](../development/custom-keymaps.md).
 
 ### Step 6: Build and Test
 

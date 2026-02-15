@@ -132,17 +132,11 @@ IBM Model M M122 Terminal Keyboard (Scancode Set 3):
 | **F13-F24** | Extended function keys | Row above standard F-keys, fully mapped and functional |
 | **Left Side Keys** | Various modern functions | Volume, brightness, App, GUI keys |
 
-### Function Layer
+### Layer System
 
-The Fn modifier key provides access to bootloader entry functionality:
+The keyboard defines Layer 0 (base layer) and Layer 1. Currently, Layer 1 is all transparent keys (TRNS), meaning it doesn't actually modify any key behavior.
 
-| Fn + Key | Function | Notes |
-|----------|----------|-------|
-| **Fn (assigned)** | Function layer access | Enables bootloader entry via Left Shift + Right Shift |
-
-### Fn Modifier Key
-
-The Fn modifier is assigned for bootloader entry even though it may not be physically present on the keyboard. This preserves command mode functionality.
+A `MO_1` key is assigned on the left side of the keyboard (below Caps Lock position), but since Layer 1 is currently empty, holding this key has no effect. You could customize Layer 1 to add media controls, alternative function key mappings, or other key assignments by editing the Layer 1 definition in [`keyboard.c`](../../../src/keyboards/modelm/m122/keyboard.c).
 
 ---
 
