@@ -387,7 +387,7 @@ knowledge_base:
     enabled: true
     filePatterns:
       - ".github/copilot-instructions.md"
-      - "docs/development/*.md
+      - "docs/development/*.md"
       - "src/protocols/*/README.md"
       - "src/scancodes/*/README.md"
       - "README.md"
