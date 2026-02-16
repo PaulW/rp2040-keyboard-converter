@@ -33,10 +33,10 @@
 * Used internally by the layer management system.
 */
 typedef struct {
-    uint8_t layer_state;        // Bitmap of active layers (bit 0 = layer 0, etc.)
-    uint8_t momentary_keys[3];  // Track which layer keys are held down (MO only, layers 1-3)
-    uint8_t oneshot_layer;      // One-shot layer (0 = none, 1-7 = target layer)
-    bool oneshot_active;        // True if one-shot layer is waiting for next key
+    uint8_t layer_state;                      // Bitmap of active layers (bit 0 = layer 0, etc.)
+    uint8_t momentary_keys[KEYMAP_MAX_LAYERS - 1];  // Track MO keys held (layers 1 to MAX-1)
+    uint8_t oneshot_layer;                    // One-shot layer (0 = none, 1-7 = target layer)
+    bool oneshot_active;                      // True if one-shot layer is waiting for next key
 } layer_state_t;
 
 // Layer state tracking (accessible to inline functions)

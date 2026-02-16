@@ -563,7 +563,8 @@ void config_set_layer_state(uint8_t layer_state) {
         LOG_ERROR("Config not initialized!\n");
         return;
     }
-    
+
+    layer_state |= 0x01;  // Enforce Layer 0 always active
     if (g_config.layer_state != layer_state) {
         g_config.layer_state = layer_state;
         g_config.flags.dirty = 1;

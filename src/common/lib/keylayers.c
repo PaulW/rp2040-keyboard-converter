@@ -33,7 +33,7 @@ __attribute__((weak)) const uint8_t keymap_layer_count = KEYMAP_MAX_LAYERS;
 // Layer state tracking (accessible to inline functions in header)
 layer_state_t layer_state = {
     .layer_state = 0x01,           // Bit 0 set = Layer 0 (base) active
-    .momentary_keys = {0, 0, 0},   // No MO keys held
+    .momentary_keys = {0},         // No MO keys held (supports layers 1 to MAX-1)
     .oneshot_layer = 0,            // No one-shot layer
     .oneshot_active = false        // One-shot not active
 };
@@ -46,9 +46,9 @@ layer_state_t layer_state = {
 */
 void keylayers_reset(void) {
     layer_state.layer_state = 0x01;     // Only layer 0 active
-    layer_state.momentary_keys[0] = 0;
-    layer_state.momentary_keys[1] = 0;
-    layer_state.momentary_keys[2] = 0;
+    for (uint8_t i = 0; i < KEYMAP_MAX_LAYERS - 1; i++) {
+        layer_state.momentary_keys[i] = 0;
+    }
     layer_state.oneshot_layer = 0;
     layer_state.oneshot_active = false;
 }
@@ -76,9 +76,9 @@ uint8_t keylayers_get_active(void) {
   
     // Check momentary layers (higher priority than toggles)
     // Search from highest to lowest momentary layer
-    for (int8_t i = 2; i >= 0; i--) {  // momentary_keys indices 0-2 = layers 1-3
+    for (int8_t i = KEYMAP_MAX_LAYERS - 2; i >= 0; i--) {  // momentary_keys indices 0 to MAX-2 = layers 1 to MAX-1
         if (layer_state.momentary_keys[i] != 0) {
-            return i + 1;  // Return layer number (1-3)
+            return i + 1;  // Return layer number (1 to MAX-1)
         }
     }
   
@@ -214,12 +214,12 @@ void keylayers_init(void) {
 */
 void keylayers_process_key(uint8_t code, bool make) {
     const uint8_t operation = GET_LAYER_OPERATION(code);  // 0=MO, 1=TG, 2=TO, 3=OSL
-    const uint8_t target_layer = GET_LAYER_TARGET(code);  // 1-3 (MO/TG/TO/OSL macros support layers 1-3)
+    const uint8_t target_layer = GET_LAYER_TARGET(code);  // 1-3 (current MO/TG/TO/OSL macros)
   
     switch (operation) {
-        case 0:  // MO (Momentary) - hold to activate (layers 1-3 only)
-            // Guard: MO only supports layers 1-3 (momentary_keys array size)
-            if (target_layer < 1 || target_layer > 3) {
+        case 0:  // MO (Momentary) - hold to activate
+            // Guard: Validate layer range (momentary_keys array bounds)
+            if (target_layer < 1 || target_layer >= KEYMAP_MAX_LAYERS) {
                 break;  // Invalid layer for MO operation
             }
             if (make) {

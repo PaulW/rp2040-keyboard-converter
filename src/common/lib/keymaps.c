@@ -30,6 +30,44 @@
 #include "log.h"
 
 /**
+ * @brief Scans lower layers for layer modifiers only
+ * 
+ * Safety feature: Layer modifiers in lower layers take precedence over regular keys
+ * in higher layers. This prevents accidentally overriding layer navigation keys.
+ * 
+ * @param row           The row index in the keymap
+ * @param col           The column index in the keymap
+ * @param start_layer   Layer to start searching from (searches down from here)
+ * @param source_layer  Output parameter set to the layer where modifier was found (can be NULL)
+ * @return              Layer modifier keycode if found, KC_NO if not found
+ */
+static uint8_t scan_lower_layers_for_modifier(uint8_t row, uint8_t col, int8_t start_layer, uint8_t *source_layer) {
+  for (int8_t i = (int8_t)(start_layer - 1); i >= 0; i--) {
+    // Skip inactive layers (Layer 0 always active)
+    if (i > 0 && !keylayers_is_active(i)) {
+      continue;
+    }
+    
+    const uint8_t lower_key = keymap_map[i][row][col];
+    
+    // Layer modifier found - takes precedence over active layer regular key
+    if (IS_LAYER_KEY(lower_key)) {
+      if (source_layer != NULL) {
+        *source_layer = i;
+      }
+      return lower_key;
+    }
+    
+    // Stop at first non-TRNS regular key (caller already has key from active layer)
+    if (lower_key != KC_TRNS) {
+      break;
+    }
+  }
+  
+  return KC_NO;  // No layer modifier found
+}
+
+/**
  * @brief Searches for the key code in the keymap based on the specified row and column.
  * 
  * Starts from the highest active layer and falls through transparent keys to lower active layers.
@@ -84,26 +122,9 @@ static uint8_t keymap_search_layers(uint8_t row, uint8_t col, uint8_t *source_la
     
     // Regular key in active layer - check lower layers for layer modifiers only
     // (Safety feature: layer modifiers override regular keys in higher layers)
-    for (int8_t i = active_layer - 1; i >= 0; i--) {
-      // Skip inactive layers (Layer 0 always active)
-      if (i > 0 && !keylayers_is_active(i)) {
-        continue;
-      }
-      
-      const uint8_t lower_key = keymap_map[i][row][col];
-      
-      // Layer modifier found - takes precedence over active layer regular key
-      if (IS_LAYER_KEY(lower_key)) {
-        if (source_layer != NULL) {
-          *source_layer = i;
-        }
-        return lower_key;
-      }
-      
-      // Stop at first non-TRNS regular key (we already have key from active layer)
-      if (lower_key != KC_TRNS) {
-        break;
-      }
+    const uint8_t modifier = scan_lower_layers_for_modifier(row, col, active_layer, source_layer);
+    if (modifier != KC_NO) {
+      return modifier;  // Layer modifier found in lower layer
     }
     
     // No layer modifier in lower layers - use regular key from active layer
@@ -114,7 +135,7 @@ static uint8_t keymap_search_layers(uint8_t row, uint8_t col, uint8_t *source_la
   }
   
   // Slow path: Active layer is transparent - search lower layers
-  for (int8_t i = active_layer - 1; i >= 0; i--) {
+  for (int8_t i = (int8_t)(active_layer - 1); i >= 0; i--) {
     // Skip inactive layers (Layer 0 always active)
     if (i > 0 && !keylayers_is_active(i)) {
       continue;
@@ -171,7 +192,8 @@ uint8_t keymap_get_key_val(uint8_t pos, bool make, bool* suppress_shift) {
   }
 
   // Consume one-shot layer after any non-layer key press
-  if (make && key_code != KC_TRNS) {
+  // Skip consumption if keymap_search_layers returned KC_NO (all-transparent error case)
+  if (make && key_code != KC_NO) {
     keylayers_consume_oneshot();
   }
 
