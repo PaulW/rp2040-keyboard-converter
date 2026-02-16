@@ -28,7 +28,7 @@ The converter persists several settings across reboots:
 
 **Layer State** - Active toggle (TG) and permanent switch (TO) layers. When you toggle Dvorak on or switch to a gaming layer, that state persists across reboots. Momentary (MO) and one-shot (OSL) layers don't persist—they're temporary by design.
 
-These settings are stored together in a single configuration structure, along with metadata like a version number, sequence counter, and CRC checksum. The configuration structure occupies 2048 bytes total (matching the 2KB copy size), with ~26 bytes of header and settings, ~2 bytes for flags/padding, and ~2022 bytes reserved for future expansion (TLV storage for macros, key remaps, etc.).
+These settings are stored together in a single configuration structure, along with metadata like a version number, sequence counter, and CRC checksum. The configuration structure occupies 2048 bytes total (matching the 2KB copy size), with ~26 bytes of header and settings, ~2 bytes for flags/padding, and ~2020 bytes reserved for future expansion (TLV storage for macros, key remaps, etc.).
 
 Future firmware versions might add more settings—custom key remapping, macro definitions, debounce timing adjustments, protocol-specific tweaks. The storage system is designed to accommodate this growth through automatic version migration.
 

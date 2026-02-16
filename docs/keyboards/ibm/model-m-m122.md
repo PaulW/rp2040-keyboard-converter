@@ -136,7 +136,7 @@ IBM Model M M122 Terminal Keyboard (Scancode Set 3):
 
 The keyboard defines a single layer (Layer 0) as the base layer. The numpad keys (P7, P8, P9, etc.) are sent directly to the host—Windows and Linux handle NumLock state natively, toggling between numeric and navigation functions.
 
-For macOS users, which lacks NumLock support, you could add a function layer to provide navigation key access. This would require editing [`keyboard.c`](../../../src/keyboards/modelm/m122/keyboard.c) to define additional layers and assign layer switching keys.
+For macOS, which lacks NumLock support, users could add a function layer to provide navigation key access. This would require editing [`keyboard.c`](../../../src/keyboards/modelm/m122/keyboard.c) to define additional layers and assign layer switching keys.
 
 ---
 

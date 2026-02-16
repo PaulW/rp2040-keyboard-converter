@@ -130,7 +130,7 @@ static const config_data_t DEFAULT_CONFIG = {
     .keyboard_id = 0,  // Set dynamically at init (from get_keyboard_id())
     .flags = { .dirty = 0, .shift_override_enabled = 0, .reserved = 0 },
     .layer_state = 0x01,  // Layer 0 always active (bit 0 set)
-    .layers_hash = 0,  // Set dynamically at init (from keymap_compute_layers_hash())
+    .layers_hash = 0xFFFFFFFF,  // Sentinel for first boot (set dynamically at init)
     .reserved = {0},
     .storage = {0}
 };
@@ -376,14 +376,12 @@ bool config_init(void) {
         g_config.keyboard_id = current_keyboard_id;
         g_config.flags.shift_override_enabled = 0;  // Reset to disabled
         g_config.layer_state = 0x01;  // Reset to Layer 0 only
-        g_config.layers_hash = 0;  // Will be recomputed by keymap_init()
+        g_config.layers_hash = 0xFFFFFFFF;  // Sentinel for first boot (will be recomputed by keylayers_init())
         g_config.flags.dirty = 1;  // Mark for save
     }
     
     // Sanity check: Validate shift-override availability
     // If config says enabled but keyboard doesn't define shift-override arrays, disable it
-    extern const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] __attribute__((weak));
-    
     if (g_config.flags.shift_override_enabled && keymap_shift_override_layers == NULL) {
         LOG_WARN("Shift-override enabled in config but keyboard doesn't define shift mappings\n");
         LOG_INFO("Disabling shift-override (keymap_shift_override_layers not defined)\n");

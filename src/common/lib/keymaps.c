@@ -204,17 +204,8 @@ uint8_t keymap_get_key_val(uint8_t pos, bool make, bool* suppress_shift) {
           key_code = override;  // Keep shift modifier
         }
       }
-    } else if (source_layer > 0) {
-      // Runtime validation: Log error if shift-override array exists for a layer that doesn't exist
-      // This catches keyboard configuration errors (e.g., [1] = {...} when only Layer 0 exists)
-      static uint8_t logged_layers = 0;
-      if (!(logged_layers & (1 << source_layer))) {
-        LOG_ERROR("Shift-override array entry [%d] exists but keyboard only defines Layer 0!\n", source_layer);
-        LOG_ERROR("Fix keyboard.c: Either add Layer %d to keymap_map or remove shift-override entry [%d]\n", 
-                  source_layer, source_layer);
-        logged_layers |= (1 << source_layer);
-      }
     }
+    // Note: NULL shift_overrides for a layer is valid - no shift-override defined for that layer
   }
 
   return key_code;
