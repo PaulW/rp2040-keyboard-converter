@@ -118,7 +118,7 @@ Commodore Amiga 500/2000 Keyboard Layout
 
 ### Modifying Key Layout
 
-To customize the key layout, edit the keymap in [`keyboard.c`](../../../src/keyboards/amiga/a500/keyboard.c). Available keycodes are defined in [`hid_keycodes.h`](../../../src/common/lib/hid_keycodes.h).
+To customise the key layout, edit the keymap in [`keyboard.c`](../../../src/keyboards/amiga/a500/keyboard.c). Available keycodes are defined in [`hid_keycodes.h`](../../../src/common/lib/hid_keycodes.h).
 
 ### Command Mode Keys
 

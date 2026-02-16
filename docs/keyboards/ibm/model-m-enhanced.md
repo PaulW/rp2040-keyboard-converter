@@ -142,7 +142,7 @@ When holding Right Alt (Fn modifier), additional functions are available for med
 
 ### Fn Modifier Key
 
-**Default Fn Key**: Right Alt (can be customized in [`keyboard.c`](../../../src/keyboards/modelm/enhanced/keyboard.c))
+**Default Fn Key**: Right Alt (can be customised in [`keyboard.c`](../../../src/keyboards/modelm/enhanced/keyboard.c))
 
 ---
 
@@ -150,7 +150,7 @@ When holding Right Alt (Fn modifier), additional functions are available for med
 
 ### Modifying Key Layout
 
-To customize the key layout, edit the keymap in [`keyboard.c`](../../../src/keyboards/modelm/enhanced/keyboard.c):
+To customise the key layout, edit the keymap in [`keyboard.c`](../../../src/keyboards/modelm/enhanced/keyboard.c):
 
 ```c
 // Example: Remap Caps Lock to Control

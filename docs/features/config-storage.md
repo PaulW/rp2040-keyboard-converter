@@ -249,7 +249,7 @@ This approach preserves user settings while adding new features with sensible de
 
 ### Example Migration
 
-Suppose Version 1 has `log_level` and `led_brightness`. Version 2 adds `key_debounce_ms`:
+This is a simplified hypothetical example to illustrate the migration process. Suppose Version 1 has `log_level` and `led_brightness`. Version 2 adds `key_debounce_ms`:
 
 1. Boot with Version 2 firmware
 2. Read configuration from flash, find it's Version 1 (smaller size)
@@ -259,6 +259,8 @@ Suppose Version 1 has `log_level` and `led_brightness`. Version 2 adds `key_debo
 6. From now on, boot with Version 2 configuration
 
 The user's log level and brightness settings are preserved, and the new debounce setting starts at a sensible default they can adjust if needed.
+
+(Note: The actual v1→v2→v3 migration history is documented above, but this example uses simplified field names for clarity.)
 
 ---
 

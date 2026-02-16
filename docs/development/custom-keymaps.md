@@ -320,7 +320,7 @@ Here's the key bit: when you press a key, the lookup starts at the highest activ
 
 What this means practically: you only need to define the keys that are different in your upper layers—everything else can be `TRNS` and will fall through to active lower layers. You're not duplicating entire layouts, you're only overriding specific positions. If you've got Layer 1 and Layer 3 both active (via toggle), and Layer 3 has `TRNS` at a position, it'll check Layer 1 next (skipping inactive Layer 2). If Layer 1 also has `TRNS`, it falls through to Layer 0. Only active layers participate in the fallthrough chain.
 
-This is identical to QMK's behavior—standard practice for keyboard firmware with layering support.
+This is identical to QMK's behaviour—standard practice for keyboard firmware with layering support.
 
 ### Defining Multiple Layers
 

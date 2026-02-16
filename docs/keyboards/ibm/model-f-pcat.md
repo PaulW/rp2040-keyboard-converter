@@ -140,7 +140,7 @@ The numpad doubles as a navigation cluster when using the Fn modifier:
 
 ### Fn Modifier Key
 
-**Default Fn Key**: F9 (can be customized in [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c))
+**Default Fn Key**: F9 (can be customised in [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c))
 
 ---
 
@@ -148,7 +148,7 @@ The numpad doubles as a navigation cluster when using the Fn modifier:
 
 ### Modifying Key Layout
 
-To customize the key layout, edit the keymap in [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c). Available keycodes are defined in [`hid_keycodes.h`](../../../src/common/lib/hid_keycodes.h).
+To customise the key layout, edit the keymap in [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c). Available keycodes are defined in [`hid_keycodes.h`](../../../src/common/lib/hid_keycodes.h).
 
 ### Command Mode Keys
 
@@ -234,7 +234,7 @@ The LEDs should respond to Caps Lock and Num Lock. If they're not working, indiv
 
 ### Some Keys Produce Wrong Characters
 
-Verify your OS keyboard layout settings match what you're expecting. You can customize [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c) to match your preferred layout if needed.
+Verify your OS keyboard layout settings match what you're expecting. You can customise [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c) to match your preferred layout if needed.
 
 ---
 

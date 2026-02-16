@@ -64,8 +64,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
                ),
     KEYMAP_ISO( \
     /* Layer 1: Function Layer (activated by MO_1)
-     * Provides media controls, NUBS key access, application key, and layout switching
-     * F12 toggles Dvorak on/off (TG_2)
+     * Provides media controls, NUBS key access, and application key
      */
     // clang-format off
     TRNS,         VOLD,  VOLU,  BRTD,  BRTI,     TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,     TRNS,  TRNS,  TRNS, \

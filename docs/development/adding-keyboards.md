@@ -278,7 +278,7 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
 **Runtime validation:**
 The converter automatically detects configuration errors at runtime. If you define a shift-override array for a layer that doesn't exist in your keymap, an error is logged to UART when that layer is accessed:
 
-```
+```text
 [ERR] Shift-override array entry [1] exists but keyboard only defines Layer 0!
 [ERR] Fix keyboard.c: Either add Layer 1 to keymap_map or remove shift-override entry [1]
 ```

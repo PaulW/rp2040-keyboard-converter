@@ -24,7 +24,7 @@ This means you don't need to redefine your entire keyboard layout for each layer
 
 **Important:** Layer 0 (the base layer) must never contain `TRNS` entries. If `TRNS` is encountered in Layer 0 (either through fall-through from an upper layer or when Layer 0 is active directly), the converter logs an error and defaults to `NO` (no key). Always use `NO` explicitly for unmapped keys in Layer 0 rather than `TRNS`.
 
-The system supports up to 8 layers (numbered 0-7), though most keyboards only need 2 or 3. More layers means more flexibility, but also more complexity in your keymap. Finding the right balance depends on what you're trying to achieve.
+The system supports up to 8 layers (numbered 0-7), though most keyboards only need 2 or 3. More layers mean more flexibility, but also more complexity in your keymap. Finding the right balance depends on what you're trying to achieve.
 
 ### How Transparent Fallthrough Actually Works
 

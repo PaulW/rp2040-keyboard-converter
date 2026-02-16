@@ -580,7 +580,7 @@ uint8_t config_get_layer_state(void) {
     }
     
     // Always return Layer 0 active (bit 0 set)
-    return g_config.layer_state;
+    return g_config.layer_state | 0x01;
 }
 
 void config_set_layers_hash(uint32_t layers_hash) {
