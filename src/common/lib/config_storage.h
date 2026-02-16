@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -126,10 +126,10 @@
 #define CONFIG_MAGIC 0x52503230
 
 /** Current config version - increment when changing config_data_t */
-#define CONFIG_VERSION_CURRENT 1
+#define CONFIG_VERSION_CURRENT 3
 
 /** Size of variable storage area (for future TLV data) */
-#define CONFIG_STORAGE_SIZE 2028  // ~2KB (fits in 2048 byte copy with header)
+#define CONFIG_STORAGE_SIZE 2022  // Sized to fit within 2048-byte copy (v3: 26 bytes header/fixed fields)
 
 /** Flash offset for config storage (last 4KB of flash) */
 #define CONFIG_FLASH_OFFSET (PICO_FLASH_SIZE_BYTES - 4096)
@@ -151,6 +151,8 @@
  * 
  * **Version History:**
  * - v1: Initial version (log_level only)
+ * - v2: Added shift_override_enabled, keyboard_id (for smart persistence across firmware updates)
+ * - v3: Added layer_state, layers_hash (for layer state persistence with validation)
  * 
  * When adding fields:
  * 1. Add field to struct
@@ -171,14 +173,22 @@ typedef struct __attribute__((packed)) {
     uint8_t log_level;           /**< LOG_LEVEL_ERROR/INFO/DEBUG */
     uint8_t led_brightness;      /**< LED brightness level 0-10 (0=off, 10=max) */
     
+    // --- Runtime Settings (v2+) ---
+    uint32_t keyboard_id;        /**< Hash of keyboard config (make+model+protocol+codeset) */
+    
+    // --- Runtime Settings (v3+) ---
+    uint8_t layer_state;         /**< Bitmap of active toggle layers (Layer 0 always active, bit 0 not persisted) */
+    uint32_t layers_hash;        /**< Hash of layer count and keymap data to detect layer changes */
+    
     // --- Flags ---
     struct {
         uint8_t dirty : 1;       /**< RAM differs from Flash (needs write) */
-        uint8_t reserved : 7;    /**< Reserved for future flags */
+        uint8_t shift_override_enabled : 1;  /**< Enable shift-override for non-standard shift legends */
+        uint8_t reserved : 6;    /**< Reserved for future flags */
     } flags;
     
     // --- Padding (alignment and future expansion) ---
-    uint8_t reserved[1];         /**< Alignment padding */
+    uint8_t reserved[2];         /**< Alignment padding (was 1 byte, now 2 after adding layer_state) */
     
     // --- Variable Storage (future use for TLV data) ---
     uint8_t storage[CONFIG_STORAGE_SIZE];  /**< Reserved for macros, key remaps, etc */
@@ -298,6 +308,53 @@ void config_set_log_level(uint8_t level);
 void config_set_led_brightness(uint8_t level);
 
 /**
+ * @brief Set shift-override enabled state
+ * 
+ * Enables or disables the shift-override feature for keyboards that define
+ * keymap_shifted_keycode[]. Even if the array is defined, shift-override is
+ * disabled by default and must be explicitly enabled.
+ * 
+ * **Smart Persistence:**
+ * - If keyboard config changes (different firmware), state resets to disabled
+ * - If same keyboard config, persisted state is preserved
+ * 
+ * @param enabled true to enable shift-override, false to disable (default)
+ * 
+ * @note Only updates RAM, call config_save() to persist
+ * @note Not thread-safe, call from main loop only
+ * @note Has no effect if keyboard doesn't define keymap_shifted_keycode[]
+ * 
+ * Example:
+ * ```c
+ * // Enable non-standard shift legends (e.g., M122: 7→', 0→#, etc.)
+ * config_set_shift_override_enabled(true);
+ * config_save();  // Persist to flash
+ * ```
+ */
+void config_set_shift_override_enabled(bool enabled);
+
+/**
+ * @brief Get shift-override enabled state
+ * 
+ * Returns whether shift-override is currently enabled. This is independent
+ * of whether the keyboard defines keymap_shifted_keycode[] - the feature
+ * must be both defined AND enabled to take effect.
+ * 
+ * @return true if enabled, false if disabled (default)
+ * 
+ * @note Returns value from RAM (fast, no flash access)
+ * @note Thread-safe for reads
+ * 
+ * Example:
+ * ```c
+ * if (config_get_shift_override_enabled()) {
+ *     printf("Shift-override active\n");
+ * }
+ * ```
+ */
+bool config_get_shift_override_enabled(void);
+
+/**
  * @brief Get current LED brightness level from config
  * 
  * Returns the LED brightness level from the RAM configuration.
@@ -377,5 +434,93 @@ bool config_save(void);
  * ```
  */
 void config_factory_reset(void);
+
+/**
+ * @brief Set persisted layer state (toggle layers)
+ * 
+ * Saves the current layer state bitmap for TG (toggle) layers. Layer 0
+ * is always active and not persisted. Momentary (MO) and one-shot (OSL)
+ * layers are not persisted as they're temporary.
+ * 
+ * @param layer_state Bitmap of active layers (bit 0 = Layer 0, etc.)
+ * 
+ * @note Only updates RAM, call config_save() to persist
+ * @note Not thread-safe, call from main loop only
+ * @note Automatically invalidated if keyboard or layers change
+ * 
+ * Example:
+ * ```c
+ * // User toggles Dvorak layer (TG_2)
+ * config_set_layer_state(0x05);  // Layer 0 (bit 0) + Layer 2 (bit 2) active
+ * config_save();  // Persist across reboots
+ * ```
+ */
+void config_set_layer_state(uint8_t layer_state);
+
+/**
+ * @brief Get persisted layer state
+ * 
+ * Returns the saved layer state bitmap. If keyboard_id or layers_hash
+ * has changed, returns 0x01 (only Layer 0 active) to prevent applying
+ * incompatible layer state.
+ * 
+ * @return Layer state bitmap (bit 0 = Layer 0, always set)
+ * 
+ * @note Returns value from RAM (fast, no flash access)
+ * @note Thread-safe for reads
+ * @note Returns 0x01 if validation fails
+ * 
+ * Example:
+ * ```c
+ * // At boot, restore saved layer state
+ * uint8_t saved_state = config_get_layer_state();
+ * keymap_restore_layer_state(saved_state);
+ * ```
+ */
+uint8_t config_get_layer_state(void);
+
+/**
+ * @brief Set layers hash for validation
+ * 
+ * Saves a hash of the layer count and keymap data. Used to detect when
+ * layer definitions change (e.g., firmware update changed keymaps), which
+ * invalidates persisted layer state.
+ * 
+ * @param layers_hash Hash of layer count + keymap data
+ * 
+ * @note Only updates RAM, call config_save() to persist
+ * @note Not thread-safe, call from main loop only
+ * @note Automatically computed at boot in keymap_init()
+ * 
+ * Example:
+ * ```c
+ * // At boot, compute and save current layers hash
+ * uint32_t hash = keymap_compute_layers_hash();
+ * config_set_layers_hash(hash);
+ * ```
+ */
+void config_set_layers_hash(uint32_t layers_hash);
+
+/**
+ * @brief Get layers hash
+ * 
+ * Returns the saved layers hash for validation purposes.
+ * 
+ * @return Layers hash value
+ * 
+ * @note Returns value from RAM (fast, no flash access)
+ * @note Thread-safe for reads
+ * 
+ * Example:
+ * ```c
+ * // Check if layers changed since last boot
+ * uint32_t saved_hash = config_get_layers_hash();
+ * uint32_t current_hash = keymap_compute_layers_hash();
+ * if (saved_hash != current_hash) {
+ *     LOG_INFO("Layers changed, resetting layer state\n");
+ * }
+ * ```
+ */
+uint32_t config_get_layers_hash(void);
 
 #endif /* CONFIG_STORAGE_H */

@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -34,6 +34,7 @@
 #include "config.h"
 #include "config_storage.h"
 #include "hid_interface.h"
+#include "keylayers.h"
 #include "log.h"
 #include "uart.h"
 
@@ -62,6 +63,9 @@ int main(void) {
   
   // Apply saved log level
   log_set_level(config_get()->log_level);
+  
+  // Initialize layer system and restore saved layer state
+  keylayers_init();
   
   char pico_unique_id[32];
   pico_get_unique_board_id_string(pico_unique_id, sizeof(pico_unique_id));

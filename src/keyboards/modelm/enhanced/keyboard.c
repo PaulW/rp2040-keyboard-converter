@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -59,7 +59,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     LCTL,         LALT,                     SPC,                                 MO_1,                LGUI,     LEFT,  DOWN,  RIGHT,           P0,    PDOT  // clang-format on
            ),
   KEYMAP( \
-    /* Layer 1: Function Layer (activated by MO(1) - formerly KC_FN)
+    /* Layer 1: Function Layer (activated by MO_1)
      * Provides media controls and application key access
      */
     // clang-format off

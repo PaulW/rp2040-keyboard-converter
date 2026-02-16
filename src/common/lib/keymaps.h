@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -28,21 +28,29 @@
 #define KEYMAP_COLS 16
 #define KEYMAP_MAX_LAYERS 8
 
-// Layer state management
-typedef struct {
-  uint8_t layer_state;        // Bitmap of active layers (bit 0 = layer 0, etc.)
-  uint8_t momentary_keys[3];  // Track which layer keys are held down (MO only)
-  uint8_t oneshot_layer;      // One-shot layer (0 = none, 1-8 = active layer)
-  bool oneshot_active;        // True if one-shot layer is waiting for next key
-} layer_state_t;
+// Shift-override flag: Set bit 7 in keymap_shift_override_layers[] to suppress shift modifier
+#define SUPPRESS_SHIFT 0x80
 
-uint8_t keymap_get_key_val(uint8_t pos, bool make);
-void keymap_reset_layers(void);
-uint8_t keymap_get_active_layer(void);
+/**
+ * @brief Retrieve key value at specified position in keymap
+ * 
+ * Main keymap lookup function. Handles layer fallthrough, layer modifiers,
+ * and per-layer shift-override. Coordinates with layer system for proper
+ * key resolution across active layers.
+ * 
+ * @param pos            Key position (upper nibble = row, lower nibble = col)
+ * @param make           true if key pressed, false if released
+ * @param suppress_shift Output parameter for shift suppression (can be NULL)
+ * @return HID keycode to send, or KC_NO if consumed by layer operation
+ */
+uint8_t keymap_get_key_val(uint8_t pos, bool make, bool* suppress_shift);
 
 extern const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS];
 
-// Optional: Shift-override sparse array (weak symbol, keyboards can override)
-extern const uint8_t keymap_shifted_keycode[256] __attribute__((weak));
+// Optional: Per-layer shift-override arrays (weak symbol, keyboards can override)
+// Array of pointers to 256-byte shift-override arrays, one per layer
+// NULL entries mean no shift-override for that layer
+// Note: Runtime validation checks for invalid layer access
+extern const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] __attribute__((weak));
 
 #endif /* KEYMAPS_H */

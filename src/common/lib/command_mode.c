@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -30,6 +30,7 @@
 #include "config_storage.h"
 #include "hid_interface.h"
 #include "hid_keycodes.h"
+#include "keymaps.h"
 #include "led_helper.h"
 #include "log.h"
 #include "uart.h"
@@ -372,7 +373,10 @@ void command_mode_task(void) {
       cmd_mode_led_green = true;
       update_converter_status();
 #endif
-      LOG_INFO("Command mode active! Press 'B'=bootloader, 'D'=log level, 'F'=factory reset, 'L'=LED brightness, or wait 3s to cancel\n");
+      LOG_INFO("Command mode active! Press:\n");
+      LOG_INFO("  B = Bootloader     D = Log level    F = Factory reset\n");
+      LOG_INFO("  L = LED brightness S = Shift-override\n");
+      LOG_INFO("Or wait 3s to cancel\n");
     }
     return;  // Exit early - no LED update needed in SHIFT_HOLD_WAIT
   }
@@ -547,6 +551,26 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
         return false;
       }
       
+      // Check for shift-override toggle command
+      if (is_key_pressed(keyboard_report, KC_S)) {
+        // Only allow toggle if keyboard defines shift-override arrays
+        extern const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] __attribute__((weak));
+        
+        if (keymap_shift_override_layers == NULL) {
+          LOG_WARN("Shift-override not available (keyboard doesn't define custom shift mappings)\n");
+          command_mode_exit("Shift-override not available");
+          return false;
+        }
+        
+        bool current = config_get_shift_override_enabled();
+        bool new_value = !current;
+        config_set_shift_override_enabled(new_value);
+        config_save();  // Persist to flash
+        
+        command_mode_exit(new_value ? "Shift-override enabled" : "Shift-override disabled");
+        return false;
+      }
+      
       // Note: LED update is handled in command_mode_task() which runs from main loop
       // This ensures smooth LED flashing even when no keys are being pressed
       
@@ -560,7 +584,6 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
         log_set_level(LOG_LEVEL_ERROR);
         config_set_log_level(LOG_LEVEL_ERROR);
         config_save();  // Persist to flash
-        LOG_ERROR("Log level set to ERROR (0)\n");
         command_mode_exit("Log level changed to ERROR");
         return false;
       }
@@ -570,7 +593,6 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
         log_set_level(LOG_LEVEL_INFO);
         config_set_log_level(LOG_LEVEL_INFO);
         config_save();  // Persist to flash
-        LOG_INFO("Log level set to INFO (1)\n");
         command_mode_exit("Log level changed to INFO");
         return false;
       }
@@ -580,7 +602,6 @@ bool command_mode_process(const hid_keyboard_report_t *keyboard_report) {
         log_set_level(LOG_LEVEL_DEBUG);
         config_set_log_level(LOG_LEVEL_DEBUG);
         config_save();  // Persist to flash
-        LOG_DEBUG("Log level set to DEBUG (2)\n");
         command_mode_exit("Log level changed to DEBUG");
         return false;
       }

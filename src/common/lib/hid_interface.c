@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -306,10 +306,19 @@ static bool hid_keyboard_del_key(uint8_t key) {
  */
 void handle_keyboard_report(uint8_t rawcode, bool make) {
   // Convert the Interface Scancode to a HID Keycode
-  uint8_t code = keymap_get_key_val(rawcode, make);
+  bool suppress_shift = false;
+  uint8_t code = keymap_get_key_val(rawcode, make, &suppress_shift);
   
   if (IS_KEY(code) || IS_MOD(code)) {
     bool report_modified = false;
+    
+    // Shift-override: temporarily remove shift modifiers if suppression requested
+    uint8_t saved_modifiers = 0;
+    if (suppress_shift) {
+      saved_modifiers = keyboard_report.modifier;
+      keyboard_report.modifier &= ~((1 << 1) | (1 << 5));  // Clear bits 1 (Left Shift) and 5 (Right Shift)
+    }
+    
     if (make) {
       report_modified = hid_keyboard_add_key(code);
     } else {
@@ -322,14 +331,22 @@ void handle_keyboard_report(uint8_t rawcode, bool make) {
     
     if (!allow_normal_processing) {
       // Command mode is active, suppress normal keyboard reports
-      // This prevents shift keys and command keys from being sent to host
+      // Restore shift modifiers before returning (if they were suppressed)
+      if (suppress_shift) {
+        keyboard_report.modifier = saved_modifiers;
+      }
       return;
     }
 
     if (report_modified) {
-      // Send report with automatic logging
+      // Send report with automatic logging (with shift still suppressed if needed)
       hid_send_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &keyboard_report,
                       sizeof(keyboard_report));
+    }
+    
+    // Restore shift modifiers after sending report (to reflect physical key state)
+    if (suppress_shift) {
+      keyboard_report.modifier = saved_modifiers;
     }
   } else if (IS_CONSUMER(code)) {
     uint16_t usage;
@@ -362,7 +379,7 @@ void handle_keyboard_report(uint8_t rawcode, bool make) {
  * 
  * Use Case:
  * - Shift-override system (keyboards with non-standard shift legends)
- * - Some terminal keyboards have different shift characters than standard
+ * - Some keyboards have non-standard shift characters (terminal, vintage, international)
  * - E.g., key has '6' legend but sends scancode for '7'
  * 
  * @return true if Left Shift OR Right Shift is currently pressed

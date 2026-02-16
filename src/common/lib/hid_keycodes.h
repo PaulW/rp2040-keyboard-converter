@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -157,14 +157,8 @@
 /* Transparent */
 #define KC_TRANSPARENT 0xD1
 #define KC_TRNS KC_TRANSPARENT
-/* Numpad Flip */
-#define KC_NUMPAD_FLIP 0xD2
-#define KC_NFLP KC_NUMPAD_FLIP
-/* Function Key */
-#define KC_FUNCTION_KEY 0xD3
-#define KC_FN KC_FUNCTION_KEY
 /* Special Macro Keys */
-#define KC_SPECIAL_BOOT 0xD4
+#define KC_SPECIAL_BOOT 0xD2
 #define KC_BOOT KC_SPECIAL_BOOT
 
 /* ============================================================================

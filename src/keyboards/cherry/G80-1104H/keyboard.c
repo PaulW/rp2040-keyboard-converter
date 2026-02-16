@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -47,12 +47,14 @@
 // clang-format on
 /* Define Keyboard Layers */
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
-    KEYMAP_ISO(      /* Base Layer (NumLock On)
+    KEYMAP_ISO(      /* Layer 0: Base Layer
+                      * Numpad keys (P7, P8, P9, etc.) are sent as-is to host - Windows/Linux handle NumLock
+                      * state natively. macOS interprets numpad keys as numeric only (no NumLock toggle).
                       * MacOS maps keys oddly, GRAVE and NUBS are swapped over when coupled with
-                      * British-PC Layout.       Likewise, NUHS and BSLS appear to match. TODO: Have these as a
+                      * British-PC Layout. Likewise, NUHS and BSLS appear to match. TODO: Have these as a
                       * config option to swap.
                       */
-               // clang-format off
+    // clang-format off
     ESC,          F1,    F2,    F3,    F4,       F5,    F6,    F7,    F8,        F9,    F10,   F11,   F12,      PSCR,  SLCK,  PAUS, \
     GRV,   1,     2,     3,     4,     5,     6,     7,     8,     9,     0,     MINS,  EQL,          BSPC,     INS,   HOME,  PGUP,     NLCK,  PSLS,  PAST,  PMNS, \
     TAB,          Q,     W,     E,     R,     T,     Y,     U,     I,     O,     P,     LBRC,  RBRC,            DEL,   END,   PGDN,     P7,    P8,    P9,    PPLS, \
@@ -60,18 +62,10 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     LSFT,         Z,     X,     C,     V,     B,     N,     M,     COMM,  DOT,   SLSH,                RSFT,            UP,              P1,    P2,    P3,    PENT, \
     LCTL,         LALT,                     SPC,                                 MO_1,                LGUI,     LEFT,  DOWN,  RIGHT,           P0,    PDOT  // clang-format on
                ),
-    KEYMAP_ISO(      /* Numlock Off (MacOS Compatibility Layer) */
-               // clang-format off
-    TRNS,         TRNS,  TRNS,  TRNS,  TRNS,     TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,     TRNS,  TRNS,  TRNS, \
-    TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,     TRNS,  TRNS,  TRNS,     TRNS,  TRNS,  TRNS,  TRNS, \
-    TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,            TRNS,  TRNS,  TRNS,     TRNS,  TRNS,  TRNS,  TRNS, \
-    TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,                             TRNS,  TRNS,  TRNS,        \
-    TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,                TRNS,            TRNS,            TRNS,  TRNS,  TRNS,  TRNS, \
-    TRNS,         TRNS,                     TRNS,                                TRNS,                TRNS,     TRNS,  TRNS,  TRNS,            TRNS,  TRNS  // clang-format on
-               ),
-  KEYMAP_ISO( \
-    /* Layer 1: Function Layer (activated by MO(1) - formerly KC_FN)
-     * Provides media controls, NUBS key access, and application key
+    KEYMAP_ISO( \
+    /* Layer 1: Function Layer (activated by MO_1)
+     * Provides media controls, NUBS key access, application key, and layout switching
+     * F12 toggles Dvorak on/off (TG_2)
      */
     // clang-format off
     TRNS,         VOLD,  VOLU,  BRTD,  BRTI,     TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,     TRNS,  TRNS,  TRNS, \

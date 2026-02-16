@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -46,7 +46,10 @@
  // Define Keyboard Layers
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
   KEYMAP_M0110A(\
-    /* Base Layer (NumLock On) */
+    /* Layer 0: Base Layer
+     * Numpad keys (P7, P8, P9, etc.) are sent as-is to host - macOS interprets numpad keys
+     * as numeric only (no NumLock toggle on Mac). Windows/Linux handle NumLock state natively.
+     */
     // clang-format off
     GRV,   1,     2,     3,     4,     5,     6,     7,     8,     9,     0,  MINS,   EQL,  BSPC,    NLCK,  PEQL,  PSLS,   PAST, \
     TAB,          Q,     W,     E,     R,     T,     Y,     U,     I,     O,     P,  LBRC,  RBRC,      P7,    P8,    P9,   PMNS, \
@@ -54,18 +57,9 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     LSFT,         Z,     X,     C,     V,     B,     N,     M,  COMM,   DOT,  SLSH,           UP,      P1,    P2,    P3,   PENT, \
     LALT,      LGUI,                        SPC,                       BSLS,  LEFT, RIGHT,  DOWN,             P0,  PDOT // clang-format on
   ),
-  KEYMAP_M0110A( /* Numlock Off (MacOS Compatibility Layer) */
-               // clang-format off
-    TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,    TRNS,  TRNS, TRNS,  TRNS, \
-    TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,    TRNS,  TRNS, TRNS,  TRNS, \
-    TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,    TRNS,  TRNS, TRNS,  TRNS, \
-    TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,    TRNS,  TRNS, TRNS,  TRNS, \
-    TRNS,         TRNS,                       TRNS,                       TRNS,  TRNS,  TRNS,  TRNS,           TRNS,  TRNS // clang-format on
-  ),
-
 };
 
-/* 
+/*
  * Key mapping notes for Apple M0110A:
  * 
  * Standard keys map directly to their USB HID equivalents.

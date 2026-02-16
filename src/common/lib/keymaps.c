@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -23,155 +23,123 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "config_storage.h"
 #include "hid_interface.h"
 #include "hid_keycodes.h"
+#include "keylayers.h"
 #include "log.h"
-#include "numpad_flip.h"
-
-// Layer state tracking
-static layer_state_t layer_state = {
-  .layer_state = 0x01,           // Bit 0 set = Layer 0 (base) active
-  .momentary_keys = {0, 0, 0},   // No MO keys held
-  .oneshot_layer = 0,            // No one-shot layer
-  .oneshot_active = false        // One-shot not active
-};
-
-/**
- * @brief Resets layer state to base layer (layer 0)
- * 
- * Called during initialization and error recovery.
- * Clears all layer activations and returns to base layer.
- */
-void keymap_reset_layers(void) {
-  layer_state.layer_state = 0x01;     // Only layer 0 active
-  layer_state.momentary_keys[0] = 0;
-  layer_state.momentary_keys[1] = 0;
-  layer_state.momentary_keys[2] = 0;
-  layer_state.oneshot_layer = 0;
-  layer_state.oneshot_active = false;
-}
-
-/**
- * @brief Gets the highest active layer number
- * 
- * Searches layer state bitmap from highest to lowest.
- * One-shot layer takes priority if active.
- * 
- * @return Active layer number (0-7)
- */
-uint8_t keymap_get_active_layer(void) {
-  // Check one-shot layer first (highest priority)
-  if (layer_state.oneshot_active && layer_state.oneshot_layer > 0) {
-    return layer_state.oneshot_layer - 1;  // oneshot_layer is 1-indexed
-  }
-  
-  // Search bitmap from highest to lowest
-  for (int8_t i = KEYMAP_MAX_LAYERS - 1; i >= 0; i--) {
-    if (layer_state.layer_state & (1 << i)) {
-      return i;
-    }
-  }
-  
-  // Fallback to layer 0 (should never reach here due to init)
-  return 0;
-}
 
 /**
  * @brief Searches for the key code in the keymap based on the specified row and column.
  * 
- * Starts from the active layer and falls through transparent keys to lower layers.
- * Handles KC_TRNS (transparent) by searching down through layer stack.
+ * Starts from the highest active layer and falls through transparent keys to lower active layers.
+ * Only checks layers that are set in the layer_state bitmap (Layer 0 always active).
+ * This allows proper layer stacking with TG (toggle) and exclusive mode with TO (switch to).
  *
- * @param row The row index in the keymap.
- * @param col The column index in the keymap.
+ * LAYER MODIFIER SAFETY FEATURE:
+ * If a layer modifier key (MO_x, TO_x, TG_x, OSL_x) is found at any layer while searching down,
+ * it takes precedence over any regular keys found in higher layers. This prevents users from
+ * accidentally overriding layer navigation keys by placing regular keys at the same position
+ * in higher layers.
+ *
+ * Example:
+ *   Layer 1: KC_A
+ *   Layer 2: KC_TRNS
+ *   Layer 3: MO_4
+ *   Layer 4: KC_C
+ *
+ * Results:
+ *   - Active Layer 1 or 2: Returns KC_A (normal fallthrough)
+ *   - Active Layer 3: Returns MO_4 (layer modifier)
+ *   - Active Layer 4: Returns MO_4 (KC_C ignored because Layer 3 has modifier)
+ *
+ * Implementation structure:
+ * - Checks active layer first, returns immediately if non-transparent
+ * - Layer modifier in active layer returns without checking lower layers
+ * - Non-transparent regular key in active layer triggers search of lower layers for modifiers
+ * - Transparent key in active layer triggers full fallthrough search
+ *
+ * @param row          The row index in the keymap.
+ * @param col          The column index in the keymap.
+ * @param source_layer Output parameter set to the layer where the key was found (not active layer if TRNS).
+ *                     Can be NULL if caller doesn't need this info.
  *
  * @return The key code found in the keymap.
  */
-static uint8_t keymap_search_layers(uint8_t row, uint8_t col) {
-  uint8_t active_layer = keymap_get_active_layer();
+static uint8_t keymap_search_layers(uint8_t row, uint8_t col, uint8_t *source_layer) {
+  const uint8_t active_layer = keylayers_get_active();
+  
+  // Fast path: Check active layer first (most common case - non-TRNS in active layer)
   uint8_t key_code = keymap_map[active_layer][row][col];
-
-  // Handle transparent keys - fall through to lower layers
-  if (active_layer > 0 && key_code == KC_TRNS) {
+  
+  // Active layer has non-transparent key
+  if (key_code != KC_TRNS) {
+    // Layer modifier in active layer - immediate return (highest priority)
+    if (IS_LAYER_KEY(key_code)) {
+      if (source_layer != NULL) {
+        *source_layer = active_layer;
+      }
+      return key_code;
+    }
+    
+    // Regular key in active layer - check lower layers for layer modifiers only
+    // (Safety feature: layer modifiers override regular keys in higher layers)
     for (int8_t i = active_layer - 1; i >= 0; i--) {
-      uint8_t layer_key_code = keymap_map[i][row][col];
-      if (layer_key_code != KC_TRNS) {
-        key_code = layer_key_code;
+      // Skip inactive layers (Layer 0 always active)
+      if (i > 0 && !keylayers_is_active(i)) {
+        continue;
+      }
+      
+      const uint8_t lower_key = keymap_map[i][row][col];
+      
+      // Layer modifier found - takes precedence over active layer regular key
+      if (IS_LAYER_KEY(lower_key)) {
+        if (source_layer != NULL) {
+          *source_layer = i;
+        }
+        return lower_key;
+      }
+      
+      // Stop at first non-TRNS regular key (we already have key from active layer)
+      if (lower_key != KC_TRNS) {
         break;
       }
     }
-    if (key_code == KC_TRNS) {
-      /* This shouldn't happen! Base layer should never have KC_TRNS */
-      LOG_ERROR("KC_TRNS detected in base layer at [%d][%d]!\n", row, col);
-      key_code = KC_NO;
+    
+    // No layer modifier in lower layers - use regular key from active layer
+    if (source_layer != NULL) {
+      *source_layer = active_layer;
     }
+    return key_code;
   }
   
-  return key_code;
-}
-
-/**
- * @brief Processes layer switching operations
- * 
- * Handles MO (momentary), TG (toggle), TO (switch to), and OSL (one-shot) operations.
- * Updates layer_state based on keycode and make/break.
- * 
- * @param code The layer operation keycode (0xF0-0xFF)
- * @param make True if key pressed, false if released
- */
-static void process_layer_key(uint8_t code, bool make) {
-  uint8_t operation = GET_LAYER_OPERATION(code);  // 0=MO, 1=TG, 2=TO, 3=OSL
-  uint8_t target_layer = GET_LAYER_TARGET(code);  // 1-4
-  
-  switch (operation) {
-    case 0:  // MO (Momentary) - hold to activate
-      if (make) {
-        layer_state.layer_state |= (1 << target_layer);
-        // Track which MO key is held (for release detection)
-        if (target_layer <= 3) {
-          layer_state.momentary_keys[target_layer - 1] = code;
-        }
-      } else {
-        // Release momentary layer only if this specific MO key is released
-        if (target_layer <= 3 && layer_state.momentary_keys[target_layer - 1] == code) {
-          layer_state.layer_state &= ~(1 << target_layer);
-          layer_state.momentary_keys[target_layer - 1] = 0;
-        }
-      }
-      break;
-      
-    case 1:  // TG (Toggle) - press to toggle on/off
-      if (make) {  // Only act on key press, ignore release
-        if (layer_state.layer_state & (1 << target_layer)) {
-          layer_state.layer_state &= ~(1 << target_layer);  // Turn off
-        } else {
-          layer_state.layer_state |= (1 << target_layer);   // Turn on
-        }
-      }
-      break;
-      
-    case 2:  // TO (Switch to) - permanently switch to layer
-      if (make) {  // Only act on key press
-        // Clear all layers except base (layer 0)
-        layer_state.layer_state = 0x01;
-        // Activate target layer
-        if (target_layer > 0) {
-          layer_state.layer_state |= (1 << target_layer);
-        }
-        // Clear momentary tracking
-        layer_state.momentary_keys[0] = 0;
-        layer_state.momentary_keys[1] = 0;
-        layer_state.momentary_keys[2] = 0;
-      }
-      break;
-      
-    case 3:  // OSL (One-shot layer) - activate for next key only
-      if (make) {  // Only act on key press
-        layer_state.oneshot_layer = target_layer;
-        layer_state.oneshot_active = true;
-      }
-      break;
+  // Slow path: Active layer is transparent - search lower layers
+  for (int8_t i = active_layer - 1; i >= 0; i--) {
+    // Skip inactive layers (Layer 0 always active)
+    if (i > 0 && !keylayers_is_active(i)) {
+      continue;
+    }
+    
+    const uint8_t layer_key = keymap_map[i][row][col];
+    
+    // Skip transparent keys
+    if (layer_key == KC_TRNS) {
+      continue;
+    }
+    
+    // Found first non-transparent key (regular or layer modifier)
+    if (source_layer != NULL) {
+      *source_layer = i;
+    }
+    return layer_key;
   }
+  
+  // Error case: All layers transparent (should never happen with valid Layer 0)
+  LOG_ERROR("KC_TRNS detected in base layer at [%d][%d]!\n", row, col);
+  if (source_layer != NULL) {
+    *source_layer = 0;
+  }
+  return KC_NO;
 }
 
 /**
@@ -180,46 +148,72 @@ static void process_layer_key(uint8_t code, bool make) {
  * Main keymap lookup function. Handles:
  * - Layer switching operations (MO/TG/TO/OSL)
  * - Transparent key fallthrough
- * - Numpad flip translation
- * - Shift-override (if keyboard defines keymap_shifted_keycode)
+ * - Per-layer shift-override (if keyboard defines keymap_shift_override_layers)
  * - One-shot layer consumption
  * 
- * @param pos  The position of the key in the keymap (upper nibble = row, lower nibble = col).
- * @param make True if key pressed, false if released.
+ * @param pos            The position of the key in the keymap (upper nibble = row, lower nibble = col).
+ * @param make           True if key pressed, false if released.
+ * @param suppress_shift Output parameter set to true if shift should be suppressed for this key.
+ *                       Used by shift-override system when remapping to the final character.
  *
  * @return The HID keycode to send, or KC_NO if consumed by layer operation.
  */
-uint8_t keymap_get_key_val(uint8_t pos, bool make) {
+uint8_t keymap_get_key_val(uint8_t pos, bool make, bool* suppress_shift) {
   const uint8_t row = (pos >> 4) & 0x0F;
   const uint8_t col = pos & 0x0F;
-  uint8_t key_code = keymap_search_layers(row, col);
+  uint8_t source_layer = 0;  // Track which layer the key came from (for shift-override)
+  uint8_t key_code = keymap_search_layers(row, col, &source_layer);
 
   // Handle layer switching keycodes (0xF0-0xFF)
   if (IS_LAYER_KEY(key_code)) {
-    process_layer_key(key_code, make);
+    keylayers_process_key(key_code, make);
     return KC_NO;  // Layer keys don't generate HID events
   }
 
   // Consume one-shot layer after any non-layer key press
-  if (layer_state.oneshot_active && make && key_code != KC_TRNS) {
-    layer_state.oneshot_active = false;
-    layer_state.oneshot_layer = 0;
+  if (make && key_code != KC_TRNS) {
+    keylayers_consume_oneshot();
   }
 
-  // Handle numpad flip (KC_NFLP toggles numpad behavior)
-  if (key_code == KC_NFLP) {
-    const uint8_t flip_key_code = keymap_search_layers(row, col);
-    key_code = numpad_flip_code(flip_key_code);
-  }
-
-  // Shift-override support (Phase 3)
-  // Some keyboards have non-standard shift legends (e.g., terminal keyboards)
-  // The sparse array keymap_shifted_keycode[] maps base keycode → override keycode
-  // Only keyboards with non-standard legends define this array (weak symbol)
-  if (keymap_shifted_keycode != NULL && hid_is_shift_pressed()) {
-    uint8_t override = keymap_shifted_keycode[key_code];
-    if (override != 0) {
-      key_code = override;
+  // Shift-override support (per-layer)
+  // Keyboards with non-standard shift legends (terminal, vintage, international layouts, etc.)
+  // can define per-layer shift-override arrays via keymap_shift_override_layers[].
+  // Each layer can have its own shift behavior mapping.
+  // SUPPRESS_SHIFT flag (bit 7) signals whether to suppress shift modifier:
+  //   - Without flag: Keep shift modifier (e.g., Shift+6 → Shift+7)
+  //   - With flag: Suppress shift (e.g., SUPPRESS_SHIFT|KC_QUOT means send unshifted quote)
+  // Only keyboards with non-standard legends define these arrays (weak symbols)
+  // User must explicitly enable shift-override via config (disabled by default)
+  if (keymap_shift_override_layers != NULL && 
+      config_get_shift_override_enabled() && 
+      hid_is_shift_pressed() &&
+      source_layer < KEYMAP_MAX_LAYERS) {
+    const uint8_t *shift_overrides = keymap_shift_override_layers[source_layer];
+    
+    // Apply shift-override if this layer has overrides defined
+    if (shift_overrides != NULL) {
+      uint8_t override = shift_overrides[key_code];
+      if (override != 0) {
+        // Check if SUPPRESS_SHIFT flag is set
+        if (override & SUPPRESS_SHIFT) {
+          key_code = override & ~SUPPRESS_SHIFT;  // Clear flag to get actual keycode
+          if (suppress_shift != NULL) {
+            *suppress_shift = true;
+          }
+        } else {
+          key_code = override;  // Keep shift modifier
+        }
+      }
+    } else if (source_layer > 0) {
+      // Runtime validation: Log error if shift-override array exists for a layer that doesn't exist
+      // This catches keyboard configuration errors (e.g., [1] = {...} when only Layer 0 exists)
+      static uint8_t logged_layers = 0;
+      if (!(logged_layers & (1 << source_layer))) {
+        LOG_ERROR("Shift-override array entry [%d] exists but keyboard only defines Layer 0!\n", source_layer);
+        LOG_ERROR("Fix keyboard.c: Either add Layer %d to keymap_map or remove shift-override entry [%d]\n", 
+                  source_layer, source_layer);
+        logged_layers |= (1 << source_layer);
+      }
     }
   }
 

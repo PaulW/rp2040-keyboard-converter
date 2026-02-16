@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -27,7 +27,53 @@
 #include "pico/platform.h"
 
 #include "config.h"
+#include "keymaps.h"
 #include "log.h"
+
+// --- Keyboard Identification ---
+
+/**
+ * @brief Generate keyboard ID from compile-time defines
+ * 
+ * Creates a hash from keyboard make, model, protocol, and codeset to uniquely
+ * identify the keyboard configuration. Used for smart persistence: if the
+ * keyboard ID changes (different firmware), shift-override resets to disabled.
+ * 
+ * Simple FNV-1a hash algorithm (32-bit):
+ * - Fast, good distribution, no crypto needed
+ * - Hash at runtime from compile-time string defines
+ * 
+ * @return 32-bit keyboard identifier hash
+ */
+static inline uint32_t get_keyboard_id(void) {
+    // Keyboard defines from CMake (passed as compile-time strings)
+#ifdef _KEYBOARD_ENABLED
+    const char *make = _KEYBOARD_MAKE;
+    const char *model = _KEYBOARD_MODEL;
+    const char *protocol = _KEYBOARD_PROTOCOL;
+    const char *codeset = _KEYBOARD_CODESET;
+    
+    // FNV-1a hash constants
+    uint32_t hash = 0x811c9dc5;  // FNV offset basis
+    const uint32_t prime = 0x01000193;  // FNV prime
+    
+    // Hash all four identifier strings
+    const char *strings[] = {make, model, protocol, codeset};
+    for (int i = 0; i < 4; i++) {
+        const char *str = strings[i];
+        while (*str) {
+            hash ^= (uint32_t)(*str++);
+            hash *= prime;
+        }
+        hash ^= 0xFF;  // Separator between strings
+        hash *= prime;
+    }
+    
+    return hash;
+#else
+    return 0;  // No keyboard configured (shouldn't happen)
+#endif
+}
 
 // --- Factory Default Configuration ---
 
@@ -81,7 +127,10 @@ static const config_data_t DEFAULT_CONFIG = {
     .sequence = 0,
     .log_level = LOG_LEVEL_DEFAULT,  // From config.h
     .led_brightness = LED_BRIGHTNESS_DEFAULT,  // From config.h or default
-    .flags = { .dirty = 0, .reserved = 0 },
+    .keyboard_id = 0,  // Set dynamically at init (from get_keyboard_id())
+    .flags = { .dirty = 0, .shift_override_enabled = 0, .reserved = 0 },
+    .layer_state = 0x01,  // Layer 0 always active (bit 0 set)
+    .layers_hash = 0,  // Set dynamically at init (from keymap_compute_layers_hash())
     .reserved = {0},
     .storage = {0}
 };
@@ -210,12 +259,18 @@ static bool validate_config(const config_data_t *cfg) {
 static size_t get_config_size_for_version(uint16_t version) {
     switch (version) {
         case 1:
-            // Version 1 matches the current layout (includes TLV storage)
-            return sizeof(config_data_t);
+            // v1: log_level, led_brightness, flags (no shift_override_enabled bit)
+            // Size up to (but not including) keyboard_id field
+            return offsetof(config_data_t, keyboard_id);
             
-        // Future versions:
-        // case 2: return offsetof(config_data_t, new_field_in_v2);
-        // case 3: return sizeof(config_data_t);  // If storage is used
+        case 2:
+            // v2: Added keyboard_id, shift_override_enabled flag
+            // Size up to (but not including) layer_state field
+            return offsetof(config_data_t, layer_state);
+            
+        case 3:
+            // v3: Added layer_state, layers_hash for toggle layer persistence
+            return sizeof(config_data_t);
         
         default:
             LOG_ERROR("Unknown config version: %d\n", version);
@@ -230,6 +285,7 @@ static size_t get_config_size_for_version(uint16_t version) {
  */
 static void init_factory_defaults(config_data_t *cfg) {
     memcpy(cfg, &DEFAULT_CONFIG, sizeof(config_data_t));
+    cfg->keyboard_id = get_keyboard_id();  // Set dynamically at runtime
     cfg->flags.dirty = 1;  // Mark as needing save
 }
 
@@ -311,7 +367,31 @@ bool config_init(void) {
     
     g_initialized = true;
     
-    // Save if upgraded
+    // Smart persistence: Check if keyboard configuration changed
+    uint32_t current_keyboard_id = get_keyboard_id();
+    if (g_config.keyboard_id != current_keyboard_id) {
+        LOG_INFO("Keyboard config changed (0x%08X → 0x%08X)\n",
+                 (unsigned int)g_config.keyboard_id, (unsigned int)current_keyboard_id);
+        LOG_INFO("Resetting shift-override and layer state to defaults\n");
+        g_config.keyboard_id = current_keyboard_id;
+        g_config.flags.shift_override_enabled = 0;  // Reset to disabled
+        g_config.layer_state = 0x01;  // Reset to Layer 0 only
+        g_config.layers_hash = 0;  // Will be recomputed by keymap_init()
+        g_config.flags.dirty = 1;  // Mark for save
+    }
+    
+    // Sanity check: Validate shift-override availability
+    // If config says enabled but keyboard doesn't define shift-override arrays, disable it
+    extern const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] __attribute__((weak));
+    
+    if (g_config.flags.shift_override_enabled && keymap_shift_override_layers == NULL) {
+        LOG_WARN("Shift-override enabled in config but keyboard doesn't define shift mappings\n");
+        LOG_INFO("Disabling shift-override (keymap_shift_override_layers not defined)\n");
+        g_config.flags.shift_override_enabled = 0;
+        g_config.flags.dirty = 1;  // Mark for save
+    }
+    
+    // Save if upgraded or keyboard changed
     if (g_config.flags.dirty) {
         config_save();
     }
@@ -336,7 +416,7 @@ void config_set_log_level(uint8_t level) {
     if (g_config.log_level != level) {
         g_config.log_level = level;
         g_config.flags.dirty = 1;
-        LOG_INFO("Log level changed to %d (pending save)\n", level);
+        LOG_DEBUG("Log level changed to %d (pending save)\n", level);
     }
 }
 
@@ -354,7 +434,7 @@ void config_set_led_brightness(uint8_t level) {
     if (g_config.led_brightness != level) {
         g_config.led_brightness = level;
         g_config.flags.dirty = 1;
-        LOG_INFO("LED brightness changed to %d (pending save)\n", level);
+        LOG_DEBUG("LED brightness changed to %d (pending save)\n", level);
     }
 }
 
@@ -365,6 +445,29 @@ uint8_t config_get_led_brightness(void) {
     }
     
     return g_config.led_brightness;
+}
+
+void config_set_shift_override_enabled(bool enabled) {
+    if (!g_initialized) {
+        LOG_ERROR("Config not initialized!\n");
+        return;
+    }
+    
+    bool current = (g_config.flags.shift_override_enabled != 0);
+    if (current != enabled) {
+        g_config.flags.shift_override_enabled = enabled ? 1 : 0;
+        g_config.flags.dirty = 1;
+        LOG_DEBUG("Shift-override %s (pending save)\n", enabled ? "enabled" : "disabled");
+    }
+}
+
+bool config_get_shift_override_enabled(void) {
+    if (!g_initialized) {
+        LOG_WARN("Config not initialized, shift-override disabled\n");
+        return false;  // Default to disabled
+    }
+    
+    return (g_config.flags.shift_override_enabled != 0);
 }
 
 bool config_save(void) {
@@ -378,7 +481,7 @@ bool config_save(void) {
         return true;
     }
     
-    LOG_INFO("Saving config to flash...\n");
+    LOG_DEBUG("Saving config to flash...\n");
     
     // Prepare a clean copy for writing (dirty flag must be 0 in persisted copy)
     config_data_t write_config = g_config;
@@ -390,7 +493,7 @@ bool config_save(void) {
     uint8_t new_copy_index = (write_config.sequence & 1);
     uint8_t old_copy_index = 1 - new_copy_index;
     
-    LOG_INFO("Writing to copy %c (seq=%u)\n", 
+    LOG_DEBUG("Writing to copy %c (seq=%u)\n", 
              new_copy_index ? 'B' : 'A', (unsigned int)write_config.sequence);
     
     // Prepare buffer with both copies (4KB sector)
@@ -433,7 +536,7 @@ bool config_save(void) {
     // Update RAM copy with the clean version that was written
     g_config = write_config;
     
-    LOG_INFO("Config saved successfully\n");
+    LOG_DEBUG("Config saved successfully\n");
     return true;
 }
 
@@ -453,4 +556,52 @@ void config_factory_reset(void) {
     
     // Now save fresh config (sequence will be incremented to 1)
     config_save();
+}
+
+// --- Layer State Persistence (v3) ---
+
+void config_set_layer_state(uint8_t layer_state) {
+    if (!g_initialized) {
+        LOG_ERROR("Config not initialized!\n");
+        return;
+    }
+    
+    if (g_config.layer_state != layer_state) {
+        g_config.layer_state = layer_state;
+        g_config.flags.dirty = 1;
+        LOG_DEBUG("Layer state changed to 0x%02X (pending save)\n", layer_state);
+    }
+}
+
+uint8_t config_get_layer_state(void) {
+    if (!g_initialized) {
+        LOG_WARN("Config not initialized, returning Layer 0 only\n");
+        return 0x01;  // Only Layer 0 active
+    }
+    
+    // Always return Layer 0 active (bit 0 set)
+    return g_config.layer_state;
+}
+
+void config_set_layers_hash(uint32_t layers_hash) {
+    if (!g_initialized) {
+        LOG_ERROR("Config not initialized!\n");
+        return;
+    }
+    
+    if (g_config.layers_hash != layers_hash) {
+        g_config.layers_hash = layers_hash;
+        g_config.flags.dirty = 1;
+        LOG_DEBUG("Layers hash changed to 0x%08X (pending save)\n", 
+                 (unsigned int)layers_hash);
+    }
+}
+
+uint32_t config_get_layers_hash(void) {
+    if (!g_initialized) {
+        LOG_WARN("Config not initialized, returning 0\n");
+        return 0;
+    }
+    
+    return g_config.layers_hash;
 }

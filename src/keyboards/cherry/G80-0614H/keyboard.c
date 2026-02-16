@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -43,9 +43,11 @@
 // clang-format on
 /* Define Keyboard Layers */
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
-    KEYMAP_XT(         /* Base Layer (NumLock On)
+    KEYMAP_XT(         /* Layer 0: Base Layer
+                        * Numpad keys (P7, P8, P9, etc.) are sent as-is to host - Windows/Linux handle NumLock
+                        * state natively. macOS interprets numpad keys as numeric only (no NumLock toggle).
                         * MacOS maps keys oddly, GRAVE and NUBS are swapped over when coupled with British-PC
-                        * Layout.          Likewise, NUHS and BSLS appear to match. TODO: Have these as a config
+                        * Layout. Likewise, NUHS and BSLS appear to match. TODO: Have these as a config
                         * option to swap.
                         */
               // clang-format off
@@ -55,16 +57,8 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     F7,    F8,        LSFT,  NUBS,  Z,     X,     C,     V,     B,     N,     M,     COMM,  DOT,   SLSH,  RSFT,  PSCR,  P1,    P2,    P3,    PPLS, \
     MO_1,  LGUI,      LALT,                                     SPC,                                      CAPS,         P0,           PDOT  // clang-format on
               ),
-    KEYMAP_XT(      /* Numlock Off (MacOS Compatibility Layer) */
-              // clang-format off
-    TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS, \
-    TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS, \
-    TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,  TRNS,  TRNS, \
-    TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS, \
-    TRNS,  TRNS,      TRNS,                                     TRNS,                                     TRNS,         TRNS,         TRNS  // clang-format on
-              ),
   KEYMAP_XT( \
-    /* Layer 1: Function Layer (activated by MO(1) - formerly KC_FN)
+    /* Layer 1: Function Layer (activated by MO_1)
      * Provides F9-F12, media controls, arrow key navigation, and application key
      */
     // clang-format off
