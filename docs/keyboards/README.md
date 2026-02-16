@@ -17,7 +17,7 @@ Tells the build system which protocol your keyboard uses, what scancode set it s
 Defines your keyboard's physical layout as a matrix, mapping each scancode to its position. Includes ASCII-art diagrams showing the layout and scancodes—they're actually useful once you're working with this stuff.
 
 **3. keyboard.c** - Key assignments and layers
-Maps physical key positions to HID keycodes—what each key actually does when you press it. You can define multiple layers here too, for things like Function keys or NumLock states.
+Maps physical key positions to HID keycodes—what each key actually does when you press it. You can define multiple layers here too, for things like Function keys or media controls.
 
 ### How the Build System Uses These Files
 
@@ -177,7 +177,7 @@ The keycodes come from `hid_keycodes.h` and are passed **without** the `KC_` pre
 - Function: `F1` through `F24`
 - Navigation: `INS`, `DEL`, `HOME`, `END`, `PGUP`, `PGDN`
 
-You can set up multiple layers too—useful for media controls, alternative key functions, or NumLock states. Define additional layers in the `keymap_map` array, then add layer switching keys to your base layer:
+You can set up multiple layers too—useful for media controls, alternative key functions, or navigation keys. Define additional layers in the `keymap_map` array, then add layer switching keys to your base layer:
 
 ```c
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {

@@ -278,6 +278,7 @@ Once Command Mode is active (flashing green/blue LED), press one of these keys:
 | **L** | **LED Brightness** | Adjust status LED brightness (0-10) |
 | **D** | **Debug Level** | Change UART log verbosity (ERROR/INFO/DEBUG) |
 | **F** | **Factory Reset** | Restore all settings to defaults and reboot |
+| **S** | **Shift-Override** | Toggle shift-override for non-standard shift legends |
 
 We'll cover the Bootloader command in detail next. The other commands are explained in the [Features documentation](../features/command-mode.md).
 

@@ -316,7 +316,7 @@ For remapping keys or creating alternative layouts, see `docs/development/custom
 
 ### Keyboard-Specific Overrides
 
-Command Mode keys (bootloader entry) default to Left Shift + Right Shift. For keyboards with unusual layouts (e.g., single shift key), override in `keyboard.h` **before includes**:
+**Command Mode Keys:** Default to Left Shift + Right Shift. For keyboards with unusual layouts (e.g., single shift key), override in `keyboard.h` **before includes**:
 
 ```c
 // keyboards/apple/m0110a/keyboard.h - single shift key issue
@@ -326,6 +326,35 @@ Command Mode keys (bootloader entry) default to Left Shift + Right Shift. For ke
 ```
 
 **Why "before includes":** `#ifndef` guards in `command_mode.c` implement "first definition wins". Keyboard definition takes precedence over defaults.
+
+**Shift-Override (Non-Standard Shift Legends):** For keyboards with non-standard shift legends (terminal keyboards, vintage keyboards, international layouts, etc.), define `keymap_shift_override_layers[KEYMAP_MAX_LAYERS]` array of pointers in keyboard.c:
+
+```c
+// Per-layer shift-override for keyboards with non-standard shift legends
+const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
+    [0] = (const uint8_t[256]){
+        [KC_1] = SUPPRESS_SHIFT | KC_EXLM,  // Shift+1 → ! (suppress shift)
+        [KC_2] = SUPPRESS_SHIFT | KC_DQUO,  // Shift+2 → " (suppress shift)
+        [KC_7] = SUPPRESS_SHIFT | KC_QUOT,  // Shift+7 → ' (suppress shift)
+        // Only non-standard keys need entries, rest default to 0
+    },
+    // Optional: Define shift-override for additional layers
+    // [1] = (const uint8_t[256]){ ... },
+};
+```
+
+- **SUPPRESS_SHIFT flag (0x80):** Removes shift modifier for final keycode
+- **Without SUPPRESS_SHIFT:** Keeps shift held (standard behaviour)
+- **Only map non-standard keys:** Empty entries (0) use default shift behaviour
+- **Per-layer support:** Each layer can have different shift behaviour (e.g., Layer 0 modern, Layer 1 terminal)
+- **NULL layers:** Layers without shift-override use standard behaviour
+- **Examples:** IBM M122 (`modelm/m122/keyboard.c`) has complete terminal keyboard implementation
+- **Disabled by default:** User must enable via Command Mode (Shift+Shift hold 3s, then 'S' key)
+- **Runtime validation:** Automatically detects and logs errors if shift-override defined for non-existent layers
+
+**NumLock Layers NOT Needed:** Numpad keys (KC_P0-P9) are dual-function by HID spec—host OS interprets as numeric (NumLock ON) or navigation (NumLock OFF). Don't create separate NumLock layers; send numpad codes directly. For macOS (no NumLock support), provide navigation in Fn layer.
+
+**Layer State Persistence:** TG (toggle) and TO (switch to) layer states persist across reboots via config storage v3. System validates saved state using dual-hash (keyboard_id + layers_hash) to detect firmware/keymap changes. If validation fails (different keyboard, layer definitions changed), resets to Layer 0 automatically. MO (momentary) and OSL (one-shot) layers are temporary and never persist. Each keyboard auto-exports `keymap_layer_count` via sizeof() for validation—users never manually define it (weak symbol provides safe default).
 
 **See also:** `docs/development/adding-keyboards.md` covers all keyboard-specific customization options.
 

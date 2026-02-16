@@ -18,13 +18,17 @@ The configuration storage system addresses all these concerns while keeping the 
 
 ## What Gets Stored
 
-Currently, the converter stores two settings:
+The converter persists several settings across reboots:
 
 **Log Level** - Controls how verbose the UART debug output is. Can be ERROR (minimal), INFO (moderate, default), or DEBUG (verbose). You set this through Command Mode using the 'D' command.
 
 **LED Brightness** - Controls how bright the status LED and any WS2812 RGB LEDs appear, on a scale from 0 (off) to 10 (maximum). You set this through Command Mode using the 'L' command.
 
-These settings are stored together in a single configuration structure, along with metadata like a version number, sequence counter, and CRC checksum. The configuration structure occupies 2048 bytes total (matching the 2KB copy size), with 16 bytes of header and settings, 1 byte for flags/padding, and 2028 bytes reserved for future expansion (TLV storage for macros, key remaps, etc.).
+**Shift-Override Enable** - Runtime toggle for keyboards with non-standard shift legends (terminal keyboards, vintage layouts). Disabled by default, enabled via Command Mode 'S' command. Only affects keyboards that define shift-override arrays.
+
+**Layer State** - Active toggle (TG) and permanent switch (TO) layers. When you toggle Dvorak on or switch to a gaming layer, that state persists across reboots. Momentary (MO) and one-shot (OSL) layers don't persist—they're temporary by design.
+
+These settings are stored together in a single configuration structure, along with metadata like a version number, sequence counter, and CRC checksum. The configuration structure occupies 2048 bytes total (matching the 2KB copy size), with ~26 bytes of header and settings, ~2 bytes for flags/padding, and ~2022 bytes reserved for future expansion (TLV storage for macros, key remaps, etc.).
 
 Future firmware versions might add more settings—custom key remapping, macro definitions, debounce timing adjustments, protocol-specific tweaks. The storage system is designed to accommodate this growth through automatic version migration.
 
@@ -219,7 +223,12 @@ The alternative—a non-blocking async save—would add significant complexity f
 
 As firmware evolves, the configuration structure might gain new fields. For example, a future version might add a `key_debounce_ms` setting. How do we handle this without breaking existing installations?
 
-The configuration structure includes a version number field. The current version is 1. When the firmware boots, it checks the configuration version:
+The configuration structure includes a version number field. The current version is 3:
+- **v1**: Added log_level and led_brightness
+- **v2**: Added keyboard_id (for smart persistence) and shift_override_enabled flag
+- **v3**: Added layer_state and layers_hash (for layer persistence with validation)
+
+When the firmware boots, it checks the configuration version:
 
 - **Version matches**: Configuration is current, use it as-is
 - **Version older**: Run migration code to add new fields with defaults

@@ -314,9 +314,13 @@ Layers are useful for things like media controls, alternative key functions, or 
 
 ### How Layers Work
 
-The layer system uses a priority-based activation model. Layer 0 is the base layer and is always at the bottom of the stack. When you activate a higher layer (say, Layer 1), the converter checks that layer first when looking up keycodes. If a key on the higher layer is set to `TRNS` (transparent), it falls through to the next-lower active layer.
+The layer system uses a priority-based activation model with a bitmap tracking which layers are active. Layer 0 is the base layer and always sits at the bottom. When you activate upper layers (via MO, TG, or TO keycodes), the converter maintains a bitmap of which layers are currently active. The **highest active layer** in that bitmap becomes your starting point for keymap lookups.
 
-This means you only need to define the keys that are different in your upper layers—everything else can be `TRNS` and will behave the same as the base layer. That saves you from duplicating your entire keymap just to change a handful of keys.
+Here's the key bit: when you press a key, the lookup starts at the highest active layer. If that layer has `TRNS` (transparent) at that position, the lookup falls through to the **next lower active layer** in the bitmap—it skips any layers that aren't currently active. This continues checking active layers downward until it finds a non-transparent keycode or reaches Layer 0 (which is always active).
+
+What this means practically: you only need to define the keys that are different in your upper layers—everything else can be `TRNS` and will fall through to active lower layers. You're not duplicating entire layouts, you're only overriding specific positions. If you've got Layer 1 and Layer 3 both active (via toggle), and Layer 3 has `TRNS` at a position, it'll check Layer 1 next (skipping inactive Layer 2). If Layer 1 also has `TRNS`, it falls through to Layer 0. Only active layers participate in the fallthrough chain.
+
+This is identical to QMK's behavior—standard practice for keyboard firmware with layering support.
 
 ### Defining Multiple Layers
 
@@ -396,11 +400,11 @@ The keys set to `TRNS` behave exactly as they do in Layer 0. You don't need to r
 
 ### Things to Keep in Mind
 
-**Layer 0 is always active** - It's the base layer. Upper layers overlay on top of it, but transparent keys (`TRNS`) fall through to Layer 0.
+**Layer 0 is always active** - It's the base layer. Upper layers overlay on top of it, but transparent keys (`TRNS`) fall through to the next lower active layer in the bitmap—inactive layers are skipped.
 
-**You can stack momentary layers** - Holding MO_1 and MO_2 simultaneously gives you both layers active, with MO_2 taking priority for non-transparent keys.
+**You can stack layers** - Holding MO_1 and MO_2 simultaneously (or using TG to toggle multiple on) gives you multiple active layers. The **highest** active layer becomes your starting point for lookups. If that layer has `TRNS` at a position, the lookup falls through to the next lower active layer only—inactive layers are skipped during fallthrough. This is how layer stacking works: active layers compose together, inactive layers are ignored.
 
-**Toggle layers persist across reboots** - If you toggle a layer on with TG_1, it stays active even after power cycling the converter. The layer state resets when you toggle it off or use TO_0 to explicitly switch back to the base layer.
+**Toggle layers persist across reboots** - If you toggle a layer on with TG_1, it stays active even after power cycling the converter. The system validates the saved layer state against the current firmware—if you flash different layer definitions (add/remove layers) or switch keyboards, it automatically resets to Layer 0 for safety. TO layers also persist the same way.
 
 **One-shot layers timeout** - If you activate a one-shot layer (OSL_1) but don't press another key within about 5 seconds, it'll automatically deactivate. This prevents you from getting stuck in an upper layer if you change your mind.
 

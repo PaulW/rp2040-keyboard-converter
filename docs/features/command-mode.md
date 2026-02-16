@@ -8,15 +8,17 @@ Command Mode provides a keyboard-driven interface for managing the converter's f
 
 Once you have the converter up and running, you might need to update firmware, troubleshoot issues, or adjust settings. Normally, this would require physical access to the RP2040 board—holding down the BOOTSEL button while plugging it in, or accessing configuration files. Command Mode eliminates this hassle by letting you trigger these actions directly from your keyboard.
 
-The converter supports four main operations through Command Mode:
+The converter supports five main operations through Command Mode:
 
 **Bootloader Entry** - Reset into firmware update mode without touching the board. The RP2040 appears as a USB mass storage device where you can drag-and-drop new firmware.
 
 **Log Level Adjustment** - Change how verbose the debug output is on the UART port. Switch between minimal error logging, moderate informational output, or full debug verbosity without recompiling or reflashing. See [Logging](logging.md) for details.
 
-**Factory Reset** - Wipe all saved settings (log level, LED brightness) and restore factory defaults. Useful if you've made configuration changes and want a clean slate. See [Configuration Storage](config-storage.md) for persistence details.
+**Factory Reset** - Wipe all saved settings (log level, LED brightness, shift-override state) and restore factory defaults. Useful if you've made configuration changes and want a clean slate. See [Configuration Storage](config-storage.md) for persistence details.
 
 **LED Brightness Control** - Adjust how bright the converter's status LED appears, from off to full brightness. Particularly useful if you have WS2812 RGB LEDs that are too bright in a dark room. See [LED Support](led-support.md) for LED configuration.
+
+**Shift-Override Toggle** - Enable or disable shift-override for keyboards with non-standard shift legends. Only affects keyboards that define custom shift mappings (like terminal keyboards with unusual number row legends).
 
 All these operations complete without interrupting your work—you trigger them through key combinations, wait a moment for confirmation, and continue typing.
 
@@ -36,7 +38,7 @@ Here's exactly what happens when you activate Command Mode:
 
 **Step 3**: Once you see the alternating LED pattern, you can release both shift keys. Command Mode is now active.
 
-**Step 4**: You have three seconds to press one of the command keys (B, D, F, or L). If you don't press anything within three seconds, the converter automatically exits Command Mode and returns to normal operation.
+**Step 4**: You have three seconds to press one of the command keys (B, D, F, L, or S). If you don't press anything within three seconds, the converter automatically exits Command Mode and returns to normal operation.
 
 The three-second hold requirement prevents accidental activation. It's long enough that you won't trigger it during normal typing, but short enough that it's not tedious when you actually want to use it.
 
@@ -59,7 +61,7 @@ Command Mode provides two types of feedback to help you understand what's happen
 Throughout Command Mode operation, the converter outputs detailed status messages on the UART port. These messages provide textual confirmation of every action:
 
 - `"Command keys hold detected, waiting for 3 second hold..."` - Both activation keys pressed
-- `"Command mode active! Press 'B'=bootloader, 'D'=log level, 'F'=factory reset, 'L'=LED brightness, or wait 3s to cancel"` - Mode activated
+- `"Command mode active! Press:"` - Mode activated (followed by menu)
 - `"Log level selection: Press 1=ERROR, 2=INFO, 3=DEBUG"` - After pressing 'D'
 - `"LED brightness selection: Press +/- to adjust (0-10), current=5"` - After pressing 'L' (shows current level)
 - `"Log level set to DEBUG (2)"` - After selecting log level
@@ -86,7 +88,7 @@ There's one constraint: both activation keys must be HID modifiers (Shift, Contr
 
 ## Available Commands
 
-Once Command Mode is active (indicated by the alternating green/blue LED), you can press one of four command keys. Each triggers a different operation.
+Once Command Mode is active (indicated by the alternating green/blue LED), you can press one of five command keys. Each triggers a different operation.
 
 ### 'B' - Enter Bootloader Mode
 
@@ -180,6 +182,36 @@ Brightness adjustment uses [gamma correction](../../src/common/lib/ws2812/ws2812
 The rainbow cycling during adjustment serves two purposes: it provides engaging visual feedback that you're in adjustment mode, and it lets you see how the current brightness level affects LED visibility across different colors.
 
 For more about WS2812 LED hardware and configuration, see the [LED Support documentation](led-support.md).
+
+### 'S' - Toggle Shift-Override
+
+Pressing 'S' toggles the shift-override feature on or off for keyboards with non-standard shift legends. This is only relevant for keyboards that define a `keymap_shift_override_layers` array—most standard keyboards don't need this.
+
+**How to use it**:
+
+1. Activate Command Mode (both shifts, 3 seconds)
+2. Press the **'S'** key
+3. The converter immediately toggles the shift-override state
+4. The LED flashes briefly to confirm, and Command Mode exits
+5. UART shows: `"Shift-override ENABLED"` or `"Shift-override DISABLED"`
+
+**What shift-override does**:
+
+Some keyboards have non-standard shift legends printed on the keycaps—terminal keyboards, vintage keyboards, or international layouts where the physical labels don't match modern HID standards. For example, the IBM Model M Type 2 (M122) has `"` (double-quote) printed above the `2` key, not `@`.
+
+When shift-override is **enabled**, the converter remaps shifted keys to match these physical legends. When **disabled** (default), all keyboards behave with standard modern shift mappings regardless of what's printed on the keycaps.
+
+**Keyboard compatibility**:
+
+Shift-override only works if the keyboard's firmware defines shifted character mappings. Check your keyboard's documentation in `src/keyboards/` to see if it supports shift-override. If the keyboard doesn't define custom shift mappings, pressing 'S' displays a warning message and the setting is not changed.
+
+The shift-override state persists across reboots and is stored in flash memory. However:
+- If you flash firmware for a different keyboard (different make/model/protocol), the state automatically resets to disabled.
+- If you modify the keyboard firmware to remove the shift-override array but keep the same keyboard ID, the converter detects this on boot and automatically disables shift-override.
+
+These validation checks ensure the config state always matches the actual keyboard capabilities.
+
+For details on implementing shift-override for a new keyboard, see the [Adding Keyboards guide](../development/adding-keyboards.md#shift-override-non-standard-shift-legends).
 
 ---
 

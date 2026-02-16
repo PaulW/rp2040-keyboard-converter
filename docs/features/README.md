@@ -115,6 +115,28 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
 
 ---
 
+### Keyboard Layers
+
+**[Keyboard Layers Guide](layers.md)**
+
+Keyboard layers provide a way to access multiple sets of key functions from the same physical keys. Think of them as transparent overlays—activate a layer and the keys do different things. This is particularly useful for compact keyboards or when adding modern conveniences like media controls to vintage hardware that lacks dedicated keys.
+
+The converter supports up to 8 layers (numbered 0-7), though most keyboards only need 2 or 3. Layer 0 is always active as the base layer, and upper layers overlay on top. Keys can be transparent in upper layers, falling through to lower active layers until a keycode is found, so you only need to define the keys that actually change.
+
+**Layer activation methods:**
+- **Momentary (MO)**: Active whilst held, like a traditional Fn key
+- **Toggle (TG)**: Stays on until toggled off again (persists across reboots)
+- **Switch To (TO)**: Permanently switches to that layer (persists across reboots)
+- **One-Shot (OSL)**: Activates for exactly one keypress
+
+Common use cases include adding media controls (volume, playback) to keyboards that don't have them, accessing function keys F13-F24 on compact keyboards, providing numpad navigation for macOS (which doesn't support NumLock), or switching between QWERTY and alternative layouts like Dvorak or Colemak.
+
+The layer system is entirely optional. If your keyboard has all the keys you need and you're not planning to remap anything, a single-layer keymap is perfectly adequate. Layers add flexibility without requiring hardware modifications.
+
+**See:** [Keyboard Layers Guide](layers.md) for concepts and practical examples, or [Custom Keymaps Guide](../development/custom-keymaps.md) for implementation details
+
+---
+
 ### Logging
 
 **[Logging Guide](logging.md)**

@@ -179,6 +179,134 @@ Common shorthand keycodes:
 
 **Unmapped keys:** Use `NO` for keys that don't have a mapping or shouldn't send anything.
 
+### Multi-Layer Keymaps
+
+Most keyboards only need a single base layer (Layer 0). However, you might want additional layers for function keys, navigation, or gaming modes. Layer switching is covered in detail in the [Custom Keymaps](custom-keymaps.md) guide, but here's the basic structure:
+
+```c
+const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
+    [0] = KEYMAP(  // Base layer
+        // Your default key mappings
+    ),
+    [1] = KEYMAP(  // Function layer (activated by MO_1)
+        // Function key mappings, media controls, etc.
+        // Use TRNS for keys that should pass through to base layer
+    ),
+};
+```
+
+Layer keycodes:
+- **MO_1, MO_2, MO_3**: Momentary layer switch whilst held
+- **TG_1, TG_2, TG_3**: Toggle layer on/off
+- **TO_1, TO_2, TO_3**: Switch to layer permanently
+- **OSL_1, OSL_2, OSL_3**: One-shot layer (next key only)
+- **TRNS**: Transparent—passes through to lower layer
+
+**NumLock Handling:** You don't need separate NumLock layers. The numpad keys (KC_P0-KC_P9, KC_P7=7/HOME, KC_P1=1/END, etc.) are dual-function by HID specification—the host OS interprets them as either numeric (NumLock ON) or navigation (NumLock OFF). Windows and Linux handle this natively. On macOS (which doesn't support NumLock), provide navigation keys in a function layer for users who need them.
+
+**Example—Model F PC/AT with navigation in Fn layer:**
+```c
+const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
+    [0] = KEYMAP(  // Base layer
+        // ... ESC, numbers, letters, etc.
+        // Numpad: P7, P8, P9 send as-is (host interprets)
+    ),
+    [1] = KEYMAP(  // Fn layer for macOS navigation
+        TRNS, TRNS, /* ... */
+        HOME, UP,   PGUP,   // Fn+7/8/9 → HOME/UP/PGUP
+        LEFT, TRNS, RIGHT,  // Fn+4/5/6 → LEFT/nochange/RIGHT  
+        END,  DOWN, PGDN,   // Fn+1/2/3 → END/DOWN/PGDN
+    ),
+};
+```
+
+### Shift-Override (Non-Standard Shift Legends)
+
+Some keyboards have non-standard shift legends that don't match the HID keycodes sent by standard keys. This includes terminal keyboards, vintage keyboards, and some international layouts. For example, the IBM Model M Type 2 (M122) has:
+- Physical key labelled `2` and `"` (double quote)
+- Standard shift behaviour: Shift+2 = `@`
+- But key physically shows `"`
+
+For these keyboards, you can define per-layer shift-override tables that remap shifted keys to match the physical legends. This is completely optional—only use it for keyboards where the physical legends genuinely differ from standard.
+
+**Implementation:**
+
+Add a `keymap_shift_override_layers` array to your keyboard.c:
+
+```c
+// Per-layer shift-override table (sparse array of pointers)
+// Array index = layer number, NULL = no shift-override for that layer
+const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
+    [0] = (const uint8_t[256]){
+        // Suppress shift and send different key
+        [KC_1] = SUPPRESS_SHIFT | KC_EXLM,  // Shift+1 → ! (suppress shift)
+        [KC_2] = SUPPRESS_SHIFT | KC_DQUO,  // Shift+2 → " (suppress shift)
+        [KC_7] = SUPPRESS_SHIFT | KC_QUOT,  // Shift+7 → ' (suppress shift)
+        
+        // Keep shift for standard behaviour
+        [KC_3] = KC_HASH,  // Shift+3 → # (keep shift held)
+        
+        // Most entries are 0 (use default shift behaviour)
+    },
+    // Other layers: NULL or define additional shift-override arrays as needed
+    // [1] = (const uint8_t[256]){ ... },  // Optional: Layer 1 shift-override
+};
+```
+
+**How it works:**
+- When shift is held and a key pressed, the system checks the shift-override array for the source layer
+- Source layer = layer where key was found (accounting for KC_TRNS fallthrough)
+- If entry exists: send that keycode instead of base key
+- If entry has `SUPPRESS_SHIFT` flag (bit 7): remove shift modifier for final key
+- If entry is 0 or layer has no shift-override array (NULL): use default behaviour (send base key with shift)
+
+**SUPPRESS_SHIFT flag (0x80):**
+- `SUPPRESS_SHIFT | KC_EXLM`: Sends `!` **without** shift modifier
+- `KC_HASH`: Sends `#` **with** shift modifier (standard behaviour)
+
+**Per-layer shift-override:**
+Different layers can have different shift behaviours. For example, Layer 0 might use modern PC shift legends while Layer 1 uses terminal shift legends. Simply define multiple entries in the `keymap_shift_override_layers` array:
+
+```c
+const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
+    [0] = (const uint8_t[256]){ /* Standard PC legends */ },
+    [1] = (const uint8_t[256]){ /* Terminal legends */ },
+    // Layers 2-7 default to NULL (no shift-override)
+};
+```
+
+**Runtime validation:**
+The converter automatically detects configuration errors at runtime. If you define a shift-override array for a layer that doesn't exist in your keymap, an error is logged to UART when that layer is accessed:
+
+```
+[ERR] Shift-override array entry [1] exists but keyboard only defines Layer 0!
+[ERR] Fix keyboard.c: Either add Layer 1 to keymap_map or remove shift-override entry [1]
+```
+
+This prevents undefined behaviour from stale or incorrect shift-override definitions.
+
+**When to use shift-override:**
+- Terminal keyboards with non-standard legends (IBM 327x, 3270, 522x series)
+- International keyboards where physical labels don't match HID standard
+- NOT for standard keyboards—adds complexity without benefit
+
+**Example keyboards with shift-override:**
+- IBM Model M Type 2 (M122): `src/keyboards/modelm/m122/keyboard.c`
+- Microswitch Type 2 (predicted): `src/keyboards/microswitch/122st13/keyboard.c` (needs hardware testing)
+
+**Enabling shift-override:**
+
+Shift-override is **disabled by default** even if your keyboard defines the array. Users must explicitly enable it through Command Mode:
+
+1. Hold both shifts for 3 seconds (enter Command Mode)
+2. Press 'S' to toggle shift-override on/off
+3. If the keyboard doesn't define the array, a warning is displayed and the setting is not changed
+4. State persists across reboots in flash memory
+5. Automatically resets to disabled if different keyboard firmware flashed
+6. Automatically disables if the shift-override array is removed from the keyboard but keyboard ID stays the same
+
+The converter validates shift-override availability on every boot, ensuring the config state always matches the actual keyboard capabilities. This prevents stale configuration from causing undefined behaviour.
+
 ---
 
 ## README.md
