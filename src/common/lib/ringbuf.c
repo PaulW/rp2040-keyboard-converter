@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * Portions of this specific file are licensed under the GPLv2 License.
  * The Ringbuffer has been adapted and based upon the tinyusb repository
