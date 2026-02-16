@@ -13,18 +13,18 @@ early_access: false
 # Set assertive profile for embedded systems - we need strict reviews
 reviews:
   profile: "assertive"
-  request_changes_workflow: false
+  request_changes_workflow: true
   
   # Generate comprehensive review summaries
   high_level_summary: true
   high_level_summary_placeholder: "@coderabbitai summary"
   high_level_summary_in_walkthrough: false
-  poem: false  # Professional tone for technical project
+  poem: true  # Professional tone for technical project
   review_status: true
   review_details: true  # Show ignored files, extra context, suppressed comments
   commit_status: true
   fail_commit_status: true
-  in_progress_fortune: false
+  in_progress_fortune: true
   
   # Enable all walkthrough features
   collapse_walkthrough: false
@@ -65,6 +65,7 @@ reviews:
     # Include
     - "src/**"
     - "tools/**"
+    - "docs/**"
     - ".github/**"
     - "CMakeLists.txt"
     - "*.cmake"
@@ -170,9 +171,9 @@ reviews:
   # Finishing touches
   finishing_touches:
     docstrings:
-      enabled: true
+      enabled: false
     unit_tests:
-      enabled: true
+      enabled: false
   
   # Pre-merge checks
   pre_merge_checks:
@@ -386,6 +387,7 @@ knowledge_base:
     enabled: true
     filePatterns:
       - ".github/copilot-instructions.md"
+      - "docs/development/*.md"
       - "src/protocols/*/README.md"
       - "src/scancodes/*/README.md"
       - "README.md"
