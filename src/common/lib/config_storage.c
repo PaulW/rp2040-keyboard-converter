@@ -45,7 +45,7 @@
  * 
  * @return 32-bit keyboard identifier hash
  */
-static inline uint32_t get_keyboard_id(void) {
+static uint32_t get_keyboard_id(void) {
     // Keyboard defines from CMake (passed as compile-time strings)
 #ifdef _KEYBOARD_ENABLED
     const char *make = _KEYBOARD_MAKE;

@@ -122,7 +122,7 @@ static uint8_t keymap_search_layers(uint8_t row, uint8_t col, uint8_t *source_la
     
     // Regular key in active layer - check lower layers for layer modifiers only
     // (Safety feature: layer modifiers override regular keys in higher layers)
-    const uint8_t modifier = scan_lower_layers_for_modifier(row, col, active_layer, source_layer);
+    const uint8_t modifier = scan_lower_layers_for_modifier(row, col, (int8_t)active_layer, source_layer);
     if (modifier != KC_NO) {
       return modifier;  // Layer modifier found in lower layer
     }

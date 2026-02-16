@@ -96,7 +96,7 @@ uint8_t keylayers_get_active(void) {
 /**
 * @brief Compute validation hash for current keymap configuration
 * 
-* Computes a hash based on the keymap dimensions and layer count.
+* Computes a hash based on keymap structure (dimensions and layer count only).
 * Used to detect when keymap layout has changed, invalidating saved layer state.
 * 
 * Hash includes:
@@ -104,10 +104,18 @@ uint8_t keylayers_get_active(void) {
 * - Keymap width (KEYMAP_COLS)
 * - Keymap height (KEYMAP_ROWS)
 * 
-* This is a simple validation hash, not cryptographic. Its purpose is to detect
-* changes to the keymap layout, not to prevent malicious modification.
+* IMPORTANT LIMITATION:
+* This hash does NOT include actual key assignments within layers. Changing key
+* values (e.g., swapping KC_A and KC_B) will NOT invalidate the hash. Only
+* structural changes (adding/removing layers, changing matrix dimensions) are
+* detected. This is intentional to avoid unnecessary layer state resets when
+* users modify keymaps.
 * 
-* @return 32-bit hash of keymap configuration
+* This is a simple validation hash, not cryptographic. Its purpose is to detect
+* structural changes to the keymap layout, not to prevent malicious modification
+* or detect keymap content changes.
+* 
+* @return 32-bit hash of keymap structure
 */
 uint32_t keylayers_compute_hash(void) {
     // Simple hash: combine layer count, cols, and rows
@@ -155,10 +163,12 @@ static void handle_hash_mismatch(uint32_t saved_hash, uint32_t current_hash) {
 static void handle_valid_hash(uint8_t saved_layer_state) {
     // Validate no invalid layers are active
     // Clamp to valid layer range (layers 0 to keymap_layer_count-1)
-    const uint8_t valid_mask = (1 << keymap_layer_count) - 1;
+    // Defensive: Ensure at least 1 layer (Layer 0) is always valid
+    const uint8_t effective_layer_count = (keymap_layer_count < 1) ? 1 : keymap_layer_count;
+    const uint8_t valid_mask = (1 << effective_layer_count) - 1;
     if ((saved_layer_state & ~valid_mask) != 0) {
         LOG_WARN("Saved layer state 0x%02X has invalid layers (max layer=%d)\n",
-                        saved_layer_state, keymap_layer_count - 1);
+                        saved_layer_state, effective_layer_count - 1);
         LOG_INFO("Resetting to Layer 0\n");
         layer_state.layer_state = 0x01;
         config_set_layer_state(0x01);
