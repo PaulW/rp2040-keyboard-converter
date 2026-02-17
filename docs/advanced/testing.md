@@ -191,11 +191,23 @@ Test keys that use multi-byte scancode sequences.
 The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for critical rule violations.
 
 **What it detects:**
-- **Blocking operations:** `sleep_ms()`, `sleep_us()`, `busy_wait_ms()`, `busy_wait_us()`
-- **Multicore APIs:** `multicore_*`, `core1_*` functions (forbidden)
-- **Unsafe ring buffer resets:** `ringbuf_reset()` without IRQ guard
-- **printf in IRQ:** `printf()` calls in files containing `__isr` (use `LOG_*` macros)
-- **docs-internal references:** Ensures private docs never leak into public files
+1. **Blocking operations:** `sleep_ms()`, `sleep_us()`, `busy_wait_ms()`, `busy_wait_us()`
+2. **Multicore APIs:** `multicore_*`, `core1_*` functions (forbidden)
+3. **printf in IRQ:** `printf()` calls in files containing `__isr` (use `LOG_*` macros)
+4. **Unsafe ring buffer resets:** `ringbuf_reset()` without IRQ guard or annotation
+5. **docs-internal exposure:** Ensures private docs never leak into repository
+6. **Flash execution:** Missing `copy_to_ram` configuration in CMakeLists.txt
+7. **IRQ variable safety:** Missing `volatile` or `__dmb()` barriers for IRQ-shared variables
+8. **Tab characters:** Enforces spaces-only indentation (4 spaces)
+9. **Header guards:** Missing `#ifndef`/`#define` guards in .h files
+10. **File headers:** Missing GPL or MIT license headers
+11. **Naming conventions:** Detects camelCase (expects snake_case)
+12. **Include order:** Validates include directive organization
+13. **IRQ handler attributes:** Missing `__isr` attribute on interrupt handlers
+14. **Compile-time validation:** Advisory check for `_Static_assert` and `#error`
+15. **Protocol ring buffer setup:** Missing `ringbuf_reset()` in keyboard protocol initialization
+16. **Protocol IRQ priority:** Missing `irq_set_priority()` in protocol setup
+17. **Indentation consistency:** Enforces 4-space indentation, detects 2-space violations
 
 **Run before every commit:**
 ```bash
@@ -204,7 +216,9 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 
 **Expected result:** 0 errors, 0 warnings. Script exits with code 0.
 
-**CI enforcement:** Pull requests automatically run lint checks. Violations block merging.
+**CI enforcement:** Pull requests automatically run lint checks in strict mode. Violations block merging.
+
+**Detailed documentation:** See [`tools/README.md`](../../tools/README.md) for comprehensive check descriptions and fix examples.
 
 ### Static Analysis
 

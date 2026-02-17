@@ -42,13 +42,8 @@
 // clang-format on
 /* Define Keyboard Layers */
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
-    KEYMAP_PCAT(  /* Layer 0: Base Layer
-                   * Standard QWERTY layout with numpad keys.
-                   * Host OS handles NumLock state (Windows/Linux: numpad ↔ navigation, macOS: always numpad).
-                   * MacOS maps keys oddly, GRAVE and NUBS are swapped over when coupled with
-                   * British-PC Layout. Likewise, NUHS and BSLS appear to match. TODO: Have these as a
-                   * config option to swap.
-                   */
+    KEYMAP_PCAT(                  /* Layer 0: Base Layer
+                                   */
                 // clang-format off
     F1,    F2,        GRV,   1,     2,     3,     4,     5,     6,     7,     8,     9,     0,     MINS,  EQL,   NUHS,  BSPC,      ESC,   NLCK,  SLCK,  PAUS, \
     F3,    F4,        TAB,          Q,     W,     E,     R,     T,     Y,     U,     I,     O,     P,     LBRC,  RBRC,             P7,    P8,    P9,    PAST, \
@@ -56,10 +51,10 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     F7,    F8,        LSFT,         Z,     X,     C,     V,     B,     N,     M,     COMM,  DOT,   SLSH,                RSFT,      P1,    P2,    P3,    PPLS, \
     MO_1,  LGUI,      LALT,                                            SPC,                                             CAPS,             P0,    PDOT  // clang-format on
                 ),
-    KEYMAP_PCAT(  /* Layer 1: Function Layer (activated by MO_1)
-                   * Provides F9-F12, media controls, APP key, and NUBS.
-                   * Numpad positions remapped to navigation keys for macOS users.
-                   */
+    KEYMAP_PCAT(     /* Layer 1: Function Layer (activated by MO_1)
+                      * Provides F9-F12, media controls, APP key, and NUBS.
+                      * Numpad positions remapped to navigation keys for macOS users.
+                      */
                 // clang-format off
     F9,    F10,       NUBS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS, \
     F11,   F12,       TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,             HOME,  UP,    PGUP,  TRNS, \

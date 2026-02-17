@@ -18,7 +18,7 @@ This script checks source code against the architectural rules defined in `.gith
 
 ### What It Checks
 
-The script runs through sixteen different checks, each targeting a specific architectural rule:
+The script runs through seventeen different checks, each targeting a specific architectural rule:
 
 1. **Blocking Operations** - Detects `sleep_ms()`, `sleep_us()`, `busy_wait_us()`, `busy_wait_ms()`
    - ❌ **Fails**: Any blocking call found in src/
@@ -94,6 +94,12 @@ The script runs through sixteen different checks, each targeting a specific arch
    - 📝 **Note**: Ensures highest priority for timing-sensitive keyboard/mouse protocols
    - 📚 **Reference**: See [Protocol Implementation Guide](../docs/development/protocol-implementation.md)
 
+17. **Indentation Consistency** - Enforces 4-space indentation (detects 2-space)
+   - ❌ **Fails**: Files with more than 5 lines using 2-space indentation
+   - 💡 **Fix**: Use 4-space indentation consistently throughout the codebase
+   - 📝 **Note**: clang-format off/on blocks are excluded from this check
+   - 🔧 **Reference**: See [Code Standards](../docs/development/code-standards.md#formatting-and-style) for indentation rules
+
 ### Integration
 
 - **Pre-commit**: Recommended to run before committing
@@ -107,10 +113,10 @@ The script runs through sixteen different checks, each targeting a specific arch
 RP2040 Architecture Lint Checks
 ========================================
 
-[1/7] Checking for blocking operations...
+[1/17] Checking for blocking operations...
 ✓ No blocking operations found
 
-[2/7] Checking for multicore API usage...
+[2/17] Checking for multicore API usage...
 ✓ No multicore API usage found
 
 ...

@@ -30,9 +30,29 @@ The firmware runs in a constrained environment with tight timing requirements. C
 
 ## Code Formatting
 
+### Automated Formatting with clang-format
+
+The project uses clang-format based on Google style with customisations for readability and consistency. The formatting configuration is:
+
+```
+{ BasedOnStyle: Google, ReflowComments: true, UseTab: Never, AllowShortIfStatementsOnASingleLine: false, AllowShortFunctionsOnASingleLine: false, AlwaysBreakBeforeMultilineStrings: true, AllowAllParametersOfDeclarationOnNextLine: true, AlignConsecutiveAssignments: true, AlignConsecutiveBitFields: true, AlignConsecutiveDeclarations: true, AlignConsecutiveMacros: true, ColumnLimit: 100, IndentWidth: 4 }
+```
+
+**Key formatting rules:**
+- **IndentWidth: 4** - Four spaces per indentation level
+- **UseTab: Never** - Spaces only, no tab characters
+- **ColumnLimit: 100** - Target line length (can exceed for alignment)
+- **AlignConsecutive* options** - Align assignments, declarations, macros, and bitfields for readability
+- **AllowShortIfStatementsOnASingleLine: false** - Always use braces and multiple lines
+- **AllowShortFunctionsOnASingleLine: false** - Function bodies always on separate lines
+
+If using VSCode, copy `.vscode.example/settings.json` to `.vscode/settings.json` to enable automatic formatting on save.
+
 ### Indentation and Spacing
 
-Use **4 spaces per indentation level**. No tabs. This keeps the code looking consistent regardless of editor settings.
+Use **4 spaces per indentation level**. No tabs. This keeps the code looking consistent regardless of editor settings. The lint script (Check 8 and Check 17) enforces this—files with tab characters or 2-space indentation will fail the check.
+
+**Note:** Code within `// clang-format off` and `// clang-format on` blocks is excluded from indentation validation, allowing for hand-formatted tables or aligned data structures.
 
 **Braces:** Use K&R style—opening brace on the same line as the control statement, closing brace on its own line:
 

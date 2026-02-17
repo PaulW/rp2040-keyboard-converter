@@ -39,9 +39,9 @@
  *   [MSB]         HID | MSC | CDC          [LSB]
  */
 #define _PID_MAP(itf, n) ((CFG_TUD_##itf) << (n))
-#define USB_PID                                                                          \
-  (0x4000 | _PID_MAP(CDC, 0) | _PID_MAP(MSC, 1) | _PID_MAP(HID, 2) | _PID_MAP(MIDI, 3) | \
-   _PID_MAP(VENDOR, 4))
+#define USB_PID                                                                            \
+    (0x4000 | _PID_MAP(CDC, 0) | _PID_MAP(MSC, 1) | _PID_MAP(HID, 2) | _PID_MAP(MIDI, 3) | \
+     _PID_MAP(VENDOR, 4))
 
 #define USB_VID 0x5515
 #define USB_BCD 0x0110
@@ -49,20 +49,20 @@
 //--------------------------------------------------------------------+
 // Device Descriptors
 //--------------------------------------------------------------------+
-tusb_desc_device_t const desc_device = {.bLength = sizeof(tusb_desc_device_t),
+tusb_desc_device_t const desc_device = {.bLength         = sizeof(tusb_desc_device_t),
                                         .bDescriptorType = TUSB_DESC_DEVICE,
-                                        .bcdUSB = USB_BCD,
-                                        .bDeviceClass = 0x00,
+                                        .bcdUSB          = USB_BCD,
+                                        .bDeviceClass    = 0x00,
                                         .bDeviceSubClass = 0x00,
                                         .bDeviceProtocol = 0x00,
                                         .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
 
-                                        .idVendor = USB_VID,
+                                        .idVendor  = USB_VID,
                                         .idProduct = USB_PID,
                                         .bcdDevice = 0x0100,
 
                                         .iManufacturer = 0x01,
-                                        .iProduct = 0x02,
+                                        .iProduct      = 0x02,
                                         .iSerialNumber = 0x03,
 
                                         .bNumConfigurations = 0x01};
@@ -73,7 +73,9 @@ tusb_desc_device_t const desc_device = {.bLength = sizeof(tusb_desc_device_t),
  *
  * @return Pointer to the device descriptor.
  */
-uint8_t const* tud_descriptor_device_cb(void) { return (uint8_t const*)&desc_device; }
+uint8_t const* tud_descriptor_device_cb(void) {
+    return (uint8_t const*)&desc_device;
+}
 
 //--------------------------------------------------------------------+
 // HID Report Descriptor
@@ -97,16 +99,16 @@ uint8_t const desc_hid_report_mouse[] = {TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID
  * @return Pointer to the HID report descriptor.
  */
 uint8_t const* tud_hid_descriptor_report_cb(uint8_t interface) {
-  switch (interface) {
-    case ITF_NUM_KEYBOARD:
-      return KEYBOARD_ENABLED ? desc_hid_report_keyboard : desc_hid_report_mouse;
-    case ITF_NUM_CONSUMER_CONTROL:
-      return KEYBOARD_ENABLED ? desc_hid_report_consumer : NULL;
-    case ITF_NUM_MOUSE:
-      return MOUSE_ENABLED ? desc_hid_report_mouse : NULL;
-    default:
-      return NULL;
-  }
+    switch (interface) {
+        case ITF_NUM_KEYBOARD:
+            return KEYBOARD_ENABLED ? desc_hid_report_keyboard : desc_hid_report_mouse;
+        case ITF_NUM_CONSUMER_CONTROL:
+            return KEYBOARD_ENABLED ? desc_hid_report_consumer : NULL;
+        case ITF_NUM_MOUSE:
+            return MOUSE_ENABLED ? desc_hid_report_mouse : NULL;
+        default:
+            return NULL;
+    }
 }
 
 //--------------------------------------------------------------------+
@@ -117,9 +119,9 @@ const uint ITF_NUM_TOTAL = (KEYBOARD_ENABLED == 1 ? 2 : 0) + (MOUSE_ENABLED == 1
 
 #define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + ITF_NUM_TOTAL * TUD_HID_DESC_LEN)
 
-#define EPNUM_KEYBOARD 0x81
+#define EPNUM_KEYBOARD         0x81
 #define EPNUM_CONSUMER_CONTROL 0x82
-#define EPNUM_MOUSE 0x83
+#define EPNUM_MOUSE            0x83
 
 uint8_t const desc_configuration[] = {
     // Config number, interface count, string index, total length, bmAttributes, power in mA
@@ -153,10 +155,10 @@ uint8_t const desc_configuration[] = {
  * @return Pointer to the configuration descriptor.
  */
 uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
-  (void)index;  // for multiple configurations
+    (void)index;  // for multiple configurations
 
-  // This example uses the same configuration for both high and full speed mode
-  return desc_configuration;
+    // This example uses the same configuration for both high and full speed mode
+    return desc_configuration;
 }
 
 //--------------------------------------------------------------------+
@@ -184,41 +186,43 @@ static uint16_t _desc_str[32];
  * @return Pointer to the string descriptor.
  */
 uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
-  (void)langid;
+    (void)langid;
 
-  uint8_t chr_count;
+    uint8_t chr_count;
 
-  // Ensure we set the USB device serial number to the Pico's unique ID
-  // This is read from the FLASH Chip, and is unique to each one.
-  // The RP2040 itself does not have a unique ID.
-  // https://cec-code-lab.aps.edu/robotics/resources/pico-c-api/group__pico__unique__id.html
-  char pico_unique_id[32];
-  pico_get_unique_board_id_string(pico_unique_id, sizeof(pico_unique_id));
-  string_desc_arr[3] = pico_unique_id;
+    // Ensure we set the USB device serial number to the Pico's unique ID
+    // This is read from the FLASH Chip, and is unique to each one.
+    // The RP2040 itself does not have a unique ID.
+    // https://cec-code-lab.aps.edu/robotics/resources/pico-c-api/group__pico__unique__id.html
+    char pico_unique_id[32];
+    pico_get_unique_board_id_string(pico_unique_id, sizeof(pico_unique_id));
+    string_desc_arr[3] = pico_unique_id;
 
-  if (index == 0) {
-    memcpy(&_desc_str[1], string_desc_arr[0], 2);
-    chr_count = 1;
-  } else {
-    // Note: the 0xEE index string is a Microsoft OS 1.0 Descriptors.
-    // https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-defined-usb-descriptors
+    if (index == 0) {
+        memcpy(&_desc_str[1], string_desc_arr[0], 2);
+        chr_count = 1;
+    } else {
+        // Note: the 0xEE index string is a Microsoft OS 1.0 Descriptors.
+        // https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-defined-usb-descriptors
 
-    if (!(index < sizeof(string_desc_arr) / sizeof(string_desc_arr[0]))) return NULL;
+        if (!(index < sizeof(string_desc_arr) / sizeof(string_desc_arr[0])))
+            return NULL;
 
-    const char* str = string_desc_arr[index];
+        const char* str = string_desc_arr[index];
 
-    // Cap at max char
-    chr_count = (uint8_t)strlen(str);
-    if (chr_count > 31) chr_count = 31;
+        // Cap at max char
+        chr_count = (uint8_t)strlen(str);
+        if (chr_count > 31)
+            chr_count = 31;
 
-    // Convert ASCII string into UTF-16
-    for (uint8_t i = 0; i < chr_count; i++) {
-      _desc_str[1 + i] = str[i];
+        // Convert ASCII string into UTF-16
+        for (uint8_t i = 0; i < chr_count; i++) {
+            _desc_str[1 + i] = str[i];
+        }
     }
-  }
 
-  // first byte is length (including header), second byte is string type
-  _desc_str[0] = (uint16_t)((TUSB_DESC_STRING << 8) | (2 * chr_count + 2));
+    // first byte is length (including header), second byte is string type
+    _desc_str[0] = (uint16_t)((TUSB_DESC_STRING << 8) | (2 * chr_count + 2));
 
-  return _desc_str;
+    return _desc_str;
 }

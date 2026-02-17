@@ -43,13 +43,8 @@
 // clang-format on
 /* Define Keyboard Layers */
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
-    KEYMAP_XT(         /* Layer 0: Base Layer
-                        * Numpad keys (P7, P8, P9, etc.) are sent as-is to host - Windows/Linux handle NumLock
-                        * state natively. macOS interprets numpad keys as numeric only (no NumLock toggle).
-                        * MacOS maps keys oddly, GRAVE and NUBS are swapped over when coupled with British-PC
-                        * Layout. Likewise, NUHS and BSLS appear to match. TODO: Have these as a config
-                        * option to swap.
-                        */
+    KEYMAP_XT(              /* Layer 0: Base Layer
+                             */
               // clang-format off
     F1,    F2,        ESC,   1,     2,     3,     4,     5,     6,     7,     8,     9,     0,     MINS,  EQL,   BSPC,  NLCK,         SLCK, \
     F3,    F4,        TAB,   Q,     W,     E,     R,     T,     Y,     U,     I,     O,     P,     LBRC,  RBRC,  ENT,   P7,    P8,    P9,    PMNS, \
@@ -57,11 +52,10 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     F7,    F8,        LSFT,  NUBS,  Z,     X,     C,     V,     B,     N,     M,     COMM,  DOT,   SLSH,  RSFT,  PSCR,  P1,    P2,    P3,    PPLS, \
     MO_1,  LGUI,      LALT,                                     SPC,                                      CAPS,         P0,           PDOT  // clang-format on
               ),
-  KEYMAP_XT( \
-    /* Layer 1: Function Layer (activated by MO_1)
-     * Provides F9-F12, media controls, arrow key navigation, and application key
-     */
-    // clang-format off
+    KEYMAP_XT(      /* Layer 1: Function Layer (activated by MO_1)
+                     * Provides F9-F12, media controls, arrow key navigation, and application key
+                     */
+              // clang-format off
     F9,    F10,       TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS, \
     F11,   F12,       TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS, \
     VOLD,  VOLU,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,  UP,    TRNS, \

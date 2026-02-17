@@ -46,11 +46,6 @@
 /* Define Keyboard Layers */
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     KEYMAP_PC122(                        /* Layer 0: Base Layer
-                                          * Numpad keys (P7, P8, P9, etc.) are sent as-is to host - Windows/Linux handle NumLock
-                                          * state natively. macOS users can use function layers if navigation keys are needed.
-                                          * MacOS maps keys oddly, GRAVE and NUBS are swapped over when coupled with
-                                          * British-PC Layout. Likewise, NUHS and BSLS appear to match. TODO: Have these as
-                                          * a config option to swap.
                                           */
                  // clang-format off
                             F13,   F14,   F15,   F16,   F17,   F18,   F19,   F20,   F21,   F22,   F23,   F24, \

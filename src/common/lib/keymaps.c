@@ -31,45 +31,46 @@
 
 /**
  * @brief Scans lower layers for layer modifiers only
- * 
+ *
  * Safety feature: Layer modifiers in lower layers take precedence over regular keys
  * in higher layers. This prevents accidentally overriding layer navigation keys.
- * 
+ *
  * @param row           The row index in the keymap
  * @param col           The column index in the keymap
- * @param start_layer   Layer to start searching from (searches down from here)
  * @param source_layer  Output parameter set to the layer where modifier was found (can be NULL)
+ * @param start_layer   Layer to start searching from (searches down from here)
  * @return              Layer modifier keycode if found, KC_NO if not found
  */
-static uint8_t scan_lower_layers_for_modifier(uint8_t row, uint8_t col, int8_t start_layer, uint8_t *source_layer) {
-  for (int8_t i = (int8_t)(start_layer - 1); i >= 0; i--) {
-    // Skip inactive layers (Layer 0 always active)
-    if (i > 0 && !keylayers_is_active(i)) {
-      continue;
+static uint8_t scan_lower_layers_for_modifier(uint8_t row, uint8_t col, uint8_t* source_layer,
+                                              int8_t start_layer) {
+    for (int8_t i = (int8_t)(start_layer - 1); i >= 0; i--) {
+        // Skip inactive layers (Layer 0 always active)
+        if (i > 0 && !keylayers_is_active(i)) {
+            continue;
+        }
+
+        const uint8_t lower_key = keymap_map[i][row][col];
+
+        // Layer modifier found - takes precedence over active layer regular key
+        if (IS_LAYER_KEY(lower_key)) {
+            if (source_layer != NULL) {
+                *source_layer = i;
+            }
+            return lower_key;
+        }
+
+        // Stop at first non-TRNS regular key (caller already has key from active layer)
+        if (lower_key != KC_TRNS) {
+            break;
+        }
     }
-    
-    const uint8_t lower_key = keymap_map[i][row][col];
-    
-    // Layer modifier found - takes precedence over active layer regular key
-    if (IS_LAYER_KEY(lower_key)) {
-      if (source_layer != NULL) {
-        *source_layer = i;
-      }
-      return lower_key;
-    }
-    
-    // Stop at first non-TRNS regular key (caller already has key from active layer)
-    if (lower_key != KC_TRNS) {
-      break;
-    }
-  }
-  
-  return KC_NO;  // No layer modifier found
+
+    return KC_NO;  // No layer modifier found
 }
 
 /**
  * @brief Searches for the key code in the keymap based on the specified row and column.
- * 
+ *
  * Starts from the highest active layer and falls through transparent keys to lower active layers.
  * Only checks layers that are set in the layer_state bitmap (Layer 0 always active).
  * This allows proper layer stacking with TG (toggle) and exclusive mode with TO (switch to).
@@ -99,80 +100,82 @@ static uint8_t scan_lower_layers_for_modifier(uint8_t row, uint8_t col, int8_t s
  *
  * @param row          The row index in the keymap.
  * @param col          The column index in the keymap.
- * @param source_layer Output parameter set to the layer where the key was found (not active layer if TRNS).
- *                     Can be NULL if caller doesn't need this info.
+ * @param source_layer Output parameter set to the layer where the key was found (not active layer
+ * if TRNS). Can be NULL if caller doesn't need this info.
  *
  * @return The key code found in the keymap.
  */
-static uint8_t keymap_search_layers(uint8_t row, uint8_t col, uint8_t *source_layer) {
-  const uint8_t active_layer = keylayers_get_active();
-  
-  // Fast path: Check active layer first (most common case - non-TRNS in active layer)
-  uint8_t key_code = keymap_map[active_layer][row][col];
-  
-  // Active layer has non-transparent key
-  if (key_code != KC_TRNS) {
-    // Layer modifier in active layer - immediate return (highest priority)
-    if (IS_LAYER_KEY(key_code)) {
-      if (source_layer != NULL) {
-        *source_layer = active_layer;
-      }
-      return key_code;
+static uint8_t keymap_search_layers(uint8_t row, uint8_t col, uint8_t* source_layer) {
+    const uint8_t active_layer = keylayers_get_active();
+
+    // Fast path: Check active layer first (most common case - non-TRNS in active layer)
+    uint8_t key_code = keymap_map[active_layer][row][col];
+
+    // Active layer has non-transparent key
+    if (key_code != KC_TRNS) {
+        // Layer modifier in active layer - immediate return (highest priority)
+        if (IS_LAYER_KEY(key_code)) {
+            if (source_layer != NULL) {
+                *source_layer = active_layer;
+            }
+            return key_code;
+        }
+
+        // Regular key in active layer - check lower layers for layer modifiers only
+        // (Safety feature: layer modifiers override regular keys in higher layers)
+        const uint8_t modifier =
+            scan_lower_layers_for_modifier(row, col, source_layer, (int8_t)active_layer);
+        if (modifier != KC_NO) {
+            return modifier;  // Layer modifier found in lower layer
+        }
+
+        // No layer modifier in lower layers - use regular key from active layer
+        if (source_layer != NULL) {
+            *source_layer = active_layer;
+        }
+        return key_code;
     }
-    
-    // Regular key in active layer - check lower layers for layer modifiers only
-    // (Safety feature: layer modifiers override regular keys in higher layers)
-    const uint8_t modifier = scan_lower_layers_for_modifier(row, col, (int8_t)active_layer, source_layer);
-    if (modifier != KC_NO) {
-      return modifier;  // Layer modifier found in lower layer
+
+    // Slow path: Active layer is transparent - search lower layers
+    for (int8_t i = (int8_t)(active_layer - 1); i >= 0; i--) {
+        // Skip inactive layers (Layer 0 always active)
+        if (i > 0 && !keylayers_is_active(i)) {
+            continue;
+        }
+
+        const uint8_t layer_key = keymap_map[i][row][col];
+
+        // Skip transparent keys
+        if (layer_key == KC_TRNS) {
+            continue;
+        }
+
+        // Found first non-transparent key (regular or layer modifier)
+        if (source_layer != NULL) {
+            *source_layer = i;
+        }
+        return layer_key;
     }
-    
-    // No layer modifier in lower layers - use regular key from active layer
+
+    // Error case: All layers transparent (should never happen with valid Layer 0)
+    LOG_ERROR("KC_TRNS detected in base layer at [%d][%d]!\n", row, col);
     if (source_layer != NULL) {
-      *source_layer = active_layer;
+        *source_layer = 0;
     }
-    return key_code;
-  }
-  
-  // Slow path: Active layer is transparent - search lower layers
-  for (int8_t i = (int8_t)(active_layer - 1); i >= 0; i--) {
-    // Skip inactive layers (Layer 0 always active)
-    if (i > 0 && !keylayers_is_active(i)) {
-      continue;
-    }
-    
-    const uint8_t layer_key = keymap_map[i][row][col];
-    
-    // Skip transparent keys
-    if (layer_key == KC_TRNS) {
-      continue;
-    }
-    
-    // Found first non-transparent key (regular or layer modifier)
-    if (source_layer != NULL) {
-      *source_layer = i;
-    }
-    return layer_key;
-  }
-  
-  // Error case: All layers transparent (should never happen with valid Layer 0)
-  LOG_ERROR("KC_TRNS detected in base layer at [%d][%d]!\n", row, col);
-  if (source_layer != NULL) {
-    *source_layer = 0;
-  }
-  return KC_NO;
+    return KC_NO;
 }
 
 /**
  * @brief Retrieves the key value at the specified position in the keymap.
- * 
+ *
  * Main keymap lookup function. Handles:
  * - Layer switching operations (MO/TG/TO/OSL)
  * - Transparent key fallthrough
  * - Per-layer shift-override (if keyboard defines keymap_shift_override_layers)
  * - One-shot layer consumption
- * 
- * @param pos            The position of the key in the keymap (upper nibble = row, lower nibble = col).
+ *
+ * @param pos            The position of the key in the keymap (upper nibble = row, lower nibble =
+ * col).
  * @param make           True if key pressed, false if released.
  * @param suppress_shift Output parameter set to true if shift should be suppressed for this key.
  *                       Used by shift-override system when remapping to the final character.
@@ -180,55 +183,53 @@ static uint8_t keymap_search_layers(uint8_t row, uint8_t col, uint8_t *source_la
  * @return The HID keycode to send, or KC_NO if consumed by layer operation.
  */
 uint8_t keymap_get_key_val(uint8_t pos, bool make, bool* suppress_shift) {
-  const uint8_t row = (pos >> 4) & 0x0F;
-  const uint8_t col = pos & 0x0F;
-  uint8_t source_layer = 0;  // Track which layer the key came from (for shift-override)
-  uint8_t key_code = keymap_search_layers(row, col, &source_layer);
+    const uint8_t row          = (pos >> 4) & 0x0F;
+    const uint8_t col          = pos & 0x0F;
+    uint8_t       source_layer = 0;  // Track which layer the key came from (for shift-override)
+    uint8_t       key_code     = keymap_search_layers(row, col, &source_layer);
 
-  // Handle layer switching keycodes (0xF0-0xFF)
-  if (IS_LAYER_KEY(key_code)) {
-    keylayers_process_key(key_code, make);
-    return KC_NO;  // Layer keys don't generate HID events
-  }
-
-  // Consume one-shot layer after any non-layer key press
-  // Skip consumption if keymap_search_layers returned KC_NO (all-transparent error case)
-  if (make && key_code != KC_NO) {
-    keylayers_consume_oneshot();
-  }
-
-  // Shift-override support (per-layer)
-  // Keyboards with non-standard shift legends (terminal, vintage, international layouts, etc.)
-  // can define per-layer shift-override arrays via keymap_shift_override_layers[].
-  // Each layer can have its own shift behavior mapping.
-  // SUPPRESS_SHIFT flag (bit 7) signals whether to suppress shift modifier:
-  //   - Without flag: Keep shift modifier (e.g., Shift+6 → Shift+7)
-  //   - With flag: Suppress shift (e.g., SUPPRESS_SHIFT|KC_QUOT means send unshifted quote)
-  // Only keyboards with non-standard legends define these arrays (weak symbols)
-  // User must explicitly enable shift-override via config (disabled by default)
-  if (keymap_shift_override_layers != NULL && 
-      config_get_shift_override_enabled() && 
-      hid_is_shift_pressed() &&
-      source_layer < KEYMAP_MAX_LAYERS) {
-    const uint8_t *shift_overrides = keymap_shift_override_layers[source_layer];
-    
-    // Apply shift-override if this layer has overrides defined
-    if (shift_overrides != NULL) {
-      uint8_t override = shift_overrides[key_code];
-      if (override != 0) {
-        // Check if SUPPRESS_SHIFT flag is set
-        if (override & SUPPRESS_SHIFT) {
-          key_code = override & ~SUPPRESS_SHIFT;  // Clear flag to get actual keycode
-          if (suppress_shift != NULL) {
-            *suppress_shift = true;
-          }
-        } else {
-          key_code = override;  // Keep shift modifier
-        }
-      }
+    // Handle layer switching keycodes (0xF0-0xFF)
+    if (IS_LAYER_KEY(key_code)) {
+        keylayers_process_key(key_code, make);
+        return KC_NO;  // Layer keys don't generate HID events
     }
-    // Note: NULL shift_overrides for a layer is valid - no shift-override defined for that layer
-  }
 
-  return key_code;
+    // Consume one-shot layer after any non-layer key press
+    // Skip consumption if keymap_search_layers returned KC_NO (all-transparent error case)
+    if (make && key_code != KC_NO) {
+        keylayers_consume_oneshot();
+    }
+
+    // Shift-override support (per-layer)
+    // Keyboards with non-standard shift legends (terminal, vintage, international layouts, etc.)
+    // can define per-layer shift-override arrays via keymap_shift_override_layers[].
+    // Each layer can have its own shift behavior mapping.
+    // SUPPRESS_SHIFT flag (bit 7) signals whether to suppress shift modifier:
+    //   - Without flag: Keep shift modifier (e.g., Shift+6 → Shift+7)
+    //   - With flag: Suppress shift (e.g., SUPPRESS_SHIFT|KC_QUOT means send unshifted quote)
+    // Only keyboards with non-standard legends define these arrays (weak symbols)
+    // User must explicitly enable shift-override via config (disabled by default)
+    if (keymap_shift_override_layers != NULL && config_get_shift_override_enabled() &&
+        hid_is_shift_pressed() && source_layer < KEYMAP_MAX_LAYERS) {
+        const uint8_t* shift_overrides = keymap_shift_override_layers[source_layer];
+
+        // Apply shift-override if this layer has overrides defined
+        if (shift_overrides != NULL) {
+            uint8_t override = shift_overrides[key_code];
+            if (override != 0) {
+                // Check if SUPPRESS_SHIFT flag is set
+                if (override & SUPPRESS_SHIFT) {
+                    key_code = override & ~SUPPRESS_SHIFT;  // Clear flag to get actual keycode
+                    if (suppress_shift != NULL) {
+                        *suppress_shift = true;
+                    }
+                } else {
+                    key_code = override;  // Keep shift modifier
+                }
+            }
+        }
+        // Note: NULL shift_overrides for a layer is valid - no shift-override for that layer
+    }
+
+    return key_code;
 }

@@ -25,9 +25,9 @@
 
 /**
  * @brief Process Apple M0110 keyboard scancode.
- * 
+ *
  * @param code The scancode byte to process
  */
 void process_scancode(uint8_t code);
 
-#endif // APPLE_M0110_SCANCODE_H
+#endif  // APPLE_M0110_SCANCODE_H

@@ -46,11 +46,6 @@
 /* Define Keyboard Layers */
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     KEYMAP_PC122(                        /* Layer 0: Base Layer
-                                          * Numpad keys (P7, P8, P9, etc.) are sent as-is to host - Windows/Linux handle NumLock
-                                          * state natively. macOS users can use function layers if navigation keys are needed.
-                                          * MacOS maps keys oddly, GRAVE and NUBS are swapped over when coupled with
-                                          * British-PC Layout. Likewise, NUHS and BSLS appear to match. TODO: Have these as
-                                          * a config option to swap.
                                           */
                  // clang-format off
                             F13,   F14,   F15,   F16,   F17,   F18,   F19,   F20,   F21,   F22,   F23,   F24, \
@@ -68,13 +63,14 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
 /* SUPPRESS_SHIFT flag controls shift modifier behavior: */
 /*   - Without flag: Override keeps shift for compound effect */
 /*   - With flag: Override suppresses shift to get the literal character */
-const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
-    [0] = (const uint8_t[256]){
-        [KC_6] = KC_7,                        // Shift+6 → Shift+7 produces & (ampersand)
-        [KC_7] = SUPPRESS_SHIFT | KC_QUOT,    // Shift+7 → ' (apostrophe)
-        [KC_8] = KC_9,                        // Shift+8 → Shift+9 produces ( (left paren)
-        [KC_9] = KC_0,                        // Shift+9 → Shift+0 produces ) (right paren)
-        [KC_0] = SUPPRESS_SHIFT | KC_NUHS,    // Shift+0 → # (hash/pound)
-        [KC_MINS] = SUPPRESS_SHIFT | KC_EQL,  // Shift+- → = (equals)
-    },
+const uint8_t* const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
+    [0] =
+        (const uint8_t[256]){
+            [KC_6]    = KC_7,                      // Shift+6 → Shift+7 produces & (ampersand)
+            [KC_7]    = SUPPRESS_SHIFT | KC_QUOT,  // Shift+7 → ' (apostrophe)
+            [KC_8]    = KC_9,                      // Shift+8 → Shift+9 produces ( (left paren)
+            [KC_9]    = KC_0,                      // Shift+9 → Shift+0 produces ) (right paren)
+            [KC_0]    = SUPPRESS_SHIFT | KC_NUHS,  // Shift+0 → # (hash/pound)
+            [KC_MINS] = SUPPRESS_SHIFT | KC_EQL,   // Shift+- → = (equals)
+        },
 };

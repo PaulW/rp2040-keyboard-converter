@@ -24,8 +24,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define KEYMAP_ROWS 8
-#define KEYMAP_COLS 16
+#define KEYMAP_ROWS       8
+#define KEYMAP_COLS       16
 #define KEYMAP_MAX_LAYERS 8
 
 // Shift-override flag: Set bit 7 in keymap_shift_override_layers[] to suppress shift modifier
@@ -33,11 +33,11 @@
 
 /**
  * @brief Retrieve key value at specified position in keymap
- * 
+ *
  * Main keymap lookup function. Handles layer fallthrough, layer modifiers,
  * and per-layer shift-override. Coordinates with layer system for proper
  * key resolution across active layers.
- * 
+ *
  * @param pos            Key position (upper nibble = row, lower nibble = col)
  * @param make           true if key pressed, false if released
  * @param suppress_shift Output parameter for shift suppression (can be NULL)
@@ -51,6 +51,6 @@ extern const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS];
 // Array of pointers to 256-byte shift-override arrays, one per layer
 // NULL entries mean no shift-override for that layer
 // Note: Runtime validation checks for invalid layer access
-extern const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] __attribute__((weak));
+extern const uint8_t* const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] __attribute__((weak));
 
 #endif /* KEYMAPS_H */

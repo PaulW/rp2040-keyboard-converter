@@ -199,6 +199,15 @@ reviews:
     
     # Custom checks specific to embedded systems
     custom_checks:
+      - name: "Code formatting compliance"
+        instructions: |
+          Verify code follows formatting standards:
+          - 4 spaces per indentation level (no tabs)
+          - Line length ≤100 characters (except for aligned tables/structures in clang-format off blocks)
+          - Consecutive assignments, declarations, macros, and bitfields should be aligned
+          - No short if statements or functions on single lines
+          - Check compliance with clang-format style: { BasedOnStyle: Google, ReflowComments: true, UseTab: Never, AllowShortIfStatementsOnASingleLine: false, AllowShortFunctionsOnASingleLine: false, AlwaysBreakBeforeMultilineStrings: true, AllowAllParametersOfDeclarationOnNextLine: true, AlignConsecutiveAssignments: true, AlignConsecutiveBitFields: true, AlignConsecutiveDeclarations: true, AlignConsecutiveMacros: true, ColumnLimit: 100, IndentWidth: 4 }
+      
       - name: "No blocking operations"
         instructions: |
           Verify that no blocking operations are introduced:

@@ -26,16 +26,16 @@
 /**
  * @file scancode_config.h
  * @brief Compile-Time Configuration for XT Protocol
- * 
+ *
  * This header provides compile-time scancode configuration for XT protocol.
  * XT keyboards always use Scancode Set 1, so this header simply provides
  * a convenience wrapper that hardcodes Set 1 configuration.
- * 
+ *
  * Usage (XT Protocol Only):
  * -------------------------
  * ```c
  * #include "scancode_config.h"
- * 
+ *
  * void keyboard_interface_task(void) {
  *     uint8_t code;
  *     if (get_scancode_from_buffer(&code)) {
@@ -43,14 +43,7 @@
  *     }
  * }
  * ```
- * 
- * Benefits:
- * ---------
- * ✅ Zero runtime overhead (Set 1 hardcoded)
- * ✅ No CMake configuration needed
- * ✅ Self-contained header
- * ✅ Simple and explicit
- * 
+ *
  * @note For AT/PS2 protocol, use scancode_runtime.h instead (supports Set 2/3 detection)
  * @see scancode.h for the unified processor API
  * @see scancode_runtime.h for AT/PS2 runtime detection
@@ -58,12 +51,12 @@
 
 /**
  * @brief Compile-Time Wrapper for XT Protocol (Set 1)
- * 
+ *
  * This macro wraps process_scancode() with hardcoded Set 1 configuration.
  * XT keyboards always use Set 1, so no runtime detection is needed.
- * 
+ *
  * @param code The scancode byte to process
  */
 #define process_scancode_ct(code) process_scancode((code), &SCANCODE_CONFIG_SET1)
 
-#endif // SCANCODE_CONFIG_H
+#endif  // SCANCODE_CONFIG_H

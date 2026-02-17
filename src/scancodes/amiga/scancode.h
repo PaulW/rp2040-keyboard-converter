@@ -25,17 +25,17 @@
 
 /**
  * @brief Process Commodore Amiga keyboard scancode.
- * 
+ *
  * Amiga keyboards use a simple make/break protocol:
  * - Bit 7: 0 = key press (make), 1 = key release (break)
  * - Bits 6-0: Key code (0x00-0x67)
- * 
+ *
  * Note: CAPS LOCK (0x62) special handling, including LED state synchronization
  * and press+release generation, is performed in the protocol layer before codes
  * reach this processor. This function only receives normal make/break codes.
- * 
+ *
  * @param code The scancode byte to process (after de-rotation and inversion)
  */
 void process_scancode(uint8_t code);
 
-#endif // AMIGA_SCANCODE_H
+#endif  // AMIGA_SCANCODE_H

@@ -59,34 +59,34 @@
 
 /**
  * @brief Process Apple M0110 Keyboard Scancode Data
- * 
+ *
  * The Apple M0110 protocol encoding:
  * - Bit 7: 1 = key up, 0 = key down
  * - Bit 0: Always 1 (for key transitions)
  * - Bits 6-1: Key code
- * 
+ *
  * @param code The scancode to process
  */
 void process_scancode(uint8_t code) {
-  // Validate that bit 0 is set (should always be 1 for key transitions)
-  if ((code & 0x01) == 0) {
-    LOG_DEBUG("Invalid M0110 scancode (bit 0 not set): 0x%02X\n", code);
-    return;
-  }
-  
-  bool is_key_up = (code & 0x80) != 0;  // Check bit 7
-  uint8_t key_code = (code >> 1) & 0x3F; // Extract key code (bits 6-1)
-  bool make = !is_key_up;                // Invert for make/break logic
-  
-  // Handle special cases or validate key codes
-  if (key_code == 0x00) {
-    LOG_DEBUG("Reserved key code in M0110 scancode: 0x%02X\n", code);
-    return;
-  }
-  
-  // Process the key event
-  handle_keyboard_report(key_code, make);
-  
-  LOG_DEBUG("Apple M0110 Key: 0x%02X (%s) [raw: 0x%02X]\n", 
-         key_code, make ? "make" : "break", code);
+    // Validate that bit 0 is set (should always be 1 for key transitions)
+    if ((code & 0x01) == 0) {
+        LOG_DEBUG("Invalid M0110 scancode (bit 0 not set): 0x%02X\n", code);
+        return;
+    }
+
+    bool    is_key_up = (code & 0x80) != 0;  // Check bit 7
+    uint8_t key_code  = (code >> 1) & 0x3F;  // Extract key code (bits 6-1)
+    bool    make      = !is_key_up;          // Invert for make/break logic
+
+    // Handle special cases or validate key codes
+    if (key_code == 0x00) {
+        LOG_DEBUG("Reserved key code in M0110 scancode: 0x%02X\n", code);
+        return;
+    }
+
+    // Process the key event
+    handle_keyboard_report(key_code, make);
+
+    LOG_DEBUG("Apple M0110 Key: 0x%02X (%s) [raw: 0x%02X]\n", key_code, make ? "make" : "break",
+              code);
 }
