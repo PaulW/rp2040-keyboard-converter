@@ -96,10 +96,10 @@
 #endif
 
 /* PIO State Machine Configuration */
-uint keyboard_sm     = 0; /**< PIO state machine number */
-uint keyboard_offset = 0; /**< PIO program memory offset */
-PIO  keyboard_pio;        /**< PIO instance (pio0 or pio1) */
-uint keyboard_data_pin;   /**< GPIO pin for DATA line (2-wire interface) */
+static uint keyboard_sm     = 0; /**< PIO state machine number */
+static uint keyboard_offset = 0; /**< PIO program memory offset */
+static PIO  keyboard_pio;        /**< PIO instance (pio0 or pio1) */
+static uint keyboard_data_pin;   /**< GPIO pin for DATA line (2-wire interface) */
 
 /**
  * @brief IBM XT Protocol State Machine

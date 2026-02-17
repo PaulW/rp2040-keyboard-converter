@@ -82,10 +82,10 @@ _Static_assert(M0110_MODEL_RETRY_INTERVAL_MS <= 2000,
                "M0110 model retry interval should not exceed 2 seconds");
 
 /* PIO State Machine Configuration */
-uint keyboard_sm     = 0; /**< PIO state machine number */
-uint keyboard_offset = 0; /**< PIO program memory offset */
-PIO  keyboard_pio;        /**< PIO instance (pio0 or pio1) */
-uint keyboard_data_pin;   /**< GPIO pin for DATA line (CLOCK = DATA + 1) */
+static uint keyboard_sm     = 0; /**< PIO state machine number */
+static uint keyboard_offset = 0; /**< PIO program memory offset */
+static PIO  keyboard_pio;        /**< PIO instance (pio0 or pio1) */
+static uint keyboard_data_pin;   /**< GPIO pin for DATA line (CLOCK = DATA + 1) */
 
 /**
  * @brief Apple M0110 Protocol State Machine

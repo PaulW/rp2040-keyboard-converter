@@ -106,11 +106,12 @@ static const scancode_config_t* g_scancode_config = NULL;
 #endif
 
 /* PIO State Machine Configuration */
-uint     keyboard_sm     = 0;                     /**< PIO state machine number */
-uint     keyboard_offset = 0;                     /**< PIO program memory offset */
-PIO      keyboard_pio;                            /**< PIO instance (pio0 or pio1) */
-uint16_t keyboard_id = ATPS2_KEYBOARD_ID_UNKNOWN; /**< Keyboard identification code (2 bytes) */
-uint     keyboard_data_pin;                       /**< GPIO pin for DATA line (CLOCK = DATA + 1) */
+static uint     keyboard_sm     = 0; /**< PIO state machine number */
+static uint     keyboard_offset = 0; /**< PIO program memory offset */
+static PIO      keyboard_pio;        /**< PIO instance (pio0 or pio1) */
+static uint16_t keyboard_id =
+    ATPS2_KEYBOARD_ID_UNKNOWN; /**< Keyboard identification code (2 bytes) */
+static uint keyboard_data_pin; /**< GPIO pin for DATA line (CLOCK = DATA + 1) */
 
 /**
  * @brief Terminal Keyboard Detection Macro

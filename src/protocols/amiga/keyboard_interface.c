@@ -107,11 +107,11 @@
 #include "scancode.h"
 
 /* PIO State Machine Configuration */
-uint keyboard_sm     = 0; /**< PIO state machine number */
-uint keyboard_offset = 0; /**< PIO program memory offset */
-PIO  keyboard_pio;        /**< PIO instance (pio0 or pio1) */
-uint keyboard_data_pin;   /**< GPIO pin for DATA (bidirectional) */
-uint keyboard_clock_pin;  /**< GPIO pin for CLOCK (input only) */
+static uint keyboard_sm     = 0; /**< PIO state machine number */
+static uint keyboard_offset = 0; /**< PIO program memory offset */
+static PIO  keyboard_pio;        /**< PIO instance (pio0 or pio1) */
+static uint keyboard_data_pin;   /**< GPIO pin for DATA (bidirectional) */
+static uint keyboard_clock_pin;  /**< GPIO pin for CLOCK (input only) */
 
 /**
  * @brief Amiga Protocol State Machine
@@ -230,15 +230,12 @@ static void keyboard_event_processor(uint8_t data_byte) {
         return;
     }
 
-    // Normal key code processing (INITIALISED state only)
-    if (keyboard_state == INITIALISED) {
-        // Queue all normal key codes to ring buffer
-        // CAPS LOCK (0x62/0xE2) is not special here - scancode processor handles it
-        if (!ringbuf_is_full()) {
-            ringbuf_put(data_byte);
-        } else {
-            LOG_WARN("Amiga: Ring buffer full, dropping key code 0x%02X\n", data_byte);
-        }
+    // Queue all normal key codes to ring buffer
+    // CAPS LOCK (0x62/0xE2) is not special here - scancode processor handles it
+    if (!ringbuf_is_full()) {
+        ringbuf_put(data_byte);
+    } else {
+        LOG_WARN("Amiga: Ring buffer full, dropping key code 0x%02X\n", data_byte);
     }
 }
 

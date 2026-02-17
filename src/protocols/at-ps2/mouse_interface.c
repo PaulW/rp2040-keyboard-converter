@@ -38,6 +38,7 @@ static uint    mouse_offset = 0;
 static PIO     mouse_pio;
 static uint8_t mouse_id = ATPS2_MOUSE_ID_UNKNOWN;
 static uint    mouse_data_pin;
+static int8_t  data_loop = 0;  // Packet alignment counter (reset on re-init)
 
 static enum {
     UNINITIALISED,
@@ -112,8 +113,8 @@ int8_t get_xy_movement(uint8_t pos, int sign_bit) {
  */
 int8_t get_z_movement(uint8_t pos) {
     int8_t z_pos = pos & 0x0F;
-    if (pos) {
-        z_pos -= 8;
+    if (z_pos & 0x08) {
+        z_pos -= 16;
     }
 
     return z_pos;
@@ -285,6 +286,7 @@ void mouse_event_processor(uint8_t data_byte) {
                 if (mouse_config_sequence == sizeof(config_sequence) / sizeof(config_sequence[0])) {
                     mouse_config_sequence = 0;
                     mouse_state           = INITIALISED;
+                    data_loop             = 0;  // Reset packet alignment on initialization
                     LOG_INFO("Mouse Initialisation Complete\n");
                 } else {
                     mouse_command_handler(config_sequence[mouse_config_sequence]);
@@ -297,7 +299,6 @@ void mouse_event_processor(uint8_t data_byte) {
             static uint8_t buttons[5]    = {0, 0, 0, 0, 0};
             static uint8_t parameters[4] = {0, 0, 0, 0};
             static int8_t  pos[3]        = {0, 0, 0};
-            static int8_t  data_loop     = 0;
             switch (data_loop) {
                 case 0:
                     // Read in Button Data, as well as X and Y Overflow Data
@@ -317,8 +318,10 @@ void mouse_event_processor(uint8_t data_byte) {
                     break;
                 case 2:
                     // Read in Y Data
+                    // Y-axis requires data inversion and sign flip (protocol quirk)
+                    parameters[Y_SIGN] ^= 1;
                     pos[Y_POS] = !(parameters[X_OVERFLOW] || parameters[Y_OVERFLOW])
-                                     ? get_xy_movement(~data_byte, parameters[Y_SIGN] ^= 1)
+                                     ? get_xy_movement(~data_byte, parameters[Y_SIGN])
                                      : 0;
                     break;
                 case 3:
