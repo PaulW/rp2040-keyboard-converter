@@ -52,11 +52,11 @@
  *
  * Implementation Strategy:
  * - Most keys: Extract bit 7 for make/break, pass key code to HID layer
- * - CAPS LOCK: Special handling is done in the protocol layer (keyboard_interface.c)
- *   * Protocol compares keyboard LED state (from bit 7) with USB HID CAPS LOCK state
- *   * Only sends toggle when states differ (smart synchronization)
+ * - CAPS LOCK: Special handling in this scancode processor
+ *   * Compares keyboard LED state (from bit 7) with USB HID CAPS LOCK state
+ *   * Only sends toggle when states differ (smart synchronisation)
  *   * Generates press+release pair with configurable hold time (CAPS_LOCK_TOGGLE_TIME_MS)
- *   * This module forwards CAPS LOCK codes like any other key
+ *   * Timed release managed by scancode_task() from the main loop
  *
  * Data Flow:
  * Protocol Layer → De-rotation → Active-low inversion → THIS MODULE → HID Layer

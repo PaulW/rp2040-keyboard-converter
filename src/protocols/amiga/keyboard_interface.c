@@ -188,12 +188,12 @@ static void keyboard_event_processor(uint8_t data_byte) {
         switch (data_byte) {
             case AMIGA_CODE_POWERUP_START:
                 LOG_DEBUG("Amiga: Power-up key stream start (0xFD)\n");
-                // Continue normal processing - powerup codes are valid key events
+                // Protocol marker only - not a key event (filtered below)
                 break;
 
             case AMIGA_CODE_POWERUP_END:
                 LOG_DEBUG("Amiga: Power-up key stream end (0xFE)\n");
-                // Continue normal processing
+                // Protocol marker only - not a key event (filtered below)
                 break;
 
             case AMIGA_CODE_SELFTEST_FAIL:

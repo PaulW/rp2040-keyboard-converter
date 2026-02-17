@@ -398,10 +398,10 @@ void mouse_input_event_handler() {
     if (parity_bit != parity_bit_check) {
         LOG_ERROR("Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check,
                   parity_bit);
-        mouse_command_handler(ATPS2_CMD_RESEND);  // Request Resend (parity-specific)
         mouse_state = UNINITIALISED;
         mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;
         pio_restart(mouse_pio, mouse_sm, mouse_offset);
+        mouse_command_handler(ATPS2_CMD_RESEND);  // Request Resend (after restart so it transmits)
         return;
     }
 

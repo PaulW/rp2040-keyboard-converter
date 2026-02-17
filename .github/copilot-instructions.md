@@ -489,7 +489,7 @@ Use: to_ms_since_boot(get_absolute_time()) for timing
 
 **Public (committed to git):**
 
-- README.md, src/protocols/_/README.md, src/keyboards/README.md, src/scancodes/_/README.md
+- README.md, src/protocols/*/README.md, src/keyboards/README.md, src/scancodes/*/README.md
 - All source code, CMake files, configuration files
 - Public-facing documentation that describes the project
 

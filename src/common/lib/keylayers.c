@@ -328,6 +328,14 @@ void keylayers_process_key(uint8_t code, bool make) {
     const uint8_t operation    = GET_LAYER_OPERATION(code);  // 0=MO, 1=TG, 2=TO, 3=OSL
     const uint8_t target_layer = GET_LAYER_TARGET(code);     // 1-3 (current MO/TG/TO/OSL macros)
 
+    // Guard: Validate target_layer against actual keymap layer count to prevent OOB access
+    const uint8_t max_layers = (keymap_layer_count < 1)           ? 1
+                               : (keymap_layer_count > KEYMAP_MAX_LAYERS) ? KEYMAP_MAX_LAYERS
+                                                                           : keymap_layer_count;
+    if (target_layer >= max_layers) {
+        return;  // Invalid layer for this keymap
+    }
+
     switch (operation) {
         case 0:  // MO (Momentary) - hold to activate
             keylayers_handle_mo(target_layer, code, make);
