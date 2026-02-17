@@ -41,6 +41,12 @@ static uint    mouse_data_pin;
 static int8_t  data_loop             = 0;  // Packet alignment counter (reset on re-init)
 static uint8_t mouse_config_sequence = 0;  // Configuration sequence counter (reset on re-init)
 
+/* Mouse detection timing constants */
+enum {
+    ATPS2_MOUSE_DETECT_INTERVAL_MS = 200,  /**< Detection status check interval (ms) */
+    ATPS2_MOUSE_STALL_LIMIT        = 5,    /**< Max stall count before reset (5 × 200ms = 1s) */
+};
+
 static enum {
     UNINITIALISED,
     INIT_AWAIT_ACK,
@@ -93,7 +99,7 @@ static void mouse_command_handler(uint8_t data_byte) {
  *
  * @return The calculated XY movement as an int8_t value.
  */
-int8_t get_xy_movement(uint8_t pos, int sign_bit) {
+static int8_t get_xy_movement(uint8_t pos, int sign_bit) {
     int16_t new_pos = pos;
     if (sign_bit) {
         new_pos -= 256;
@@ -112,7 +118,7 @@ int8_t get_xy_movement(uint8_t pos, int sign_bit) {
  *
  * @return The Z-axis movement as a signed 8-bit integer.
  */
-int8_t get_z_movement(uint8_t pos) {
+static int8_t get_z_movement(uint8_t pos) {
     int8_t z_pos = pos & 0x0F;
     if (z_pos & 0x08) {
         z_pos -= 16;
@@ -272,6 +278,7 @@ void mouse_event_processor(uint8_t data_byte) {
                     LOG_DEBUG("Unhandled Response Received (0x%02X)\n", data_byte);
                     mouse_type_detect_sequence = 0;
                     mouse_id                   = ATPS2_MOUSE_ID_STANDARD;
+                    mouse_max_packets          = ATPS2_MOUSE_PACKET_STANDARD_SIZE;
                     mouse_config_sequence      = 0;
                     mouse_state                = INIT_SET_CONFIG;
                     mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
@@ -431,13 +438,13 @@ void mouse_interface_task() {
     if (mouse_state != INITIALISED) {
         // If we are in an uninitialised state, we will send a reset command to the Mouse.
         static uint32_t detect_ms = 0;
-        if (board_millis() - detect_ms > 200) {
+        if (board_millis() - detect_ms > ATPS2_MOUSE_DETECT_INTERVAL_MS) {
             detect_ms                         = board_millis();
             static uint8_t detect_stall_count = 0;
             if (gpio_get(mouse_data_pin + 1) == 1) {
                 // Only perform checks if the clock is HIGH
                 detect_stall_count++;
-                if (detect_stall_count > 5) {
+                if (detect_stall_count > ATPS2_MOUSE_STALL_LIMIT) {
                     // Reset Mouse as we have not received any data for 1 second.
                     LOG_ERROR("Mouse Interface Timeout.  Resetting Mouse...\n");
                     mouse_id           = ATPS2_MOUSE_ID_UNKNOWN;  // Reset Mouse ID

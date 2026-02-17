@@ -71,14 +71,20 @@
 #include "ringbuf.h"
 #include "scancode.h"
 
+/* Static assert threshold constants */
+#define M0110_INIT_DELAY_MIN_MS       500  /**< Minimum initialization delay (ms) */
+#define M0110_MODEL_RETRY_MIN_MS      100  /**< Minimum model retry interval (ms) */
+#define M0110_RESPONSE_TIMEOUT_MIN_MS 100  /**< Minimum response timeout (ms) */
+#define M0110_MODEL_RETRY_MAX_MS      2000 /**< Maximum model retry interval (ms) */
+
 /* Compile-time validation of timing constants */
-_Static_assert(M0110_INITIALIZATION_DELAY_MS >= 500,
+_Static_assert(M0110_INITIALIZATION_DELAY_MS >= M0110_INIT_DELAY_MIN_MS,
                "M0110 initialization delay must be at least 500ms for reliable keyboard startup");
-_Static_assert(M0110_MODEL_RETRY_INTERVAL_MS >= 100,
+_Static_assert(M0110_MODEL_RETRY_INTERVAL_MS >= M0110_MODEL_RETRY_MIN_MS,
                "M0110 model retry interval must be at least 100ms");
-_Static_assert(M0110_RESPONSE_TIMEOUT_MS >= 100,
+_Static_assert(M0110_RESPONSE_TIMEOUT_MS >= M0110_RESPONSE_TIMEOUT_MIN_MS,
                "M0110 response timeout must be at least 100ms for reliable communication");
-_Static_assert(M0110_MODEL_RETRY_INTERVAL_MS <= 2000,
+_Static_assert(M0110_MODEL_RETRY_INTERVAL_MS <= M0110_MODEL_RETRY_MAX_MS,
                "M0110 model retry interval should not exceed 2 seconds");
 
 /* PIO State Machine Configuration */
