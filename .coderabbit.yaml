@@ -208,18 +208,13 @@ reviews:
           - No short if statements or functions on single lines
           - Check compliance with clang-format style: { BasedOnStyle: Google, ReflowComments: true, UseTab: Never, AllowShortIfStatementsOnASingleLine: false, AllowShortFunctionsOnASingleLine: false, AlwaysBreakBeforeMultilineStrings: true, AllowAllParametersOfDeclarationOnNextLine: true, AlignConsecutiveAssignments: true, AlignConsecutiveBitFields: true, AlignConsecutiveDeclarations: true, AlignConsecutiveMacros: true, ColumnLimit: 100, IndentWidth: 4 }
       
-      - name: "No blocking operations"
+      - name: "Architecture constraints"
         instructions: |
-          Verify that no blocking operations are introduced:
-          - No sleep_ms(), sleep_us(), busy_wait_ms(), busy_wait_us()
+          Verify single-core, non-blocking architecture is maintained:
+          - No blocking operations: sleep_ms(), sleep_us(), busy_wait_ms(), busy_wait_us()
           - Exception: Debug code with LINT:ALLOW blocking annotation + IRQ guard
-          - Check for while(1) loops without yield points
-      
-      - name: "No multicore usage"
-        instructions: |
-          Verify single-core architecture is maintained:
-          - No multicore_* functions
-          - No core1_* functions
+          - No while(1) loops without yield points
+          - No multicore_* or core1_* functions
           - All code runs on Core 0 only
       
       - name: "IRQ safety"
