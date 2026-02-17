@@ -107,9 +107,11 @@ static inline uint8_t keylayers_get_state_bitmap(void) {
  * Layer 0 is always active (bit 0 always set).
  *
  * @param layer Layer number to check (0-7)
- * @return true if layer is active in the bitmap, false otherwise
+ * @return true if layer is active in the bitmap, false otherwise (or if layer out of range)
  */
 static inline bool keylayers_is_active(uint8_t layer) {
+    if (layer >= KEYMAP_MAX_LAYERS)
+        return false;
     return (layer_state.layer_state & (1 << layer)) != 0;
 }
 

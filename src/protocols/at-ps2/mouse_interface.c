@@ -38,7 +38,8 @@ static uint    mouse_offset = 0;
 static PIO     mouse_pio;
 static uint8_t mouse_id = ATPS2_MOUSE_ID_UNKNOWN;
 static uint    mouse_data_pin;
-static int8_t  data_loop = 0;  // Packet alignment counter (reset on re-init)
+static int8_t  data_loop             = 0;  // Packet alignment counter (reset on re-init)
+static uint8_t mouse_config_sequence = 0;  // Configuration sequence counter (reset on re-init)
 
 static enum {
     UNINITIALISED,
@@ -84,17 +85,17 @@ static void mouse_command_handler(uint8_t data_byte) {
 /**
  * @brief Calculates the XY movement based on the given position and sign bit.
  * This function takes a position value and a sign bit and calculates the XY movement.
- * If the sign bit is set and the position is non-zero, the position is decremented by 0x100.
+ * If the sign bit is set, the position is decremented by 256 for proper 9-bit signed conversion.
  * The resulting position is then clamped between -127 and 127.
  *
- * @param pos      The position value.
- * @param sign_bit The sign bit.
+ * @param pos      The position value (8-bit magnitude).
+ * @param sign_bit The sign bit (9th bit for signed interpretation).
  *
  * @return The calculated XY movement as an int8_t value.
  */
 int8_t get_xy_movement(uint8_t pos, int sign_bit) {
     int16_t new_pos = pos;
-    if (new_pos && sign_bit) {
+    if (sign_bit) {
         new_pos -= 256;
     }
     new_pos = (new_pos > 127) ? 127 : (new_pos < -127) ? -127 : new_pos;
@@ -192,8 +193,9 @@ void mouse_event_processor(uint8_t data_byte) {
                         mouse_command_handler(ATPS2_MOUSE_CMD_SET_SAMPLE_RATE);
                     } else {
                         LOG_INFO("Mouse Type: Standard PS/2 Mouse\n");
-                        mouse_max_packets = ATPS2_MOUSE_PACKET_STANDARD_SIZE;
-                        mouse_state       = INIT_SET_CONFIG;
+                        mouse_max_packets     = ATPS2_MOUSE_PACKET_STANDARD_SIZE;
+                        mouse_config_sequence = 0;
+                        mouse_state           = INIT_SET_CONFIG;
                         mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
                     }
                     break;
@@ -204,16 +206,18 @@ void mouse_event_processor(uint8_t data_byte) {
                         mouse_command_handler(ATPS2_MOUSE_CMD_SET_SAMPLE_RATE);
                     } else {
                         LOG_INFO("Mouse Type: Mouse with Scroll Wheel\n");
-                        mouse_max_packets = ATPS2_MOUSE_PACKET_EXTENDED_SIZE;
-                        mouse_state       = INIT_SET_CONFIG;
+                        mouse_max_packets     = ATPS2_MOUSE_PACKET_EXTENDED_SIZE;
+                        mouse_config_sequence = 0;
+                        mouse_state           = INIT_SET_CONFIG;
                         mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
                     }
                     break;
                 case ATPS2_MOUSE_ID_INTELLIMOUSE_EXPLORER:
                     LOG_INFO("Mouse Type: 5 Button Mouse\n");
-                    mouse_max_packets = ATPS2_MOUSE_PACKET_EXTENDED_SIZE;
-                    mouse_id          = ATPS2_MOUSE_ID_INTELLIMOUSE_EXPLORER;
-                    mouse_state       = INIT_SET_CONFIG;
+                    mouse_max_packets     = ATPS2_MOUSE_PACKET_EXTENDED_SIZE;
+                    mouse_id              = ATPS2_MOUSE_ID_INTELLIMOUSE_EXPLORER;
+                    mouse_config_sequence = 0;
+                    mouse_state           = INIT_SET_CONFIG;
                     mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
                     break;
                 default:
@@ -268,6 +272,7 @@ void mouse_event_processor(uint8_t data_byte) {
                     LOG_DEBUG("Unhandled Response Received (0x%02X)\n", data_byte);
                     mouse_type_detect_sequence = 0;
                     mouse_id                   = ATPS2_MOUSE_ID_STANDARD;
+                    mouse_config_sequence      = 0;
                     mouse_state                = INIT_SET_CONFIG;
                     mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
             }
@@ -282,7 +287,6 @@ void mouse_event_processor(uint8_t data_byte) {
                 ATPS2_MOUSE_RES_8_COUNT_MM, ATPS2_MOUSE_CMD_SET_SCALING_1_1,
                 ATPS2_MOUSE_CMD_SET_SAMPLE_RATE, ATPS2_MOUSE_RATE_40_HZ, ATPS2_MOUSE_CMD_ENABLE};
             if (data_byte == ATPS2_RESP_ACK) {
-                static uint8_t mouse_config_sequence = 0;
                 if (mouse_config_sequence == sizeof(config_sequence) / sizeof(config_sequence[0])) {
                     mouse_config_sequence = 0;
                     mouse_state           = INITIALISED;
@@ -342,7 +346,7 @@ void mouse_event_processor(uint8_t data_byte) {
                     }
                     break;
             }
-            // Increment Loop Counter, but reset if we reach 3.
+            // Increment loop counter; reset when all packets for this mouse type are received.
             data_loop++;
 
             // If we have processed all packets, then we can handle the mouse report.

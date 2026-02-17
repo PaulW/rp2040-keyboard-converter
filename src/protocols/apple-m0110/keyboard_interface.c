@@ -104,7 +104,7 @@ static enum {
 /* Timing and State Tracking Variables */
 static volatile uint32_t last_command_time =
     0; /**< Timestamp of last command sent (for timeouts) */
-static volatile uint8_t  model_retry_count = 0; /**< Number of model command retries attempted */
+static uint8_t           model_retry_count = 0; /**< Number of model command retries attempted */
 static volatile uint32_t last_response_time =
     0; /**< Timestamp of last keyboard response received */
 
@@ -214,6 +214,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
                 keyboard_state = INITIALISED;
                 keyboard_command_handler(M0110_CMD_INQUIRY);
                 last_command_time = board_millis();
+                __dmb();  // Memory barrier - ensure volatile write is visible to main loop
             }
             break;
 
@@ -236,6 +237,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
             // Send next inquiry command to maintain continuous polling
             keyboard_command_handler(M0110_CMD_INQUIRY);
             last_command_time = board_millis();
+            __dmb();  // Memory barrier - ensure volatile write is visible to main loop
             break;
 
         default:
@@ -328,7 +330,7 @@ void keyboard_interface_task(void) {
                 keyboard_state = INIT_MODEL_REQUEST;
                 keyboard_command_handler(M0110_CMD_MODEL);
                 last_command_time = current_time;
-                model_retry_count = 0;  // LINT:ALLOW barrier - read-side protected by keyboard_interface_task memory barrier
+                model_retry_count = 0;
             }
             break;
 
@@ -474,4 +476,7 @@ void keyboard_interface_setup(uint data_pin) {
     LOG_INFO(
         "PIO%d SM%u Apple M0110 Interface program loaded at offset %u with clock divider of %.2f\n",
         (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
+
+    // Anchor startup delay to setup time (not boot time)
+    last_command_time = board_millis();
 }
