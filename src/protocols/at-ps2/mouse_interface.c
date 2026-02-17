@@ -33,11 +33,11 @@
 #include "log.h"
 #include "pio_helper.h"
 
-uint    mouse_sm     = 0;
-uint    mouse_offset = 0;
-PIO     mouse_pio;
-uint8_t mouse_id = ATPS2_MOUSE_ID_UNKNOWN;
-uint    mouse_data_pin;
+static uint    mouse_sm     = 0;
+static uint    mouse_offset = 0;
+static PIO     mouse_pio;
+static uint8_t mouse_id = ATPS2_MOUSE_ID_UNKNOWN;
+static uint    mouse_data_pin;
 
 static enum {
     UNINITIALISED,
@@ -479,8 +479,13 @@ void mouse_interface_setup(uint data_pin) {
         return;
     }
 
-    // Claim unused state machine
-    mouse_sm = (uint)pio_claim_unused_sm(mouse_pio, true);
+    // Claim unused state machine with explicit error handling
+    int sm = pio_claim_unused_sm(mouse_pio, false);
+    if (sm < 0) {
+        LOG_ERROR("AT/PS2 Mouse: No PIO state machine available\n");
+        return;
+    }
+    mouse_sm = (uint)sm;
 
     // Load program into PIO instruction memory
     mouse_offset = pio_add_program(mouse_pio, &pio_interface_program);

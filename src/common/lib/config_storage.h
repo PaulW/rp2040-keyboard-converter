@@ -337,8 +337,9 @@ void config_set_shift_override_enabled(bool enabled);
  * @brief Get shift-override enabled state
  *
  * Returns whether shift-override is currently enabled. This is independent
- * of whether the keyboard defines keymap_shifted_keycode[] - the feature
- * must be both defined AND enabled to take effect.
+ * of whether the keyboard defines keymap_shift_override_layers[] - the feature
+ * requires keymap_shift_override_layers[] to be present and to be enabled in
+ * order to take effect.
  *
  * @return true if enabled, false if disabled (default)
  *
@@ -439,8 +440,10 @@ void config_factory_reset(void);
  * @brief Set persisted layer state (toggle layers)
  *
  * Saves the current layer state bitmap for TG (toggle) layers. Layer 0
- * is always active and not persisted. Momentary (MO) and one-shot (OSL)
- * layers are not persisted as they're temporary.
+ * is forcibly set and cannot be cleared - the implementation forces bit 0
+ * on before saving, so callers cannot disable Layer 0 via this API.
+ * Momentary (MO) and one-shot (OSL) layers are not persisted as they're
+ * temporary.
  *
  * @param layer_state Bitmap of active layers (bit 0 = Layer 0, etc.)
  *

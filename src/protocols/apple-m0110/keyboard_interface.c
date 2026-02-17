@@ -222,9 +222,6 @@ static void keyboard_event_processor(uint8_t data_byte) {
             switch (data_byte) {
                 case M0110_RESP_NULL:
                     // NULL response (0x7B) - no keys pressed, keyboard is ready
-                    // Send next inquiry command to maintain continuous polling
-                    keyboard_command_handler(M0110_CMD_INQUIRY);
-                    last_command_time = board_millis();
                     break;
                 default:
                     // Scan code or special response - queue for main task processing
@@ -233,12 +230,12 @@ static void keyboard_event_processor(uint8_t data_byte) {
                     } else {
                         LOG_ERROR("Ring buffer full! Scancode 0x%02X lost\n", data_byte);
                     }
-
-                    // Send next inquiry to continue polling - critical for responsiveness
-                    keyboard_command_handler(M0110_CMD_INQUIRY);
-                    last_command_time = board_millis();
                     break;
             }
+
+            // Send next inquiry command to maintain continuous polling
+            keyboard_command_handler(M0110_CMD_INQUIRY);
+            last_command_time = board_millis();
             break;
 
         default:
@@ -331,7 +328,7 @@ void keyboard_interface_task(void) {
                 keyboard_state = INIT_MODEL_REQUEST;
                 keyboard_command_handler(M0110_CMD_MODEL);
                 last_command_time = current_time;
-                model_retry_count = 0;  // LINT:ALLOW barrier - read-side protected at line 310
+                model_retry_count = 0;  // LINT:ALLOW barrier - read-side protected by keyboard_interface_task memory barrier
             }
             break;
 
@@ -444,10 +441,10 @@ void keyboard_interface_setup(uint data_pin) {
         LOG_ERROR("Apple M0110: No PIO state machine available\n");
         return;
     }
-    keyboard_sm = (unsigned int)sm;
+    keyboard_sm = (uint)sm;
 
     // Load program into PIO instruction memory
-    keyboard_offset = (unsigned int)pio_add_program(keyboard_pio, &keyboard_interface_program);
+    keyboard_offset = (uint)pio_add_program(keyboard_pio, &keyboard_interface_program);
 
     // Store pin assignment
     keyboard_data_pin = data_pin;

@@ -535,16 +535,21 @@ Use: to_ms_since_boot(get_absolute_time()) for timing
    - ❌ "You'll be pleased to know..."
    - ❌ "It's fairly straightforward..."
    - ❌ "Simply do X and Y..."
-   - ❌ Numbered step lists when narrative flow works better
+   - ❌ Numbered step lists when narrative flow works better (prefer prose for workflows)
    - ❌ Bold headers for every subsection (use sparingly)
    - ❌ Listing all project features/protocols in introductions
 
-6. **When to Use Bullet Lists**
+6. **When to Use Lists**
    - ✅ Reference material (keycode tables, command options)
    - ✅ Actual configuration options from files
    - ✅ Quick checklists for verification
-   - ❌ Explaining processes or workflows (use flowing prose)
-   - ❌ Describing what to do step-by-step (use narrative)
+   - ✅ Instructional step-by-step flows (when steps must be followed in order)
+   - ✅ Multi-step procedures with adequate detail and context
+   - ❌ Short bullet points without explanation
+   - ❌ Simple workflows that read better as prose
+   - ❌ Step lists when narrative would be clearer
+
+   **Guideline**: Use numbered steps for instructional flows where order matters and each step needs clear action. Ensure each step contains adequate information and context, not just terse commands. Prefer prose for conceptual explanations and workflows that benefit from natural flow.
 
 **Style References:**
 

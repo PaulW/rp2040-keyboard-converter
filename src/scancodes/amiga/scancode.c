@@ -82,7 +82,6 @@
 
 #include "scancode.h"
 
-#include <stdio.h>
 #include <stdbool.h>
 
 #include "pico/time.h"
@@ -218,6 +217,13 @@ void process_scancode(uint8_t code) {
 
         LOG_DEBUG("Amiga CAPS LOCK: kbd LED %s, USB HID %s [raw: 0x%02X]\n",
                   kbd_led_on ? "ON" : "OFF", hid_caps_on ? "ON" : "OFF", code);
+
+        // If a release is still pending, send it immediately before processing new press
+        if (caps_lock_timing.state == CAPS_PRESS_SENT) {
+            handle_keyboard_report(AMIGA_CAPSLOCK_KEY, false);
+            caps_lock_timing.state = CAPS_IDLE;
+            LOG_DEBUG("Amiga CAPS LOCK: forced early release before new press\n");
+        }
 
         // Only toggle if states differ (synchronization logic)
         if (kbd_led_on != hid_caps_on) {

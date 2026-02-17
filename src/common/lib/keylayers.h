@@ -39,7 +39,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define KEYMAP_MAX_LAYERS 8
+#include "keymaps.h"
 
 /**
  * @brief Layer state tracking structure

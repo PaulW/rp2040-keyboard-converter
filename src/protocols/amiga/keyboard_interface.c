@@ -240,10 +240,6 @@ static void keyboard_event_processor(uint8_t data_byte) {
             LOG_WARN("Amiga: Ring buffer full, dropping key code 0x%02X\n", data_byte);
         }
     }
-
-    // Update LED status - this pattern matches all other protocols
-    // update_converter_status() is non-blocking and ISR-safe (only sets flags, no I/O)
-    update_keyboard_ready_led(keyboard_state == INITIALISED);
 }
 
 /**

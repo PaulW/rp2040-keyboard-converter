@@ -127,7 +127,7 @@ reviews:
         - 100% fact-driven content - verify ALL technical details against source code
         - NO unverified quantifications: "most", "typically", "usually", "common", "popular", "straightforward"
         - Conversational British English: "whilst", "colour", "initialise", "behaviour"
-        - Natural prose flow - avoid bullet lists for processes/workflows
+        - Natural prose flow preferred - allow numbered step lists for instructional flows with adequate detail; avoid terse bullets or simple workflows better as prose
         - NEVER reference docs-internal/ directory
         - Point to directories (src/protocols/, src/keyboards/) instead of listing protocols
         - Explain WHY not just WHAT

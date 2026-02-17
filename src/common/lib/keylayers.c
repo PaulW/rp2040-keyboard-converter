@@ -18,6 +18,21 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file keylayers.c
+ * @brief Keyboard layer management and state tracking
+ *
+ * Implements layer management functionality including layer state tracking,
+ * layer lookup helpers, and shift-override handling. Provides the runtime
+ * implementation for the public API defined in keylayers.h.
+ *
+ * The module manages both momentary (MO) and toggle (TG) layer states,
+ * handles one-shot layer (OSL) timing, and coordinates with config_storage
+ * for layer persistence across reboots.
+ *
+ * @see keylayers.h for public API documentation
+ */
+
 #include "keylayers.h"
 
 #include <stdint.h>
@@ -71,7 +86,8 @@ void keylayers_reset(void) {
 uint8_t keylayers_get_active(void) {
     // Check one-shot layer first (highest priority)
     if (layer_state.oneshot_active && layer_state.oneshot_layer > 0) {
-        return layer_state.oneshot_layer;  // oneshot_layer stores target layer (1-4)
+        return layer_state
+            .oneshot_layer;  // oneshot_layer stores target layer (1 to KEYMAP_MAX_LAYERS-1)
     }
 
     // Check momentary layers (higher priority than toggles)
@@ -216,6 +232,87 @@ void keylayers_init(void) {
 }
 
 /**
+ * @brief Handle MO (momentary) layer operation
+ *
+ * @param target_layer The layer to activate (1-based)
+ * @param code The original keycode (for tracking which MO key is held)
+ * @param make true if key pressed, false if released
+ */
+static void keylayers_handle_mo(uint8_t target_layer, uint8_t code, bool make) {
+    // Guard: Validate layer range (momentary_keys array bounds)
+    if (target_layer < 1 || target_layer >= KEYMAP_MAX_LAYERS) {
+        return;  // Invalid layer for MO operation
+    }
+    if (make) {
+        layer_state.layer_state |= (1 << target_layer);
+        // Track which MO key is held (for release detection)
+        layer_state.momentary_keys[target_layer - 1] = code;
+    } else {
+        // Release momentary layer only if this specific MO key is released
+        if (layer_state.momentary_keys[target_layer - 1] == code) {
+            layer_state.layer_state &= ~(1 << target_layer);
+            layer_state.momentary_keys[target_layer - 1] = 0;
+        }
+    }
+}
+
+/**
+ * @brief Handle TG (toggle) layer operation
+ *
+ * @param target_layer The layer to toggle (0-based)
+ * @param make true if key pressed, false if released
+ */
+static void keylayers_handle_tg(uint8_t target_layer, bool make) {
+    if (make) {  // Only act on key press, ignore release
+        if (layer_state.layer_state & (1 << target_layer)) {
+            layer_state.layer_state &= ~(1 << target_layer);  // Turn off
+        } else {
+            layer_state.layer_state |= (1 << target_layer);  // Turn on
+        }
+        // Persist toggle layer state to config
+        config_set_layer_state(layer_state.layer_state);
+        config_save();
+    }
+}
+
+/**
+ * @brief Handle TO (switch to) layer operation
+ *
+ * @param target_layer The layer to switch to (0-based)
+ * @param make true if key pressed, false if released
+ */
+static void keylayers_handle_to(uint8_t target_layer, bool make) {
+    if (make) {  // Only act on key press
+        // Clear all layers except base (layer 0)
+        layer_state.layer_state = 0x01;
+        // Activate target layer
+        if (target_layer > 0) {
+            layer_state.layer_state |= (1 << target_layer);
+        }
+        // Clear momentary tracking (same pattern as keylayers_reset())
+        for (uint8_t i = 0; i < KEYMAP_MAX_LAYERS - 1; i++) {
+            layer_state.momentary_keys[i] = 0;
+        }
+        // Persist layer state to config
+        config_set_layer_state(layer_state.layer_state);
+        config_save();
+    }
+}
+
+/**
+ * @brief Handle OSL (one-shot layer) operation
+ *
+ * @param target_layer The layer to activate for the next key (0-based)
+ * @param make true if key pressed, false if released
+ */
+static void keylayers_handle_osl(uint8_t target_layer, bool make) {
+    if (make) {  // Only act on key press
+        layer_state.oneshot_layer  = target_layer;
+        layer_state.oneshot_active = true;
+    }
+}
+
+/**
  * @brief Process layer switching key operations
  *
  * Handles MO (momentary), TG (toggle), TO (switch to), and OSL (one-shot) operations.
@@ -233,59 +330,19 @@ void keylayers_process_key(uint8_t code, bool make) {
 
     switch (operation) {
         case 0:  // MO (Momentary) - hold to activate
-            // Guard: Validate layer range (momentary_keys array bounds)
-            if (target_layer < 1 || target_layer >= KEYMAP_MAX_LAYERS) {
-                break;  // Invalid layer for MO operation
-            }
-            if (make) {
-                layer_state.layer_state |= (1 << target_layer);
-                // Track which MO key is held (for release detection)
-                layer_state.momentary_keys[target_layer - 1] = code;
-            } else {
-                // Release momentary layer only if this specific MO key is released
-                if (layer_state.momentary_keys[target_layer - 1] == code) {
-                    layer_state.layer_state &= ~(1 << target_layer);
-                    layer_state.momentary_keys[target_layer - 1] = 0;
-                }
-            }
+            keylayers_handle_mo(target_layer, code, make);
             break;
 
-        case 1:          // TG (Toggle) - press to toggle on/off
-            if (make) {  // Only act on key press, ignore release
-                if (layer_state.layer_state & (1 << target_layer)) {
-                    layer_state.layer_state &= ~(1 << target_layer);  // Turn off
-                } else {
-                    layer_state.layer_state |= (1 << target_layer);  // Turn on
-                }
-                // Persist toggle layer state to config
-                config_set_layer_state(layer_state.layer_state);
-                config_save();
-            }
+        case 1:  // TG (Toggle) - press to toggle on/off
+            keylayers_handle_tg(target_layer, make);
             break;
 
-        case 2:          // TO (Switch to) - permanently switch to layer
-            if (make) {  // Only act on key press
-                // Clear all layers except base (layer 0)
-                layer_state.layer_state = 0x01;
-                // Activate target layer
-                if (target_layer > 0) {
-                    layer_state.layer_state |= (1 << target_layer);
-                }
-                // Clear momentary tracking (same pattern as keylayers_reset())
-                for (uint8_t i = 0; i < KEYMAP_MAX_LAYERS - 1; i++) {
-                    layer_state.momentary_keys[i] = 0;
-                }
-                // Persist layer state to config
-                config_set_layer_state(layer_state.layer_state);
-                config_save();
-            }
+        case 2:  // TO (Switch to) - permanently switch to layer
+            keylayers_handle_to(target_layer, make);
             break;
 
-        case 3:          // OSL (One-shot layer) - activate for next key only
-            if (make) {  // Only act on key press
-                layer_state.oneshot_layer  = target_layer;
-                layer_state.oneshot_active = true;
-            }
+        case 3:  // OSL (One-shot layer) - activate for next key only
+            keylayers_handle_osl(target_layer, make);
             break;
     }
 }

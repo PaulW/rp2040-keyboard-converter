@@ -45,7 +45,7 @@ static const struct {
  * @return true if scancode was found in remapping table, false otherwise
  */
 static bool try_remap_scancode(uint8_t code, uint8_t* mapped_code) {
-    for (uint8_t i = 0; i < sizeof(scancode_remapping) / sizeof(scancode_remapping[0]); i++) {
+    for (size_t i = 0; i < sizeof(scancode_remapping) / sizeof(scancode_remapping[0]); i++) {
         if (scancode_remapping[i].scancode == code) {
             *mapped_code = scancode_remapping[i].mapped_code;
             return true;
@@ -107,7 +107,7 @@ void process_scancode(uint8_t code) {
     switch (state) {
         case INIT: {
             // Check for remapped scancodes first
-            uint8_t mapped_code;
+            uint8_t mapped_code = 0;
             if (try_remap_scancode(code, &mapped_code)) {
                 handle_keyboard_report(mapped_code, true);
                 break;
@@ -133,7 +133,7 @@ void process_scancode(uint8_t code) {
         case F0:  // Break code
         {
             // Check for remapped scancodes first
-            uint8_t mapped_code;
+            uint8_t mapped_code = 0;
             if (try_remap_scancode(code, &mapped_code)) {
                 handle_keyboard_report(mapped_code, false);
                 state = INIT;

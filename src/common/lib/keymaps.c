@@ -183,6 +183,11 @@ static uint8_t keymap_search_layers(uint8_t row, uint8_t col, uint8_t* source_la
  * @return The HID keycode to send, or KC_NO if consumed by layer operation.
  */
 uint8_t keymap_get_key_val(uint8_t pos, bool make, bool* suppress_shift) {
+    // Initialize output parameter to default false to avoid leaking previous value
+    if (suppress_shift != NULL) {
+        *suppress_shift = false;
+    }
+
     const uint8_t row          = (pos >> 4) & 0x0F;
     const uint8_t col          = pos & 0x0F;
     uint8_t       source_layer = 0;  // Track which layer the key came from (for shift-override)

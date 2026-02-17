@@ -94,31 +94,33 @@ void process_scancode(uint8_t code) {
         return;
     }
 
+    // Check for prefix bytes first (before extracting key_code)
+    // Prefix bytes: 0x79 (make) or 0xF9 (break), 0x71 (make) or 0xF1 (break)
+    if (code == 0x79 || code == 0xF9) {
+        // Start of 0x79 prefix sequence (two-byte)
+        state = PREFIX_79;
+        return;
+    } else if (code == 0x71 || code == 0xF1) {
+        // Start of 0x71,0x79 prefix sequence (three-byte)
+        state = PREFIX_71;
+        return;
+    }
+
     bool    is_key_up = (code & 0x80) != 0;  // Check bit 7
     uint8_t key_code  = (code >> 1) & 0x3F;  // Extract key code (bits 6-1)
     bool    make      = !is_key_up;          // Invert for make/break logic
 
     switch (state) {
         case INIT:
-            if (key_code == 0x79) {
-                // Start of 0x79 prefix sequence (two-byte)
-                state = PREFIX_79;
+            // Normal single-byte scancode
+            state = INIT;
+            if (key_code == 0x00) {
+                LOG_DEBUG("Reserved key code in M0110 scancode: 0x%02X\n", code);
                 return;
-            } else if (key_code == 0x71) {
-                // Start of 0x71,0x79 prefix sequence (three-byte)
-                state = PREFIX_71;
-                return;
-            } else {
-                // Normal single-byte scancode
-                state = INIT;
-                if (key_code == 0x00) {
-                    LOG_DEBUG("Reserved key code in M0110 scancode: 0x%02X\n", code);
-                    return;
-                }
-                handle_keyboard_report(key_code, make);
-                LOG_DEBUG("Apple M0110 Key: 0x%02X (%s) [raw: 0x%02X]\n", key_code,
-                          make ? "make" : "break", code);
             }
+            handle_keyboard_report(key_code, make);
+            LOG_DEBUG("Apple M0110 Key: 0x%02X (%s) [raw: 0x%02X]\n", key_code,
+                      make ? "make" : "break", code);
             break;
 
         case PREFIX_79:
@@ -137,14 +139,15 @@ void process_scancode(uint8_t code) {
             break;
 
         case PREFIX_71:
-            // Second byte of 0x71,0x79 sequence - expecting 0x79
-            if (key_code == 0x79) {
-                // Valid 0x79 after 0x71, wait for third byte
+            // Second byte of 0x71,0x79 sequence - expecting 0x79 or 0xF9
+            if (code == 0x79 || code == 0xF9) {
+                // Valid 0x79/0xF9 after 0x71/0xF1, wait for third byte
                 state = PREFIX_71_79;
                 return;
             } else {
                 // Invalid sequence - reset
-                LOG_DEBUG("Invalid sequence: expected 0x79 after 0x71, got 0x%02X\n", code);
+                LOG_DEBUG("Invalid sequence: expected 0x79/0xF9 after 0x71/0xF1, got 0x%02X\n",
+                          code);
                 state = INIT;
             }
             break;

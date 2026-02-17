@@ -723,7 +723,7 @@ while IFS= read -r file; do
         disabled { next }
         /^  [^ \t]/ { count++ }
         END { 
-            if (count > 5) 
+            if (count > 0) 
                 printf "%s: %d lines with 2-space indentation\n", FILENAME, count 
         }
     ' "$file")
