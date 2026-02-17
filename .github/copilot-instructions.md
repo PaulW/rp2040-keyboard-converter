@@ -3,6 +3,7 @@
 Embedded firmware converting keyboard/mouse protocols (AT/PS2, XT, Apple M0110, Amiga) to USB HID using RP2040's PIO hardware. **Single-core only** (Core 0), runs from SRAM for performance.
 
 **Key Documentation:**
+
 - [Contributing Guide](../docs/development/contributing.md) - PR process, commit format, contribution types
 - [Code Standards](../docs/development/code-standards.md) - Coding conventions, testing scenarios, PIO standards
 - [Adding Keyboards](../docs/development/adding-keyboards.md) - Step-by-step keyboard support guide
@@ -13,6 +14,7 @@ Embedded firmware converting keyboard/mouse protocols (AT/PS2, XT, Apple M0110, 
 ## 🚨 CRITICAL RULES - READ FIRST, EVERY TIME
 
 ### Absolute Prohibitions (NEVER violate):
+
 1. ❌ **NO blocking operations** (`sleep_ms`, `sleep_us`, `busy_wait_ms`, `busy_wait_us`) - except with `LINT:ALLOW blocking` + IRQ guard
 2. ❌ **NO multicore APIs** (`multicore_*`, `core1_*`) - Core 1 is disabled, single-core architecture only
 3. ❌ **NO `printf`/`fprintf`/`sprintf` in IRQ context** - use `LOG_*` macros instead (DMA-safe)
@@ -22,12 +24,14 @@ Embedded firmware converting keyboard/mouse protocols (AT/PS2, XT, Apple M0110, 
 7. ❌ **NO references to docs-internal/** in public documentation or commit messages
 
 ### Architecture Summary:
+
 - **Non-blocking**: Main loop runs at ~100kHz, protocols need microsecond timing → use `to_ms_since_boot(get_absolute_time())`
 - **IRQ Safety**: IRQ (producer) → Ring Buffer → Main Loop (consumer). Use `volatile` + `__dmb()` memory barriers
 - **USB**: Always check `tud_hid_ready()` before sending HID reports (8ms host polling - bInterval=8)
 - **Platform**: RP2040 (ARM Cortex-M0+, 125MHz), 32-byte ring buffer, 350μs max latency
 
 ### Self-Verification Protocol (Run Before EVERY Response):
+
 1. **"Did I read the full relevant section of copilot-instructions.md?"**
 2. **"Am I about to violate any Critical Rules?"**
 3. **"Should I verify this with the user before proceeding?"**
@@ -36,7 +40,9 @@ Embedded firmware converting keyboard/mouse protocols (AT/PS2, XT, Apple M0110, 
 6. **"For documentation work: Is content fact-driven with conversational British English flow?"**
 
 ### ⛔ STOP - Operations Requiring Explicit User Confirmation:
+
 **Always ask user before:**
+
 - Adding any `sleep_ms()`, `sleep_us()`, `busy_wait_ms()`, or `busy_wait_us()` call
 - Modifying ring buffer logic or calling `ringbuf_reset()`
 - Changing PIO programs (`.pio` files)
@@ -44,6 +50,7 @@ Embedded firmware converting keyboard/mouse protocols (AT/PS2, XT, Apple M0110, 
 - Changing memory barriers or volatile declarations
 
 **Immediately reject (do not ask):**
+
 - Any use of Core 1 or multicore APIs
 - Direct Flash execution
 - Committing or staging docs-internal/ files
@@ -54,6 +61,7 @@ Embedded firmware converting keyboard/mouse protocols (AT/PS2, XT, Apple M0110, 
 ## 🛑 MANDATORY CHECKLISTS
 
 ### ⛔ Before Modifying Protocol Handlers
+
 - [ ] Read protocol README.md completely (timing diagrams, state machine)
 - [ ] Understand PIO timing requirements (microsecond precision)
 - [ ] Verify IRQ handler remains non-blocking (no loops, no printf, no sleep)
@@ -63,6 +71,7 @@ Embedded firmware converting keyboard/mouse protocols (AT/PS2, XT, Apple M0110, 
 - [ ] Run `./tools/lint.sh`
 
 ### ⛔ Before Modifying Ring Buffer Logic
+
 - [ ] Maintain single-producer/single-consumer (IRQ writes, main reads)
 - [ ] Never call `ringbuf_reset()` with IRQs enabled (unless LINT:ALLOW)
 - [ ] Verify head/tail updates are atomic
@@ -70,12 +79,14 @@ Embedded firmware converting keyboard/mouse protocols (AT/PS2, XT, Apple M0110, 
 - [ ] Confirm 32-byte buffer adequate for burst handling
 
 ### ⛔ Before Modifying HID Interface
+
 - [ ] Always check `tud_hid_ready()` before sending reports
 - [ ] Verify USB descriptor matches report structure
 - [ ] Test with multiple host OSes (Windows, macOS, Linux)
 - [ ] Validate 6KRO (Boot Protocol) behavior under high throughput (30 CPS test)
 
 ### ⛔ Before Adding/Modifying Time-Based Code
+
 - [ ] Using `to_ms_since_boot(get_absolute_time())` (non-blocking)
 - [ ] NOT using `sleep_ms()`, `sleep_us()`, `busy_wait_ms()`, `busy_wait_us()`
 - [ ] If blocking truly necessary (debug only):
@@ -84,6 +95,7 @@ Embedded firmware converting keyboard/mouse protocols (AT/PS2, XT, Apple M0110, 
   - [ ] Documented why blocking acceptable
 
 ### ⛔ Before Committing ANY Changes
+
 - [ ] Run `./tools/lint.sh` (must pass 0 errors, 0 warnings)
 - [ ] No blocking operations introduced (or properly annotated)
 - [ ] No multicore APIs used
@@ -96,6 +108,7 @@ Embedded firmware converting keyboard/mouse protocols (AT/PS2, XT, Apple M0110, 
 ## Quick Reference
 
 **Performance:**
+
 - Ring Buffer: 32 bytes
 - Max Latency: 350μs (PIO IRQ → USB)
 - CPU Usage: ~2% at 30 CPS (97.9% idle)
@@ -104,6 +117,7 @@ Embedded firmware converting keyboard/mouse protocols (AT/PS2, XT, Apple M0110, 
 **Protocols:** AT/PS2, XT, Apple M0110, Amiga | **Mice:** AT/PS2 only | **Platform:** RP2040 (125MHz)
 
 **Build:**
+
 ```bash
 docker compose build  # One-time
 docker compose run --rm -e KEYBOARD="modelm/enhanced" builder
@@ -115,6 +129,7 @@ docker compose run --rm -e KEYBOARD="modelf/pcat" -e MOUSE="at-ps2" builder
 **Protocol:** AT/PS2 mouse protocol only (independent of keyboard protocol)
 
 **Enabling mouse support:**
+
 ```bash
 # Build with keyboard only
 docker compose run --rm -e KEYBOARD="modelm/enhanced" builder
@@ -127,6 +142,7 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
 ```
 
 **Architecture:**
+
 - `src/protocols/at-ps2/mouse_interface.h/c` - Mouse-specific protocol handling
 - **Separate hardware lines**: Mouse uses dedicated CLK/DATA pins (independent from keyboard)
 - **Separate PIO state machines**: Helper functions dynamically load protocol-specific PIO code
@@ -139,11 +155,13 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
 ## Build System
 
 **Development Environment:**
+
 - Docker-based builds (recommended for consistency)
 - Pico SDK: Auto-detected from `external/pico-sdk` submodule or `PICO_SDK_PATH` env var
 - Pico SDK Version: 2.2.0 (pinned via git submodule and Docker)
 
 **Pico SDK Setup:**
+
 - **Submodule Location:** `external/pico-sdk` (Raspberry Pi Pico SDK 2.2.0)
 - **Auto-detection:** CMakeLists.txt checks `PICO_SDK_PATH` env var first, then falls back to submodule
 - **Clone with submodules:** `git clone --recurse-submodules <url>`
@@ -151,6 +169,7 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
 - **Docker builds:** Self-contained, SDK 2.2.0 in image layer
 
 **Build system flow:**
+
 1. `KEYBOARD` env var → `src/cmake_includes/keyboard.cmake` reads `src/keyboards/<name>/keyboard.config`
 2. Config defines: `KEYBOARD_PROTOCOL`, `KEYBOARD_CODESET`, `KEYBOARD_LAYOUT`
 3. CMake includes: protocol handler, scancode processor, PIO files, keyboard layout
@@ -169,6 +188,7 @@ Protocol Handler → Scancode Decoder → Keymap → HID Interface → USB
 ```
 
 **Key Components:**
+
 - **PIO State Machines**: Hardware protocol timing (`.pio` files → headers)
 - **Ring Buffer**: Lock-free FIFO (`src/common/lib/ringbuf.[ch]`) - IRQ writes head, main reads tail
 - **Scancode Processor**: State machine for multi-byte sequences (E0/F0 prefixes, Pause key)
@@ -179,13 +199,14 @@ Protocol Handler → Scancode Decoder → Keymap → HID Interface → USB
 ## Critical Patterns
 
 ### Non-Blocking Time-Based State Machines
+
 ```c
 static uint32_t state_start_time = 0;
 static enum { IDLE, WAITING, READY } state = IDLE;
 
 void my_task(void) {
   uint32_t now = to_ms_since_boot(get_absolute_time());
-  
+
   switch (state) {
     case IDLE:
       state = WAITING;
@@ -205,12 +226,14 @@ void my_task(void) {
 ```
 
 **Exception:** Debug-only with `LINT:ALLOW blocking` + IRQ guard:
+
 ```c
 if (in_irq()) return;  // Never block in IRQ
 sleep_us(delay);  // LINT:ALLOW blocking - [justification]
 ```
 
 ### Ring Buffer Producer/Consumer
+
 ```c
 // IRQ context (producer) - writes only
 void __isr keyboard_irq_handler(void) {
@@ -232,6 +255,7 @@ void keyboard_task(void) {
 **Never** call `ringbuf_reset()` with IRQs enabled - only during init or state resets.
 
 ### IRQ-to-Main Communication
+
 ```c
 static volatile uint8_t irq_flag = 0;
 static volatile uint32_t irq_data = 0;
@@ -257,12 +281,14 @@ void my_task(void) {
 ## Common Anti-Patterns (What NOT to Do)
 
 ### 🔴 CRITICAL (Breaks Functionality):
+
 - ❌ Using Core 1 (single-core architecture)
 - ❌ Blocking operations (breaks PIO timing)
 - ❌ Flash execution (must run from RAM)
 - ❌ `ringbuf_reset()` with IRQs enabled
 
 ### 🟡 IMPORTANT (Impacts Correctness):
+
 - ❌ Forgetting `tud_hid_ready()` check → USB buffer overflow, dropped keys
 - ❌ Missing `volatile` for IRQ-shared variables → stale data, race conditions
 - ❌ `printf()` in IRQ context → UART DMA conflicts, hangs
@@ -274,21 +300,25 @@ void my_task(void) {
 ## File Organization
 
 **Protocols** (`src/protocols/<name>/`):
+
 - `<name>.pio` - PIO assembly for timing
 - `keyboard_interface.h/c` - State machine, init, LED commands
 - `common_interface.c` - Standardized init/task/led
 - `README.md` - Specification with timing diagrams
 
 **Keyboards** (`src/keyboards/<brand>/<model>/`):
+
 - `keyboard.config` - CMake vars: KEYBOARD_PROTOCOL, KEYBOARD_CODESET, KEYBOARD_LAYOUT
 - `keyboard.h` - Layout defines (override command mode keys)
-- `keyboard.c` - Keymap using KEYMAP_<LAYOUT>() macros
+- `keyboard.c` - Keymap using KEYMAP\_<LAYOUT>() macros
 - `README.md` - Specifications and quirks
 
 **Common Libraries** (`src/common/lib/`):
+
 - `ringbuf.c/h`, `hid_interface.c/h`, `command_mode.c/h`, `pio_helper.c/h`, `uart.c/h`
 
 **Scancodes** (`src/scancodes/<set>/`):
+
 - `scancode_processor.h/c` - Multi-byte sequence state machine
 - `README.md` - Scancode tables
 
@@ -297,6 +327,7 @@ void my_task(void) {
 ## Common Tasks
 
 ### Adding Protocol Support
+
 1. Create `src/protocols/<name>/` with `.pio`, `keyboard_interface.[ch]`, `common_interface.c`
 2. PIO handles timing, IRQ extracts frame, queues to ring buffer
 3. Protocol state machine in `keyboard_interface_task()`: initialization, error recovery, LED commands
@@ -305,13 +336,16 @@ void my_task(void) {
 **See also:** Each protocol's README.md contains timing diagrams and implementation details.
 
 ### Adding Keyboard Support
+
 For adding a new keyboard using an existing protocol, see the comprehensive guide in `docs/development/adding-keyboards.md`. Quick overview:
+
 1. Create `src/keyboards/<brand>/<model>/` with four files: `keyboard.config`, `keyboard.h`, `keyboard.c`, `README.md`
 2. Define KEYBOARD_PROTOCOL, KEYBOARD_CODESET, KEYBOARD_LAYOUT in keyboard.config
-3. Create keymap using KEYMAP_*() macros matching physical layout
+3. Create keymap using KEYMAP\_\*() macros matching physical layout
 4. Test with actual hardware
 
 ### Modifying Keymaps
+
 For remapping keys or creating alternative layouts, see `docs/development/custom-keymaps.md`. The keymap is just an array - change the HID keycode at any position to remap that physical key.
 
 ### Keyboard-Specific Overrides
@@ -332,14 +366,14 @@ For remapping keys or creating alternative layouts, see `docs/development/custom
 ```c
 // Per-layer shift-override for keyboards with non-standard shift legends
 const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
-    [0] = (const uint8_t[256]){
+    [0] = (const uint8_t[SHIFT_OVERRIDE_ARRAY_SIZE]){
         [KC_1] = SUPPRESS_SHIFT | KC_EXLM,  // Shift+1 → ! (suppress shift)
         [KC_2] = SUPPRESS_SHIFT | KC_DQUO,  // Shift+2 → " (suppress shift)
         [KC_7] = SUPPRESS_SHIFT | KC_QUOT,  // Shift+7 → ' (suppress shift)
         // Only non-standard keys need entries, rest default to 0
     },
     // Optional: Define shift-override for additional layers
-    // [1] = (const uint8_t[256]){ ... },
+    // [1] = (const uint8_t[SHIFT_OVERRIDE_ARRAY_SIZE]){ ... },
 };
 ```
 
@@ -354,19 +388,21 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
 
 **NumLock Layers NOT Needed:** Numpad keys (KC_P0-P9) are dual-function by HID spec—host OS interprets as numeric (NumLock ON) or navigation (NumLock OFF). Don't create separate NumLock layers; send numpad codes directly. For macOS (no NumLock support), provide navigation in Fn layer.
 
-**Layer State Persistence:** TG (toggle) and TO (switch to) layer states persist across reboots via config storage v3. System validates saved state using dual-hash (keyboard_id + layers_hash) to detect firmware/keymap changes. If validation fails (different keyboard, layer definitions changed), resets to Layer 0 automatically. MO (momentary) and OSL (one-shot) layers are temporary and never persist. Each keyboard auto-exports `keymap_layer_count` via sizeof() for validation—users never manually define it (weak symbol provides safe default).
+**Layer State Persistence:** TG (toggle) and TO (switch to) layer states persist across reboots via config storage v3. System validates saved state using dual-hash (keyboard_id + layers_hash) to detect firmware/keymap changes. If validation fails (different keyboard, layer definitions changed), resets to Layer 0 automatically. MO (momentary) and OSL (one-shot) layers are temporary and never persist. Each keyboard MUST override `keymap_layer_count` to match the number of layers in `keymap_map` (e.g., `const uint8_t keymap_layer_count = 2;` before keymap_map definition) for correct hash validation and bounds checking. Without this override, the weak default of 8 could allow out-of-bounds access if layer-switch keys like MO_2+ are used beyond defined layers.
 
 **See also:** `docs/development/adding-keyboards.md` covers all keyboard-specific customization options.
 
 ### Debugging and Testing
 
 **UART Debug Output:**
+
 - `printf()` uses DMA-driven UART (non-blocking) - connect GPIO 0/1 to USB-UART adapter
 - Error patterns: `[ERR]` prefix, `[DBG]` for development, `[INFO]` for initialization
 - State machine issues: Look for `!INIT!` messages indicating unexpected scancode sequences
 - All `printf()` statements active in normal builds
 
 **Testing Scenarios** (see `docs/development/code-standards.md` for details):
+
 1. **Basic functionality** - Normal typing, verify keys work as expected
 2. **Stress test** - Fast typing at 30+ CPS to test pipeline and buffering
 3. **Command Mode** - Hold both shifts for 3 seconds, verify activation
@@ -379,20 +415,22 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
 ## Performance Metrics (Measured)
 
 ### Pipeline Latency (October 2024 - Real Hardware)
+
 Measured with IBM Model M Enhanced keyboard (AT/PS2 protocol):
 
-| Stage | Time (μs) | Percentage | Description |
-|-------|-----------|------------|-------------|
-| PIO_IRQ → RINGBUF_PUT | 44 | 12.6% | IRQ handler overhead |
-| RINGBUF_PUT → RINGBUF_GET | 48 | 13.7% | Main loop polling |
-| RINGBUF_GET → SCANCODE_DONE | 47 | 13.4% | Scancode state machine |
-| SCANCODE_DONE → HID_START | 69 | 19.7% | Keymap lookup + command mode |
-| HID_START → HID_END | 141 | 40.3% | HID report + USB stack |
-| **Total End-to-End** | **350** | **100%** | **PIO IRQ → USB transmission** |
+| Stage                       | Time (μs) | Percentage | Description                    |
+| --------------------------- | --------- | ---------- | ------------------------------ |
+| PIO_IRQ → RINGBUF_PUT       | 44        | 12.6%      | IRQ handler overhead           |
+| RINGBUF_PUT → RINGBUF_GET   | 48        | 13.7%      | Main loop polling              |
+| RINGBUF_GET → SCANCODE_DONE | 47        | 13.4%      | Scancode state machine         |
+| SCANCODE_DONE → HID_START   | 69        | 19.7%      | Keymap lookup + command mode   |
+| HID_START → HID_END         | 141       | 40.3%      | HID report + USB stack         |
+| **Total End-to-End**        | **350**   | **100%**   | **PIO IRQ → USB transmission** |
 
 **Timing Consistency:** ±0 μs variance (deterministic, non-blocking architecture proven)
 
 ### Resource Usage
+
 - **CPU Utilization:** 2.1% at 30 CPS maximum throughput (97.9% idle)
 - **RAM Usage:** ~50% of 264KB SRAM (132KB used for code + data + stack)
 - **Flash Usage:** ~80-120KB for program + const data (varies by configuration)
@@ -405,6 +443,7 @@ Measured with IBM Model M Enhanced keyboard (AT/PS2 protocol):
 ## Troubleshooting Decision Tree
 
 **Keys not registering?**
+
 ```
 Ring buffer full? → USB saturated or main loop blocked (check tud_hid_ready())
 Protocol errors? → Check UART for [ERR]/!INIT! (power cycle keyboard)
@@ -412,6 +451,7 @@ Wrong keymap? → Verify KEYBOARD_CODESET matches keyboard
 ```
 
 **Build fails?**
+
 ```
 KEYBOARD env var missing? → Set with docker compose run -e KEYBOARD="..."
 keyboard.config missing? → Path: src/keyboards/<brand>/<model>/keyboard.config
@@ -419,6 +459,7 @@ Linker errors? → Verify KEYBOARD_PROTOCOL in keyboard.config
 ```
 
 **High CPU/latency?**
+
 ```
 Check for: sleep_ms(), busy_wait_us(), long loops without yield
 Use: to_ms_since_boot(get_absolute_time()) for timing
@@ -429,11 +470,13 @@ Use: to_ms_since_boot(get_absolute_time()) for timing
 ## Enforcement Tools
 
 **Before every commit:**
+
 ```bash
 ./tools/lint.sh  # Must pass (0 errors, 0 warnings)
 ```
 
 **Automated checks:**
+
 1. **Lint Script** - Detects blocking ops, multicore APIs, printf in IRQ, docs-internal violations
 2. **Runtime RAM Check** - Debug builds verify SRAM execution (not Flash)
 3. **Git Hooks** - Blocks docs-internal staging/references
@@ -444,12 +487,14 @@ Use: to_ms_since_boot(get_absolute_time()) for timing
 
 ## Documentation Policy
 
-**Public (committed to git):** 
-- README.md, src/protocols/*/README.md, src/keyboards/README.md, src/scancodes/*/README.md
+**Public (committed to git):**
+
+- README.md, src/protocols/_/README.md, src/keyboards/README.md, src/scancodes/_/README.md
 - All source code, CMake files, configuration files
 - Public-facing documentation that describes the project
 
-**Private (LOCAL ONLY - NEVER commit):** 
+**Private (LOCAL ONLY - NEVER commit):**
+
 - `docs-internal/` - Local development notes, performance analysis, investigations, architecture decisions
 - ✅ **DO**: Create, modify, and update docs-internal/ files for development reference
 - ✅ **DO**: Use docs-internal/ as information source when developing (historical context, findings, decisions)
@@ -502,6 +547,7 @@ Use: to_ms_since_boot(get_absolute_time()) for timing
    - ❌ Describing what to do step-by-step (use narrative)
 
 **Style References:**
+
 - docs/getting-started/building-firmware.md - Conversational, explains context
 - docs/getting-started/hardware-setup.md - Natural flow with "Right, let's get"
 - docs/development/contributing.md - British English, self-aware tone
@@ -512,6 +558,7 @@ Use: to_ms_since_boot(get_absolute_time()) for timing
 ## Code Quality and Maintenance
 
 ### General Coding Standards
+
 - Use consistent indentation (4 spaces per level, no tabs)
 - Use descriptive variable and function names
 - Keep functions short and focused on a single task
@@ -525,6 +572,7 @@ Use: to_ms_since_boot(get_absolute_time()) for timing
 - Adhere to coding conventions used in PicoSDK and TinyUSB libraries
 
 ### Code Quality Audit Checklist
+
 **When to run:** Before commits, after significant changes
 
 - [ ] Code adheres to style guidelines (indentation, naming conventions)
@@ -539,6 +587,7 @@ Use: to_ms_since_boot(get_absolute_time()) for timing
 - [ ] Run `./tools/lint.sh` before committing
 
 ### Repository Structure Quick Reference
+
 ```
 .github/                    # GitHub workflows, issue templates, copilot instructions
 docs-internal/              # Local-only documentation (never commit)
@@ -565,6 +614,7 @@ external/pico-sdk/         # Pico SDK submodule
 6. ✅ For documentation: Is this 100% fact-driven with natural conversational flow in British English?
 
 **High-risk operations:**
+
 - Adding blocking call → **ASK USER FIRST**
 - Modifying ring buffer → **ASK USER FIRST**
 - Changing PIO programs → **ASK USER FIRST**
@@ -572,6 +622,7 @@ external/pico-sdk/         # Pico SDK submodule
 - Touching multicore APIs → **REJECT IMMEDIATELY**
 
 **Validation sources:**
+
 - **Source code**: Ultimate truth for implementation
 - **Pico SDK docs**: RP2040 hardware capabilities
 - **docs-internal/**: Performance data, architecture decisions, investigation findings (use freely for context, never commit)

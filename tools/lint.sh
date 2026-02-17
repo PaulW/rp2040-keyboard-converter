@@ -737,7 +737,7 @@ if [ -n "$INDENT_VIOLATIONS" ]; then
     echo -e "${RED}ERROR: Files with 2-space indentation detected!${NC}"
     echo ""
     echo -e "$INDENT_VIOLATIONS" | head -10
-    VIOLATION_COUNT=$(echo -e "$INDENT_VIOLATIONS" | wc -l | tr -d ' ')
+    VIOLATION_COUNT=$(echo -e "$INDENT_VIOLATIONS" | grep -c .)
     [ "$VIOLATION_COUNT" -gt 10 ] && echo "... and $((VIOLATION_COUNT - 10)) more files"
     echo ""
     echo -e "${YELLOW}Code formatting rule: Use 4-space indentation, not 2-space${NC}"

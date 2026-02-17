@@ -177,8 +177,8 @@ typedef struct __attribute__((packed)) {
     uint32_t keyboard_id; /**< Hash of keyboard config (make+model+protocol+codeset) */
 
     // --- Runtime Settings (v3+) ---
-    uint8_t layer_state;  /**< Bitmap of active toggle layers (Layer 0 always active, bit 0 not
-                             persisted) */
+    uint8_t layer_state;  /**< Bitmap of active toggle layers (Layer 0 always active, bit 0 always
+                             forced on by config_set_layer_state()) */
     uint32_t layers_hash; /**< Hash of layer count and keymap data to detect layer changes */
 
     // --- Flags ---
@@ -311,7 +311,7 @@ void config_set_led_brightness(uint8_t level);
  * @brief Set shift-override enabled state
  *
  * Enables or disables the shift-override feature for keyboards that define
- * keymap_shifted_keycode[]. Even if the array is defined, shift-override is
+ * keymap_shift_override_layers[]. Even if the array is defined, shift-override is
  * disabled by default and must be explicitly enabled.
  *
  * **Smart Persistence:**
@@ -322,7 +322,7 @@ void config_set_led_brightness(uint8_t level);
  *
  * @note Only updates RAM, call config_save() to persist
  * @note Not thread-safe, call from main loop only
- * @note Has no effect if keyboard doesn't define keymap_shifted_keycode[]
+ * @note Has no effect if keyboard doesn't define keymap_shift_override_layers[]
  *
  * Example:
  * ```c

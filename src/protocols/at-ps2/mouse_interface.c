@@ -376,23 +376,36 @@ void mouse_input_event_handler() {
     uint8_t data_byte        = (uint8_t)((data_cast >> 1) & ATPS2_DATA_MASK);
     uint8_t parity_bit_check = interface_parity_table[data_byte];
 
-    if (start_bit != 0 || parity_bit != parity_bit_check || stop_bit != 1) {
-        if (start_bit != 0)
-            LOG_ERROR("Start Bit Validation Failed: start_bit=%i\n", start_bit);
-        if (stop_bit != 1)
-            LOG_ERROR("Stop Bit Validation Failed: stop_bit=%i\n", stop_bit);
-        if (parity_bit != parity_bit_check) {
-            LOG_ERROR("Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check,
-                      parity_bit);
-            mouse_command_handler(ATPS2_CMD_RESEND);  // Request Resend
-            return;
-        }
-        // We should reset/restart the State Machine
+    // Validate start bit (must be 0)
+    if (start_bit != 0) {
+        LOG_ERROR("Start Bit Validation Failed: start_bit=%i\n", start_bit);
         mouse_state = UNINITIALISED;
         mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;
         pio_restart(mouse_pio, mouse_sm, mouse_offset);
+        return;
     }
 
+    // Validate stop bit (must be 1)
+    if (stop_bit != 1) {
+        LOG_ERROR("Stop Bit Validation Failed: stop_bit=%i\n", stop_bit);
+        mouse_state = UNINITIALISED;
+        mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;
+        pio_restart(mouse_pio, mouse_sm, mouse_offset);
+        return;
+    }
+
+    // Validate parity bit
+    if (parity_bit != parity_bit_check) {
+        LOG_ERROR("Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check,
+                  parity_bit);
+        mouse_command_handler(ATPS2_CMD_RESEND);  // Request Resend (parity-specific)
+        mouse_state = UNINITIALISED;
+        mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;
+        pio_restart(mouse_pio, mouse_sm, mouse_offset);
+        return;
+    }
+
+    // All validations passed - process the data byte
     mouse_event_processor(data_byte);
 }
 

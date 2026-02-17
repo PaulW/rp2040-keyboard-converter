@@ -61,16 +61,19 @@
  * 2. Hold for 3 seconds (normal HID reports sent during wait)
  * 3. LED flashes Green/Blue alternating every 100ms
  * 4. Press 'B' to enter bootloader, 'D' to change log level, 'F' for factory reset, 'L' for LED
- * brightness, or wait 3s for auto-exit
+ * brightness, 'S' to toggle Shift-Override, or wait 3s for auto-exit
  * 5. If 'D' pressed: Press '1' (ERROR), '2' (INFO), or '3' (DEBUG) to set log level
  * 6. If 'L' pressed: Status LED cycles rainbow colors, press '+'/'-' to adjust brightness (0-10)
- * 7. If any other key is pressed during hold, command mode entry is aborted
+ * 7. If 'S' pressed: Toggles Shift-Override (enable/disable custom shift behavior), exits with
+ * confirmation message
+ * 8. If any other key is pressed during hold, command mode entry is aborted
  *
  * Available Commands:
  * - 'B': Enter bootloader (BOOTSEL mode for firmware update)
  * - 'D': Change log level (then press 1/2/3 for ERROR/INFO/DEBUG)
  * - 'F': Factory reset (restore default configuration and reboot)
  * - 'L': LED brightness (then press +/- to adjust, 0=off to 10=max)
+ * - 'S': Toggle Shift-Override (enable/disable custom shift behavior, saves to flash)
  *
  * State Machine:
  * - IDLE: Normal operation

@@ -30,12 +30,23 @@
  * - Bit 7: 0 = key press (make), 1 = key release (break)
  * - Bits 6-0: Key code (0x00-0x67)
  *
- * Note: CAPS LOCK (0x62) special handling, including LED state synchronization
- * and press+release generation, is performed in the protocol layer before codes
- * reach this processor. This function only receives normal make/break codes.
+ * CAPS LOCK special case (0x62/0xE2):
+ * - Only sends on press (never on release)
+ * - Bit 7 indicates keyboard LED state (0=ON, 1=OFF)
+ * - This processor handles synchronization and timing
  *
  * @param code The scancode byte to process (after de-rotation and inversion)
  */
 void process_scancode(uint8_t code);
+
+/**
+ * @brief Task function for scancode processor state machines
+ *
+ * Handles time-based operations like delayed CAPS LOCK release.
+ * Must be called regularly from main loop.
+ *
+ * @note Non-blocking, safe to call frequently
+ */
+void scancode_task(void);
 
 #endif  // AMIGA_SCANCODE_H

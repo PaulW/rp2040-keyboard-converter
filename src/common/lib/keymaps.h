@@ -28,6 +28,9 @@
 #define KEYMAP_COLS       16
 #define KEYMAP_MAX_LAYERS 8
 
+// Shift-override array size: Each layer's shift-override array must be exactly this size
+#define SHIFT_OVERRIDE_ARRAY_SIZE 256
+
 // Shift-override flag: Set bit 7 in keymap_shift_override_layers[] to suppress shift modifier
 #define SUPPRESS_SHIFT 0x80
 
@@ -48,9 +51,9 @@ uint8_t keymap_get_key_val(uint8_t pos, bool make, bool* suppress_shift);
 extern const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS];
 
 // Optional: Per-layer shift-override arrays (weak symbol, keyboards can override)
-// Array of pointers to 256-byte shift-override arrays, one per layer
+// Array of pointers to SHIFT_OVERRIDE_ARRAY_SIZE-byte shift-override arrays, one per layer
 // NULL entries mean no shift-override for that layer
-// Note: Runtime validation checks for invalid layer access
+// Note: Runtime validation checks for invalid layer access and array bounds
 extern const uint8_t* const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] __attribute__((weak));
 
 #endif /* KEYMAPS_H */

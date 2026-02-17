@@ -64,7 +64,7 @@ void keylayers_reset(void) {
  * This ensures MO (momentary) takes precedence over TG (toggle).
  *
  * Implementation uses early returns - checks one-shot first, then iterates
- * momentary layers array (indices 0-2), then falls back to bitmap scan.
+ * momentary layers array (indices 0 to KEYMAP_MAX_LAYERS-2), then falls back to bitmap scan.
  *
  * @return Active layer number (0-7)
  */

@@ -130,37 +130,6 @@ static enum {
 } keyboard_state = UNINITIALISED;
 
 /**
- * @brief Amiga CAPS LOCK key code (without bit 7)
- */
-#define AMIGA_CAPSLOCK_KEY 0x62
-
-/**
- * @brief Bit mask for make/break and LED state flags
- * - Used to extract bit 7 from scan codes
- * - For normal keys: bit 7 = 1 indicates key release (break)
- * - For CAPS LOCK: bit 7 = 1 indicates LED is OFF
- */
-#define AMIGA_BREAK_BIT_MASK 0x80
-
-/**
- * @brief CAPS LOCK timing state machine
- *
- * MacOS and some other systems require CAPS LOCK to be held for a short period
- * (typically 100-150ms) before recognizing it. We use a non-blocking state machine
- * to delay the release event.
- *
- * The hold time is configured globally via CAPS_LOCK_TOGGLE_TIME_MS in config.h,
- * allowing reuse across different keyboard protocols that require CAPS LOCK toggling.
- */
-static struct {
-    enum {
-        CAPS_IDLE,        // No pending CAPS LOCK operation
-        CAPS_PRESS_SENT,  // Press sent, waiting to send release
-    } state;
-    volatile uint32_t press_time_ms;  // Time when press was sent (written in IRQ, read in main)
-} caps_lock_timing = {.state = CAPS_IDLE, .press_time_ms = 0};
-
-/**
  * @brief Amiga Keyboard Scan Code Processor
  *
  * Processes scan codes received from Amiga keyboards using the bidirectional
@@ -187,8 +156,13 @@ static struct {
  * Normal Key Processing:
  * - Bit 7 = 0: Key pressed (make code)
  * - Bit 7 = 1: Key released (break code)
- * - CAPS LOCK exception: Only press events, bit 7 = LED state
  * - Key codes 0x00-0x67 (7-bit values)
+ * - All keys queued to ring buffer for HID processing
+ *
+ * CAPS LOCK Handling:
+ * - CAPS LOCK (0x62/0xE2) queued like normal keys
+ * - Scancode processor handles LED synchronization and timing
+ * - Protocol layer has no special CAPS LOCK logic (clean separation of concerns)
  *
  * Data Flow:
  * - Bytes received via PIO (handshake done in PIO), de-rotated, then processed here
@@ -256,53 +230,14 @@ static void keyboard_event_processor(uint8_t data_byte) {
         return;
     }
 
-    // Normal key code processing (INITIALISED state only, but we're always INITIALISED after first
-    // byte)
+    // Normal key code processing (INITIALISED state only)
     if (keyboard_state == INITIALISED) {
-        // Extract key code (bits 6-0) for CAPS LOCK detection
-        uint8_t key_code = data_byte & 0x7F;
-
-        // Special handling for CAPS LOCK (0x62/0xE2)
-        // Amiga CAPS LOCK only sends on press, bit 7 = LED state
-        // We need to generate press+release pair to toggle USB HID CAPS LOCK
-        if (key_code == AMIGA_CAPSLOCK_KEY) {
-            bool kbd_led_on =
-                (data_byte & AMIGA_BREAK_BIT_MASK) == 0;  // bit 7=0 → LED ON, bit 7=1 → LED OFF
-            bool hid_caps_on = lock_leds.keys.capsLock;   // Current USB HID CAPS LOCK state
-
-            LOG_DEBUG("Amiga: CAPS LOCK event - kbd LED %s, USB HID %s [raw: 0x%02X]\n",
-                      kbd_led_on ? "ON" : "OFF", hid_caps_on ? "ON" : "OFF", data_byte);
-
-            // Synchronization logic: Only send toggle if states differ
-            // - kbd_led_on == hid_caps_on: Already in sync, ignore
-            // - kbd_led_on != hid_caps_on: Out of sync, send toggle to fix
-            if (kbd_led_on == hid_caps_on) {
-                // States match - keyboard and HID are synchronized
-                LOG_DEBUG("Amiga: CAPS LOCK already in sync (both %s) - no action needed\n",
-                          kbd_led_on ? "ON" : "OFF");
-                // Do nothing - no HID events needed
-            } else {
-                // States differ - need to toggle HID to synchronize
-                LOG_DEBUG("Amiga: CAPS LOCK out of sync - kbd=%s, HID=%s - sending toggle\n",
-                          kbd_led_on ? "ON" : "OFF", hid_caps_on ? "ON" : "OFF");
-
-                // Queue press event (bit 7=0)
-                if (!ringbuf_is_full()) {
-                    ringbuf_put(AMIGA_CAPSLOCK_KEY);
-                    LOG_DEBUG("Amiga: CAPS LOCK press queued (0x62)\n");
-
-                    // Start timing state machine - release will be sent after delay
-                    caps_lock_timing.state         = CAPS_PRESS_SENT;
-                    caps_lock_timing.press_time_ms = to_ms_since_boot(get_absolute_time());
-                }
-            }
+        // Queue all normal key codes to ring buffer
+        // CAPS LOCK (0x62/0xE2) is not special here - scancode processor handles it
+        if (!ringbuf_is_full()) {
+            ringbuf_put(data_byte);
         } else {
-            // Normal key - queue to ring buffer
-            if (!ringbuf_is_full()) {
-                ringbuf_put(data_byte);
-            } else {
-                LOG_WARN("Amiga: Ring buffer full, dropping key code 0x%02X\n", data_byte);
-            }
+            LOG_WARN("Amiga: Ring buffer full, dropping key code 0x%02X\n", data_byte);
         }
     }
 
@@ -526,24 +461,6 @@ void keyboard_interface_setup(uint data_pin) {
  * @note Handshake timing handled entirely in PIO (not here)
  */
 void keyboard_interface_task() {
-    // CAPS LOCK timing state machine - handle delayed release
-    if (caps_lock_timing.state == CAPS_PRESS_SENT) {
-        uint32_t now_ms = to_ms_since_boot(get_absolute_time());
-        __dmb();  // Memory barrier - ensure we see latest volatile timestamp from IRQ
-        // Note: Unsigned subtraction handles wraparound correctly for time deltas
-        // as long as elapsed time < 2^31 ms (~24 days). CAPS LOCK hold time is 125ms.
-        if (now_ms - caps_lock_timing.press_time_ms >= CAPS_LOCK_TOGGLE_TIME_MS) {
-            // Time to send release event
-            if (!ringbuf_is_full()) {
-                ringbuf_put(AMIGA_CAPSLOCK_KEY | AMIGA_BREAK_BIT_MASK);  // Release (bit 7=1)
-                LOG_DEBUG("Amiga: CAPS LOCK release queued after %ums hold (0xE2)\n",
-                          (unsigned int)CAPS_LOCK_TOGGLE_TIME_MS);
-                caps_lock_timing.state = CAPS_IDLE;
-            }
-            // If buffer full, we'll try again on next iteration
-        }
-    }
-
     // INITIALISED state: Process scan codes from ring buffer
     if (keyboard_state == INITIALISED) {
         if (!ringbuf_is_empty() && tud_hid_ready()) {
@@ -553,13 +470,13 @@ void keyboard_interface_task() {
             uint8_t scancode = ringbuf_get();  // Retrieve next scan code from buffer
 
             // Process through Amiga scancode processor
-            // CAPS LOCK handling already done in ISR (generates press+release pair)
-            // All keys here are processed normally
+            // CAPS LOCK timing handled in scancode processor (not here)
             process_scancode(scancode);
         }
     }
-    // UNINITIALISED state: Waiting for keyboard power-up
-    // No action needed here - transition happens in ISR on first byte received
+
+    // Call scancode processor task for time-based operations (e.g., CAPS LOCK release timing)
+    scancode_task();
 
     // Update LED status to reflect keyboard ready state
     update_keyboard_ready_led(keyboard_state == INITIALISED);

@@ -123,13 +123,13 @@ static inline uint8_t switch_e0_code(uint8_t code) {
  */
 void process_scancode(uint8_t code) {
     // clang-format off
-  static enum {
-    INIT,
-    E0,
-    E1,
-    E1_1D,
-    E1_9D
-  } state = INIT;
+    static enum {
+        INIT,
+        E0,
+        E1,
+        E1_1D,
+        E1_9D
+    } state = INIT;
     // clang-format on
 
     switch (state) {

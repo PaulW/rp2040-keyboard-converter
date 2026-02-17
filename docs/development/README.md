@@ -92,14 +92,6 @@ Additional testing resources include [`./tools/lint.sh`](../../tools/lint.sh) fo
 
 ### Adding Protocol Support
 
-Adding support for a new keyboard protocol involves implementing hardware timing in PIO assembly, managing protocol state in C, and integrating with the existing scancode and HID infrastructure. The task requires understanding both the target protocol's electrical characteristics and the converter's architectural patterns.
-
----
-
-## Development Guides
-
-### Adding Protocol Support
-
 How to add support for new keyboard protocols:
 
 **Steps:**
@@ -242,110 +234,6 @@ Additional PIO resources include the [PIO helper library](../../src/common/lib/p
 
 ---
 
-## Tools & Enforcement
-
-### Lint Script
-
-The lint script (`./tools/lint.sh`) provides automated checking for architectural violations before commits reach CI. Run it before every commit—it must pass with zero errors and zero warnings, or the PR will be rejected.
-
-The script scans for blocking operations (`sleep_ms`, `busy_wait_us`, etc.), multicore API usage (`multicore_*`, `core1_*` functions), `printf` calls in interrupt context (which cause DMA conflicts), references to `docs-internal` in public files (which would expose local-only documentation), and ring buffer safety violations (like calling `ringbuf_reset()` without proper guards).
-
-Usage is simple: `./tools/lint.sh` checks all source files, or `./tools/lint.sh src/main.c` checks a specific file. The script returns exit code 0 on pass, 1 when errors are found, and 2 when warnings are present. CI integration ensures all pull requests pass lint checks before merge consideration.
-
----
-
-### CodeRabbit
-
-Automated pull request reviews through CodeRabbit provide AI-assisted analysis focusing on embedded systems best practices and architectural compliance. The bot reviews every PR, highlighting potential issues with blocking operations, memory safety, protocol timing, and adherence to architectural patterns.
-
-CodeRabbit configuration defines path-specific instructions (different rules for protocols vs keyboards vs common libraries), custom pre-merge checks (must pass lint, must compile all configurations, must respect memory limits), and knowledge base integration ensuring reviews align with project architecture.
-
-**Custom Checks:**
-1. No blocking operations
-2. No multicore usage
-3. IRQ safety
-4. RAM execution
-5. Protocol timing compliance
-
----
-
-## Documentation
-
-### Documentation Structure
-
-**Public** (committed):
-- `docs/` - User and developer documentation
-- `README.md` - Project overview
-- Source code comments
-
-**Private** (local only, NEVER commit):
-- `docs-internal/` - Development notes, investigations
-- Local analysis, performance data
-- Architecture decisions
-
-**Rules:**
-- ✅ Use docs-internal/ as reference during development
-- ❌ Never commit docs-internal/ files
-- ❌ Never reference docs-internal/ in public docs
-- ✅ Extract relevant information to public docs
-
-**Documentation structure**: [Project README](../../README.md), [Getting Started guides](../getting-started/README.md), [Protocol docs](../protocols/README.md), [Features docs](../features/README.md)
-
----
-
-## Git Workflow
-
-### Branch Naming
-
-Follow conventional commit prefixes:
-
-```
-feat/add-new-protocol      # New features
-fix/at-ps2-timing          # Bug fixes
-docs/protocol-guide        # Documentation
-refactor/simplify-ringbuf  # Code refactoring
-test/add-unit-tests        # Testing
-```
-
----
-
-### Commit Messages
-
-**Format:**
-```
-<type>: <description>
-
-[optional body]
-
-[optional footer]
-```
-
-**Types:**
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation
-- `refactor`: Code refactoring
-- `test`: Testing
-- `chore`: Maintenance
-
-**Examples:**
-```
-feat: Add support for Amiga protocol
-
-Implements Amiga keyboard protocol with handshake timing and
-Caps Lock synchronization via pulse.
-
-Closes #42
-
----
-
-fix: Correct AT/PS2 host-to-device timing
-
-
-Custom checks ensure architectural compliance: no blocking operations anywhere in the code, no multicore usage attempts, interrupt safety for all shared data structures, RAM execution requirements met, and protocol timing specifications followed precisely. CodeRabbit combines automated analysis with project-specific knowledge to catch issues that generic linters miss.
-
----
-
 ## Documentation
 
 ### Documentation Structure
@@ -386,6 +274,35 @@ Requirements for all PRs include lint script passing with zero errors and warnin
 
 ---
 
+## Tools & Enforcement
+
+### Lint Script
+
+The lint script (`./tools/lint.sh`) provides automated checking for architectural violations before commits reach CI. Run it before every commit—it must pass with zero errors and zero warnings, or the PR will be rejected.
+
+The script scans for blocking operations (`sleep_ms`, `busy_wait_us`, etc.), multicore API usage (`multicore_*`, `core1_*` functions), `printf` calls in interrupt context (which cause DMA conflicts), references to `docs-internal` in public files (which would expose local-only documentation), and ring buffer safety violations (like calling `ringbuf_reset()` without proper guards).
+
+Usage is simple: `./tools/lint.sh` checks all source files, or `./tools/lint.sh src/main.c` checks a specific file. The script returns exit code 0 on pass, 1 when errors are found, and 2 when warnings are present. CI integration ensures all pull requests pass lint checks before merge consideration.
+
+---
+
+### CodeRabbit
+
+Automated pull request reviews through CodeRabbit provide AI-assisted analysis focusing on embedded systems best practices and architectural compliance. The bot reviews every PR, highlighting potential issues with blocking operations, memory safety, protocol timing, and adherence to architectural patterns.
+
+CodeRabbit configuration defines path-specific instructions (different rules for protocols vs keyboards vs common libraries), custom pre-merge checks (must pass lint, must compile all configurations, must respect memory limits), and knowledge base integration ensuring reviews align with project architecture.
+
+**Custom Checks:**
+1. No blocking operations
+2. No multicore usage
+3. IRQ safety
+4. RAM execution
+5. Protocol timing compliance
+
+Custom checks ensure architectural compliance: no blocking operations anywhere in the code, no multicore usage attempts, interrupt safety for all shared data structures, RAM execution requirements met, and protocol timing specifications followed precisely. CodeRabbit combines automated analysis with project-specific knowledge to catch issues that generic linters miss.
+
+---
+
 ## Related Documentation
 
 **Architecture:**
@@ -400,17 +317,6 @@ Requirements for all PRs include lint script passing with zero errors and warnin
 **Project:**
 - [Main README](../../README.md) - Project overview and quick start
 - [License](../../LICENSE) - MIT License terms
-
----
-
-## Related Documentation
-
-- [Code Standards](code-standards.md) - Coding conventions and testing
-- [Contributing Guide](contributing.md) - Pull request process and commit format
-- [Adding Keyboards](adding-keyboards.md) - Step-by-step keyboard support guide
-- [Custom Keymaps](custom-keymaps.md) - Keymap modification guide
-- [Advanced Topics](../advanced/README.md) - Architecture and performance
-- [Protocols Overview](../protocols/README.md) - Protocol implementations
 
 ---
 

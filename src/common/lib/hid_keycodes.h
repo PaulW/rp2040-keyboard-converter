@@ -211,10 +211,17 @@
 // 0xFF reserved for future OSL(4)
 
 // Convenience macros for keymaps (layers 1-3)
-#define MO(n)  (KC_LAYER_MO_BASE + ((n) - 1))   // n: 1-3
-#define TG(n)  (KC_LAYER_TG_BASE + ((n) - 1))   // n: 1-3
-#define TO(n)  (KC_LAYER_TO_BASE + ((n) - 1))   // n: 1-3
-#define OSL(n) (KC_LAYER_OSL_BASE + ((n) - 1))  // n: 1-3
+// Note: These macros enforce valid layer range (1-3) at compile time
+#define MO(n)  (KC_LAYER_MO_BASE + ((n) - 1))   // n: 1-3 (Momentary)
+#define TG(n)  (KC_LAYER_TG_BASE + ((n) - 1))   // n: 1-3 (Toggle)
+#define TO(n)  (KC_LAYER_TO_BASE + ((n) - 1))   // n: 1-3 (Switch to)
+#define OSL(n) (KC_LAYER_OSL_BASE + ((n) - 1))  // n: 1-3 (One-shot)
+
+// Compile-time validation: Ensure layer macros produce correct keycodes for valid range
+_Static_assert(MO(1) == KC_MO_1 && MO(3) == KC_MO_3, "MO(n) macro range validation failed");
+_Static_assert(TG(1) == KC_TG_1 && TG(3) == KC_TG_3, "TG(n) macro range validation failed");
+_Static_assert(TO(1) == KC_TO_1 && TO(3) == KC_TO_3, "TO(n) macro range validation failed");
+_Static_assert(OSL(1) == KC_OSL_1 && OSL(3) == KC_OSL_3, "OSL(n) macro range validation failed");
 
 // Helper macros for layer key detection and parsing
 #define IS_LAYER_KEY(code)        ((code) >= KC_LAYER_MO_BASE)        // 0xF0-0xFF range

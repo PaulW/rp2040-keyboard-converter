@@ -85,7 +85,10 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#include "pico/time.h"
+#include "config.h"
 #include "hid_interface.h"
+#include "led_helper.h"
 #include "log.h"
 
 /**
@@ -96,6 +99,31 @@
  * Codes above 0x67 are invalid (except special protocol codes handled elsewhere).
  */
 #define AMIGA_MAX_KEYCODE 0x67
+
+/**
+ * @brief Amiga CAPS LOCK key code
+ */
+#define AMIGA_CAPSLOCK_KEY 0x62
+
+/**
+ * @brief CAPS LOCK timing state machine
+ *
+ * MacOS and some systems require CAPS LOCK held briefly (~100-150ms) to register.
+ * This state machine delays the release event while keeping clean architecture:
+ * - Protocol layer: ISR queues scancodes to ring buffer (single-producer)
+ * - Main loop: Reads ring buffer, calls process_scancode()
+ * - Scancode processor: Handles HID timing here (not in protocol layer)
+ * - No ring buffer violations
+ *
+ * Hold time configured via CAPS_LOCK_TOGGLE_TIME_MS in config.h (reusable across protocols).
+ */
+static struct {
+    enum {
+        CAPS_IDLE,        // No pending CAPS LOCK operation
+        CAPS_PRESS_SENT,  // Press sent, waiting to send release
+    } state;
+    uint32_t press_time_ms;  // Time when press was sent
+} caps_lock_timing = {.state = CAPS_IDLE, .press_time_ms = 0};
 
 /**
  * @brief Process Commodore Amiga Keyboard Scancode Data
@@ -181,9 +209,54 @@ void process_scancode(uint8_t code) {
         return;
     }
 
-    // All keys processed as simple make/break codes at this level
-    // CAPS LOCK special handling (LED state comparison, press+release generation)
-    // is performed earlier in the protocol layer (keyboard_interface.c) before
-    // codes reach this scancode processor
+    // Special handling for CAPS LOCK (0x62/0xE2)
+    // Amiga CAPS LOCK only sends on press, bit 7 = LED state (not press/release)
+    // Generate press+release pair with timing delay for USB HID compatibility
+    if (key_code == AMIGA_CAPSLOCK_KEY) {
+        bool kbd_led_on  = !is_break;                // bit 7=0 → LED ON, bit 7=1 → LED OFF
+        bool hid_caps_on = lock_leds.keys.capsLock;  // Current USB HID CAPS LOCK state
+
+        LOG_DEBUG("Amiga CAPS LOCK: kbd LED %s, USB HID %s [raw: 0x%02X]\n",
+                  kbd_led_on ? "ON" : "OFF", hid_caps_on ? "ON" : "OFF", code);
+
+        // Only toggle if states differ (synchronization logic)
+        if (kbd_led_on != hid_caps_on) {
+            LOG_DEBUG("Amiga CAPS LOCK out of sync - sending toggle\n");
+            // Send press immediately
+            handle_keyboard_report(AMIGA_CAPSLOCK_KEY, true);
+            // Start timing state machine - release will be sent after delay
+            caps_lock_timing.state         = CAPS_PRESS_SENT;
+            caps_lock_timing.press_time_ms = to_ms_since_boot(get_absolute_time());
+        } else {
+            LOG_DEBUG("Amiga CAPS LOCK already in sync - no action\n");
+        }
+        return;
+    }
+
+    // Normal keys: process as simple make/break
     handle_keyboard_report(key_code, make);
+}
+
+/**
+ * @brief Task function for scancode processor timing operations
+ *
+ * Handles delayed CAPS LOCK release after configurable hold time.
+ * Called from main loop to check if release event should be sent.
+ *
+ * @note Non-blocking, safe to call frequently from main loop
+ * @note Direct HID injection bypasses ring buffer (no producer/consumer violation)
+ */
+void scancode_task(void) {
+    // CAPS LOCK timing state machine - send delayed release
+    if (caps_lock_timing.state == CAPS_PRESS_SENT) {
+        uint32_t now_ms = to_ms_since_boot(get_absolute_time());
+        if (now_ms - caps_lock_timing.press_time_ms >= CAPS_LOCK_TOGGLE_TIME_MS) {
+            // Time expired - send release directly to HID layer
+            // Bypasses ring buffer (this is firmware-generated, not a keyboard event)
+            handle_keyboard_report(AMIGA_CAPSLOCK_KEY, false);
+            LOG_DEBUG("Amiga CAPS LOCK release sent after %ums hold\n",
+                      (unsigned int)CAPS_LOCK_TOGGLE_TIME_MS);
+            caps_lock_timing.state = CAPS_IDLE;
+        }
+    }
 }

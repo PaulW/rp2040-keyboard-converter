@@ -18,6 +18,11 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+// NOTE: Apple M0110/M0110A protocol and scancode support is currently under
+// development and considered incomplete/placeholder. The protocol implementation
+// and scancode translation may require further refinement based on hardware
+// testing and real-world keyboard behavior.
+
 #include "scancode.h"
 
 #include <stdio.h>
@@ -65,12 +70,27 @@
  * - Bit 0: Always 1 (for key transitions)
  * - Bits 6-1: Key code
  *
+ * M0110A Extended Sequences:
+ * - Normal keys: Single byte
+ * - Extended keys: 0x79 followed by code (two bytes) → SWITCH_79_CODE
+ * - Special extended: 0x71, 0x79, then code (three bytes) → SWITCH_71_CODE
+ *
  * @param code The scancode to process
  */
 void process_scancode(uint8_t code) {
+    // clang-format off
+    static enum {
+        INIT,
+        PREFIX_79,      // Got 0x79, next byte uses SWITCH_79_CODE
+        PREFIX_71,      // Got 0x71, expecting 0x79 next
+        PREFIX_71_79    // Got 0x71 then 0x79, next byte uses SWITCH_71_CODE
+    } state = INIT;
+    // clang-format on
+
     // Validate that bit 0 is set (should always be 1 for key transitions)
     if ((code & 0x01) == 0) {
         LOG_DEBUG("Invalid M0110 scancode (bit 0 not set): 0x%02X\n", code);
+        state = INIT;
         return;
     }
 
@@ -78,15 +98,75 @@ void process_scancode(uint8_t code) {
     uint8_t key_code  = (code >> 1) & 0x3F;  // Extract key code (bits 6-1)
     bool    make      = !is_key_up;          // Invert for make/break logic
 
-    // Handle special cases or validate key codes
-    if (key_code == 0x00) {
-        LOG_DEBUG("Reserved key code in M0110 scancode: 0x%02X\n", code);
-        return;
+    switch (state) {
+        case INIT:
+            if (key_code == 0x79) {
+                // Start of 0x79 prefix sequence (two-byte)
+                state = PREFIX_79;
+                return;
+            } else if (key_code == 0x71) {
+                // Start of 0x71,0x79 prefix sequence (three-byte)
+                state = PREFIX_71;
+                return;
+            } else {
+                // Normal single-byte scancode
+                state = INIT;
+                if (key_code == 0x00) {
+                    LOG_DEBUG("Reserved key code in M0110 scancode: 0x%02X\n", code);
+                    return;
+                }
+                handle_keyboard_report(key_code, make);
+                LOG_DEBUG("Apple M0110 Key: 0x%02X (%s) [raw: 0x%02X]\n", key_code,
+                          make ? "make" : "break", code);
+            }
+            break;
+
+        case PREFIX_79:
+            // Second byte of 0x79 prefix sequence - translate with SWITCH_79_CODE
+            state = INIT;
+            {
+                uint8_t translated_code = SWITCH_79_CODE(key_code);
+                if (translated_code != 0) {
+                    handle_keyboard_report(translated_code, make);
+                    LOG_DEBUG("Apple M0110 Key (0x79 prefix): 0x%02X->0x%02X (%s) [raw: 0x%02X]\n",
+                              key_code, translated_code, make ? "make" : "break", code);
+                } else {
+                    LOG_DEBUG("Unknown 0x79 prefix scancode: 0x%02X\n", code);
+                }
+            }
+            break;
+
+        case PREFIX_71:
+            // Second byte of 0x71,0x79 sequence - expecting 0x79
+            if (key_code == 0x79) {
+                // Valid 0x79 after 0x71, wait for third byte
+                state = PREFIX_71_79;
+                return;
+            } else {
+                // Invalid sequence - reset
+                LOG_DEBUG("Invalid sequence: expected 0x79 after 0x71, got 0x%02X\n", code);
+                state = INIT;
+            }
+            break;
+
+        case PREFIX_71_79:
+            // Third byte of 0x71,0x79 prefix sequence - translate with SWITCH_71_CODE
+            state = INIT;
+            {
+                uint8_t translated_code = SWITCH_71_CODE(key_code);
+                if (translated_code != 0) {
+                    handle_keyboard_report(translated_code, make);
+                    LOG_DEBUG(
+                        "Apple M0110 Key (0x71,0x79 prefix): 0x%02X->0x%02X (%s) [raw: 0x%02X]\n",
+                        key_code, translated_code, make ? "make" : "break", code);
+                } else {
+                    LOG_DEBUG("Unknown 0x71,0x79 prefix scancode: 0x%02X\n", code);
+                }
+            }
+            break;
+
+        default:
+            state = INIT;
+            break;
     }
-
-    // Process the key event
-    handle_keyboard_report(key_code, make);
-
-    LOG_DEBUG("Apple M0110 Key: 0x%02X (%s) [raw: 0x%02X]\n", key_code, make ? "make" : "break",
-              code);
 }

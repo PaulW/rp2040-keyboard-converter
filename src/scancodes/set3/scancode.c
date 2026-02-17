@@ -20,10 +20,39 @@
 
 #include "scancode.h"
 
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include "hid_interface.h"
 #include "log.h"
+
+// Scancode remapping table for Set 3 special keys
+static const struct {
+    uint8_t scancode;
+    uint8_t mapped_code;
+} scancode_remapping[] = {
+    {0x7C, 0x68},  // Keypad Comma
+    {0x83, 0x02},  // Left F7 Position
+    {0x84, 0x7F},  // Keypad Plus (Legend says minus)
+};
+
+/**
+ * @brief Check if scancode needs remapping and return the mapped code.
+ *
+ * @param code Input scancode to check
+ * @param mapped_code Output parameter for the mapped code (if found)
+ * @return true if scancode was found in remapping table, false otherwise
+ */
+static bool try_remap_scancode(uint8_t code, uint8_t* mapped_code) {
+    for (uint8_t i = 0; i < sizeof(scancode_remapping) / sizeof(scancode_remapping[0]); i++) {
+        if (scancode_remapping[i].scancode == code) {
+            *mapped_code = scancode_remapping[i].mapped_code;
+            return true;
+        }
+    }
+    return false;
+}
 
 /**
  * @brief Process Keyboard Input (Scancode Set 3) Data
@@ -69,26 +98,25 @@
  */
 void process_scancode(uint8_t code) {
     // clang-format off
-  static enum {
-    INIT,
-    F0,
-  } state = INIT;
+    static enum {
+        INIT,
+        F0,
+    } state = INIT;
     // clang-format on
 
     switch (state) {
-        case INIT:
+        case INIT: {
+            // Check for remapped scancodes first
+            uint8_t mapped_code;
+            if (try_remap_scancode(code, &mapped_code)) {
+                handle_keyboard_report(mapped_code, true);
+                break;
+            }
+
+            // Handle remaining scancodes
             switch (code) {
                 case 0xF0:
                     state = F0;
-                    break;
-                case 0x7C:  // Keypad Comma
-                    handle_keyboard_report(0x68, true);
-                    break;
-                case 0x83:  // Left F7 Position
-                    handle_keyboard_report(0x02, true);
-                    break;
-                case 0x84:  // Keypad Plus (Legend says minus)
-                    handle_keyboard_report(0x7F, true);
                     break;
                 case 0xAA:  // Self-test passed
                 case 0xFC:  // Self-test failed
@@ -100,31 +128,26 @@ void process_scancode(uint8_t code) {
                         LOG_DEBUG("!INIT! (0x%02X)\n", code);
                     }
             }
-            break;
+        } break;
 
         case F0:  // Break code
-            switch (code) {
-                case 0x7C:  // Keypad Comma
-                    handle_keyboard_report(0x68, false);
-                    state = INIT;
-                    break;
-                case 0x83:  // Left F7 Position
-                    handle_keyboard_report(0x02, false);
-                    state = INIT;
-                    break;
-                case 0x84:  // Keypad Plus (Legend says minus)
-                    handle_keyboard_report(0x7F, false);
-                    state = INIT;
-                    break;
-                default:
-                    state = INIT;
-                    if (code < 0x80) {
-                        handle_keyboard_report(code, false);
-                    } else {
-                        LOG_DEBUG("!F0! (0x%02X)\n", code);
-                    }
+        {
+            // Check for remapped scancodes first
+            uint8_t mapped_code;
+            if (try_remap_scancode(code, &mapped_code)) {
+                handle_keyboard_report(mapped_code, false);
+                state = INIT;
+                break;
             }
-            break;
+
+            // Handle remaining scancodes
+            state = INIT;
+            if (code < 0x80) {
+                handle_keyboard_report(code, false);
+            } else {
+                LOG_DEBUG("!F0! (0x%02X)\n", code);
+            }
+        } break;
 
         default:
             state = INIT;

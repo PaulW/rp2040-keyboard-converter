@@ -161,7 +161,27 @@ EOF
     rm -f src/test_multicore.c
 }
 
-# Test 4: Git Hook - Prevent docs-internal staging
+# Test 4: Lint Script - Detect 2-Space Indentation
+test_lint_indentation() {
+    cat > src/test_indentation.c << 'EOF'
+#include "pico/stdlib.h"
+
+void bad_indentation(void) {
+  uint8_t var1 = 0;
+  uint8_t var2 = 1;
+  uint8_t var3 = 2;
+  uint8_t var4 = 3;
+  if (var1 == 0) {
+    var2 = var3;
+  }
+}
+EOF
+    
+    run_test "Lint detects 2-space indentation" "./tools/lint.sh" "fail"
+    rm -f src/test_indentation.c
+}
+
+# Test 5: Git Hook - Prevent docs-internal staging
 test_hook_docs_internal_staging() {
     mkdir -p docs-internal
     echo "test" > docs-internal/test_file.md
@@ -173,13 +193,13 @@ test_hook_docs_internal_staging() {
     rm -f docs-internal/test_file.md
 }
 
-# Test 5: Git Hook - Commit Message Check
+# Test 6: Git Hook - Commit Message Check
 test_hook_commit_message() {
     # Create empty commit with bad message
     run_test "Commit-msg hook blocks docs-internal reference" "git commit --allow-empty -m 'Add feature (see docs-internal/notes.md)'" "fail"
 }
 
-# Test 6: Git Hook - Clean Commit Message
+# Test 7: Git Hook - Clean Commit Message
 test_hook_clean_message() {
     # Create empty commit with clean message
     run_test "Commit-msg hook allows clean message" "git commit --allow-empty -m 'Add test feature'" "pass"
@@ -188,14 +208,14 @@ test_hook_clean_message() {
     git reset --soft HEAD~1 >/dev/null 2>&1
 }
 
-# Test 7: Lint Script - Strict Mode
+# Test 8: Lint Script - Strict Mode
 test_lint_strict_mode() {
     # Strict mode should pass if codebase is clean (which it now is)
     # This verifies the strict flag works correctly
     run_test "Lint strict mode passes on clean code" "./tools/lint.sh --strict" "pass"
 }
 
-# Test 8: CI Checks - docs-internal Detection
+# Test 9: CI Checks - docs-internal Detection
 test_ci_docs_internal() {
     # Simulate CI check for docs-internal files
     mkdir -p docs-internal
@@ -213,7 +233,7 @@ test_ci_docs_internal() {
     git rm --cached -f docs-internal/test_ci.md >/dev/null 2>&1 || true
 }
 
-# Test 9: Lint Script - Copy to RAM Check
+# Test 10: Lint Script - Copy to RAM Check
 test_lint_copy_to_ram() {
     # This should pass since src/CMakeLists.txt has copy_to_ram
     # Use same pattern as lint.sh: grep recursively from repo root
@@ -226,7 +246,7 @@ test_lint_copy_to_ram() {
         "pass"
 }
 
-# Test 10: Hook Bypass (--no-verify)
+# Test 11: Hook Bypass (--no-verify)
 test_hook_bypass() {
     echo -e "${YELLOW}[Info] Testing --no-verify bypass (should work but is discouraged)${NC}"
     run_test "Commit with --no-verify bypasses hooks" "git commit --allow-empty -m 'Test bypass docs-internal' --no-verify" "pass"
@@ -235,7 +255,7 @@ test_hook_bypass() {
     git reset --soft HEAD~1 >/dev/null 2>&1
 }
 
-# Test 11: Multiple Violations
+# Test 12: Multiple Violations
 test_multiple_violations() {
     cat > src/test_multiple.c << 'EOF'
 #include "pico/stdlib.h"
@@ -255,7 +275,7 @@ EOF
     rm -f src/test_multiple.c >/dev/null 2>&1
 }
 
-# Test 12: Commit Template
+# Test 13: Commit Template
 test_commit_template() {
     # Verify commit template is configured
     TEMPLATE=$(git config commit.template)
@@ -270,7 +290,7 @@ test_commit_template() {
     echo ""
 }
 
-# Test 13: Hook Permissions
+# Test 14: Hook Permissions
 test_hook_permissions() {
     echo -e "${BLUE}[Test $((TESTS_RUN + 1))] Hook file permissions${NC}"
     TESTS_RUN=$((TESTS_RUN + 1))
@@ -285,7 +305,7 @@ test_hook_permissions() {
     echo ""
 }
 
-# Test 14: Lint Script with No Source Files
+# Test 15: Lint Script with No Source Files
 test_lint_empty_check() {
     # Temporarily hide src directory to test empty check handling
     # (Skip this test - too invasive)
@@ -302,6 +322,7 @@ main() {
     test_lint_clean
     test_lint_blocking_ops
     test_lint_multicore
+    test_lint_indentation
     test_lint_strict_mode
     test_lint_copy_to_ram
     test_multiple_violations

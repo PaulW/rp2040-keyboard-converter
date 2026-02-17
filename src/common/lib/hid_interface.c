@@ -45,6 +45,17 @@ enum {
 };
 
 /**
+ * @brief Shift modifier bit mask
+ *
+ * HID modifier byte layout (bit positions):
+ * - Bit 1: Left Shift  (KC_LSHIFT = 0xE1)
+ * - Bit 5: Right Shift (KC_RSHIFT = 0xE5)
+ *
+ * This mask is used to check or clear shift modifier states in keyboard reports.
+ */
+static const uint8_t SHIFT_MODIFIER_MASK = (1 << 1) | (1 << 5);
+
+/**
  * @brief HID Report Structures
  *
  * These static variables maintain the current state of HID reports.
@@ -100,6 +111,12 @@ static hid_mouse_report_t    mouse_report;
  */
 static inline bool hid_send_report(uint8_t instance, uint8_t report_id, void const* report,
                                    uint16_t len) {
+    // Check if endpoint is ready before attempting to send
+    if (!tud_hid_n_ready(instance)) {
+        LOG_DEBUG("HID endpoint not ready (instance=%u, report_id=0x%02X)\n", instance, report_id);
+        return false;
+    }
+
     // Check if we should build hex dump (DEBUG enabled or might fail)
     bool should_log = (log_get_level() >= (log_level_t)LOG_LEVEL_DEBUG);
 
@@ -319,7 +336,7 @@ void handle_keyboard_report(uint8_t rawcode, bool make) {
         if (suppress_shift) {
             saved_modifiers = keyboard_report.modifier;
             keyboard_report.modifier &=
-                ~((1 << 1) | (1 << 5));  // Clear bits 1 (Left Shift) and 5 (Right Shift)
+                ~SHIFT_MODIFIER_MASK;  // Clear bits 1 (Left Shift) and 5 (Right Shift)
         }
 
         if (make) {
@@ -394,8 +411,7 @@ void handle_keyboard_report(uint8_t rawcode, bool make) {
  */
 bool hid_is_shift_pressed(void) {
     // Check bits 1 (Left Shift) and 5 (Right Shift)
-    const uint8_t shift_mask = (1 << 1) | (1 << 5);
-    return (keyboard_report.modifier & shift_mask) != 0;
+    return (keyboard_report.modifier & SHIFT_MODIFIER_MASK) != 0;
 }
 
 /**

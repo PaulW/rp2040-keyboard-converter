@@ -65,7 +65,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
 /*   - With flag: Override suppresses shift to get the literal character */
 const uint8_t* const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
     [0] =
-        (const uint8_t[256]){
+        (const uint8_t[SHIFT_OVERRIDE_ARRAY_SIZE]){
             [KC_6]    = KC_7,                      // Shift+6 → Shift+7 produces & (ampersand)
             [KC_7]    = SUPPRESS_SHIFT | KC_QUOT,  // Shift+7 → ' (apostrophe)
             [KC_8]    = KC_9,                      // Shift+8 → Shift+9 produces ( (left paren)

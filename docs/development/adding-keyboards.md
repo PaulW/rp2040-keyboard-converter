@@ -237,7 +237,7 @@ Add a `keymap_shift_override_layers` array to your keyboard.c:
 // Per-layer shift-override table (sparse array of pointers)
 // Array index = layer number, NULL = no shift-override for that layer
 const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
-    [0] = (const uint8_t[256]){
+    [0] = (const uint8_t[SHIFT_OVERRIDE_ARRAY_SIZE]){
         // Suppress shift and send different key
         [KC_1] = SUPPRESS_SHIFT | KC_EXLM,  // Shift+1 → ! (suppress shift)
         [KC_2] = SUPPRESS_SHIFT | KC_DQUO,  // Shift+2 → " (suppress shift)
@@ -249,7 +249,7 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
         // Most entries are 0 (use default shift behaviour)
     },
     // Other layers: NULL or define additional shift-override arrays as needed
-    // [1] = (const uint8_t[256]){ ... },  // Optional: Layer 1 shift-override
+    // [1] = (const uint8_t[SHIFT_OVERRIDE_ARRAY_SIZE]){ ... },  // Optional: Layer 1 shift-override
 };
 ```
 
@@ -269,8 +269,8 @@ Different layers can have different shift behaviours. For example, Layer 0 might
 
 ```c
 const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
-    [0] = (const uint8_t[256]){ /* Standard PC legends */ },
-    [1] = (const uint8_t[256]){ /* Terminal legends */ },
+    [0] = (const uint8_t[SHIFT_OVERRIDE_ARRAY_SIZE]){ /* Standard PC legends */ },
+    [1] = (const uint8_t[SHIFT_OVERRIDE_ARRAY_SIZE]){ /* Terminal legends */ },
     // Layers 2-7 default to NULL (no shift-override)
 };
 ```

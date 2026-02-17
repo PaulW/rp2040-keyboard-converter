@@ -34,7 +34,7 @@ The firmware runs in a constrained environment with tight timing requirements. C
 
 The project uses clang-format based on Google style with customisations for readability and consistency. The formatting configuration is:
 
-```
+```text
 { BasedOnStyle: Google, ReflowComments: true, UseTab: Never, AllowShortIfStatementsOnASingleLine: false, AllowShortFunctionsOnASingleLine: false, AlwaysBreakBeforeMultilineStrings: true, AllowAllParametersOfDeclarationOnNextLine: true, AlignConsecutiveAssignments: true, AlignConsecutiveBitFields: true, AlignConsecutiveDeclarations: true, AlignConsecutiveMacros: true, ColumnLimit: 100, IndentWidth: 4 }
 ```
 

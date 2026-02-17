@@ -80,18 +80,6 @@ static uint32_t get_keyboard_id(void) {
 /**
  * @brief Factory default configuration
  *
- * All new fields should have their defaults defined here. When adding
- * a new field:
- * 1. Add to config_data_t in config_storage.h
- * 2. Add default value here
- * 3. Increment CONFIG_VERSION_CURRENT
- * 4. Update get_config_size_for_version()
- */
-// --- Factory Default Configuration ---
-
-/**
- * @brief Factory default configuration
- *
  * This configuration is used when:
  * - No valid config found in flash (first boot)
  * - Both config copies are corrupt
@@ -506,18 +494,19 @@ bool config_save(void) {
 
     // Copy old config to buffer (if valid, otherwise use current config with seq-1)
     if (validate_config(old_copy)) {
-        memcpy(sector_buffer + (old_copy_index * CONFIG_COPY_SIZE), old_copy,
+        memcpy(sector_buffer + ((size_t)old_copy_index * CONFIG_COPY_SIZE), old_copy,
                sizeof(config_data_t));
     } else {
         // Old copy invalid, write current config with decremented sequence as backup
         config_data_t backup = write_config;
         backup.sequence--;
         backup.crc16 = config_calculate_crc(&backup);
-        memcpy(sector_buffer + (old_copy_index * CONFIG_COPY_SIZE), &backup, sizeof(config_data_t));
+        memcpy(sector_buffer + ((size_t)old_copy_index * CONFIG_COPY_SIZE), &backup,
+               sizeof(config_data_t));
     }
 
     // Copy new config to buffer
-    memcpy(sector_buffer + (new_copy_index * CONFIG_COPY_SIZE), &write_config,
+    memcpy(sector_buffer + ((size_t)new_copy_index * CONFIG_COPY_SIZE), &write_config,
            sizeof(config_data_t));
 
     // Flash write requires interrupts disabled

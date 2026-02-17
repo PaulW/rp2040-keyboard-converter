@@ -18,6 +18,21 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file keylayers.h
+ * @brief Layer state management and layer switching operations
+ *
+ * Provides layer state tracking, priority resolution, and layer switching
+ * operations (momentary, toggle, switch-to, one-shot). Manages the active
+ * layer state and coordinates with the keymap system for multi-layer support.
+ *
+ * **Key Features:**
+ * - Layer priority: One-shot > Momentary (MO) > Toggle (TG) > Base (Layer 0)
+ * - Configurable layer count via KEYMAP_MAX_LAYERS (default: 8)
+ * - Persistent layer state across reboots (toggle/switch-to layers)
+ * - One-shot layer support with automatic deactivation
+ */
+
 #ifndef KEYLAYERS_H
 #define KEYLAYERS_H
 

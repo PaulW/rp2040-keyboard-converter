@@ -209,6 +209,11 @@ uint8_t keymap_get_key_val(uint8_t pos, bool make, bool* suppress_shift) {
     //   - With flag: Suppress shift (e.g., SUPPRESS_SHIFT|KC_QUOT means send unshifted quote)
     // Only keyboards with non-standard legends define these arrays (weak symbols)
     // User must explicitly enable shift-override via config (disabled by default)
+    //
+    // Safety: key_code is uint8_t (0-255), guaranteeing valid index into 256-element arrays
+    _Static_assert(SHIFT_OVERRIDE_ARRAY_SIZE == 256,
+                   "SHIFT_OVERRIDE_ARRAY_SIZE must be 256 to match uint8_t keycode range");
+
     if (keymap_shift_override_layers != NULL && config_get_shift_override_enabled() &&
         hid_is_shift_pressed() && source_layer < KEYMAP_MAX_LAYERS) {
         const uint8_t* shift_overrides = keymap_shift_override_layers[source_layer];
