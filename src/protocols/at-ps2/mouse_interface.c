@@ -43,8 +43,8 @@ static uint8_t mouse_config_sequence = 0;  // Configuration sequence counter (re
 
 /* Mouse detection timing constants */
 enum {
-    ATPS2_MOUSE_DETECT_INTERVAL_MS = 200,  /**< Detection status check interval (ms) */
-    ATPS2_MOUSE_STALL_LIMIT        = 5,    /**< Max stall count before reset (5 × 200ms = 1s) */
+    ATPS2_MOUSE_DETECT_INTERVAL_MS = 200, /**< Detection status check interval (ms) */
+    ATPS2_MOUSE_STALL_LIMIT        = 5,   /**< Max stall count before reset (5 × 200ms = 1s) */
 };
 
 static enum {

@@ -369,11 +369,11 @@ void keyboard_interface_task(void) {
                 LOG_ERROR(
                     "No response from keyboard within 1/2 second - keyboard not behaving, "
                     "reinitializing\n");
-                ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Clear any stale buffered data during
-                                  // reinitialization
                 keyboard_state    = UNINITIALISED;
                 last_command_time = current_time;
-                break;  // Skip processing, restart initialization
+                ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Clear any stale buffered data during
+                                  // reinitialization
+                break;            // Skip processing, restart initialization
             }
 
             // Process buffered key data (only reached if keyboard is responding normally)
