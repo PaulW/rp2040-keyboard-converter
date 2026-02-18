@@ -289,7 +289,7 @@ void mouse_event_processor(uint8_t data_byte) {
                     mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
             }
             break;
-        case INIT_SET_CONFIG:
+        case INIT_SET_CONFIG: {
             // Finish Mouse Configuration
             //  - Set Resolution to 8 Counts/mm
             //  - Set Sampling to 1:1
@@ -314,6 +314,7 @@ void mouse_event_processor(uint8_t data_byte) {
                 }
             }
             break;
+        }
         case INITIALISED:
             // Process Mouse Data.
             switch (data_loop) {

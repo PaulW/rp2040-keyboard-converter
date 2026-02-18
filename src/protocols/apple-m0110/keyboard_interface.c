@@ -169,7 +169,6 @@ static void keyboard_command_handler(uint8_t command) {
         return;
     }
 
-    // LOG_DEBUG("M0110 sending command: 0x%02X\n", command);
     // M0110 protocol uses MSB-first transmission - position command in upper byte
     // PIO automatically handles MSB-first bit order during transmission
     pio_sm_put(keyboard_pio, keyboard_sm, (uint32_t)command << 24);
@@ -199,7 +198,6 @@ static void keyboard_command_handler(uint8_t command) {
  * @param data_byte 8-bit response received from keyboard (MSB-first)
  */
 static void keyboard_event_processor(uint8_t data_byte) {
-    // LOG_DEBUG("M0110 received: 0x%02X\n", data_byte);
     last_response_time = board_millis();  // Record response time for timeout management
     __dmb();                              // Memory barrier - ensure volatile write completes
 
