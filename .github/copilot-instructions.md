@@ -105,6 +105,103 @@ Embedded firmware converting keyboard/mouse protocols (AT/PS2, XT, Apple M0110, 
 
 ---
 
+## 🔍 Guard Pattern Recognition
+
+**CRITICAL METHODOLOGY**: Before suggesting ANY guard addition, follow this systematic analysis process.
+
+### Step-by-Step Guard Analysis Protocol
+
+**1. IDENTIFY THE OPERATION:**
+- What function/operation needs guarding?
+- What could go wrong if unguarded?
+- What type of guard would protect it?
+
+**2. TRACE THE CALL CHAIN (MANDATORY):**
+```bash
+# Find where function is called
+grep -rn "function_name" src/
+
+# Read calling function implementation
+# Check if guard exists in caller
+
+# If caller uses helper function, read helper implementation
+# Check if helper performs the guard internally
+```
+
+**3. READ HELPER IMPLEMENTATIONS:**
+- Helper functions often centralize guard logic
+- Don't assume - read the actual implementation
+- Look for patterns: `find_*()`, `claim_*()`, `allocate_*()` functions typically validate resources
+- Check return values: NULL/negative often indicates validation failed internally
+
+**4. VERIFY ESTABLISHED PATTERNS:**
+```bash
+# Check if pattern exists across similar code
+grep -r "similar_operation" src/protocols/
+
+# If all protocols do it the same way WITHOUT the suggested guard,
+# guard is likely provided by helper function or unnecessary
+```
+
+**5. CHECK CALLER'S ERROR HANDLING:**
+- Does caller check helper's return value?
+- NULL check after `find_*()` function → validation delegated to helper
+- Negative check after `claim_*()` function → availability checked by that function
+- Early return on error → guard already present in chain
+
+### Analysis Checklist
+
+Before suggesting guard addition, verify:
+
+- [ ] **Read entire call chain** - caller → helper → sub-helper (don't stop at first function)
+- [ ] **Check helper implementations** - guard may be centralized there
+- [ ] **Search for patterns** - `grep -r` to see if suggestion contradicts established pattern
+- [ ] **Verify return value handling** - NULL/error checks indicate delegated validation
+- [ ] **Confirm architecture fit** - guard doesn't contradict threading model or block non-blocking requirement
+
+### When to Suggest Guards
+
+✅ **Suggest guard when:**
+- Guard missing from ENTIRE call chain (verified by reading all functions)
+- New code path without existing pattern (grep confirms)
+- Race condition between check and use (timing vulnerability)
+- Error handling genuinely absent (no return value check, no helper validation)
+
+### When NOT to Suggest Guards
+
+❌ **DO NOT suggest guard when:**
+- Helper function returns NULL/error (likely validates internally - read it to confirm)
+- Same operation in all protocols lacks suggested guard (pattern indicates helper provides it)
+- Caller checks return value (validation delegated upstream)
+- Suggestion contradicts documented architecture ("add IRQ check" for "main loop only" function)
+- Would require blocking operation (busy-wait for resource in non-blocking architecture)
+
+### False Positive Red Flags
+
+🚩 **Warning signs of false positive:**
+1. Helper function returns NULL/error code → probably validates internally
+2. Caller has NULL check immediately after helper call → validation delegated
+3. Pattern consistent across ALL similar code without suggested guard → helper provides it
+4. Function name suggests validation: `find_*()`, `claim_*()`, `check_*()` → read implementation
+5. Suggestion would duplicate pattern → guard exists upstream
+
+### Analysis Workflow Example
+
+**Suggestion**: "Add guard before operation X"
+
+**Analysis process**:
+1. **Where is X called?** → `grep -rn "operation_x" src/` → Found in `protocol_setup()`
+2. **Read protocol_setup()**: Uses `helper_allocate()` before X
+3. **Read helper_allocate()**: ← **KEY STEP** - Check if guard is HERE
+4. **Check return handling**: `if (result == NULL) return;` → Validation delegated
+5. **Search pattern**: `grep -r "operation_x" src/protocols/*/` → All protocols identical
+6. **Conclusion**: Guard provided by `helper_allocate()`, caller checks return value, pattern consistent
+7. **Decision**: ❌ FALSE POSITIVE - don't suggest
+
+**Remember**: Embedded systems centralize validation in helper functions for code reuse and consistency. Always trace the COMPLETE call chain before suggesting guards!
+
+---
+
 ## Quick Reference
 
 **Performance:**

@@ -436,6 +436,76 @@ bool keyboard_interface_setup(uint data_pin) {
 }
 ```
 
+#### Guard Patterns and Validation Delegation
+
+Helper functions often centralize validation logic for code reuse and consistency. Before adding validation guards, trace the call chain to ensure you're not duplicating checks that already exist upstream.
+
+**Validation Delegation Pattern:**
+
+Helper functions that return NULL or error codes typically perform validation internally. Callers delegate validation by checking the return value:
+
+```c
+// Helper centralizes validation
+PIO find_available_pio(const pio_program_t* program) {
+    if (!pio_can_add_program(pio0, program)) {
+        if (!pio_can_add_program(pio1, program)) {
+            return NULL;  // Both PIOs full
+        }
+        return pio1;
+    }
+    return pio0;
+}
+
+// Caller delegates validation to helper
+keyboard_pio = find_available_pio(&keyboard_interface_program);
+if (keyboard_pio == NULL) {  // Validation already done by helper
+    LOG_ERROR("No PIO available\n");
+    return;
+}
+
+// ❌ WRONG: Redundant check - helper already validated this
+if (!pio_can_add_program(keyboard_pio, &keyboard_interface_program)) {
+    // This can never trigger - helper already checked
+}
+```
+
+**Single Validation Point Pattern:**
+
+When a public function validates inputs before calling private helpers, the helpers don't need to duplicate validation:
+
+```c
+// Public function validates once
+void keylayers_process_key(uint8_t code, bool make) {
+    const uint8_t target_layer = GET_LAYER_TARGET(code);
+    
+    // Single validation point for all downstream helpers
+    if (target_layer >= max_layers) {
+        return;
+    }
+    
+    // Helpers rely on caller's validation
+    keylayers_handle_mo(target_layer, code, make);
+}
+
+// Private helper - no redundant validation needed
+static void keylayers_handle_mo(uint8_t target_layer, uint8_t code, bool make) {
+    // Bounds already validated by caller - see function documentation
+    layer_state.momentary_keys[target_layer - 1] = code;
+}
+```
+
+**When to add guards:**
+- ✅ Public API entry points (callers may not validate)
+- ✅ Genuinely missing from entire call chain
+- ✅ Race conditions between check and use
+
+**When NOT to add guards:**
+- ❌ Helper already validates and returns NULL/error
+- ❌ Caller validates before calling helper function
+- ❌ Would duplicate established pattern across codebase
+
+**Tracing validation**: Use `grep -rn "function_name" src/` to find where functions are called, then read the calling function and any helper functions to understand the validation chain.
+
 ### Use Assertions for Invariants
 
 Use `assert()` for conditions that should never happen but indicate a serious bug if they do:

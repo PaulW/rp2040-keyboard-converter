@@ -199,6 +199,36 @@ reviews:
     
     # Custom checks specific to embedded systems
     custom_checks:
+      - name: "Guard pattern analysis"
+        instructions: |
+          CRITICAL METHODOLOGY: Before suggesting ANY guard addition:
+          
+          1. TRACE THE CALL CHAIN (MANDATORY):
+             - Read helper function implementations completely (don't assume)
+             - Search codebase: grep -r "function_name" src/ to see usage patterns
+             - Check if guard exists in calling function or helper function
+             - Verify NULL checks handle helper function failures
+          
+          2. IDENTIFY GUARD PATTERNS:
+             - Helper functions often centralize guard logic (check implementation)
+             - Callers may delegate validation to helpers (check return value handling)
+             - Established patterns exist across implementations (verify consistency)
+             - Function naming hints: find_*(), claim_*(), allocate_*() typically validate internally
+          
+          3. VERIFY BEFORE SUGGESTING:
+             - Is guard genuinely missing from ENTIRE call chain?
+             - Would adding guard duplicate existing check in helper?
+             - Does suggestion contradict documented architecture/threading model?
+             - Is pattern consistent across similar code (grep for confirmation)?
+          
+          4. FALSE POSITIVE INDICATORS:
+             - Helper function returns NULL/error code (likely validates internally)
+             - Caller checks helper return value (validation delegated)
+             - Same pattern exists everywhere without suggested guard
+             - Function documented with specific context ("main loop only") contradicts suggested guard
+          
+          RULE: Only suggest guard if missing from ENTIRE call chain AND genuinely needed.
+      
       - name: "Code formatting compliance"
         instructions: |
           Verify code follows formatting standards:
@@ -216,15 +246,13 @@ reviews:
           - No while(1) loops without yield points
           - No multicore_* or core1_* functions
           - All code runs on Core 0 only
-      
-      - name: "IRQ safety"
-        instructions: |
-          For any IRQ handler changes:
-          - No blocking operations
-          - No printf/fprintf (use LOG_* macros)
-          - Ring buffer writes only (never reads)
-          - Memory barriers after volatile writes
-          - Keep handler execution time minimal
+          
+          IRQ handler safety requirements:
+          - No blocking operations in IRQ context
+          - No printf/fprintf (use LOG_* macros which are DMA-safe)
+          - Ring buffer: IRQ writes only, main loop reads only
+          - Memory barriers (__dmb()) after volatile writes in IRQ handlers
+          - Keep IRQ handler execution time minimal
       
       - name: "Memory execution"
         instructions: |

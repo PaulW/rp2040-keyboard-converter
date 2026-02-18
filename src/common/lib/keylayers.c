@@ -234,15 +234,14 @@ void keylayers_init(void) {
 /**
  * @brief Handle MO (momentary) layer operation
  *
+ * Bounds validation: target_layer is pre-validated by keylayers_process_key() caller
+ * to ensure it's within the valid range for this keymap.
+ *
  * @param target_layer The layer to activate (1-based)
  * @param code The original keycode (for tracking which MO key is held)
  * @param make true if key pressed, false if released
  */
 static void keylayers_handle_mo(uint8_t target_layer, uint8_t code, bool make) {
-    // Guard: Validate layer range (momentary_keys array bounds)
-    if (target_layer < 1 || target_layer >= KEYMAP_MAX_LAYERS) {
-        return;  // Invalid layer for MO operation
-    }
     if (make) {
         layer_state.layer_state |= (1 << target_layer);
         // Track which MO key is held (for release detection)
