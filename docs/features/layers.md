@@ -73,7 +73,7 @@ Each method has trade-offs. Momentary layers require holding a key, which might 
 
 **Quick comparison of TG vs TO:**
 
-- **TG (Toggle)**: Additive—can activate multiple layers, they stack, highest one used as starting point. Toggling layers on/off changes the stack order.
+- **TG (Toggle)**: Additive—can activate multiple layers, they stack, the highest one is used as the starting point. Toggling layers on/off changes the stack order.
 - **TO (Switch to)**: Exclusive—clears all layers except Layer 0, activates only the target. Forces single-layer mode, no ambiguity about what's active.
 
 ---
@@ -150,7 +150,7 @@ Several keyboards in the project use single-layer configurations because their p
 
 ## Layer State Persistence
 
-Toggle layers (TG) and permanent layer switches (TO) persist across power cycles. If you toggle Dvorak on and reboot your keyboard, it'll still be in Dvorak mode when it powers back up. Momentary layers (MO) and one-shot layers (OSL) are temporary and always reset to inactive at boot.
+Toggle layers (TG) and permanent layer switches (TO) persist across power cycles. If you toggle Dvorak on and reboot your keyboard, it'll still be in Dvorak mode when it powers back up. Momentary layers (MO) and one-shot layers (OSL) are temporary and always become inactive at boot.
 
 **How persistence works:**
 

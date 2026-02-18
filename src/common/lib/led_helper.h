@@ -120,7 +120,7 @@ void update_converter_status(void);
  */
 static inline void update_keyboard_ready_led(bool ready) {
 #ifdef CONVERTER_LEDS
-    converter.state.kb_ready = ready ? 1 : 0;
+    converter.state.kb_ready = (unsigned char)ready;
     update_converter_status();
 #else
     // Suppress unused parameter warning when LEDs disabled

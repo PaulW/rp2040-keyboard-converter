@@ -106,12 +106,14 @@
 #include "ringbuf.h"
 #include "scancode.h"
 
-/* PIO State Machine Configuration */
-static uint keyboard_sm     = 0; /**< PIO state machine number */
-static uint keyboard_offset = 0; /**< PIO program memory offset */
-static PIO  keyboard_pio;        /**< PIO instance (pio0 or pio1) */
-static uint keyboard_data_pin;   /**< GPIO pin for DATA (bidirectional) */
-static uint keyboard_clock_pin;  /**< GPIO pin for CLOCK (input only) */
+/**
+ * @brief PIO engine for Amiga keyboard interface
+ */
+static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
+
+/* Pin Configuration */
+static uint keyboard_data_pin;  /**< GPIO pin for DATA (bidirectional) */
+static uint keyboard_clock_pin; /**< GPIO pin for CLOCK (input only) */
 
 /**
  * @brief Amiga Protocol State Machine
@@ -252,7 +254,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * - Direct bit manipulation for optimal interrupt performance
  *
  * Implementation Note - Direct Register Access:
- * - Uses direct PIO RX FIFO register access (keyboard_pio->rxf[keyboard_sm])
+ * - Uses direct PIO RX FIFO register access (pio_engine.pio->rxf[pio_engine.sm])
  * - This matches the established pattern across ALL protocols (AT/PS2, XT, Apple M0110)
  * - Single-byte read is intentional - ISR fires once per byte, not burst
  * - Performance-optimized for minimal ISR latency
@@ -298,7 +300,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
 static void __isr keyboard_input_event_handler(void) {
     // Read byte from PIO RX FIFO (8-bit, rotated format)
     // PIO has already sent the handshake automatically
-    uint8_t rotated_byte = (uint8_t)(keyboard_pio->rxf[keyboard_sm] & 0xFF);
+    uint8_t rotated_byte = (uint8_t)(pio_engine.pio->rxf[pio_engine.sm] & 0xFF);
 
     // Amiga protocol is active-low: HIGH = 0, LOW = 1
     // Invert all bits to get correct logical values
@@ -348,18 +350,12 @@ void keyboard_interface_setup(uint data_pin) {
     // Initialize ring buffer for key data communication between IRQ and main task
     ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Safe: IRQs not yet enabled during init
 
-    // Find available PIO block
-    keyboard_pio = find_available_pio(&keyboard_interface_program);
-    if (keyboard_pio == NULL) {
-        LOG_ERROR("Amiga: No PIO available for keyboard interface\n");
+    // Claim PIO instance and state machine atomically with fallback
+    pio_engine = claim_pio_and_sm(&keyboard_interface_program);
+    if (pio_engine.pio == NULL) {
+        LOG_ERROR("Amiga: No PIO resources available for keyboard interface\n");
         return;
     }
-
-    // Claim unused state machine
-    keyboard_sm = (uint)pio_claim_unused_sm(keyboard_pio, true);
-
-    // Load program into PIO instruction memory
-    keyboard_offset = pio_add_program(keyboard_pio, &keyboard_interface_program);
 
     // Store pin assignments - CLOCK must be DATA + 1 (PIO program requirement)
     keyboard_data_pin  = data_pin;
@@ -377,11 +373,11 @@ void keyboard_interface_setup(uint data_pin) {
     // Initialize PIO program with calculated clock divider
     // Note: keyboard_interface_program_init (in .pio file) enables RX FIFO interrupt via:
     //   pio_set_irq0_source_enabled(pio, pis_sm0_rx_fifo_not_empty + sm, true)
-    keyboard_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin,
+    keyboard_interface_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin,
                                     clock_div);
 
     // Configure interrupt handling for PIO data reception
-    uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+    uint pio_irq = pio_engine.pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
 
     // Register interrupt handler for RX FIFO events
     irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
@@ -393,7 +389,7 @@ void keyboard_interface_setup(uint data_pin) {
     irq_set_enabled(pio_irq, true);
 
     LOG_INFO("PIO%d SM%d Amiga Keyboard Interface loaded at offset %d (clock div %.2f)\n",
-             keyboard_pio == pio0 ? 0 : 1, keyboard_sm, keyboard_offset, clock_div);
+             pio_engine.pio == pio0 ? 0 : 1, pio_engine.sm, pio_engine.offset, clock_div);
 
     // Set initial state - transition to INITIALISED happens in ISR on first byte
     keyboard_state = UNINITIALISED;

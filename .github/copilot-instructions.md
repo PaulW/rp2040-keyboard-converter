@@ -112,11 +112,13 @@ Embedded firmware converting keyboard/mouse protocols (AT/PS2, XT, Apple M0110, 
 ### Step-by-Step Guard Analysis Protocol
 
 **1. IDENTIFY THE OPERATION:**
+
 - What function/operation needs guarding?
 - What could go wrong if unguarded?
 - What type of guard would protect it?
 
 **2. TRACE THE CALL CHAIN (MANDATORY):**
+
 ```bash
 # Find where function is called
 grep -rn "function_name" src/
@@ -129,12 +131,14 @@ grep -rn "function_name" src/
 ```
 
 **3. READ HELPER IMPLEMENTATIONS:**
+
 - Helper functions often centralize guard logic
 - Don't assume - read the actual implementation
 - Look for patterns: `find_*()`, `claim_*()`, `allocate_*()` functions typically validate resources
 - Check return values: NULL/negative often indicates validation failed internally
 
 **4. VERIFY ESTABLISHED PATTERNS:**
+
 ```bash
 # Check if pattern exists across similar code
 grep -r "similar_operation" src/protocols/
@@ -144,6 +148,7 @@ grep -r "similar_operation" src/protocols/
 ```
 
 **5. CHECK CALLER'S ERROR HANDLING:**
+
 - Does caller check helper's return value?
 - NULL check after `find_*()` function → validation delegated to helper
 - Negative check after `claim_*()` function → availability checked by that function
@@ -162,6 +167,7 @@ Before suggesting guard addition, verify:
 ### When to Suggest Guards
 
 ✅ **Suggest guard when:**
+
 - Guard missing from ENTIRE call chain (verified by reading all functions)
 - New code path without existing pattern (grep confirms)
 - Race condition between check and use (timing vulnerability)
@@ -170,6 +176,7 @@ Before suggesting guard addition, verify:
 ### When NOT to Suggest Guards
 
 ❌ **DO NOT suggest guard when:**
+
 - Helper function returns NULL/error (likely validates internally - read it to confirm)
 - Same operation in all protocols lacks suggested guard (pattern indicates helper provides it)
 - Caller checks return value (validation delegated upstream)
@@ -179,6 +186,7 @@ Before suggesting guard addition, verify:
 ### False Positive Red Flags
 
 🚩 **Warning signs of false positive:**
+
 1. Helper function returns NULL/error code → probably validates internally
 2. Caller has NULL check immediately after helper call → validation delegated
 3. Pattern consistent across ALL similar code without suggested guard → helper provides it
@@ -190,6 +198,7 @@ Before suggesting guard addition, verify:
 **Suggestion**: "Add guard before operation X"
 
 **Analysis process**:
+
 1. **Where is X called?** → `grep -rn "operation_x" src/` → Found in `protocol_setup()`
 2. **Read protocol_setup()**: Uses `helper_allocate()` before X
 3. **Read helper_allocate()**: ← **KEY STEP** - Check if guard is HERE
@@ -334,7 +343,7 @@ sleep_us(delay);  // LINT:ALLOW blocking - [justification]
 ```c
 // IRQ context (producer) - writes only
 void __isr keyboard_irq_handler(void) {
-  uint8_t scancode = pio_sm_get(keyboard_pio, keyboard_sm) >> 21;
+  uint8_t scancode = pio_sm_get(pio_engine.pio, pio_engine.sm) >> 21;
   if (!ringbuf_is_full()) {
     ringbuf_put(scancode);
   }

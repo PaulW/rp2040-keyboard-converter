@@ -42,15 +42,18 @@
 #include "keymaps.h"
 #include "log.h"
 
+/** Base layer bitmask (Layer 0 always active) */
+#define LAYER_BASE_MASK 0x01u
+
 // Layer count (exported by keyboard.c, defaults to max if undefined)
 __attribute__((weak)) const uint8_t keymap_layer_count = KEYMAP_MAX_LAYERS;
 
 // Layer state tracking (accessible to inline functions in header)
 layer_state_t layer_state = {
-    .layer_state    = 0x01,  // Bit 0 set = Layer 0 (base) active
-    .momentary_keys = {0},   // No MO keys held (supports layers 1 to MAX-1)
-    .oneshot_layer  = 0,     // No one-shot layer
-    .oneshot_active = false  // One-shot not active
+    .layer_state    = LAYER_BASE_MASK,  // Bit 0 set = Layer 0 (base) active
+    .momentary_keys = {0},              // No MO keys held (supports layers 1 to MAX-1)
+    .oneshot_layer  = 0,                // No one-shot layer
+    .oneshot_active = false             // One-shot not active
 };
 
 /**
@@ -60,7 +63,7 @@ layer_state_t layer_state = {
  * Used during initialization and error recovery.
  */
 void keylayers_reset(void) {
-    layer_state.layer_state = 0x01;  // Only layer 0 active
+    layer_state.layer_state = LAYER_BASE_MASK;  // Only layer 0 active
     for (uint8_t i = 0; i < KEYMAP_MAX_LAYERS - 1; i++) {
         layer_state.momentary_keys[i] = 0;
     }
@@ -166,8 +169,8 @@ static void handle_hash_mismatch(uint32_t saved_hash, uint32_t current_hash) {
     LOG_INFO("Keymap config changed (hash 0x%08X → 0x%08X, layer_count=%d)\n",
              (unsigned int)saved_hash, (unsigned int)current_hash, keymap_layer_count);
     LOG_INFO("Resetting layer state to Layer 0\n");
-    layer_state.layer_state = 0x01;
-    config_set_layer_state(0x01);
+    layer_state.layer_state = LAYER_BASE_MASK;
+    config_set_layer_state(LAYER_BASE_MASK);
     config_set_layers_hash(current_hash);
     config_save();
 }
@@ -191,8 +194,8 @@ static void handle_valid_hash(uint8_t saved_layer_state) {
         LOG_WARN("Saved layer state 0x%02X has invalid layers (max layer=%d)\n", saved_layer_state,
                  effective_layer_count - 1);
         LOG_INFO("Resetting to Layer 0\n");
-        layer_state.layer_state = 0x01;
-        config_set_layer_state(0x01);
+        layer_state.layer_state = LAYER_BASE_MASK;
+        config_set_layer_state(LAYER_BASE_MASK);
         config_save();
     } else {
         layer_state.layer_state = saved_layer_state;
@@ -234,7 +237,7 @@ void keylayers_init(void) {
 /**
  * @brief Handle MO (momentary) layer operation
  *
- * Bounds validation: target_layer is pre-validated by keylayers_process_key() caller  
+ * Bounds validation: target_layer is pre-validated by keylayers_process_key() caller
  * to ensure target_layer != 0 && target_layer < max_layers (prevents buffer underflow).
  *
  * @param target_layer The layer to activate (must be 1 or higher, never 0)
@@ -283,7 +286,7 @@ static void keylayers_handle_tg(uint8_t target_layer, bool make) {
 static void keylayers_handle_to(uint8_t target_layer, bool make) {
     if (make) {  // Only act on key press
         // Clear all layers except base (layer 0)
-        layer_state.layer_state = 0x01;
+        layer_state.layer_state = LAYER_BASE_MASK;
         // Activate target layer
         if (target_layer > 0) {
             layer_state.layer_state |= (1 << target_layer);
@@ -330,9 +333,9 @@ void keylayers_process_key(uint8_t code, bool make) {
     // Guard: Validate target_layer bounds to prevent buffer underflow and invalid operations
     // Lower bound: target_layer must not be 0 (Layer 0 is base, cannot be used with MO/TG)
     // Upper bound: target_layer must be < actual keymap layer count
-    const uint8_t max_layers = (keymap_layer_count == 0)           ? 1
+    const uint8_t max_layers = (keymap_layer_count == 0)                  ? 1
                                : (keymap_layer_count > KEYMAP_MAX_LAYERS) ? KEYMAP_MAX_LAYERS
-                                                                           : keymap_layer_count;
+                                                                          : keymap_layer_count;
     if (target_layer == 0 || target_layer >= max_layers) {
         return;  // Invalid layer (0 or exceeds keymap layer count)
     }

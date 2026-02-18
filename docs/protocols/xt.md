@@ -460,7 +460,7 @@ sm_config_set_clkdiv(&c, clock_div);
 ```c
 static void __isr keyboard_input_event_handler() {
     // Read 9-bit frame from PIO FIFO
-    io_ro_32 data_cast = keyboard_pio->rxf[keyboard_sm] >> 23;
+    io_ro_32 data_cast = pio_engine.pio->rxf[pio_engine.sm] >> 23;
     uint16_t data = (uint16_t)data_cast;
 
     // Extract start bit and data byte
@@ -471,7 +471,7 @@ static void __isr keyboard_input_event_handler() {
     if (start_bit != 1) {
         // Invalid frame - restart PIO
         keyboard_state = UNINITIALISED;
-        pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
+        pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
         return;
     }
 

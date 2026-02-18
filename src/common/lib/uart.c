@@ -689,8 +689,9 @@ static stdio_driver_t dma_stdio_driver = {
  * @warning Do not call from interrupt context during initialization
  */
 void init_uart_dma() {
-    if (uart_dma_inited)
+    if (uart_dma_inited) {
         return;
+    }
     uart_dma_inited = true;
     // Initialize UART hardware with configured baud rate and TX pin
     uart_init(UART_ID, UART_BAUD);  // UART_BAUD defined in config.h

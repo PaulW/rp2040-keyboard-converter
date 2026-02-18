@@ -33,9 +33,8 @@
 #include "log.h"
 #include "pio_helper.h"
 
-static uint    mouse_sm     = 0;
-static uint    mouse_offset = 0;
-static PIO     mouse_pio;
+static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
+
 static uint8_t mouse_id = ATPS2_MOUSE_ID_UNKNOWN;
 static uint    mouse_data_pin;
 static int8_t  data_loop             = 0;  // Packet alignment counter (reset on re-init)
@@ -90,7 +89,7 @@ typedef enum { X_POS, Y_POS, Z_POS } mousepos_index;
  */
 static void mouse_command_handler(uint8_t data_byte) {
     uint16_t data_with_parity = (uint16_t)(data_byte + (interface_parity_table[data_byte] << 8));
-    pio_sm_put(mouse_pio, mouse_sm, data_with_parity);
+    pio_sm_put(pio_engine.pio, pio_engine.sm, data_with_parity);
 }
 
 /**
@@ -387,7 +386,7 @@ void mouse_event_processor(uint8_t data_byte) {
  * function.
  */
 void mouse_input_event_handler() {
-    io_ro_32 data_cast = mouse_pio->rxf[mouse_sm] >> 21;
+    io_ro_32 data_cast = pio_engine.pio->rxf[pio_engine.sm] >> 21;
     uint16_t data      = (uint16_t)data_cast;
 
     // Extract the Start Bit, Parity Bit and Stop Bit.
@@ -402,7 +401,7 @@ void mouse_input_event_handler() {
         LOG_ERROR("Start Bit Validation Failed: start_bit=%i\n", start_bit);
         mouse_state = UNINITIALISED;
         mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;
-        pio_restart(mouse_pio, mouse_sm, mouse_offset);
+        pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
         return;
     }
 
@@ -411,7 +410,7 @@ void mouse_input_event_handler() {
         LOG_ERROR("Stop Bit Validation Failed: stop_bit=%i\n", stop_bit);
         mouse_state = UNINITIALISED;
         mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;
-        pio_restart(mouse_pio, mouse_sm, mouse_offset);
+        pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
         return;
     }
 
@@ -421,7 +420,7 @@ void mouse_input_event_handler() {
                   parity_bit);
         mouse_state = UNINITIALISED;
         mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;
-        pio_restart(mouse_pio, mouse_sm, mouse_offset);
+        pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
         mouse_command_handler(ATPS2_CMD_RESEND);  // Request Resend (after restart so it transmits)
         return;
     }
@@ -493,23 +492,12 @@ void mouse_interface_setup(uint data_pin) {
     update_converter_status();  // Initialize converter status LEDs to "not ready" state
 #endif
 
-    // Find available PIO block
-    mouse_pio = find_available_pio(&pio_interface_program);
-    if (mouse_pio == NULL) {
-        LOG_ERROR("AT/PS2 Mouse: No PIO available for mouse interface\n");
+    // Claim PIO instance and state machine atomically with fallback
+    pio_engine = claim_pio_and_sm(&pio_interface_program);
+    if (pio_engine.pio == NULL) {
+        LOG_ERROR("AT/PS2 Mouse: No PIO resources available for mouse interface\n");
         return;
     }
-
-    // Claim unused state machine with explicit error handling
-    int sm = pio_claim_unused_sm(mouse_pio, false);
-    if (sm < 0) {
-        LOG_ERROR("AT/PS2 Mouse: No PIO state machine available\n");
-        return;
-    }
-    mouse_sm = (uint)sm;
-
-    // Load program into PIO instruction memory
-    mouse_offset = pio_add_program(mouse_pio, &pio_interface_program);
 
     // Store pin assignment
     mouse_data_pin = data_pin;
@@ -519,10 +507,11 @@ void mouse_interface_setup(uint data_pin) {
     float clock_div = calculate_clock_divider(ATPS2_TIMING_CLOCK_MIN_US);
 
     // Initialize PIO program with calculated clock divider
-    pio_interface_program_init(mouse_pio, mouse_sm, mouse_offset, data_pin, clock_div);
+    pio_interface_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin,
+                               clock_div);
 
     // Configure interrupt handling for PIO data reception
-    uint pio_irq = mouse_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+    uint pio_irq = pio_engine.pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
 
     // Register interrupt handler for RX FIFO events
     irq_set_exclusive_handler(pio_irq, &mouse_input_event_handler);
@@ -533,6 +522,6 @@ void mouse_interface_setup(uint data_pin) {
     // Enable the IRQ
     irq_set_enabled(pio_irq, true);
 
-    LOG_INFO("PIO%d SM%d Interface program loaded at mouse_offset %d with clock divider of %.2f\n",
-             (mouse_pio == pio0 ? 0 : 1), mouse_sm, mouse_offset, clock_div);
+    LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
+             (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);
 }

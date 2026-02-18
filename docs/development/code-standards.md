@@ -50,7 +50,7 @@ If using VSCode, copy `.vscode.example/settings.json` to `.vscode/settings.json`
 
 ### Indentation and Spacing
 
-Use **4 spaces per indentation level**. No tabs. This keeps the code looking consistent regardless of editor settings. The lint script (Check 8 and Check 17) enforces this—files with tab characters or 2-space indentation will fail the check.
+Use **4 spaces per indentation level**. No tabs. This keeps the code looking consistent regardless of editor settings. The tab validation and indentation-consistency checks in lint.sh enforce this—files with tab characters or 2-space indentation will fail the check.
 
 **Note:** Code within `// clang-format off` and `// clang-format on` blocks is excluded from indentation validation, allowing for hand-formatted tables or aligned data structures.
 
@@ -438,33 +438,41 @@ bool keyboard_interface_setup(uint data_pin) {
 
 #### Guard Patterns and Validation Delegation
 
-Helper functions often centralize validation logic for code reuse and consistency. Before adding validation guards, trace the call chain to ensure you're not duplicating checks that already exist upstream.
+Helper functions often centralise validation logic for code reuse and consistency. Before adding validation guards, trace the call chain to ensure you're not duplicating checks that already exist upstream.
 
 **Validation Delegation Pattern:**
 
 Helper functions that return NULL or error codes typically perform validation internally. Callers delegate validation by checking the return value:
 
 ```c
-// Helper centralizes validation
-PIO find_available_pio(const pio_program_t* program) {
-    if (!pio_can_add_program(pio0, program)) {
-        if (!pio_can_add_program(pio1, program)) {
-            return NULL;  // Both PIOs full
-        }
-        return pio1;
+// Helper centralises atomic allocation with validation
+pio_engine_t claim_pio_and_sm(const pio_program_t* program) {
+    // Try PIO0 first, fallback to PIO1
+    PIO pio = pio_can_add_program(pio0, program) ? pio0 : 
+              (pio_can_add_program(pio1, program) ? pio1 : NULL);
+    
+    if (pio == NULL) {
+        return (pio_engine_t){.pio = NULL, .sm = -1, .offset = -1};
     }
-    return pio0;
+    
+    int sm = pio_claim_unused_sm(pio, false);
+    if (sm < 0) {
+        return (pio_engine_t){.pio = NULL, .sm = -1, .offset = -1};
+    }
+    
+    int offset = pio_add_program(pio, program);
+    return (pio_engine_t){.pio = pio, .sm = sm, .offset = offset};
 }
 
-// Caller delegates validation to helper
-keyboard_pio = find_available_pio(&keyboard_interface_program);
-if (keyboard_pio == NULL) {  // Validation already done by helper
-    LOG_ERROR("No PIO available\n");
+// Caller delegates validation to helper - single error check
+pio_engine_t pio_engine = claim_pio_and_sm(&keyboard_interface_program);
+if (pio_engine.pio == NULL) {  // Validation already done by helper
+    LOG_ERROR("No PIO resources available\n");
     return;
 }
 
 // ❌ WRONG: Redundant check - helper already validated this
-if (!pio_can_add_program(keyboard_pio, &keyboard_interface_program)) {
+if (!pio_can_add_program(pio_engine.pio, &keyboard_interface_program)) {
     // This can never trigger - helper already checked
 }
 ```
@@ -681,22 +689,18 @@ The RP2040's Programmable I/O (PIO) requires special consideration:
 
 **PIO state machine lifecycle:**
 
-Setting up a PIO state machine follows a specific sequence. First, find an available PIO instance—there are only two (PIO0 and PIO1), and program space is limited:
+Setting up a PIO state machine uses atomic allocation that claims PIO, state machine, and loads the program in a single operation. There are only two PIO instances (PIO0 and PIO1) with limited program space:
 
 ```c
-// 1. Find available PIO instance
-PIO pio = find_available_pio(&program);
-if (!pio) {
-    LOG_ERROR("No PIO space available\n");
+// 1. Claim PIO and SM atomically (loads program automatically)
+pio_engine_t pio_engine = claim_pio_and_sm(&program);
+if (pio_engine.pio == NULL) {
+    LOG_ERROR("No PIO resources available\n");
     return false;
 }
 
-// 2. Load program and claim state machine
-offset = pio_add_program(pio, &program);
-sm = pio_claim_unused_sm(pio, true);
-
-// 3. Configure and start
-program_init(pio, sm, offset, data_pin);
+// 2. Configure and start
+program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin);
 
 // 4. Setup IRQ handler (if needed)
 pio_set_irq0_source_enabled(pio, pis_interrupt0, true);

@@ -96,10 +96,9 @@
 #endif
 
 /* PIO State Machine Configuration */
-static uint keyboard_sm     = 0; /**< PIO state machine number */
-static uint keyboard_offset = 0; /**< PIO program memory offset */
-static PIO  keyboard_pio;        /**< PIO instance (pio0 or pio1) */
-static uint keyboard_data_pin;   /**< GPIO pin for DATA line (2-wire interface) */
+static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
+
+static uint keyboard_data_pin; /**< GPIO pin for DATA line (2-wire interface) */
 
 /**
  * @brief IBM XT Protocol State Machine
@@ -114,6 +113,12 @@ static enum {
     UNINITIALISED, /**< Initial state, waiting for system startup */
     INITIALISED,   /**< Normal operation, processing scan codes */
 } keyboard_state = UNINITIALISED;
+
+/* Keyboard detection timing constants */
+enum {
+    XT_DETECT_INTERVAL_MS = 200, /**< Detection status check interval (ms) */
+    XT_DETECT_STALL_LIMIT = 5,   /**< Max stall count before reset */
+};
 
 /**
  * @brief IBM XT Keyboard Scan Code Processor
@@ -173,7 +178,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
             } else {
                 LOG_ERROR("Keyboard Self-Test Failed: 0x%02X\n", data_byte);
                 keyboard_state = UNINITIALISED;
-                pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
+                pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
             }
             break;
         case INITIALISED:
@@ -240,7 +245,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * @note No software reset capability - reset via PIO restart only
  */
 static void __isr keyboard_input_event_handler(void) {
-    io_ro_32 data_cast = keyboard_pio->rxf[keyboard_sm] >> 23;
+    io_ro_32 data_cast = pio_engine.pio->rxf[pio_engine.sm] >> 23;
     uint16_t data      = (uint16_t)data_cast;
 
     // Parse XT frame components from 9-bit PIO data (Start + 8 data bits)
@@ -250,7 +255,7 @@ static void __isr keyboard_input_event_handler(void) {
     if (start_bit != 1) {
         LOG_ERROR("Start Bit Validation Failed: start_bit=%i\n", start_bit);
         keyboard_state = UNINITIALISED;
-        pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
+        pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
         return;
     }
     keyboard_event_processor(data_byte);
@@ -340,13 +345,13 @@ void keyboard_interface_task() {
         // if (gpio_get(keyboard_data_pin) == 1) {
         //   keyboard_state = INITIALISED;
         // }
-        if (board_millis() - detect_ms > 200) {
+        if (board_millis() - detect_ms > XT_DETECT_INTERVAL_MS) {
             detect_ms = board_millis();
             // Monitor CLOCK line idle state for keyboard presence. Keyboard also pulls CLOCK HIGH
             // to signify ACK during init. XT protocol has no host-to-keyboard communication, so
             // only presence detection is possible.
             if (gpio_get(keyboard_data_pin + 1) == 1) {
-                if (detect_stall_count < 5) {
+                if (detect_stall_count < XT_DETECT_STALL_LIMIT) {
                     detect_stall_count++;
                     LOG_DEBUG("Keyboard detected, awaiting ACK (%i/5 attempts)\n",
                               detect_stall_count);
@@ -354,7 +359,7 @@ void keyboard_interface_task() {
                     LOG_DEBUG("Keyboard detected, but no ACK received!\n");
                     LOG_DEBUG("Requesting keyboard reset\n");
                     keyboard_state = UNINITIALISED;
-                    pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
+                    pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
                     detect_stall_count = 0;
                 }
             } else if (keyboard_state == UNINITIALISED) {
@@ -437,18 +442,12 @@ void keyboard_interface_setup(uint data_pin) {
     // Initialize ring buffer for key data communication between IRQ and main task
     ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Safe: IRQs not yet enabled during init
 
-    // Find available PIO block
-    keyboard_pio = find_available_pio(&keyboard_interface_program);
-    if (keyboard_pio == NULL) {
-        LOG_ERROR("XT: No PIO available for keyboard interface\n");
+    // Claim PIO instance and state machine atomically with fallback
+    pio_engine = claim_pio_and_sm(&keyboard_interface_program);
+    if (pio_engine.pio == NULL) {
+        LOG_ERROR("XT: No PIO resources available for keyboard interface\n");
         return;
     }
-
-    // Claim unused state machine
-    keyboard_sm = (uint)pio_claim_unused_sm(keyboard_pio, true);
-
-    // Load program into PIO instruction memory
-    keyboard_offset = pio_add_program(keyboard_pio, &keyboard_interface_program);
 
     // Store pin assignment
     keyboard_data_pin = data_pin;
@@ -459,11 +458,11 @@ void keyboard_interface_setup(uint data_pin) {
     float clock_div = calculate_clock_divider(XT_TIMING_SAMPLE_US);
 
     // Initialize PIO program with calculated clock divider
-    keyboard_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin,
+    keyboard_interface_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin,
                                     clock_div);
 
     // Configure interrupt handling for PIO data reception
-    uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+    uint pio_irq = pio_engine.pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
 
     // Register interrupt handler for RX FIFO events
     irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
@@ -475,5 +474,5 @@ void keyboard_interface_setup(uint data_pin) {
     irq_set_enabled(pio_irq, true);
 
     LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
-             (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
+             (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);
 }

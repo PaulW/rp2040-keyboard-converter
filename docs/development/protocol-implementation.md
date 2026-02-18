@@ -53,49 +53,65 @@ The `LINT:ALLOW` annotation tells the lint checker this is intentional. Normally
 Now find an available PIO instance that has enough instruction memory for your protocol's program. The RP2040 has two PIO blocks (PIO0 and PIO1), each with 32 instruction memory slots. The helper function searches both and returns the first one with enough space.
 
 ```c
-keyboard_pio = find_available_pio(&pio_interface_program);
-if (keyboard_pio == NULL) {
+pio_engine_t pio_engine = claim_pio_and_sm(&pio_interface_program);
+if (pio_engine.pio == NULL) {
   LOG_ERROR("No PIO available for AT/PS2 Keyboard Interface Program\n");
   return;
 }
 ```
 
-If allocation fails, log an error and return early. There's no point continuing—without a PIO instance, the protocol can't function. The error message should identify which protocol failed (helpful when debugging multi-protocol builds or when system resources are exhausted).
+The `claim_pio_and_sm()` helper function handles PIO allocation, state machine claiming, and program loading atomically. It tries PIO0 first, then falls back to PIO1 if needed. If both PIO blocks are exhausted, it returns a struct with `pio = NULL`.
 
-### 4. State Machine Claiming
+This atomic allocation ensures no partial failures—you either get a complete working PIO engine (instance + state machine + loaded program) or nothing. The error message should identify which protocol failed (helpful when debugging multi-protocol builds or when system resources are exhausted).
 
-After getting a PIO instance, claim an unused state machine. Each PIO has 4 state machines (numbered 0-3), and you need one for the keyboard interface.
+### 4. PIO Engine Structure
 
-Most protocols use the panic-on-failure pattern:
-
-```c
-keyboard_sm = (uint)pio_claim_unused_sm(keyboard_pio, true);
-```
-
-The `true` parameter means "panic if no state machine is available". This is reasonable for most protocols—if you can't get a state machine, the system is misconfigured or out of resources, and there's not much you can do about it.
-
-However, the Apple M0110 protocol takes a different approach with manual error handling:
+The `pio_engine_t` struct returned by `claim_pio_and_sm()` contains everything needed to use the PIO hardware:
 
 ```c
-int sm = pio_claim_unused_sm(keyboard_pio, false);
-if (sm < 0) {
-  LOG_ERROR("No PIO state machine available for M0110 Keyboard Interface\n");
-  return;
-}
-keyboard_sm = (unsigned int)sm;
+typedef struct {
+    PIO pio;    // PIO instance (pio0/pio1), or NULL on failure
+    int sm;     // State machine (0-3), or -1 on failure
+    int offset; // Program memory offset (0-31), or -1 on failure
+} pio_engine_t;
 ```
 
-This is actually the better pattern if you're writing a new protocol. It gives you control over error handling and allows for cleaner error messages. The panic approach is simpler but less graceful.
-
-### 5. Program Loading
-
-Load your protocol's PIO program into the instruction memory. The function returns an offset indicating where the program was loaded (because multiple programs can coexist in the same PIO's instruction memory).
+All protocol implementations declare this as a static variable with explicit initialization:
 
 ```c
-keyboard_offset = pio_add_program(keyboard_pio, &pio_interface_program);
+static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
 ```
 
-This can't fail—the helper in step 3 already verified there's enough space. The offset is used later when initialising the state machine (it needs to know where your program starts).
+The struct members use `int` types (not `uint`) to match the SDK allocation functions' return types. The SDK's `pio_claim_unused_sm()` and `pio_add_program()` both return `int` values that can be -1 for errors or non-negative for success. When passing these values to SDK usage functions that expect `uint` parameters, the implicit conversion is safe because we've validated the allocation succeeded (non-negative values).
+
+### 5. Why Atomic Allocation?
+
+The previous pattern required three separate steps:
+
+```c
+// Old pattern (deprecated)
+PIO pio = find_available_pio(&program);  // Step 1: Check space
+if (pio == NULL) return;
+int sm = pio_claim_unused_sm(pio, false);  // Step 2: Claim SM
+if (sm < 0) return;
+int offset = pio_add_program(pio, &program);  // Step 3: Load program
+```
+
+This created opportunities for partial failures and duplicated error handling across all protocols. The atomic approach is cleaner:
+
+```c
+// Current pattern
+pio_engine_t pio_engine = claim_pio_and_sm(&program);
+if (pio_engine.pio == NULL) return;  // Single error check
+// Ready to use: pio_engine.pio, pio_engine.sm, pio_engine.offset
+```
+
+Benefits:
+- Single error check instead of three
+- No partial allocation state
+- Automatic fallback from PIO0 to PIO1
+- Consistent pattern across all protocols
+- Type safety through struct encapsulation
 
 ### 6. Pin Assignment
 
@@ -127,17 +143,17 @@ The timing constant should be defined in your protocol's header file, not hardco
 Initialise the state machine with your program. This sets up the PIO hardware: configures pins, sets the clock divider, loads the initial state, and prepares the state machine to run.
 
 ```c
-pio_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin, clock_div);
+pio_interface_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin, clock_div);
 ```
 
-The init function is generated by `pioasm` (the PIO assembler) and is specific to your protocol's `.pio` file. It knows how to configure the state machine for your particular program's requirements.
+The init function is generated by `pioasm` (the PIO assembler) and is specific to your protocol's `.pio` file. It knows how to configure the state machine for your particular program's requirements. The function accepts `uint` parameters for `sm` and `offset`, but we pass `int` values from the `pio_engine` struct. This implicit conversion is safe because we've validated that allocation succeeded (the values are non-negative).
 
 ### 9. IRQ Handler Registration
 
 Register your interrupt handler for this PIO instance. The handler will be called when the PIO raises an interrupt (typically when it receives a complete scancode).
 
 ```c
-uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+uint pio_irq = pio_engine.pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
 irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
 ```
 
@@ -184,7 +200,7 @@ Finally, log confirmation that setup completed. Include relevant details like wh
 
 ```c
 LOG_INFO("PIO%d SM%d AT/PS2 Interface program loaded at offset %d with clock divider of %.2f\n",
-         (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
+         (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);
 ```
 
 This appears in the UART debug output and helps verify the protocol initialised correctly. It's particularly useful when debugging resource allocation issues or when multiple protocols are loaded simultaneously.
@@ -211,9 +227,13 @@ void mouse_interface_setup(uint data_pin) {
 
   // 2. NO ringbuf_reset() - mouse doesn't use ring buffer
 
-  // 3-13. Standard PIO/IRQ setup (same as keyboard)
-  mouse_pio = find_available_pio(&pio_interface_program);
-  // ... rest of setup follows keyboard pattern
+  // 3. Claim PIO resources atomically
+  pio_engine_t pio_engine = claim_pio_and_sm(&pio_interface_program);
+  if (pio_engine.pio == NULL) {
+    LOG_ERROR("No PIO resources available for mouse\n");
+    return;
+  }
+  // ... rest of setup continues with pio_engine.pio, pio_engine.sm, pio_engine.offset
 }
 ```
 
@@ -222,26 +242,11 @@ void mouse_interface_setup(uint data_pin) {
 - Mouse: Fixed packet format (3-4 bytes), processed as complete packets in IRQ handler
 - Mouse: HID reports sent immediately after packet validation
 
-The mouse still follows the same resource allocation pattern (PIO → SM → Program → Clock → IRQ → Priority), just without the ring buffer reset step.
+The mouse still follows the same resource allocation pattern (atomic PIO/SM/program allocation via `claim_pio_and_sm()`), just without the ring buffer reset step.
 
 ### Error Handling Approach
 
-**Panic on failure:**
-```c
-keyboard_sm = (uint)pio_claim_unused_sm(keyboard_pio, true);
-```
-
-Used by: AT/PS2, XT, Amiga
-
-**Manual error handling:**
-```c
-int sm = pio_claim_unused_sm(keyboard_pio, false);
-if (sm < 0) {
-  LOG_ERROR("No state machine available\n");
-  return;
-}
-keyboard_sm = (unsigned int)sm;
-```
+All protocols now use the consistent atomic allocation pattern:\n\n```c\npio_engine_t pio_engine = claim_pio_and_sm(&program);\nif (pio_engine.pio == NULL) {\n  LOG_ERROR(\"No PIO resources available\\n\");\n  return;\n}\n```\n\nThis pattern:\n- Handles PIO selection (pio0 vs pio1) automatically with fallback\n- Eliminates partial allocation failures\n- Provides clean single-point error handling\n- Returns complete working resources or nothing\n- Type-safe through struct encapsulation"
 
 Used by: M0110
 

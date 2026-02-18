@@ -96,8 +96,8 @@ __attribute__((noinline)) void ram_check_verify(void) {
 
     // Unexpected memory region
     panic(
-        "WARNING: Code executing from unexpected memory region (0x%08x)!\n"
-        "         Expected SRAM: 0x20000000-0x20042000\n",
+        "FATAL: Code executing from unexpected memory region (0x%08x)!\n"
+        "       Expected SRAM: 0x20000000-0x20042000\n",
         addr);
 }
 

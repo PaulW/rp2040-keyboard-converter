@@ -31,39 +31,80 @@
 _Static_assert(1, "PIO helper basic sanity check");  // Always true, validates _Static_assert works
 
 /**
- * @brief Finds an available PIO instance for a given PIO program
+ * @brief Claims PIO resources and loads program atomically with intelligent fallback
  *
- * The RP2040 has two PIO blocks (PIO0 and PIO1), each with limited instruction
- * memory (32 instructions). This function searches for a PIO block with enough
- * free space to load the specified program.
+ * This function combines PIO program space checking, state machine allocation, and
+ * program loading into a single atomic operation with fallback logic. It solves the
+ * race condition where a PIO might have program space but no available state machines.
  *
- * Search Strategy:
- * 1. Try PIO0 first (conventional default)
- * 2. If PIO0 is full, try PIO1
- * 3. If both are full, return NULL
+ * Allocation Strategy:
+ * 1. Check if PIO0 has program space AND available SM → load program → use PIO0
+ * 2. If PIO0 fails either check, try PIO1 with same checks
+ * 3. Return failure only if both PIOs fail
  *
- * Resource Management:
- * - Each PIO program requires contiguous instruction memory
- * - Programs remain loaded until explicit removal
- * - Multiple state machines can share the same program
+ * Resource Validation:
+ * - Checks program space: pio_can_add_program()
+ * - Attempts SM claim: pio_claim_unused_sm() with required=false
+ * - Loads program: pio_add_program() and stores offset
+ * - Validates all resources before committing to a PIO
  *
- * @param program The PIO program to check for available space
- * @return PIO instance (pio0 or pio1) if space available, NULL if both full
+ * Failure Scenarios Handled:
+ * - PIO0: program space ✓, SM available ✗ → tries PIO1
+ * - PIO0: program space ✗, SM available ✓ → tries PIO1
+ * - Both PIOs exhausted → returns failure
  *
- * @note Caller must check for NULL return and handle gracefully
- * @note Does not claim state machines, only checks program space
+ * Example Usage:
+ * @code
+ * pio_engine = claim_pio_and_sm(&my_program);
+ * if (pio_engine.pio == NULL) {
+ *     LOG_ERROR("No PIO resources available\n");
+ *     return;
+ * }
+ * // pio_engine now contains: pio, sm (0-3), offset (program already loaded)
+ * @endcode
+ *
+ * @param program The PIO program to allocate resources for and load
+ * @return pio_engine_t with allocated PIO/SM/offset, or {NULL, -1, 0} on failure
+ *
+ * @note Claimed SM remains allocated until explicitly released
+ * @note Caller must check pio == NULL for allocation failure
+ * @note Program is loaded atomically - no separate pio_add_program() call needed
+ * @note Thread-safe: uses SDK's atomic SM claiming mechanism
  */
-PIO find_available_pio(const pio_program_t* program) {
-    if (!pio_can_add_program(pio0, program)) {
-        LOG_WARN("PIO0 has no space for PIO Program. Checking to see if we can load into PIO1\n");
-        if (!pio_can_add_program(pio1, program)) {
-            LOG_ERROR("PIO1 has no space for PIO Program\n");
-            return NULL;
+pio_engine_t claim_pio_and_sm(const pio_program_t* program) {
+    pio_engine_t result = {NULL, -1, -1};
+
+    // Try PIO0 first: check program space AND SM availability
+    if (pio_can_add_program(pio0, program)) {
+        int sm = pio_claim_unused_sm(pio0, false);
+        if (sm >= 0) {
+            result.pio    = pio0;
+            result.sm     = sm;
+            result.offset = pio_add_program(pio0, program);
+            return result;
         }
-        return pio1;
+        LOG_WARN("PIO0 has program space but no available state machines\n");
     } else {
-        return pio0;
+        LOG_WARN("PIO0 has no space for PIO program\n");
     }
+
+    // PIO0 failed, try PIO1: check program space AND SM availability
+    if (pio_can_add_program(pio1, program)) {
+        int sm = pio_claim_unused_sm(pio1, false);
+        if (sm >= 0) {
+            result.pio    = pio1;
+            result.sm     = sm;
+            result.offset = pio_add_program(pio1, program);
+            return result;
+        }
+        LOG_WARN("PIO1 has program space but no available state machines\n");
+    } else {
+        LOG_WARN("PIO1 has no space for PIO program\n");
+    }
+
+    // Both PIOs exhausted
+    LOG_ERROR("No PIO resources available (both PIO0 and PIO1 exhausted)\n");
+    return result;
 }
 
 /**

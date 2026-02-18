@@ -194,7 +194,7 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 1. **Blocking operations:** `sleep_ms()`, `sleep_us()`, `busy_wait_ms()`, `busy_wait_us()`
 2. **Multicore APIs:** `multicore_*`, `core1_*` functions (forbidden)
 3. **printf in IRQ:** `printf()` calls in files containing `__isr` (use `LOG_*` macros)
-4. **Unsafe ring buffer resets:** `ringbuf_reset()` without IRQ guard or annotation
+4. **Ring buffer reset annotation:** `ringbuf_reset()` calls without required `// LINT:ALLOW ringbuf_reset` annotation (linter verifies annotation presence, not runtime IRQ protection)
 5. **docs-internal exposure:** Ensures private docs never leak into repository
 6. **Flash execution:** Missing `copy_to_ram` configuration in CMakeLists.txt
 7. **IRQ variable safety:** Missing `volatile` or `__dmb()` barriers for IRQ-shared variables

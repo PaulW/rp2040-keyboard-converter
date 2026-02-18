@@ -32,9 +32,10 @@
 #include "log.h"
 #include "pio_helper.h"
 
-uint ws2812_sm     = 0;
-uint ws2812_offset = 0;
-PIO  ws2812_pio    = NULL;
+/**
+ * @brief PIO engine for WS2812 LED control
+ */
+static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
 
 /*
  * Private Functions
@@ -334,18 +335,18 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
  */
 bool ws2812_show(uint32_t led_color) {
     // Guard against uninitialized PIO/SM
-    if (ws2812_pio == NULL) {
+    if (pio_engine.pio == NULL) {
         return false;
     }
 
     // Check if TX FIFO has space (non-blocking approach)
-    if (pio_sm_is_tx_fifo_full(ws2812_pio, ws2812_sm)) {
+    if (pio_sm_is_tx_fifo_full(pio_engine.pio, pio_engine.sm)) {
         // FIFO full - return false so caller can defer update
         return false;
     }
 
     // FIFO has space - queue the LED data (non-blocking)
-    pio_sm_put(ws2812_pio, ws2812_sm, ws2812_set_color(led_color) << 8u);
+    pio_sm_put(pio_engine.pio, pio_engine.sm, ws2812_set_color(led_color) << 8u);
     return true;
 }
 
@@ -358,24 +359,22 @@ bool ws2812_show(uint32_t led_color) {
  * @param led_pin The GPIO pin connected to the WS2812 LED strip.
  */
 void ws2812_setup(uint led_pin) {
-    ws2812_pio = find_available_pio(&ws2812_program);
-    if (ws2812_pio == NULL) {
-        LOG_ERROR("No PIO available for WS2812 Program\n");
+    // Claim PIO instance and state machine atomically with fallback
+    pio_engine = claim_pio_and_sm(&ws2812_program);
+    if (pio_engine.pio == NULL) {
+        LOG_ERROR("No PIO resources available for WS2812 Program\n");
         return;
     }
-
-    ws2812_sm     = (uint)pio_claim_unused_sm(ws2812_pio, true);
-    ws2812_offset = pio_add_program(ws2812_pio, &ws2812_program);
 
     float rp_clock_khz = 0.001 * clock_get_hz(clk_sys);
     float clock_div    = roundf(rp_clock_khz / (800 * 10));
 
     LOG_INFO("Effective SM Clock Speed: %.2fkHz\n", (float)(rp_clock_khz / clock_div));
 
-    ws2812_program_init(ws2812_pio, ws2812_sm, ws2812_offset, led_pin, clock_div);
+    ws2812_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, led_pin, clock_div);
 
     LOG_INFO("PIO%d SM%d WS2812 Interface program loaded at offset %d with clock divider of %.2f\n",
-             ws2812_pio == pio0 ? 0 : 1, ws2812_sm, ws2812_offset, clock_div);
+             pio_engine.pio == pio0 ? 0 : 1, pio_engine.sm, pio_engine.offset, clock_div);
 }
 
 /**

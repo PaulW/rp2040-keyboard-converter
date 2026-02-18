@@ -109,7 +109,7 @@ bool update_converter_leds(void) {
     }
 
     // Determine status LED color based on converter state
-    uint32_t status_color;
+    uint32_t status_color = CONVERTER_LEDS_STATUS_NOT_READY_COLOR;
     if (converter.state.fw_flash) {
         status_color = CONVERTER_LEDS_STATUS_FWFLASH_COLOR;
     } else if (converter.state.cmd_mode) {
@@ -257,7 +257,7 @@ uint32_t hsv_to_rgb(uint16_t hue, uint8_t saturation, uint8_t value) {
     uint8_t q = (value * (255 - ((saturation * remainder) / 255))) / 255;
     uint8_t t = (value * (255 - ((saturation * (255 - remainder)) / 255))) / 255;
 
-    uint8_t r, g, b;
+    uint8_t r = 0, g = 0, b = 0;
     switch (region) {
         case 0:
             r = value;

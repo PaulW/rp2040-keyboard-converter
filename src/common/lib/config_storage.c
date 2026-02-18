@@ -30,6 +30,14 @@
 #include "keymaps.h"
 #include "log.h"
 
+// --- Configuration Constants ---
+
+/** Layer 0 always-active bitmask */
+#define LAYER_0_ACTIVE_BIT 0x01
+
+/** First-boot / reset sentinel for layers_hash */
+#define LAYERS_HASH_SENTINEL 0xFFFFFFFF
+
 // --- Keyboard Identification ---
 
 /**
@@ -59,7 +67,7 @@ static uint32_t get_keyboard_id(void) {
 
     // Hash all four identifier strings
     const char* strings[] = {make, model, protocol, codeset};
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < (int)(sizeof(strings) / sizeof(strings[0])); i++) {
         const char* str = strings[i];
         while (*str) {
             hash ^= (uint32_t)(*str++);
@@ -117,8 +125,8 @@ static const config_data_t DEFAULT_CONFIG = {
     .led_brightness = LED_BRIGHTNESS_DEFAULT,  // From config.h or default
     .keyboard_id    = 0,                       // Set dynamically at init (from get_keyboard_id())
     .flags          = {.dirty = 0, .shift_override_enabled = 0, .reserved = 0},
-    .layer_state    = 0x01,        // Layer 0 always active (bit 0 set)
-    .layers_hash    = 0xFFFFFFFF,  // Sentinel for first boot (set dynamically at init)
+    .layer_state    = LAYER_0_ACTIVE_BIT,    // Layer 0 always active (bit 0 set)
+    .layers_hash    = LAYERS_HASH_SENTINEL,  // Sentinel for first boot (set dynamically at init)
     .reserved       = {0},
     .storage        = {0}};
 
@@ -363,10 +371,10 @@ bool config_init(void) {
                  (unsigned int)current_keyboard_id);
         LOG_INFO("Resetting shift-override and layer state to defaults\n");
         g_config.keyboard_id                  = current_keyboard_id;
-        g_config.flags.shift_override_enabled = 0;     // Reset to disabled
-        g_config.layer_state                  = 0x01;  // Reset to Layer 0 only
+        g_config.flags.shift_override_enabled = 0;                   // Reset to disabled
+        g_config.layer_state                  = LAYER_0_ACTIVE_BIT;  // Reset to Layer 0 only
         g_config.layers_hash =
-            0xFFFFFFFF;            // First boot sentinel (will be recomputed by keylayers_init())
+            LAYERS_HASH_SENTINEL;  // First boot sentinel (will be recomputed by keylayers_init())
         g_config.flags.dirty = 1;  // Mark for save
     }
 
@@ -554,7 +562,7 @@ void config_set_layer_state(uint8_t layer_state) {
         return;
     }
 
-    layer_state |= 0x01;  // Enforce Layer 0 always active
+    layer_state |= LAYER_0_ACTIVE_BIT;  // Enforce Layer 0 always active
     if (g_config.layer_state != layer_state) {
         g_config.layer_state = layer_state;
         g_config.flags.dirty = 1;
@@ -565,11 +573,11 @@ void config_set_layer_state(uint8_t layer_state) {
 uint8_t config_get_layer_state(void) {
     if (!g_initialized) {
         LOG_WARN("Config not initialized, returning Layer 0 only\n");
-        return 0x01;  // Only Layer 0 active
+        return LAYER_0_ACTIVE_BIT;  // Only Layer 0 active
     }
 
     // Always return Layer 0 active (bit 0 set)
-    return g_config.layer_state | 0x01;
+    return g_config.layer_state | LAYER_0_ACTIVE_BIT;
 }
 
 void config_set_layers_hash(uint32_t layers_hash) {
@@ -587,10 +595,10 @@ void config_set_layers_hash(uint32_t layers_hash) {
 
 uint32_t config_get_layers_hash(void) {
     // Intentional behavior: Return 0 when config system not initialized.
-    // This differs from the 0xFFFFFFFF sentinel in DEFAULT_CONFIG and
+    // This differs from the LAYERS_HASH_SENTINEL in DEFAULT_CONFIG and
     // g_config.layers_hash (see line 133, 379) which indicates "config loaded
     // but hash needs computation". Returning 0 here is safe because uninitialized
-    // state means no valid data available, while 0xFFFFFFFF in g_config indicates
+    // state means no valid data available, while LAYERS_HASH_SENTINEL in g_config indicates
     // valid config loaded but awaiting hash validation/computation.
     if (!g_initialized) {
         LOG_WARN("Config not initialized, returning 0\n");

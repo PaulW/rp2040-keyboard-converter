@@ -205,6 +205,7 @@ Layer keycodes:
 **NumLock Handling:** You don't need separate NumLock layers. The numpad keys (KC_P0-KC_P9, KC_P7=7/HOME, KC_P1=1/END, etc.) are dual-function by HID specification—the host OS interprets them as either numeric (NumLock ON) or navigation (NumLock OFF). Windows and Linux handle this natively. On macOS (which doesn't support NumLock), provide navigation keys in a function layer for users who need them.
 
 **Example—Model F PC/AT with navigation in Fn layer:**
+
 ```c
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     [0] = KEYMAP(  // Base layer
@@ -239,12 +240,12 @@ Add a `keymap_shift_override_layers` array to your keyboard.c:
 const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
     [0] = (const uint8_t[SHIFT_OVERRIDE_ARRAY_SIZE]){
         // Suppress shift and send different key
-        [KC_1] = SUPPRESS_SHIFT | KC_EXLM,  // Shift+1 → ! (suppress shift)
-        [KC_2] = SUPPRESS_SHIFT | KC_DQUO,  // Shift+2 → " (suppress shift)
-        [KC_7] = SUPPRESS_SHIFT | KC_QUOT,  // Shift+7 → ' (suppress shift)
+        [KC_7] = SUPPRESS_SHIFT | KC_QUOT,   // Shift+7 → ' (apostrophe, suppress shift)
+        [KC_0] = SUPPRESS_SHIFT | KC_NUHS,   // Shift+0 → # (hash/pound, suppress shift)
+        [KC_MINS] = SUPPRESS_SHIFT | KC_EQL, // Shift+- → = (equals, suppress shift)
         
         // Keep shift for standard behaviour
-        [KC_3] = KC_HASH,  // Shift+3 → # (keep shift held)
+        [KC_6] = KC_7,  // Shift+6 → Shift+7 produces & (ampersand, keep shift held)
         
         // Most entries are 0 (use default shift behaviour)
     },
@@ -261,8 +262,8 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
 - If entry is 0 or layer has no shift-override array (NULL): use default behaviour (send base key with shift)
 
 **SUPPRESS_SHIFT flag (0x80):**
-- `SUPPRESS_SHIFT | KC_EXLM`: Sends `!` **without** shift modifier
-- `KC_HASH`: Sends `#` **with** shift modifier (standard behaviour)
+- `SUPPRESS_SHIFT | KC_QUOT`: Sends `'` (apostrophe) **without** shift modifier
+- `KC_7`: Sends `7` **with** shift modifier (produces shifted character like `&`)
 
 **Per-layer shift-override:**
 Different layers can have different shift behaviours. For example, Layer 0 might use modern PC shift legends while Layer 1 uses terminal shift legends. Simply define multiple entries in the `keymap_shift_override_layers` array:

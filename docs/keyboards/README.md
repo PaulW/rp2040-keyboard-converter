@@ -193,7 +193,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
 };
 ```
 
-Layer switching keycodes: `MO_1` (momentary Layer 1 when held), `TG_1` (toggle Layer 1 on/off), `TO_1` (switch to Layer 1). Use `TRNS` (transparent) for keys that should behave the same as the base layer. More details in the [Custom Keymaps Guide](../development/custom-keymaps.md).
+Layer switching keycodes: `MO_1` (momentary Layer 1 when held), `TG_1` (toggle Layer 1 on/off), `TO_1` (switch to Layer 1), `OSL_1` (one-shot Layer 1 for next key). Use `TRNS` (transparent) for keys that should behave the same as the base layer. More details in the [Custom Keymaps Guide](../development/custom-keymaps.md).
 
 ### Step 6: Build and Test
 

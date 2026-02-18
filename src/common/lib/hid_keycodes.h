@@ -25,7 +25,7 @@
 #define IS_KEY(code) (KC_A <= (code) && (code) <= KC_EXSEL)
 #define IS_MOD(code) (KC_LCTRL <= (code) && (code) <= KC_RGUI)
 
-#define IS_SPECIAL(code)  ((0xA5 <= (code) && (code) <= 0xDF) || (0xE8 <= (code) && (code) <= 0xFF))
+#define IS_SPECIAL(code)  ((0xA5 <= (code) && (code) <= 0xDF) || (0xE8 <= (code) && (code) <= 0xEF))
 #define IS_SYSTEM(code)   (KC_PWR <= (code) && (code) <= KC_WAKE)
 #define IS_CONSUMER(code) (KC_MPLY <= (code) && (code) <= KC_BRTD)
 

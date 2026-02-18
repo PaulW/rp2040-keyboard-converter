@@ -91,6 +91,9 @@ reviews:
         - Confirm ring buffer is used correctly (IRQ writes only)
         - Validate memory barriers (__dmb()) after volatile writes
         - Ensure all protocol timing matches specification in README.md
+        - PIO allocation: Use claim_pio_and_sm() for atomic resource allocation
+        - PIO resources: Store in pio_engine_t struct, access via pio_engine.{pio,sm,offset}
+        - Error handling: Check pio_engine.pio == NULL for allocation failures
     
     - path: "src/common/lib/ringbuf.*"
       instructions: |
@@ -113,6 +116,9 @@ reviews:
         - Use to_ms_since_boot(get_absolute_time()) for non-blocking timing
         - Verify code runs from RAM, not Flash
         - Check for proper volatile + memory barrier usage with IRQ-shared data
+        - PIO allocation: Use atomic claim_pio_and_sm(&program) returning pio_engine_t
+        - PIO resources: Access via pio_engine.pio, pio_engine.sm, pio_engine.offset
+        - PIO initialization: Explicitly initialize with {.pio = NULL, .sm = -1, .offset = -1}
     
     - path: "src/**/*.pio"
       instructions: |
@@ -260,13 +266,32 @@ reviews:
           - Check CMakeLists.txt has pico_set_binary_type(copy_to_ram)
           - Validate no Flash-specific APIs are used incorrectly
       
-      - name: "Protocol timing"
+      - name: "Protocol and PIO implementation"
         instructions: |
-          For protocol implementation changes:
+          Protocol timing requirements:
           - Verify timing matches specification (check README.md)
           - Validate PIO clock dividers
           - Check IRQ handler latency
           - Ensure microsecond precision requirements are met
+          
+          PIO resource management (atomic allocation pattern):
+          - REQUIRED: Use claim_pio_and_sm(&program) for allocating PIO resources
+          - REQUIRED: Store result in pio_engine_t struct with explicit initialization
+          - REQUIRED: Initialize as {.pio = NULL, .sm = -1, .offset = -1}
+          - REQUIRED: Check pio_engine.pio == NULL for allocation failures
+          - REQUIRED: Access via pio_engine.pio, pio_engine.sm, pio_engine.offset
+          
+          DEPRECATED patterns that MUST NOT be used:
+          - find_available_pio() function (removed - use claim_pio_and_sm() instead)
+          - Separate pio_pio, pio_sm, pio_offset variables (use pio_engine_t struct)
+          - Separate calls to pio_claim_unused_sm() and pio_add_program() (now atomic)
+          - Anonymous struct types (use typedef pio_engine_t defined in pio_helper.h)
+          
+          Type consistency:
+          - pio_engine_t members use int (not uint) matching SDK allocation functions
+          - pio_claim_unused_sm() returns int (-1 for error, 0-3 for success)
+          - pio_add_program() returns int (-1 for error, 0-31 for success)
+          - Implicit int→uint conversion is safe for validated non-negative values
   
   # Tool configuration
   tools:

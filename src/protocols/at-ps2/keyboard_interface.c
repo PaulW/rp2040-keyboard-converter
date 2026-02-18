@@ -106,9 +106,8 @@ static const scancode_config_t* g_scancode_config = NULL;
 #endif
 
 /* PIO State Machine Configuration */
-static uint     keyboard_sm     = 0; /**< PIO state machine number */
-static uint     keyboard_offset = 0; /**< PIO program memory offset */
-static PIO      keyboard_pio;        /**< PIO instance (pio0 or pio1) */
+static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
+
 static uint16_t keyboard_id =
     ATPS2_KEYBOARD_ID_UNKNOWN; /**< Keyboard identification code (2 bytes) */
 static uint keyboard_data_pin; /**< GPIO pin for DATA line (CLOCK = DATA + 1) */
@@ -197,7 +196,7 @@ static enum {
  */
 static void keyboard_command_handler(uint8_t data_byte) {
     uint16_t data_with_parity = (uint16_t)(data_byte + (interface_parity_table[data_byte] << 8));
-    pio_sm_put(keyboard_pio, keyboard_sm, data_with_parity);
+    pio_sm_put(pio_engine.pio, pio_engine.sm, data_with_parity);
 }
 
 /**
@@ -438,7 +437,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * @note PIO FIFO automatically handles timing and bit synchronization
  */
 static void __isr keyboard_input_event_handler(void) {
-    io_ro_32 data_cast = keyboard_pio->rxf[keyboard_sm] >> 21;
+    io_ro_32 data_cast = pio_engine.pio->rxf[pio_engine.sm] >> 21;
     uint16_t data      = (uint16_t)data_cast;
 
     // Parse AT/PS2 frame components from 11-bit PIO data
@@ -468,7 +467,7 @@ static void __isr keyboard_input_event_handler(void) {
                 keyboard_state = UNINITIALISED;
                 id_retry       = false;
                 __dmb();  // Memory barrier - ensure volatile write completes
-                pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
+                pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
             }
             // Request data retransmission on parity error
             keyboard_command_handler(ATPS2_CMD_RESEND);
@@ -478,7 +477,7 @@ static void __isr keyboard_input_event_handler(void) {
         keyboard_state = UNINITIALISED;
         id_retry       = false;
         __dmb();  // Memory barrier - ensure volatile write completes
-        pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
+        pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
         return;
     }
 
@@ -691,18 +690,12 @@ void keyboard_interface_setup(uint data_pin) {
     // Initialize ring buffer for key data communication between IRQ and main task
     ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Safe: IRQs not yet enabled during init
 
-    // Find available PIO block
-    keyboard_pio = find_available_pio(&pio_interface_program);
-    if (keyboard_pio == NULL) {
-        LOG_ERROR("AT/PS2 Keyboard: No PIO available for keyboard interface\n");
+    // Claim PIO instance and state machine atomically with fallback
+    pio_engine = claim_pio_and_sm(&pio_interface_program);
+    if (pio_engine.pio == NULL) {
+        LOG_ERROR("AT/PS2 Keyboard: No PIO resources available for keyboard interface\n");
         return;
     }
-
-    // Claim unused state machine
-    keyboard_sm = (uint)pio_claim_unused_sm(keyboard_pio, true);
-
-    // Load program into PIO instruction memory
-    keyboard_offset = pio_add_program(keyboard_pio, &pio_interface_program);
 
     // Store pin assignment
     keyboard_data_pin = data_pin;
@@ -712,10 +705,11 @@ void keyboard_interface_setup(uint data_pin) {
     float clock_div = calculate_clock_divider(ATPS2_TIMING_CLOCK_MIN_US);
 
     // Initialize PIO program with calculated clock divider
-    pio_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin, clock_div);
+    pio_interface_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin,
+                               clock_div);
 
     // Configure interrupt handling for PIO data reception
-    uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+    uint pio_irq = pio_engine.pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
 
     // Register interrupt handler for RX FIFO events
     irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
@@ -727,5 +721,5 @@ void keyboard_interface_setup(uint data_pin) {
     irq_set_enabled(pio_irq, true);
 
     LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
-             (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
+             (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);
 }

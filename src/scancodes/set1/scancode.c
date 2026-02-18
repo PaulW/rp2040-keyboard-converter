@@ -142,12 +142,7 @@ void process_scancode(uint8_t code) {
                     state = E1;
                     break;
                 default:  // Handle normal key event
-                    state = INIT;
-                    if (code < 0x80) {
-                        handle_keyboard_report(code, true);
-                    } else {
-                        handle_keyboard_report(code & 0x7F, false);
-                    }
+                    handle_keyboard_report(code & 0x7F, code < 0x80);
             }
             break;
 

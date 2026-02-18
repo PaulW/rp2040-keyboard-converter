@@ -25,76 +25,76 @@ The script runs through seventeen different checks, each targeting a specific ar
    - 💡 **Fix**: Use time-based state machines with `to_ms_since_boot(get_absolute_time())`
    - 💡 **Suppress error**: Add `// LINT:ALLOW blocking` comment for debug-only code with IRQ protection
 
-2. **Multicore API Usage** - Detects `multicore_launch_core1`, `multicore_fifo_*`
+1. **Multicore API Usage** - Detects `multicore_launch_core1`, `multicore_fifo_*`
    - ❌ **Fails**: Any multicore API usage
    - 💡 **Fix**: This project is single-core only (Core 0) by design
 
-3. **printf in IRQ Context** - Heuristic check for `printf` in `__isr` functions
+1. **printf in IRQ Context** - Heuristic check for `printf` in `__isr` functions
    - ⚠️ **Warns**: Possible printf/fprintf/sprintf in interrupt handlers
    - 💡 **Fix**: Use `LOG_*` macros (allowed - designed for IRQ use) or defer logging to main loop
 
-4. **ringbuf_reset() Usage** - Detects calls to `ringbuf_reset()`
+1. **ringbuf_reset() Usage** - Detects calls to `ringbuf_reset()`
    - ⚠️ **Warns**: Must only be called with IRQs disabled
    - 💡 **Fix**: Only use during initialization or state machine resets
    - 💡 **Suppress warning**: Add `// LINT:ALLOW ringbuf_reset` comment on same line
 
-5. **docs-internal/ in Repository** - Checks for committed internal docs
+1. **docs-internal/ in Repository** - Checks for committed internal docs
    - ❌ **Fails**: Any docs-internal/ files tracked by git
    - 💡 **Fix**: These are local-only, never commit them
 
-6. **copy_to_ram Configuration** - Verifies code runs from RAM
+1. **copy_to_ram Configuration** - Verifies code runs from RAM
    - ⚠️ **Warns**: `pico_set_binary_type(copy_to_ram)` not found
    - 💡 **Fix**: Add to CMakeLists.txt for timing-critical code
    - 🔧 **Runtime check**: Debug builds include `ram_check_verify()` - panics if executing from Flash
 
-7. **IRQ-Shared Variables** - Comprehensive volatile and memory barrier analysis
+1. **IRQ-Shared Variables** - Comprehensive volatile and memory barrier analysis
    - ⚠️ **Warns**: Static variables accessed in `__isr` functions without `volatile` keyword
    - ⚠️ **Warns**: Volatile reads/writes without surrounding `__dmb()` memory barriers
    - 💡 **Fix**: Use `volatile` + `__dmb()` for IRQ/main shared data
    - 💡 **Suppress warning**: Add `// LINT:ALLOW non-volatile` or `// LINT:ALLOW barrier` with justification
 
-8. **Tab Characters** - Enforces spaces-only indentation
+1. **Tab Characters** - Enforces spaces-only indentation
    - ❌ **Fails**: Tab characters found in source files
    - 💡 **Fix**: Use 4 spaces, never tabs (run `expand -t 4 <file>` to convert)
 
-9. **Header Guards** - Verifies `#ifndef`/`#define` guards in .h files
+1. **Header Guards** - Verifies `#ifndef`/`#define` guards in .h files
    - ⚠️ **Warns**: Header files missing include guards
    - 💡 **Fix**: Add `#ifndef FILENAME_H` / `#define FILENAME_H` / `#endif` pattern
 
-10. **File Headers** - Checks for license headers
-    - ⚠️ **Warns**: Source files missing GPL or MIT license headers
-    - 💡 **Fix**: Add appropriate license header (see code-standards.md for template)
+1. **File Headers** - Checks for license headers
+   - ⚠️ **Warns**: Source files missing GPL or MIT license headers
+   - 💡 **Fix**: Add appropriate license header (see code-standards.md for template)
 
-11. **Naming Conventions** - Detects camelCase (expects snake_case)
-    - ⚠️ **Warns**: Possible camelCase function/variable names
-    - 💡 **Fix**: Use snake_case (e.g., `keyboard_interface_task`, not `keyboardInterfaceTask`)
+1. **Naming Conventions** - Detects camelCase (expects snake_case)
+   - ⚠️ **Warns**: Possible camelCase function/variable names
+   - 💡 **Fix**: Use snake_case (e.g., `keyboard_interface_task`, not `keyboardInterfaceTask`)
 
-12. **Include Order** - Validates include directive organization
-    - ⚠️ **Warns**: Own header not first, or SDK headers after project headers
-    - 💡 **Fix**: Order: own header → blank line → stdlib → Pico SDK → external libs → project headers
+1. **Include Order** - Validates include directive organization
+   - ⚠️ **Warns**: Own header not first, or SDK headers after project headers
+   - 💡 **Fix**: Order: own header → blank line → stdlib → Pico SDK → external libs → project headers
 
-13. **Missing __isr Attribute** - Checks interrupt handler declarations
-    - ⚠️ **Warns**: Functions named `*_irq_handler` without `__isr` attribute
-    - 💡 **Fix**: Use `void __isr keyboard_irq_handler(void)` for interrupt handlers
+1. **Missing __isr Attribute** - Checks interrupt handler declarations
+   - ⚠️ **Warns**: Functions named `*_irq_handler` without `__isr` attribute
+   - 💡 **Fix**: Use `void __isr keyboard_irq_handler(void)` for interrupt handlers
 
-14. **Compile-Time Validation** - Advisory check for `_Static_assert` and `#error`
-    - ℹ️ **Info**: Reports presence of compile-time validation directives
-    - 💡 **Suggestion**: Consider adding compile-time checks for constants (see code-standards.md)
-    - 📝 **Note**: This is advisory-only and doesn't affect pass/fail status
+1. **Compile-Time Validation** - Advisory check for `_Static_assert` and `#error`
+   - ℹ️ **Info**: Reports presence of compile-time validation directives
+   - 💡 **Suggestion**: Consider adding compile-time checks for constants (see code-standards.md)
+   - 📝 **Note**: This is advisory-only and doesn't affect pass/fail status
 
-15. **Protocol Setup Consistency (Ring Buffer)** - Validates keyboard protocol setup pattern
+1. **Protocol Setup Consistency (Ring Buffer)** - Validates keyboard protocol setup pattern
    - ⚠️ **Warns**: Missing `ringbuf_reset()` call in `keyboard_interface_setup()` (keyboard protocols only)
    - 💡 **Fix**: Add `ringbuf_reset()` before PIO/IRQ setup as part of the standard 13-step initialization
    - 📝 **Note**: Mouse protocols excluded (direct event processing, no ring buffer)
    - 📚 **Reference**: See [Protocol Implementation Guide](../docs/development/protocol-implementation.md)
 
-16. **Protocol Setup Consistency (IRQ Priority)** - Validates interrupt priority configuration
+1. **Protocol Setup Consistency (IRQ Priority)** - Validates interrupt priority configuration
    - ⚠️ **Warns**: Missing `irq_set_priority()` call in protocol setup functions
    - 💡 **Fix**: Add `irq_set_priority(pio_irq, 0)` after IRQ handler registration for time-critical protocols
    - 📝 **Note**: Ensures highest priority for timing-sensitive keyboard/mouse protocols
    - 📚 **Reference**: See [Protocol Implementation Guide](../docs/development/protocol-implementation.md)
 
-17. **Indentation Consistency** - Enforces 4-space indentation (detects 2-space)
+1. **Indentation Consistency** - Enforces 4-space indentation (detects 2-space)
    - ❌ **Fails**: Files with more than 5 lines using 2-space indentation
    - 💡 **Fix**: Use 4-space indentation consistently throughout the codebase
    - 📝 **Note**: clang-format off/on blocks are excluded from this check

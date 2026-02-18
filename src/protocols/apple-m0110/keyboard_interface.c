@@ -89,10 +89,9 @@ _Static_assert(M0110_MODEL_RETRY_INTERVAL_MS <= M0110_MODEL_RETRY_MAX_MS,
                "M0110 model retry interval should not exceed 2 seconds");
 
 /* PIO State Machine Configuration */
-static uint keyboard_sm     = 0; /**< PIO state machine number */
-static uint keyboard_offset = 0; /**< PIO program memory offset */
-static PIO  keyboard_pio;        /**< PIO instance (pio0 or pio1) */
-static uint keyboard_data_pin;   /**< GPIO pin for DATA line (CLOCK = DATA + 1) */
+static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
+
+static uint keyboard_data_pin; /**< GPIO pin for DATA line (CLOCK = DATA + 1) */
 
 /**
  * @brief Apple M0110 Protocol State Machine
@@ -164,14 +163,14 @@ static const char* get_model_description(uint8_t model_byte) {
  * @note This is an internal function - not exposed in keyboard_interface.h
  */
 static void keyboard_command_handler(uint8_t command) {
-    if (pio_sm_is_tx_fifo_full(keyboard_pio, keyboard_sm)) {
+    if (pio_sm_is_tx_fifo_full(pio_engine.pio, pio_engine.sm)) {
         LOG_ERROR("M0110 TX FIFO full, command 0x%02X dropped\n", command);
         return;
     }
 
     // M0110 protocol uses MSB-first transmission - position command in upper byte
     // PIO automatically handles MSB-first bit order during transmission
-    pio_sm_put(keyboard_pio, keyboard_sm, (uint32_t)command << 24);
+    pio_sm_put(pio_engine.pio, pio_engine.sm, (uint32_t)command << 24);
 }
 
 /**
@@ -273,7 +272,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
  */
 static void __isr keyboard_input_event_handler(void) {
     // Extract received byte from PIO RX FIFO (MSB-aligned 8-bit data)
-    uint8_t data_byte = (uint8_t)keyboard_pio->rxf[keyboard_sm];
+    uint8_t data_byte = (uint8_t)pio_engine.pio->rxf[pio_engine.sm];
 
     // Route response to appropriate handler based on protocol state
     // We don't have any parity or framing errors to check for in M0110
@@ -437,23 +436,12 @@ void keyboard_interface_setup(uint data_pin) {
     // Initialize ring buffer for key data communication between IRQ and main task
     ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Safe: IRQs not yet enabled during init
 
-    // Find available PIO block
-    keyboard_pio = find_available_pio(&keyboard_interface_program);
-    if (keyboard_pio == NULL) {
-        LOG_ERROR("Apple M0110: No PIO available for keyboard interface\n");
+    // Claim PIO instance and state machine atomically with fallback
+    pio_engine = claim_pio_and_sm(&keyboard_interface_program);
+    if (pio_engine.pio == NULL) {
+        LOG_ERROR("Apple M0110: No PIO resources available for keyboard interface\n");
         return;
     }
-
-    // Claim unused state machine (don't panic on failure)
-    int sm = pio_claim_unused_sm(keyboard_pio, false);
-    if (sm < 0) {
-        LOG_ERROR("Apple M0110: No PIO state machine available\n");
-        return;
-    }
-    keyboard_sm = (uint)sm;
-
-    // Load program into PIO instruction memory
-    keyboard_offset = (uint)pio_add_program(keyboard_pio, &keyboard_interface_program);
 
     // Store pin assignment
     keyboard_data_pin = data_pin;
@@ -465,11 +453,11 @@ void keyboard_interface_setup(uint data_pin) {
     float clock_div = calculate_clock_divider(M0110_TIMING_KEYBOARD_LOW_US);
 
     // Initialize PIO program with calculated clock divider
-    keyboard_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin,
+    keyboard_interface_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin,
                                     clock_div);
 
     // Configure interrupt handling for PIO data reception
-    uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+    uint pio_irq = pio_engine.pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
 
     // Register interrupt handler for RX FIFO events
     irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
@@ -482,7 +470,7 @@ void keyboard_interface_setup(uint data_pin) {
 
     LOG_INFO(
         "PIO%d SM%u Apple M0110 Interface program loaded at offset %u with clock divider of %.2f\n",
-        (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
+        (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);
 
     // Anchor startup delay to setup time (not boot time)
     last_command_time = board_millis();

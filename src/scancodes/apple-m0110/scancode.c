@@ -113,7 +113,6 @@ void process_scancode(uint8_t code) {
     switch (state) {
         case INIT:
             // Normal single-byte scancode
-            state = INIT;
             if (key_code == 0x00) {
                 LOG_DEBUG("Reserved key code in M0110 scancode: 0x%02X\n", code);
                 return;
