@@ -586,7 +586,7 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
         // Set keyboard LED e.g Capslock, Numlock etc...
         if (report_id == REPORT_ID_KEYBOARD) {
             // bufsize should be (at least) 1
-            if (bufsize < 1)
+            if (bufsize == 0)
                 return;
             set_lock_values_from_hid(buffer[0]);
         }

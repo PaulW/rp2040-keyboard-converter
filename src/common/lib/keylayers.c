@@ -181,7 +181,7 @@ static void handle_valid_hash(uint8_t saved_layer_state) {
     // Validate no invalid layers are active
     // Clamp to valid layer range (layers 0 to keymap_layer_count-1)
     // Defensive: Ensure at least 1 layer (Layer 0) is always valid, cap at KEYMAP_MAX_LAYERS
-    const uint8_t effective_layer_count = (keymap_layer_count < 1) ? 1
+    const uint8_t effective_layer_count = (keymap_layer_count == 0) ? 1
                                           : (keymap_layer_count > KEYMAP_MAX_LAYERS)
                                               ? KEYMAP_MAX_LAYERS
                                               : keymap_layer_count;
@@ -234,10 +234,10 @@ void keylayers_init(void) {
 /**
  * @brief Handle MO (momentary) layer operation
  *
- * Bounds validation: target_layer is pre-validated by keylayers_process_key() caller
- * to ensure it's within the valid range for this keymap.
+ * Bounds validation: target_layer is pre-validated by keylayers_process_key() caller  
+ * to ensure target_layer != 0 && target_layer < max_layers (prevents buffer underflow).
  *
- * @param target_layer The layer to activate (1-based)
+ * @param target_layer The layer to activate (must be 1 or higher, never 0)
  * @param code The original keycode (for tracking which MO key is held)
  * @param make true if key pressed, false if released
  */
@@ -327,12 +327,14 @@ void keylayers_process_key(uint8_t code, bool make) {
     const uint8_t operation    = GET_LAYER_OPERATION(code);  // 0=MO, 1=TG, 2=TO, 3=OSL
     const uint8_t target_layer = GET_LAYER_TARGET(code);     // 1-3 (current MO/TG/TO/OSL macros)
 
-    // Guard: Validate target_layer against actual keymap layer count to prevent OOB access
-    const uint8_t max_layers = (keymap_layer_count < 1)           ? 1
+    // Guard: Validate target_layer bounds to prevent buffer underflow and invalid operations
+    // Lower bound: target_layer must not be 0 (Layer 0 is base, cannot be used with MO/TG)
+    // Upper bound: target_layer must be < actual keymap layer count
+    const uint8_t max_layers = (keymap_layer_count == 0)           ? 1
                                : (keymap_layer_count > KEYMAP_MAX_LAYERS) ? KEYMAP_MAX_LAYERS
                                                                            : keymap_layer_count;
-    if (target_layer >= max_layers) {
-        return;  // Invalid layer for this keymap
+    if (target_layer == 0 || target_layer >= max_layers) {
+        return;  // Invalid layer (0 or exceeds keymap layer count)
     }
 
     switch (operation) {
