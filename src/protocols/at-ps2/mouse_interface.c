@@ -41,6 +41,11 @@ static uint    mouse_data_pin;
 static int8_t  data_loop             = 0;  // Packet alignment counter (reset on re-init)
 static uint8_t mouse_config_sequence = 0;  // Configuration sequence counter (reset on re-init)
 
+/* Mouse packet state (cleared on re-initialization) */
+static uint8_t buttons[5]    = {0, 0, 0, 0, 0};
+static uint8_t parameters[4] = {0, 0, 0, 0};
+static int8_t  pos[3]        = {0, 0, 0};
+
 /* Mouse detection timing constants */
 enum {
     ATPS2_MOUSE_DETECT_INTERVAL_MS = 200, /**< Detection status check interval (ms) */
@@ -298,6 +303,10 @@ void mouse_event_processor(uint8_t data_byte) {
                     mouse_config_sequence = 0;
                     mouse_state           = INITIALISED;
                     data_loop             = 0;  // Reset packet alignment on initialization
+                    // Clear extended-mouse fields in case mouse type changed
+                    buttons[BUTTON_BACKWARD] = 0;
+                    buttons[BUTTON_FORWARD]  = 0;
+                    pos[Z_POS]               = 0;
                     LOG_INFO("Mouse Initialisation Complete\n");
                 } else {
                     mouse_command_handler(config_sequence[mouse_config_sequence]);
@@ -307,9 +316,6 @@ void mouse_event_processor(uint8_t data_byte) {
             break;
         case INITIALISED:
             // Process Mouse Data.
-            static uint8_t buttons[5]    = {0, 0, 0, 0, 0};
-            static uint8_t parameters[4] = {0, 0, 0, 0};
-            static int8_t  pos[3]        = {0, 0, 0};
             switch (data_loop) {
                 case 0:
                     // Read in Button Data, as well as X and Y Overflow Data

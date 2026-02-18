@@ -72,10 +72,11 @@
 #include "scancode.h"
 
 /* Static assert threshold constants */
-#define M0110_INIT_DELAY_MIN_MS       500  /**< Minimum initialization delay (ms) */
-#define M0110_MODEL_RETRY_MIN_MS      100  /**< Minimum model retry interval (ms) */
-#define M0110_RESPONSE_TIMEOUT_MIN_MS 100  /**< Minimum response timeout (ms) */
-#define M0110_MODEL_RETRY_MAX_MS      2000 /**< Maximum model retry interval (ms) */
+#define M0110_INIT_DELAY_MIN_MS        500  /**< Minimum initialization delay (ms) */
+#define M0110_MODEL_RETRY_MIN_MS       100  /**< Minimum model retry interval (ms) */
+#define M0110_RESPONSE_TIMEOUT_MIN_MS  100  /**< Minimum response timeout (ms) */
+#define M0110_MODEL_RETRY_MAX_MS       2000 /**< Maximum model retry interval (ms) */
+#define M0110_MODEL_RETRY_MAX_ATTEMPTS 5    /**< Maximum model request retry attempts */
 
 /* Compile-time validation of timing constants */
 _Static_assert(M0110_INITIALIZATION_DELAY_MS >= M0110_INIT_DELAY_MIN_MS,
@@ -210,7 +211,8 @@ static void keyboard_event_processor(uint8_t data_byte) {
         case INIT_MODEL_REQUEST:
             // Handle model number response during initialization phase
             {
-                const char* model_desc = get_model_description(data_byte);
+                const char* model_desc = NULL;
+                model_desc             = get_model_description(data_byte);
                 if (model_desc) {
                     LOG_INFO("Apple M0110 Keyboard Model: %s, reset and ready\n", model_desc);
                 } else {
@@ -344,17 +346,18 @@ void keyboard_interface_task(void) {
             // Model identification phase with automatic retry logic
             // Apple spec requires 500ms intervals between retry attempts
             if (command_elapsed_valid && elapsed_since_command > M0110_MODEL_RETRY_INTERVAL_MS) {
-                if (model_retry_count < 5) {
-                    LOG_DEBUG("Keyboard detected, retrying Model Number command (%d/5)\n",
-                              model_retry_count + 1);
+                if (model_retry_count < M0110_MODEL_RETRY_MAX_ATTEMPTS) {
+                    LOG_DEBUG("Keyboard detected, retrying Model Number command (%d/%d)\n",
+                              model_retry_count + 1, M0110_MODEL_RETRY_MAX_ATTEMPTS);
                     keyboard_command_handler(M0110_CMD_MODEL);
                     last_command_time = current_time;
                     model_retry_count++;
                 } else {
                     // Maximum retries exceeded - keyboard may be disconnected or incompatible
                     LOG_ERROR(
-                        "Apple M0110 keyboard not responding to Model Number command after 5 "
-                        "attempts\n");
+                        "Apple M0110 keyboard not responding to Model Number command after %d "
+                        "attempts\n",
+                        M0110_MODEL_RETRY_MAX_ATTEMPTS);
                     LOG_DEBUG("Restarting detection sequence\n");
                     keyboard_state    = UNINITIALISED;
                     last_command_time = current_time;
