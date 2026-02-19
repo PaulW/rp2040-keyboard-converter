@@ -134,14 +134,4 @@ void keylayers_process_key(uint8_t code, bool make);
  */
 void keylayers_consume_oneshot(void);
 
-/**
- * @brief Compute validation hash for current keymap configuration
- *
- * Used to detect when keymap layout has changed, invalidating saved layer state.
- * Hash is based on layer count and keymap dimensions.
- *
- * @return 32-bit hash of keymap configuration
- */
-uint32_t keylayers_compute_hash(void);
-
 #endif /* KEYLAYERS_H */

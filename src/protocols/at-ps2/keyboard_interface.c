@@ -727,8 +727,7 @@ void keyboard_interface_setup(uint data_pin) {
         pio_engine.offset = -1;
         return;
     }
-}
 
-LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
-         (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);
+    LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
+             (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);
 }

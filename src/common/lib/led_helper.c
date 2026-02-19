@@ -22,6 +22,7 @@
 
 #include <stdbool.h>
 
+#include "hardware/sync.h"  // for __dmb() memory barrier
 #include "pico/time.h"
 
 #ifdef CONVERTER_LEDS
