@@ -121,7 +121,7 @@ Pressing 'D' opens a submenu for changing how much debug information the convert
 3. The LED changes to alternating green/pink, indicating you're in the log level submenu
 4. Press one of three number keys:
    - **'1'** = ERROR level (minimal output, only critical problems)
-   - **'2'** = INFO level (moderate output, includes initialization and state changes)
+   - **'2'** = INFO level (moderate output, includes initialisation and state changes)
    - **'3'** = DEBUG level (verbose output, every scancode and timing detail)
 5. The LED flashes briefly to confirm, and the new log level takes effect immediately
 
@@ -131,7 +131,7 @@ The log level setting is saved to flash memory, so it persists across reboots. Y
 
 **ERROR level** (1): Only outputs messages about things going wrong—protocol errors, hardware failures, unexpected states. Use this when the converter is working fine and you don't want extra noise on the UART.
 
-**INFO level** (2): The default setting. Outputs initialization messages, protocol state changes, configuration loads, and errors. Gives you a good overview of what the converter is doing without overwhelming you with detail.
+**INFO level** (2): The default setting. Outputs initialisation messages, protocol state changes, configuration loads, and errors. Gives you a good overview of what the converter is doing without overwhelming you with detail.
 
 **DEBUG level** (3): Outputs everything—every scancode received, timing measurements, state machine transitions, HID reports sent. Use this when troubleshooting protocol issues or understanding exactly what's happening with a specific key.
 
@@ -154,7 +154,7 @@ Pressing 'F' wipes all saved configuration settings and restores factory default
 
 Factory reset is useful when you've made configuration changes and want to start fresh, or if you're handing the converter to someone else and want to clear your custom settings.
 
-The reset happens immediately without confirmation—again, the deliberate Command Mode activation process serves as your confirmation. Unlike the other commands, factory reset triggers a device reboot to ensure all systems reinitialize with the clean configuration.
+The reset happens immediately without confirmation—again, the deliberate Command Mode activation process serves as your confirmation. Unlike the other commands, factory reset triggers a device reboot to ensure all systems reinitialise with the clean configuration.
 
 Technically, factory reset works by erasing the entire configuration storage sector in flash memory, reloading default values, saving them to flash, then using the watchdog timer to trigger a clean reboot. The process is designed to be safe even if power is lost partway through, thanks to the dual-copy storage architecture. Details in the [Configuration Storage documentation](config-storage.md).
 
@@ -416,7 +416,7 @@ If unintended key combinations trigger Command Mode:
 - [`command_mode.c`](../../src/common/lib/command_mode.c) - State machine implementation
 - [`command_mode.h`](../../src/common/lib/command_mode.h) - API and configuration
 
-**Keyboard customization**:
+**Keyboard customisation**:
 - [Building Firmware](../getting-started/building-firmware.md) - How to compile with custom configurations
 - Protocol-specific documentation for your keyboard's activation key requirements
 

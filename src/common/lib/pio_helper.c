@@ -25,6 +25,7 @@
 
 #include "hardware/clocks.h"
 #include "hardware/irq.h"
+#include "hardware/sync.h"
 
 #include "log.h"
 
@@ -34,9 +35,10 @@ _Static_assert(1, "PIO helper basic sanity check");  // Always true, validates _
 /* PIO IRQ Dispatcher State */
 #define MAX_PIO_IRQ_CALLBACKS 4 /**< Maximum callbacks per PIO (supports multiple devices) */
 
-static pio_irq_callback_t registered_callbacks[MAX_PIO_IRQ_CALLBACKS] = {NULL, NULL, NULL, NULL};
-static bool               dispatcher_initialized = false;  // Init-only flag, not IRQ-shared
-static PIO                active_pio             = NULL;   // Init-only storage, not IRQ-shared
+static volatile pio_irq_callback_t registered_callbacks[MAX_PIO_IRQ_CALLBACKS] = {NULL, NULL, NULL,
+                                                                                  NULL};
+static bool dispatcher_initialized = false;  // Init-only flag, not IRQ-shared
+static PIO  active_pio             = NULL;   // Init-only storage, not IRQ-shared
 
 /**
  * IMPORTANT LIMITATION: Single PIO Instance per Session
@@ -354,6 +356,13 @@ void pio_irq_dispatcher_init(PIO pio) {
         return;
     }
 
+    // Prevent conflicting PIO: dispatcher supports only one PIO instance per session
+    if (dispatcher_initialized && active_pio != pio) {
+        LOG_ERROR("PIO IRQ dispatcher already initialized for PIO%d, cannot switch to PIO%d\n",
+                  active_pio == pio0 ? 0 : 1, pio == pio0 ? 0 : 1);
+        return;
+    }
+
     active_pio   = pio;
     uint pio_irq = pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
 
@@ -363,8 +372,8 @@ void pio_irq_dispatcher_init(PIO pio) {
     // Set highest priority for time-critical protocol timing
     irq_set_priority(pio_irq, 0x00);
 
-    // Enable the IRQ
-    irq_set_enabled(pio_irq, true);
+    // IRQ enabled after first callback registered to avoid race
+    // (prevents IRQ from observing uninitialized callback array)
 
     dispatcher_initialized = true;
 
@@ -442,7 +451,18 @@ bool pio_irq_register_callback(pio_irq_callback_t callback) {
     for (int i = 0; i < MAX_PIO_IRQ_CALLBACKS; i++) {
         if (registered_callbacks[i] == NULL) {
             registered_callbacks[i] = callback;
-            LOG_DEBUG("Registered PIO IRQ callback at slot %d\n", i);
+            __dmb();  // Memory barrier: ensure callback write visible to IRQ before enabling
+
+            // Enable IRQ after first callback registered (race prevention)
+            if (dispatcher_initialized) {
+                uint pio_irq = active_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+                if (!irq_is_enabled(pio_irq)) {
+                    irq_set_enabled(pio_irq, true);
+                    LOG_DEBUG("PIO IRQ enabled (first callback registered at slot %d)\n", i);
+                } else {
+                    LOG_DEBUG("Registered PIO IRQ callback at slot %d\n", i);
+                }
+            }
             return true;
         }
     }

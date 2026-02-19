@@ -742,13 +742,13 @@ echo -e "${BLUE}[17/17] Checking indentation consistency (4-space required)...${
 INDENT_VIOLATIONS=""
 
 while IFS= read -r file; do
-    # Count lines with exactly 2-space indentation (not 4/6/8/etc)
+    # Count lines with 2-space indentation
     # Skip clang-format off/on blocks and block comments
     result=$(awk '
         /clang-format off/ { disabled=1; next }
         /clang-format on/  { disabled=0; next }
         disabled { next }
-        /\/\*/ && !/\*\// { in_comment=1 }
+        /\/\*/ && !/\*\// { in_comment=1; next }
         in_comment && /\*\// { in_comment=0; next }
         in_comment { next }
         /^  [^ \t]/ { count++ }

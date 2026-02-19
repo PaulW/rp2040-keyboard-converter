@@ -550,101 +550,137 @@ static bool process_shift_hold_wait(const hid_keyboard_report_t* keyboard_report
 }
 
 /**
+ * @brief Handle log level selection command (KC_D)
+ *
+ * Transitions to LOG_LEVEL_SELECT state and waits for user to press 1/2/3.
+ *
+ * @return false to suppress keyboard report
+ */
+static bool command_handle_log_level_select(void) {
+    cmd_mode.state               = CMD_MODE_LOG_LEVEL_SELECT;
+    cmd_mode.state_start_time_ms = to_ms_since_boot(get_absolute_time());
+#ifdef CONVERTER_LEDS
+    log_level_selection_mode = true;  // Change LED colors to GREEN/PINK
+#endif
+    LOG_INFO("Log level selection: Press 1=ERROR, 2=INFO, 3=DEBUG\n");
+    return false;
+}
+
+/**
+ * @brief Handle factory reset command (KC_F)
+ *
+ * Performs factory reset and reboots device. Never returns.
+ *
+ * @return false to suppress keyboard report (never actually returns)
+ */
+static bool command_handle_factory_reset(void) {
+    LOG_WARN("Factory reset requested - restoring default configuration\n");
+    config_factory_reset();
+    LOG_INFO("Factory reset complete - rebooting device...\n");
+
+#ifdef CONVERTER_LEDS
+    // Clear all LED states
+    lock_leds.value          = 0;
+    converter.state.cmd_mode = 0;
+    converter.state.fw_flash = 1;  // Set status LED to indicate reboot
+    update_converter_status();
+#endif
+
+    // Flush UART before reboot
+    uart_dma_flush();
+
+    // Reboot device using watchdog (cleanest reboot method)
+    // Parameters: delay_ms=0 (immediate), scratch0=0, scratch1=0 (no custom values)
+    watchdog_reboot(0, 0, 0);
+
+    // Never returns
+    return false;
+}
+
+/**
+ * @brief Handle LED brightness adjustment command (KC_L)
+ *
+ * Transitions to BRIGHTNESS_SELECT state for +/- brightness control.
+ *
+ * @return false to suppress keyboard report
+ */
+static bool command_handle_brightness_select(void) {
+#ifdef CONVERTER_LEDS
+    cmd_mode.state               = CMD_MODE_BRIGHTNESS_SELECT;
+    cmd_mode.state_start_time_ms = to_ms_since_boot(get_absolute_time());
+
+    // Save original brightness to detect changes
+    brightness_original_value = ws2812_get_brightness();
+    brightness_rainbow_hue    = 0;  // Start rainbow cycle at red
+
+    LOG_INFO("LED brightness selection: Press +/- to adjust (0-10), current=%u\n",
+             brightness_original_value);
+#else
+    LOG_WARN("LED brightness control not available (CONVERTER_LEDS not defined)\n");
+#endif
+    return false;
+}
+
+/**
+ * @brief Handle shift-override toggle command (KC_S)
+ *
+ * Toggles shift-override feature if keyboard supports it, persists to flash,
+ * and exits command mode.
+ *
+ * @return false to suppress keyboard report
+ */
+static bool command_handle_shift_override_toggle(void) {
+    // Only allow toggle if keyboard defines shift-override arrays
+    if (keymap_shift_override_layers == NULL) {
+        LOG_WARN(
+            "Shift-override not available (keyboard doesn't define custom shift "
+            "mappings)\n");
+        command_mode_exit("Shift-override not available");
+        return false;
+    }
+
+    bool current   = config_get_shift_override_enabled();
+    bool new_value = !current;
+    config_set_shift_override_enabled(new_value);
+    config_save();  // Persist to flash
+
+    command_mode_exit(new_value ? "Shift-override enabled" : "Shift-override disabled");
+    return false;
+}
+
+/**
  * @brief Process keyboard input in COMMAND_ACTIVE state
  *
- * Handles command key presses (B, D, F, L, S) and transitions to appropriate states.
+ * Dispatches command key presses (B, D, F, L, S) to focused handler functions.
  * User can release shifts once command mode is active.
  *
  * @param keyboard_report Pointer to keyboard HID report
  * @return false to suppress all keyboard reports
  */
 static bool process_command_active(const hid_keyboard_report_t* keyboard_report) {
-    // Note: User can release shifts once command mode is active
-    // We only care about command key presses (e.g., 'B' for bootloader, 'D' for log level,
-    // 'F' for factory reset)
-
     // Note: Timeout check is handled in command_mode_task() which runs from main loop
     // This ensures timeout works even when no keyboard events are occurring
 
-    // Check for bootloader command
+    // Dispatch to command handlers
     if (is_key_pressed(keyboard_report, KC_B)) {
-        command_execute_bootloader();
-        // Never returns, but return false to suppress keyboard report
+        command_execute_bootloader();  // Never returns
         return false;
     }
 
-    // Check for log level selection command
     if (is_key_pressed(keyboard_report, KC_D)) {
-        cmd_mode.state               = CMD_MODE_LOG_LEVEL_SELECT;
-        cmd_mode.state_start_time_ms = to_ms_since_boot(get_absolute_time());
-#ifdef CONVERTER_LEDS
-        log_level_selection_mode = true;  // Change LED colors to GREEN/PINK
-#endif
-        LOG_INFO("Log level selection: Press 1=ERROR, 2=INFO, 3=DEBUG\n");
-        return false;
+        return command_handle_log_level_select();
     }
 
-    // Check for factory reset command
     if (is_key_pressed(keyboard_report, KC_F)) {
-        LOG_WARN("Factory reset requested - restoring default configuration\n");
-        config_factory_reset();
-        LOG_INFO("Factory reset complete - rebooting device...\n");
-
-#ifdef CONVERTER_LEDS
-        // Clear all LED states
-        lock_leds.value          = 0;
-        converter.state.cmd_mode = 0;
-        converter.state.fw_flash = 1;  // Set status LED to indicate reboot
-        update_converter_status();
-#endif
-
-        // Flush UART before reboot
-        uart_dma_flush();
-
-        // Reboot device using watchdog (cleanest reboot method)
-        // Parameters: delay_ms=0 (immediate), scratch0=0, scratch1=0 (no custom values)
-        watchdog_reboot(0, 0, 0);
-
-        // Never returns
-        return false;
+        return command_handle_factory_reset();  // Never returns
     }
 
-    // Check for LED brightness adjustment command
     if (is_key_pressed(keyboard_report, KC_L)) {
-#ifdef CONVERTER_LEDS
-        cmd_mode.state               = CMD_MODE_BRIGHTNESS_SELECT;
-        cmd_mode.state_start_time_ms = to_ms_since_boot(get_absolute_time());
-
-        // Save original brightness to detect changes
-        brightness_original_value = ws2812_get_brightness();
-        brightness_rainbow_hue    = 0;  // Start rainbow cycle at red
-
-        LOG_INFO("LED brightness selection: Press +/- to adjust (0-10), current=%u\n",
-                 brightness_original_value);
-#else
-        LOG_WARN("LED brightness control not available (CONVERTER_LEDS not defined)\n");
-#endif
-        return false;
+        return command_handle_brightness_select();
     }
 
-    // Check for shift-override toggle command
     if (is_key_pressed(keyboard_report, KC_S)) {
-        // Only allow toggle if keyboard defines shift-override arrays
-        if (keymap_shift_override_layers == NULL) {
-            LOG_WARN(
-                "Shift-override not available (keyboard doesn't define custom shift "
-                "mappings)\n");
-            command_mode_exit("Shift-override not available");
-            return false;
-        }
-
-        bool current   = config_get_shift_override_enabled();
-        bool new_value = !current;
-        config_set_shift_override_enabled(new_value);
-        config_save();  // Persist to flash
-
-        command_mode_exit(new_value ? "Shift-override enabled" : "Shift-override disabled");
-        return false;
+        return command_handle_shift_override_toggle();
     }
 
     // Note: LED update is handled in command_mode_task() which runs from main loop

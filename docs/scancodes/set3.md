@@ -127,6 +127,8 @@ Set 3 usage is limited to terminal keyboards and industrial equipment, which mea
 
 **Note**: Set 3 has no `E0` or `E1` codes. Those bytes are not used.
 
+**Self-Test Codes (`0xAA`, `0xFC`):** These keyboard initialization codes are filtered by the protocol layer during initialization. The scancode processor provides defense-in-depth for post-initialization scenarios (hot-plug, unstable connections). Unlike Set 1, Set 3 has no collision issue since break codes use the F0 prefix. See [Set 1 Self-Test Code Collision](set1.md#self-test-code-collision) for comparison.
+
 ## Example Sequences
 
 ### Regular Key (A)
@@ -343,9 +345,9 @@ Set 3 keyboards respond to `0xF2` (Identify) command with 2-byte ID.
 
 ## Protocol Notes
 
-### Initialization Sequence
+### Initialisation Sequence
 
-Generic Set 3 initialization procedure:
+Generic Set 3 initialisation procedure:
 ```
 1. Wait for self-test (0xAA)
 2. Send 0xF2 (Identify)

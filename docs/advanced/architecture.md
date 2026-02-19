@@ -111,7 +111,7 @@ The buffer uses a single-producer/single-consumer model:
 
 When `head == tail`, the buffer's empty. When `(head + 1) % 32 == tail`, it's full. The implementation's lock-free because only one context writes each pointer.
 
-One thing to watch out for: you can't call `ringbuf_reset()` whilst interrupts are enabled. That would break the single-writer invariant. Resets only happen during initialization or state machine resets where the protocol handler's already disabled interrupts. All keyboard protocols follow a standard setup pattern that includes `ringbuf_reset()` before enabling interrupts—see the [Protocol Implementation Guide](../development/protocol-implementation.md) for details.
+One thing to watch out for: you can't call `ringbuf_reset()` whilst interrupts are enabled. That would break the single-writer invariant. Resets only happen during initialisation or state machine resets where the protocol handler's already disabled interrupts. All keyboard protocols follow a standard setup pattern that includes `ringbuf_reset()` before enabling interrupts—see the [Protocol Implementation Guide](../development/protocol-implementation.md) for details.
 
 ### Scancode Processor
 
@@ -181,7 +181,7 @@ The main loop never blocks. All time-based operations use `to_ms_since_boot(get_
 **Typical main loop iteration:**
 1. Check ring buffer for new scancodes
 2. Process any scancodes through the scancode processor
-3. Run protocol state machine tasks (initialization, LED commands, etc.)
+3. Run protocol state machine tasks (initialisation, LED commands, etc.)
 4. Check Command Mode state
 5. If there's a HID event and USB is ready, send report
 6. Handle mouse events if mouse support's enabled
@@ -269,7 +269,7 @@ sleep_us(delay);  // LINT:ALLOW blocking - timing diagnostic for protocol debug
 
 The RP2040 includes 264KB of SRAM and 2MB of flash storage. Flash provides persistent storage but introduces variable access latency due to caching and timing characteristics. SRAM delivers deterministic, single-cycle access regardless of cache state. For precise protocol timing, this consistency is critical.
 
-**How it works:** The CMake configuration specifies `pico_set_binary_type(rp2040-converter copy_to_ram)`, which instructs the linker to copy the entire program from flash into SRAM during boot. After initialization completes, all code executes from RAM with predictable timing. This trades memory efficiency (the binary must fit in both flash for storage and SRAM for execution) for performance consistency. The RP2040's memory capacity accommodates this approach comfortably.
+**How it works:** The CMake configuration specifies `pico_set_binary_type(rp2040-converter copy_to_ram)`, which instructs the linker to copy the entire program from flash into SRAM during boot. After initialisation completes, all code executes from RAM with predictable timing. This trades memory efficiency (the binary must fit in both flash for storage and SRAM for execution) for performance consistency. The RP2040's memory capacity accommodates this approach comfortably.
 
 **Why it matters:** Flash cache misses introduce unpredictable latency. When code executes from flash, the first execution of a function may require dozens of microseconds to load the instruction stream into cache, whilst subsequent calls complete quickly. This variability makes latency measurements unreliable and creates difficult-to-characterize worst-case scenarios. SRAM execution eliminates this problem—every instruction takes the same time whether it executes for the first time or the millionth time.
 
@@ -285,9 +285,9 @@ The ring buffer implements the critical data handoff between interrupt context (
 
 **Buffer sizing:** The capacity of 32 bytes (defined as [`RINGBUF_SIZE`](../../src/common/lib/ringbuf.h)) is deliberately small. The main loop polls frequently enough that scancodes move through the buffer within microseconds. Even multi-byte sequences rarely accumulate more than a few bytes before consumption. The small size keeps the buffer in cache and makes overflow immediately apparent rather than allowing problems to hide in deep queues.
 
-**Critical rule:** Never call `ringbuf_reset()` with interrupts enabled. This function resets both head and tail pointers to zero, which corrupts buffer state if an interrupt arrives during the reset operation. Only call this function during initialization before enabling interrupts, or after explicitly disabling interrupts for error recovery. 
+**Critical rule:** Never call `ringbuf_reset()` with interrupts enabled. This function resets both head and tail pointers to zero, which corrupts buffer state if an interrupt arrives during the reset operation. Only call this function during initialisation before enabling interrupts, or after explicitly disabling interrupts for error recovery. 
 
-All keyboard protocols follow a standard 13-step setup sequence that includes `ringbuf_reset()` as step 2 (after LED initialization, before PIO/IRQ setup). This pattern ensures the buffer is clean before interrupts start firing. See the [Protocol Implementation Guide](../development/protocol-implementation.md) for the complete setup pattern and rationale. The implementation appears in [`src/common/lib/ringbuf.c`](../../src/common/lib/ringbuf.c) and [`ringbuf.h`](../../src/common/lib/ringbuf.h).
+All keyboard protocols follow a standard 13-step setup sequence that includes `ringbuf_reset()` as step 2 (after LED initialisation, before PIO/IRQ setup). This pattern ensures the buffer is clean before interrupts start firing. See the [Protocol Implementation Guide](../development/protocol-implementation.md) for the complete setup pattern and rationale. The implementation appears in [`src/common/lib/ringbuf.c`](../../src/common/lib/ringbuf.c) and [`ringbuf.h`](../../src/common/lib/ringbuf.h).
 
 ---
 

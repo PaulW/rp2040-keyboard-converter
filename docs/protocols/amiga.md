@@ -185,7 +185,7 @@ Active State: Keyboard or host pulls line LOW (sinks current)
 ```
 Voltage: +5V ±5% (4.75V to 5.25V)
 Current: 30-80mA typical (varies by keyboard model)
-Startup: May draw up to 150mA during power-on initialization
+Startup: May draw up to 150mA during power-on initialisation
 ```
 
 **Timing Characteristics**:
@@ -454,14 +454,14 @@ Noise or glitches that corrupt data bits but don't prevent the host from sending
 
 ## Keyboard Operation
 
-### Power-On Initialization
+### Power-On Initialisation
 
 **Complete Power-Up Sequence**:
 
 ```
 Step 1: Power-On Self-Test
 - Keyboard receives +5V power from host
-- Internal microcontroller boots and initializes
+- Internal microcontroller boots and initialises
 - Self-test executes (duration varies by keyboard model):
   a. ROM checksum verification
   b. RAM read/write test  
@@ -767,7 +767,7 @@ static enum {
 
 When the converter powers up, it starts in UNINITIALISED state. The keyboard will be sending synchronization pulses (1-bits) until it receives a handshake from the PIO. Once we get that first valid byte—whatever it may be—we transition to INITIALISED state (lines 205-207). From that point on, it's just normal operation—receiving scancodes and processing them.
 
-You might expect to see separate states for things like "waiting for handshake" or "processing special codes", but those are handled elsewhere. The PIO takes care of handshaking automatically in hardware (before the ISR even fires), and special codes (like 0xF9 for lost sync or 0x78 for reset warning) are processed in the event handler based on the received byte value rather than as distinct state machine states. This keeps the state machine focused on initialization vs. normal operation, which makes the code easier to follow and maintain.
+You might expect to see separate states for things like "waiting for handshake" or "processing special codes", but those are handled elsewhere. The PIO takes care of handshaking automatically in hardware (before the ISR even fires), and special codes (like 0xF9 for lost sync or 0x78 for reset warning) are processed in the event handler based on the received byte value rather than as distinct state machine states. This keeps the state machine focused on initialisation vs. normal operation, which makes the code easier to follow and maintain.
 
 ---
 
@@ -789,7 +789,7 @@ The Amiga protocol's bidirectional handshake requires correct timing and connect
 | Garbled scancodes | Wrong bit order, no de-rotation | Verify bit de-rotation (6-5-4-3-2-1-0-7 → 7-6-5-4-3-2-1-0) |
 | CAPS LOCK desync | LED encoding mismatch | Check bit 7 manipulation for LED state |
 | Missing key events | Handshake too short | Ensure handshake ≥ 85µs (implementation uses 100µs) |
-| Initialization fails | Wrong connector | Verify pinout: RJ-10 (A1000), DIN-5 (A2000/A3000), header (A500) |
+| Initialisation fails | Wrong connector | Verify pinout: RJ-10 (A1000), DIN-5 (A2000/A3000), header (A500) |
 | Reset warning issues | Model doesn't support | A500 doesn't support 0x78 codes, uses RESET pin instead |
 
 ---
@@ -836,7 +836,7 @@ This converter implementation is based entirely on the official Commodore specif
    - Bit de-rotation (received 6-5-4-3-2-1-0-7 → standard 7-6-5-4-3-2-1-0)
    - CAPS LOCK synchronization logic (handles keyboard LED encoding)
    - Special code processing (0xF9 resync, 0x78 reset warning, etc.)
-   - State machine for keyboard initialization sequence
+   - State machine for keyboard initialisation sequence
 
 7. **[`keyboard_interface.h`](../../src/protocols/amiga/keyboard_interface.h)** - Protocol constants from official specification:
    - Timing constants (85µs handshake, 143ms timeout)

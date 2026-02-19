@@ -211,7 +211,9 @@
 // 0xFF reserved for future OSL(4)
 
 // Convenience macros for keymaps (layers 1-3)
-// Note: These macros enforce valid layer range (1-3) at compile time
+// Note: No compile-time validation. Range enforcement is performed at runtime
+// by keylayers_process_key(). Misuse (e.g. MO(0) or MO(4+)) will not be caught
+// by the compiler but is prevented by runtime bounds checks.
 #define MO(n)  (KC_LAYER_MO_BASE + ((n) - 1))   // n: 1-3 (Momentary)
 #define TG(n)  (KC_LAYER_TG_BASE + ((n) - 1))   // n: 1-3 (Toggle)
 #define TO(n)  (KC_LAYER_TO_BASE + ((n) - 1))   // n: 1-3 (Switch to)
@@ -226,7 +228,10 @@ _Static_assert(OSL(1) == KC_OSL_1 && OSL(3) == KC_OSL_3, "OSL(n) macro range val
 // Helper macros for layer key detection and parsing
 #define IS_LAYER_KEY(code)        ((code) >= KC_LAYER_MO_BASE)        // 0xF0-0xFF range
 #define GET_LAYER_OPERATION(code) (((code) - KC_LAYER_MO_BASE) >> 2)  // 0=MO, 1=TG, 2=TO, 3=OSL
-#define GET_LAYER_TARGET(code)    ((((code) - KC_LAYER_MO_BASE) & 0x03) + 1)  // Returns 1-4
+// GET_LAYER_TARGET: Returns 1-4 where 1-3 are usable via MO/TG/TO/OSL macros,
+// and 4 represents reserved slots (0xF3, 0xF7, 0xFB, 0xFF) for future expansion.
+// Runtime validation occurs in keylayers_process_key().
+#define GET_LAYER_TARGET(code) ((((code) - KC_LAYER_MO_BASE) & 0x03) + 1)
 
 /* Migration note: If future HID spec uses 0xF0-0xFF, simply change the
  * KC_LAYER_*_BASE values above. No keyboard files need updating since

@@ -140,7 +140,7 @@ For macOS, which lacks NumLock support, users could add a function layer to prov
 
 ---
 
-## Customization
+## Customisation
 
 ### Modifying Key Layout
 
@@ -189,11 +189,11 @@ See: [Hardware Setup Guide](../../getting-started/hardware-setup.md)
 
 The Model M M122 uses the AT/PS2 protocol with bidirectional communication. The keyboard sends scancodes to the host, and the converter can send configuration commands back. The keyboard uses Scancode Set 3.
 
-### Initialization Configuration
+### Initialisation Configuration
 
-Terminal keyboards using Set 3 aren't in make/break mode by default. During initialization, the converter sends command **0xF8** (Set All Keys to Make/Break) to configure the keyboard to send both key press (make) and key release (break) events for all keys. This is essential for proper operation with modern USB HID.
+Terminal keyboards using Set 3 aren't in make/break mode by default. During initialisation, the converter sends command **0xF8** (Set All Keys to Make/Break) to configure the keyboard to send both key press (make) and key release (break) events for all keys. This is essential for proper operation with modern USB HID.
 
-**Initialization sequence** (from [`keyboard_interface.c`](../../../src/protocols/at-ps2/keyboard_interface.c)):
+**Initialisation sequence** (from [`keyboard_interface.c`](../../../src/protocols/at-ps2/keyboard_interface.c)):
 1. Keyboard reset (0xFF) and self-test (waits for 0xAA response)
 2. Read keyboard ID (0xF2) - detects Set 3 terminal keyboard
 3. Set all keys to make/break mode (0xF8) - enables key release events

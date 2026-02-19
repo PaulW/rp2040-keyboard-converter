@@ -256,41 +256,41 @@ uint32_t hsv_to_rgb(uint16_t hue, uint8_t saturation, uint8_t value) {
     uint8_t region    = hue / 60;
     uint8_t remainder = (hue - (region * 60)) * 255 / 60;
 
-    uint8_t p = (value * (255 - saturation)) / 255;
-    uint8_t q = (value * (255 - ((saturation * remainder) / 255))) / 255;
-    uint8_t t = (value * (255 - ((saturation * (255 - remainder)) / 255))) / 255;
+    uint8_t min_channel = (value * (255 - saturation)) / 255;
+    uint8_t fade_down   = (value * (255 - ((saturation * remainder) / 255))) / 255;
+    uint8_t fade_up     = (value * (255 - ((saturation * (255 - remainder)) / 255))) / 255;
 
     uint8_t red_component = 0, green_component = 0, blue_component = 0;
     switch (region) {
         case 0:
             red_component   = value;
-            green_component = t;
-            blue_component  = p;
+            green_component = fade_up;
+            blue_component  = min_channel;
             break;
         case 1:
-            red_component   = q;
+            red_component   = fade_down;
             green_component = value;
-            blue_component  = p;
+            blue_component  = min_channel;
             break;
         case 2:
-            red_component   = p;
+            red_component   = min_channel;
             green_component = value;
-            blue_component  = t;
+            blue_component  = fade_up;
             break;
         case 3:
-            red_component   = p;
-            green_component = q;
+            red_component   = min_channel;
+            green_component = fade_down;
             blue_component  = value;
             break;
         case 4:
-            red_component   = t;
-            green_component = p;
+            red_component   = fade_up;
+            green_component = min_channel;
             blue_component  = value;
             break;
         default:
             red_component   = value;
-            green_component = p;
-            blue_component  = q;
+            green_component = min_channel;
+            blue_component  = fade_down;
             break;
     }
 

@@ -54,6 +54,13 @@
 // Layer count (exported by keyboard.c, defaults to max if undefined)
 __attribute__((weak)) const uint8_t keymap_layer_count = KEYMAP_MAX_LAYERS;
 
+/**
+ * Persistent layer state (TG/TO only - never includes MO bits)
+ * Saved to flash via config_storage. Only TG and TO operations modify this.
+ * MO (momentary) operations affect only momentary_keys[] and never persist.
+ */
+static uint8_t persistent_layer_state = 0;
+
 // Layer state tracking (accessible to inline functions in header)
 layer_state_t layer_state = {
     .layer_state    = LAYER_BASE_MASK,  // Bit 0 set = Layer 0 (base) active
@@ -61,6 +68,31 @@ layer_state_t layer_state = {
     .oneshot_layer  = 0,                // No one-shot layer
     .oneshot_active = false             // One-shot not active
 };
+
+/**
+ * @brief Compute effective layer bitmap from persistent state and momentary keys
+ *
+ * Combines base layer, persistent layers (TG/TO), and active momentary layers (MO)
+ * into the effective layer_state.layer_state bitmap.
+ *
+ * Formula: LAYER_BASE_MASK | persistent_layer_state | momentary_bits
+ *
+ * @note This function updates layer_state.layer_state in place.
+ */
+static void keylayers_update_effective_state(void) {
+    uint8_t momentary_bitmap = 0;
+
+    // Compute momentary layer bits from momentary_keys array
+    // momentary_keys[i] tracks layer (i+1), so index 0 = layer 1, index 1 = layer 2, etc.
+    for (uint8_t i = 0; i < KEYMAP_MAX_LAYERS - 1; i++) {
+        if (layer_state.momentary_keys[i] != 0) {
+            momentary_bitmap |= (1 << (i + 1));
+        }
+    }
+
+    // Compute effective state: base | persistent | momentary
+    layer_state.layer_state = LAYER_BASE_MASK | persistent_layer_state | momentary_bitmap;
+}
 
 /**
  * @brief Reset layer state to base layer (layer 0)
@@ -74,10 +106,11 @@ layer_state_t layer_state = {
  *       config_set_layer_state() and config_save() explicitly after this function.
  */
 void keylayers_reset(void) {
-    layer_state.layer_state = LAYER_BASE_MASK;  // Only layer 0 active
+    persistent_layer_state = 0;  // Clear persistent layers
     for (uint8_t i = 0; i < KEYMAP_MAX_LAYERS - 1; i++) {
         layer_state.momentary_keys[i] = 0;
     }
+    keylayers_update_effective_state();  // Recompute effective state
     layer_state.oneshot_layer  = 0;
     layer_state.oneshot_active = false;
 }
@@ -166,7 +199,10 @@ static uint32_t keylayers_compute_hash(void) {
 static void handle_first_boot(uint32_t current_hash) {
     LOG_INFO("Initializing layers hash: 0x%08X (layer_count=%d)\n", (unsigned int)current_hash,
              keymap_layer_count);
+    persistent_layer_state = 0;  // No persistent layers on first boot
+    keylayers_update_effective_state();
     config_set_layers_hash(current_hash);
+    config_set_layer_state(LAYER_BASE_MASK);  // Base layer only
     config_save();
 }
 
@@ -180,7 +216,8 @@ static void handle_hash_mismatch(uint32_t saved_hash, uint32_t current_hash) {
     LOG_INFO("Keymap config changed (hash 0x%08X → 0x%08X, layer_count=%d)\n",
              (unsigned int)saved_hash, (unsigned int)current_hash, keymap_layer_count);
     LOG_INFO("Resetting layer state to Layer 0\n");
-    layer_state.layer_state = LAYER_BASE_MASK;
+    persistent_layer_state = 0;  // Reset persistent layers
+    keylayers_update_effective_state();
     config_set_layer_state(LAYER_BASE_MASK);
     config_set_layers_hash(current_hash);
     config_save();
@@ -205,11 +242,14 @@ static void handle_valid_hash(uint8_t saved_layer_state) {
         LOG_WARN("Saved layer state 0x%02X has invalid layers (max layer=%d)\n", saved_layer_state,
                  effective_layer_count - 1);
         LOG_INFO("Resetting to Layer 0\n");
-        layer_state.layer_state = LAYER_BASE_MASK;
+        persistent_layer_state = 0;
+        keylayers_update_effective_state();
         config_set_layer_state(LAYER_BASE_MASK);
         config_save();
     } else {
-        layer_state.layer_state = saved_layer_state;
+        // Restore only persistent bits (TG/TO layers) - MO bits never saved to flash
+        persistent_layer_state = saved_layer_state & ~LAYER_BASE_MASK;  // Strip base layer bit
+        keylayers_update_effective_state();
         LOG_INFO("Restored layer state: 0x%02X\n", saved_layer_state);
     }
 }
@@ -248,6 +288,9 @@ void keylayers_init(void) {
 /**
  * @brief Handle MO (momentary) layer operation
  *
+ * MO layers are NEVER persisted - they only affect momentary_keys[] array.
+ * The effective layer bitmap is computed by keylayers_update_effective_state().
+ *
  * Bounds validation: target_layer is pre-validated by keylayers_process_key() caller
  * to ensure target_layer != 0 && target_layer < max_layers (prevents buffer underflow).
  *
@@ -257,33 +300,38 @@ void keylayers_init(void) {
  */
 static void keylayers_handle_mo(uint8_t target_layer, uint8_t code, bool make) {
     if (make) {
-        layer_state.layer_state |= (1 << target_layer);
         // Track which MO key is held (for release detection)
+        // momentary_keys[i] corresponds to layer (i+1)
         layer_state.momentary_keys[target_layer - 1] = code;
     } else {
         // Release momentary layer only if this specific MO key is released
         if (layer_state.momentary_keys[target_layer - 1] == code) {
-            layer_state.layer_state &= ~(1 << target_layer);
             layer_state.momentary_keys[target_layer - 1] = 0;
         }
     }
+    // Recompute effective bitmap (base | persistent | momentary)
+    keylayers_update_effective_state();
 }
 
 /**
  * @brief Handle TG (toggle) layer operation
+ *
+ * TG layers persist across reboots. Only persistent_layer_state is modified and saved.
  *
  * @param target_layer The layer to toggle (1-based)
  * @param make true if key pressed, false if released
  */
 static void keylayers_handle_tg(uint8_t target_layer, bool make) {
     if (make) {  // Only act on key press, ignore release
-        if (layer_state.layer_state & (1 << target_layer)) {
-            layer_state.layer_state &= ~(1 << target_layer);  // Turn off
+        if (persistent_layer_state & (1 << target_layer)) {
+            persistent_layer_state &= ~(1 << target_layer);  // Turn off
         } else {
-            layer_state.layer_state |= (1 << target_layer);  // Turn on
+            persistent_layer_state |= (1 << target_layer);  // Turn on
         }
-        // Persist toggle layer state to config
-        config_set_layer_state(layer_state.layer_state);
+        // Recompute effective bitmap
+        keylayers_update_effective_state();
+        // Persist toggle layer state to config (base layer + persistent layers)
+        config_set_layer_state(LAYER_BASE_MASK | persistent_layer_state);
         config_save();
     }
 }
@@ -291,21 +339,24 @@ static void keylayers_handle_tg(uint8_t target_layer, bool make) {
 /**
  * @brief Handle TO (switch to) layer operation
  *
+ * TO clears all persistent layers and activates only the target layer.
+ * Momentary (MO) layers are also cleared.
+ *
  * @param target_layer The layer to switch to (1-based)
  * @param make true if key pressed, false if released
  */
 static void keylayers_handle_to(uint8_t target_layer, bool make) {
     if (make) {  // Only act on key press
-        // Clear all layers except base (layer 0)
-        layer_state.layer_state = LAYER_BASE_MASK;
-        // Activate target layer (target_layer > 0 guaranteed by caller validation)
-        layer_state.layer_state |= (1 << target_layer);
+        // Clear all persistent layers, set only target layer
+        persistent_layer_state = (1 << target_layer);
         // Clear momentary tracking (same pattern as keylayers_reset())
         for (uint8_t i = 0; i < KEYMAP_MAX_LAYERS - 1; i++) {
             layer_state.momentary_keys[i] = 0;
         }
-        // Persist layer state to config
-        config_set_layer_state(layer_state.layer_state);
+        // Recompute effective bitmap
+        keylayers_update_effective_state();
+        // Persist layer state to config (base layer + target layer only)
+        config_set_layer_state(LAYER_BASE_MASK | persistent_layer_state);
         config_save();
     }
 }

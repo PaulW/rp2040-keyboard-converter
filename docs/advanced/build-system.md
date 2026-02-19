@@ -160,8 +160,8 @@ The `.elf.map` file shows detailed memory layout:
 ```
 .text           0x20000000    0x15abc  # Code section in SRAM
 .rodata         0x20015abc    0x2f40   # Read-only data
-.data           0x200189fc    0x1d0    # Initialized data
-.bss            0x20018bcc    0x3e8    # Uninitialized data
+.data           0x200189fc    0x1d0    # Initialised data
+.bss            0x20018bcc    0x3e8    # Uninitialised data
 ```
 
 Use this file to:

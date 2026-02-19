@@ -19,7 +19,7 @@ IBM produced two XT keyboard variants with different reset mechanisms:
 
 Data transmission, timing, frame structure, and scancodes are identical between variants. The reset mechanism is the only difference.
 
-This converter implements the Type 2 soft reset method (pulling CLOCK and DATA LOW during initialization). Type 1 keyboards have not been tested—compatibility with Type 1 reset mechanism cannot be confirmed.
+This converter implements the Type 2 soft reset method (pulling CLOCK and DATA LOW during initialisation). Type 1 keyboards have not been tested—compatibility with Type 1 reset mechanism cannot be confirmed.
 
 **Note**: The Type 1/Type 2 distinction is documented only for IBM keyboards. Whether other manufacturers (clones, third-party keyboards) implemented Type 1, Type 2, or some other variation is not known. The Type 2 soft reset mechanism appears to be the most common implementation based on available documentation.
 
@@ -221,7 +221,7 @@ Hold Time: Data stable after CLOCK rising edge (minimum ~5µs after edge)
 Inter-byte Gap: 1-10ms typical between consecutive scan codes
 ```
 
-**Reset and Initialization Timing**:
+**Reset and Initialisation Timing**:
 
 ```
 Soft Reset Sequence:
@@ -321,6 +321,9 @@ uint8_t get_base_key(uint8_t scancode) {
 - 0xAA: Everything OK, keyboard ready
 - 0xFC: Hardware failure detected
 
+**Protocol Layer Filtering:**
+The XT protocol implementation filters 0xAA during initialization (UNINITIALISED state) to prevent it from being processed as a scancode. Once INITIALISED, codes pass through to the scancode layer, which provides defense-in-depth filtering for post-initialization scenarios. See [Scancode Set 1 Self-Test Code Collision](../scancodes/set1.md#self-test-code-collision) for details on why this matters.
+
 **Note**: For complete scancode tables with all key mappings, see the **[Scancode Set 1](../scancodes/set1.md)** documentation.
 
 ---
@@ -329,10 +332,10 @@ uint8_t get_base_key(uint8_t scancode) {
 
 ### Power-On Sequence
 
-Power on an XT keyboard and it runs through a predictable initialization sequence:
+Power on an XT keyboard and it runs through a predictable initialisation sequence:
 
 ```
-Power-On Initialization:
+Power-On Initialisation:
 1. Keyboard receives power from Pin 5 (VCC)
 2. Internal microcontroller boots and runs self-test (~200-500ms)
 3. Tests performed:
@@ -382,14 +385,14 @@ softReset:
 
 **When Soft Reset Occurs:**
 
-- **Power-on initialization**: After keyboard powers up and brings CLOCK/DATA HIGH
+- **Power-on initialisation**: After keyboard powers up and brings CLOCK/DATA HIGH
 - **BAT failure recovery**: When keyboard returns invalid BAT response
 - **Communication error**: When invalid start bit detected (triggers `pio_restart()`)
 - **State machine reset**: After protocol errors or frame synchronization loss
 
 ### Normal Operation
 
-Once initialized, the keyboard runs a continuous scan loop:
+Once initialised, the keyboard runs a continuous scan loop:
 
 ```
 Continuous Scan Loop:
@@ -524,7 +527,7 @@ If you're running into issues with your XT keyboard, the problems usually fall i
 | Symptom | Likely Cause | What to Check |
 |---------|---------------|---------------|
 | No response | Power issue, bad connections | Check VCC, GND, verify pull-up resistor on DATA |
-| Initialization fails | Missing soft reset, too early | Execute CLOCK LOW soft reset, wait 500ms after power-on |
+| Initialisation fails | Missing soft reset, too early | Execute CLOCK LOW soft reset, wait 500ms after power-on |
 | Garbled scancodes | Wrong bit order, sampling edge | Verify LSB-first, sample on CLOCK rising edge |
 | Missing key events | Buffer overflow, timing | Check ring buffer size, verify interrupt latency |
 | Intermittent operation | Cable issues, signal quality | Use shorter cable (<2m), check connector pins |

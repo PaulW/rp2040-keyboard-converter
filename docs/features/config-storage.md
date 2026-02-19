@@ -145,7 +145,7 @@ When the converter powers on, one of the first things it does is load configurat
 
 Here's the complete boot sequence:
 
-**Step 1**: Initialize the configuration system. This sets up pointers to the flash storage locations and prepares the runtime configuration structure in RAM.
+**Step 1**: Initialise the configuration system. This sets up pointers to the flash storage locations and prepares the runtime configuration structure in RAM.
 
 **Step 2**: Read Copy A from flash (2KB from 0x101FF000).
 
@@ -240,7 +240,7 @@ The current implementation uses a simple migration strategy: if the configuratio
 
 When migrating:
 1. Read the old configuration into a temporary buffer
-2. Create a new configuration structure initialized to defaults
+2. Create a new configuration structure initialised to defaults
 3. Copy all fields that exist in both old and new versions
 4. New fields retain their default values
 5. Write the migrated configuration to flash with updated version number
@@ -268,7 +268,7 @@ The user's log level and brightness settings are preserved, and the new debounce
 
 The Command Mode 'F' command (implemented in [`command_mode.c`](../../src/common/lib/command_mode.c)) performs a factory reset, which wipes all saved configuration and restores defaults. After the reset completes, the converter automatically reboots to apply the factory defaults. This is implemented by:
 
-1. Initialize configuration structure to factory defaults (INFO log level, brightness 5)
+1. Initialise configuration structure to factory defaults (INFO log level, brightness 5)
 2. Set version number to current version
 3. Set sequence number to 0
 4. Write to both Copy A and Copy B
@@ -277,7 +277,7 @@ The Command Mode 'F' command (implemented in [`command_mode.c`](../../src/common
 
 After factory reset, both copies contain identical factory-default configuration with sequence 0. The next save will increment sequence to 1 and alternate between copies as normal.
 
-Factory reset is useful when you've experimented with settings and want a clean start, or when handing the converter to someone else and want to clear your customizations.
+Factory reset is useful when you've experimented with settings and want a clean start, or when handing the converter to someone else and want to clear your customisations.
 
 ---
 

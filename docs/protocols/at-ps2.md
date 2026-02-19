@@ -517,7 +517,7 @@ LEDs: Update to reflect new state
 | **BAT Passed** | 0xAA | Basic Assurance Test completed successfully (after reset) |
 | **BAT Failed** | 0xFC | Basic Assurance Test failed (rare, indicates hardware problem) |
 
-### Keyboard Initialization Sequence
+### Keyboard Initialisation Sequence
 
 **Power-On Self-Test (POST):**
 
@@ -529,7 +529,7 @@ LEDs: Update to reflect new state
 5. Device enters idle state, ready to send scancodes
 ```
 
-**Host Initialization (Typical):**
+**Host Initialisation (Typical):**
 
 ```
 1. Wait for BAT completion (0xAA received)
@@ -543,11 +543,26 @@ LEDs: Update to reflect new state
 
 **Graceful Handling of Hot-Plug** (Not Recommended, but possible):
 
-While hot-swapping keyboards can cause state machine issues, graceful detection is possible:
+While hot-swapping keyboards can cause state machine issues, the converter provides defense-in-depth protection:
+
+**Protocol Layer Filtering:**
+- During initialization (UNINITIALISED, INIT_AWAIT_SELFTEST states), the protocol layer filters self-test codes (0xAA, 0xFC)
+- Once INITIALISED, all codes pass through to the scancode layer
+
+**Scancode Layer Defense-in-Depth:**
+- Provides additional filtering for post-initialization scenarios (hot-plug, unstable connections)
+- Set 1 explicitly blacklists 0xAA/0xFC to prevent collision with valid scancodes (see [Set 1 Self-Test Code Collision](../scancodes/set1.md#self-test-code-collision))
+- Set 2/3 log these codes as potential re-plug events but don't process them as key events
+
+**What This Doesn't Provide:**
+- No active hot-swap detection (monitoring for unexpected 0xAA to trigger re-initialization)
+- No automatic scancode processor state reset on detection
+- No re-running of full initialization sequence
+
+**Graceful detection approach (if implemented):**
 - Monitor for unexpected 0xAA (indicates device reset/reconnection)
-- On detection: Re-run initialization sequence
+- On detection: Re-run initialisation sequence
 - Clear scancode processor state (discard any partial multi-byte sequences)
-- Note: This project currently does not implement hot-swap detection
 
 ### Keyboard Device IDs
 
@@ -709,9 +724,9 @@ Common rates (Hz): 10, 20, 40, 60, 80, 100, 200
 
 Used for both configuration and IntelliMouse detection sequences.
 
-### Mouse Initialization Sequence
+### Mouse Initialisation Sequence
 
-**Standard Initialization:**
+**Standard Initialisation:**
 
 ```
 1. Wait for BAT (0xAA) and device ID (0x00)
@@ -725,7 +740,7 @@ Used for both configuration and IntelliMouse detection sequences.
 
 **This Project's Implementation:**
 
-See [`src/protocols/at-ps2/mouse_interface.c`](../../src/protocols/at-ps2/mouse_interface.c) for complete initialization with type detection, configuration, and error handling.
+See [`src/protocols/at-ps2/mouse_interface.c`](../../src/protocols/at-ps2/mouse_interface.c) for complete initialisation with type detection, configuration, and error handling.
 
 ---
 

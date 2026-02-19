@@ -133,7 +133,7 @@ Once connected, you should immediately see log output scrolling by (assuming the
 
 ## Understanding Log Output
 
-The converter logs initialization steps, protocol events, errors, and debug information (see [`log.h`](../../src/common/lib/log.h) for implementation). Understanding the log format helps you diagnose issues quickly.
+The converter logs initialisation steps, protocol events, errors, and debug information (see [`log.h`](../../src/common/lib/log.h) for implementation). Understanding the log format helps you diagnose issues quickly.
 
 ### Log Format
 
@@ -159,7 +159,7 @@ Examples:
 
 ### Startup Sequence
 
-When the converter powers on, you'll see initialization messages:
+When the converter powers on, you'll see initialisation messages:
 
 ```
 --------------------------------
@@ -183,7 +183,7 @@ This startup sequence confirms:
 4. Keyboard make, model, and description from configuration
 5. Active protocol and scancode set
 
-If something goes wrong during initialization, you'll see `[ERR]` messages explaining the failure.
+If something goes wrong during initialisation, you'll see `[ERR]` messages explaining the failure.
 
 ### Normal Operation
 
@@ -248,7 +248,7 @@ The converter supports three log levels that control how much information appear
 
 **What you see**: Only `[ERR]` and `[WARN]` messages indicating problems.
 
-**When to use**: Normal daily use. You don't need to see every keystroke or initialization step—you only want to know if something breaks.
+**When to use**: Normal daily use. You don't need to see every keystroke or initialisation step—you only want to know if something breaks.
 
 **Impact on performance**: Minimal. Error logging is extremely lightweight since errors are rare.
 
@@ -261,7 +261,7 @@ The converter supports three log levels that control how much information appear
 
 ### Log Level 1: Info (Default)
 
-**What you see**: `[ERR]` and `[WARN]` messages plus `[INFO]` messages about significant events (initialization, Command Mode activation, settings changes).
+**What you see**: `[ERR]` and `[WARN]` messages plus `[INFO]` messages about significant events (initialisation, Command Mode activation, settings changes).
 
 **When to use**: Default setting. Provides enough visibility to understand what the converter is doing without overwhelming detail.
 
@@ -329,7 +329,7 @@ Result: Logging appears instantaneous from the CPU's perspective. No blocking, n
 
 ### Ring Buffer Architecture
 
-To handle multiple concurrent log messages (e.g., protocol events happening while initialization logs are still transmitting), logging uses a ring buffer:
+To handle multiple concurrent log messages (e.g., protocol events happening while initialisation logs are still transmitting), logging uses a ring buffer:
 
 **Main code calls LOG_INFO()** → Message formatted and written to ring buffer → DMA reads from ring buffer → Bytes transmitted over UART
 
@@ -470,7 +470,7 @@ These are advanced configurations beyond the scope of this document, but they're
 
 **Implementation details**:
 - [`uart.c`](../../src/common/lib/uart.c) - DMA-based UART implementation with ring buffer
-- [`uart.h`](../../src/common/lib/uart.h) - UART DMA initialization and configuration
+- [`uart.h`](../../src/common/lib/uart.h) - UART DMA initialisation and configuration
 - [`log.h`](../../src/common/lib/log.h) - Log level filtering and LOG_* macros (LOG_ERROR, LOG_WARN, LOG_INFO, LOG_DEBUG)
 - [`log.c`](../../src/common/lib/log.c) - Log level runtime management
 - [`config.h`](../../src/config.h) - UART configuration (GPIO pins, baud rate, buffer sizes, log level defaults)

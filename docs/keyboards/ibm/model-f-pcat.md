@@ -144,7 +144,7 @@ The numpad doubles as a navigation cluster when using the Fn modifier:
 
 ---
 
-## Customization
+## Customisation
 
 ### Modifying Key Layout
 
@@ -218,7 +218,7 @@ Example part numbers:
 
 ### Keyboard Not Detected
 
-Check your wiring first—DATA should be GPIO2 and CLOCK should be GPIO3 by default (check [`config.h`](../../../src/config.h) to confirm). Make sure you have stable 5V power—external power's better than relying on the Pico's VBUS directly. 5-pin DIN connectors can have dodgy contacts, so clean them with contact cleaner if you're having issues. Model F keyboards need a power cycle to initialize properly.
+Check your wiring first—DATA should be GPIO2 and CLOCK should be GPIO3 by default (check [`config.h`](../../../src/config.h) to confirm). Make sure you have stable 5V power—external power's better than relying on the Pico's VBUS directly. 5-pin DIN connectors can have dodgy contacts, so clean them with contact cleaner if you're having issues. Model F keyboards need a power cycle to initialise properly.
 
 ### Keys Not Registering
 

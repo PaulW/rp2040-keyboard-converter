@@ -387,6 +387,10 @@ void mouse_event_processor(uint8_t data_byte) {
  * function.
  */
 static void __isr mouse_input_event_handler(void) {
+    if (pio_sm_is_rx_fifo_empty(pio_engine.pio, pio_engine.sm)) {
+        return;
+    }
+
     io_ro_32 data_cast = pio_engine.pio->rxf[pio_engine.sm] >> 21;
     uint16_t data      = (uint16_t)data_cast;
 

@@ -45,7 +45,7 @@ A USB-UART adapter connects to the RP2040's UART pins (GPIO 0/1) to display diag
 - **115200 baud rate** (default UART configuration)
 
 **What you'll see:**
-- Protocol state transitions (initialization, LED commands, etc.)
+- Protocol state transitions (initialisation, LED commands, etc.)
 - Error conditions (`[ERR]` messages for protocol violations)
 - Received scancodes in hexadecimal
 - Timing measurements and performance data
@@ -141,15 +141,15 @@ Verify the converter recovers gracefully from protocol errors.
    - Wait 2-3 seconds
    - Reconnect keyboard
 3. Verify converter detects disconnection (UART shows protocol errors)
-4. Verify converter reinitializes protocol automatically
+4. Verify converter reinitialises protocol automatically
 5. Test keyboard functions normally after reconnection
 
-**Expected results:** Converter detects keyboard disconnection, logs `[ERR]` messages, attempts reinitialization, resumes normal operation when keyboard returns. No manual reset required.
+**Expected results:** Converter detects keyboard disconnection, logs `[ERR]` messages, attempts reinitialisation, resumes normal operation when keyboard returns. No manual reset required.
 
 **Common scenarios:**
 - Keyboard unplugged during use
 - Keyboard power-cycled (USB hub reset)
-- Protocol timing violations during initialization
+- Protocol timing violations during initialisation
 - Transient electrical issues causing garbage scancodes
 
 ### Multi-OS Compatibility Test
@@ -200,12 +200,12 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 7. **IRQ variable safety:** Missing `volatile` or `__dmb()` barriers for IRQ-shared variables
 8. **Tab characters:** Enforces spaces-only indentation (4 spaces)
 9. **Header guards:** Missing `#ifndef`/`#define` guards in .h files
-10. **File headers:** Missing GPL or MIT license headers
+10. **File headers:** Missing GPL or MIT licence headers
 11. **Naming conventions:** Detects camelCase (expects snake_case)
 12. **Include order:** Validates include directive organization
 13. **IRQ handler attributes:** Missing `__isr` attribute on interrupt handlers
 14. **Compile-time validation:** Advisory check for `_Static_assert` and `#error`
-15. **Protocol ring buffer setup:** Missing `ringbuf_reset()` in keyboard protocol initialization
+15. **Protocol ring buffer setup:** Missing `ringbuf_reset()` in keyboard protocol initialisation
 16. **Protocol PIO IRQ dispatcher:** Missing centralized `pio_irq_dispatcher_init()` or deprecated direct `irq_set_priority()` usage
 17. **Indentation consistency:** Enforces 4-space indentation, detects 2-space violations
 
@@ -396,7 +396,7 @@ The converter provides configurable logging levels (see [Logging guide](../featu
 
 - **ERROR:** Critical failures only
 - **WARN:** Protocol errors, unexpected conditions
-- **INFO:** Initialization messages, state changes
+- **INFO:** Initialisation messages, state changes
 - **DEBUG:** Detailed scancode traces, timing information
 
 **For testing:** Use DEBUG level to see everything. For production: INFO or WARN.

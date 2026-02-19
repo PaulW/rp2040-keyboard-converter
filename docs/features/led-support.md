@@ -10,9 +10,9 @@ Every converter needs at least one status LED to indicate what it's doing. This 
 
 The status LED shows different colors and patterns depending on what's happening:
 
-**Solid Green** - Everything is working perfectly. The converter has successfully initialized, the keyboard is communicating properly, and USB is connected. This is what you should see during normal operation.
+**Solid Green** - Everything is working perfectly. The converter has successfully initialised, the keyboard is communicating properly, and USB is connected. This is what you should see during normal operation.
 
-**Solid Orange** - The converter is starting up. You'll see this briefly during power-on while firmware initializes hardware, loads configuration, and establishes communication with your keyboard. Should transition to green within a second or two.
+**Solid Orange** - The converter is starting up. You'll see this briefly during power-on while firmware initialises hardware, loads configuration, and establishes communication with your keyboard. Should transition to green within a second or two.
 
 **Solid Magenta** - Bootloader mode active (firmware flash mode). The converter is in BOOTSEL mode waiting for a firmware upload. This is normal when holding the BOOTSEL button during power-on or after issuing the 'B' command in Command Mode. See [building-firmware.md](../getting-started/building-firmware.md) for firmware installation instructions.
 
@@ -22,7 +22,7 @@ The status LED shows different colors and patterns depending on what's happening
 
 **Rainbow Cycling** - You've pressed 'L' in Command Mode and the converter is displaying a rainbow cycling pattern while you adjust LED brightness using +/- keys. The LED cycles through all colors of the rainbow (red → yellow → green → cyan → blue → magenta → red...) to help you judge the brightness setting. See [Command Mode - 'L' Command](command-mode.md#l---adjust-led-brightness) for complete details.
 
-Understanding these patterns helps you diagnose issues quickly. Solid green means everything is working. Solid orange means the converter is still initializing. Solid magenta means bootloader mode is active (this is normal when flashing firmware). The alternating patterns indicate Command Mode is active and waiting for input.
+Understanding these patterns helps you diagnose issues quickly. Solid green means everything is working. Solid orange means the converter is still initialising. Solid magenta means bootloader mode is active (this is normal when flashing firmware). The alternating patterns indicate Command Mode is active and waiting for input.
 
 ---
 
@@ -362,7 +362,7 @@ Before sending new color data to WS2812 LEDs, [`ws2812_show()`](../../src/common
 
 The LED system maintains state information about what the converter is doing, implemented in [`src/common/lib/led_helper.c`](../../src/common/lib/led_helper.c):
 
-- Initialization in progress (orange - `CONVERTER_LEDS_STATUS_NOT_READY_COLOR`)
+- Initialisation in progress (orange - `CONVERTER_LEDS_STATUS_NOT_READY_COLOR`)
 - Ready for use (green - `CONVERTER_LEDS_STATUS_READY_COLOR`)
 - Bootloader/firmware flash mode (magenta - `CONVERTER_LEDS_STATUS_FWFLASH_COLOR`)
 - Command Mode active with specific submenu (various alternating patterns)
@@ -377,7 +377,7 @@ WS2812 LEDs use 24-bit RGB color: 8 bits each for red, green, and blue. Differen
 
 Colors are defined in [`src/config.h`](../../src/config.h) as RGB hex values:
 - Green: 0x00FF00 (ready state, command mode alternation)
-- Orange: 0xFF2800 (not ready/initializing)
+- Orange: 0xFF2800 (not ready/initialising)
 - Magenta: 0xFF00FF (bootloader mode)
 - Blue: 0x0000FF (command mode alternation)
 - Pink: 0xFF1493 (log level selection alternation)

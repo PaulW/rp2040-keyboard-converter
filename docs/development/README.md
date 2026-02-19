@@ -32,7 +32,7 @@ The critical architecture rules deserve special emphasis because violating them 
 
 Never call multicore APIs (`multicore_*`, `core1_*`) or attempt to use Core 1. The single-core architecture eliminates synchronization complexity and delivers predictable latency. Adding multicore would introduce bugs without performance benefit. Never use `printf()` or related functions in interrupt context—these functions use DMA-driven UART that conflicts with interrupt handlers. Use the `LOG_*` macros instead, which handle interrupt-safe output buffering.
 
-Never call `ringbuf_reset()` with interrupts enabled. The ring buffer implements lock-free single-producer/single-consumer (SPSC) semantics, which breaks if you reset both pointers while an interrupt might be writing. Only reset during initialization before enabling interrupts, or within an explicit interrupt-disabled critical section. All code must execute from SRAM using the `copy_to_ram` binary type—this ensures deterministic timing without flash cache misses affecting latency measurements.
+Never call `ringbuf_reset()` with interrupts enabled. The ring buffer implements lock-free single-producer/single-consumer (SPSC) semantics, which breaks if you reset both pointers while an interrupt might be writing. Only reset during initialisation before enabling interrupts, or within an explicit interrupt-disabled critical section. All code must execute from SRAM using the `copy_to_ram` binary type—this ensures deterministic timing without flash cache misses affecting latency measurements.
 
 Use volatile qualifiers and memory barriers (`__dmb()`) when sharing data between interrupt and main contexts. The compiler and CPU both reorder operations for optimization, which breaks interrupt communication without explicit synchronization. Place `volatile` on variables written in IRQ and read in main, then use `__dmb()` after volatile writes and before volatile reads to enforce ordering.
 
@@ -101,9 +101,9 @@ How to add support for new keyboard protocols:
 
 Start by researching the protocol thoroughly—you need to understand timing (clock frequency, bit duration, frame structure), signaling (voltage levels, idle states, edge polarities), and communication flow (unidirectional vs bidirectional, who generates the clock, how errors get detected). Datasheets, oscilloscope captures, and existing implementations all provide valuable information.
 
-Create a directory structure at `src/protocols/<name>/` containing all the protocol-specific files. The PIO program (`<name>.pio`) implements the low-level bit timing and frame synchronization in PIO assembly—this hardware state machine handles clock edge detection, bit shifting, and interrupt generation without CPU involvement. The protocol interface (`keyboard_interface.h` and `keyboard_interface.c`) implements the state machine for protocol initialization, error recovery, and LED command handling. The common interface (`common_interface.c`) provides standardized `keyboard_init()`, `keyboard_task()`, and `keyboard_set_leds()` functions that the main loop calls, isolating protocol-specific details from the rest of the system.
+Create a directory structure at `src/protocols/<name>/` containing all the protocol-specific files. The PIO program (`<name>.pio`) implements the low-level bit timing and frame synchronization in PIO assembly—this hardware state machine handles clock edge detection, bit shifting, and interrupt generation without CPU involvement. The protocol interface (`keyboard_interface.h` and `keyboard_interface.c`) implements the state machine for protocol initialisation, error recovery, and LED command handling. The common interface (`common_interface.c`) provides standardized `keyboard_init()`, `keyboard_task()`, and `keyboard_set_leds()` functions that the main loop calls, isolating protocol-specific details from the rest of the system.
 
-**Protocol Setup Pattern:** All protocol implementations follow a standard initialization sequence. See the [Protocol Implementation Guide](protocol-implementation.md) for the complete pattern and explanation of why each step matters. Following this pattern ensures consistency, proper resource allocation, and correct error handling across all protocols.
+**Protocol Setup Pattern:** All protocol implementations follow a standard initialisation sequence. See the [Protocol Implementation Guide](protocol-implementation.md) for the complete pattern and explanation of why each step matters. Following this pattern ensures consistency, proper resource allocation, and correct error handling across all protocols.
 
 Document the protocol comprehensively in a `README.md` file including timing diagrams, electrical specifications, state machine descriptions, and oscilloscope captures if available. This documentation helps future maintainers understand the protocol without reverse-engineering your code.
 
@@ -143,7 +143,7 @@ const uint8_t KEYMAP[256] = KEYMAP_US_ANSI(
 );
 ```
 
-If the keyboard lacks both shift keys (like the Apple M0110 which has only one shift), override the Command Mode activation keys by defining `CMD_MODE_KEY1` and `CMD_MODE_KEY2` in `keyboard.h` before including other headers. The default combination (Left Shift + Right Shift) won't work on single-shift keyboards. See [Command Mode customization](../features/command-mode.md#keyboard-specific-configuration) for details on implementing these overrides.
+If the keyboard lacks both shift keys (like the Apple M0110 which has only one shift), override the Command Mode activation keys by defining `CMD_MODE_KEY1` and `CMD_MODE_KEY2` in `keyboard.h` before including other headers. The default combination (Left Shift + Right Shift) won't work on single-shift keyboards. See [Command Mode customisation](../features/command-mode.md#keyboard-specific-configuration) for details on implementing these overrides.
 
 Create a `README.md` documenting the keyboard's specifications, connector pinout, any quirks or special behavior, and build instructions. This helps users understand what they're building firmware for and assists troubleshooting.
 
@@ -192,7 +192,7 @@ Understanding the build system helps when adding keyboards or debugging configur
 
 The Docker environment provides: `docker compose run --rm -e KEYBOARD="modelm/enhanced" builder`. This command sets the `KEYBOARD` environment variable, which points to a configuration file at [`src/keyboards/`](../../src/keyboards/)`<brand>/<model>/keyboard.config`. The configuration file defines the protocol (`PROTOCOL=at-ps2`), scancode set (`CODESET=set123`), and other keyboard-specific parameters. CMake reads this configuration and automatically includes the appropriate protocol handler, scancode processor, and keymap files. The build outputs `build/rp2040-converter.uf2` ready for drag-and-drop flashing, along with `.elf` and `.elf.map` files for debugging.
 
-For local development without Docker, initialize the Pico SDK submodule (`git submodule update --init --recursive`), configure the build directory (`cmake -B build`), and compile (`cmake --build build`). The local build path requires the Pico SDK and ARM toolchain installed manually, but provides faster iteration when actively developing.
+For local development without Docker, initialise the Pico SDK submodule (`git submodule update --init --recursive`), configure the build directory (`cmake -B build`), and compile (`cmake --build build`). The local build path requires the Pico SDK and ARM toolchain installed manually, but provides faster iteration when actively developing.
 
 Build resources include the [Building Firmware guide](../getting-started/building-firmware.md) for step-by-step procedures, [`CMakeLists.txt`](../../src/CMakeLists.txt) for build logic, [Docker setup](../../docker-compose.yml) for environment configuration, and [`keyboard.config` format examples](../../src/keyboards/modelm/enhanced/keyboard.config).
 
@@ -204,7 +204,7 @@ Build resources include the [Building Firmware guide](../getting-started/buildin
 
 Before writing any code, read the [Code Standards](code-standards.md) documentation completely. This isn't a suggestion—it's the authoritative source for architectural constraints that must never be violated. Every architectural decision traces back to achieving precise timing with deterministic latency.
 
-The five absolute prohibitions exist for specific technical reasons. No blocking operations (`sleep_ms`, `sleep_us`, `busy_wait_us`, `busy_wait_ms`) because the main loop must service the ring buffer and USB stack continuously—protocols require precise timing that blocking operations destroy. No multicore APIs (`multicore_*`, `core1_*`) because Core 1 stays disabled—the single-core architecture eliminates synchronization complexity while delivering predictable latency. No `printf` in IRQ context because printf uses DMA-driven UART that conflicts with interrupt handlers—use `LOG_*` macros instead, which implement interrupt-safe buffering. No `ringbuf_reset()` with interrupts enabled because the lock-free SPSC design breaks if both pointers reset while an interrupt might be writing—only reset during initialization or within explicit interrupt-disabled sections. No Flash execution because flash cache misses introduce unpredictable latency—code must run from SRAM using `copy_to_ram` to guarantee deterministic timing.
+The five absolute prohibitions exist for specific technical reasons. No blocking operations (`sleep_ms`, `sleep_us`, `busy_wait_us`, `busy_wait_ms`) because the main loop must service the ring buffer and USB stack continuously—protocols require precise timing that blocking operations destroy. No multicore APIs (`multicore_*`, `core1_*`) because Core 1 stays disabled—the single-core architecture eliminates synchronization complexity while delivering predictable latency. No `printf` in IRQ context because printf uses DMA-driven UART that conflicts with interrupt handlers—use `LOG_*` macros instead, which implement interrupt-safe buffering. No `ringbuf_reset()` with interrupts enabled because the lock-free SPSC design breaks if both pointers reset while an interrupt might be writing—only reset during initialisation or within explicit interrupt-disabled sections. No Flash execution because flash cache misses introduce unpredictable latency—code must run from SRAM using `copy_to_ram` to guarantee deterministic timing.
 
 Understanding the "why" behind each rule helps you write compliant code naturally rather than fighting constraints. See [Advanced Topics](../advanced/README.md) for complete architecture documentation, [Code Standards](code-standards.md) for authoritative rules, and the [main loop implementation](../../src/main.c) for reference patterns.
 
@@ -291,13 +291,6 @@ Usage is simple: `./tools/lint.sh` checks all source files, or `./tools/lint.sh 
 Automated pull request reviews through CodeRabbit provide AI-assisted analysis focusing on embedded systems best practices and architectural compliance. The bot reviews every PR, highlighting potential issues with blocking operations, memory safety, protocol timing, and adherence to architectural patterns.
 
 CodeRabbit configuration defines path-specific instructions (different rules for protocols vs keyboards vs common libraries), custom pre-merge checks (must pass lint, must compile all configurations, must respect memory limits), and knowledge base integration ensuring reviews align with project architecture.
-
-**Custom Checks:**
-1. No blocking operations
-2. No multicore usage
-3. IRQ safety
-4. RAM execution
-5. Protocol timing compliance
 
 Custom checks ensure architectural compliance: no blocking operations anywhere in the code, no multicore usage attempts, interrupt safety for all shared data structures, RAM execution requirements met, and protocol timing specifications followed precisely. CodeRabbit combines automated analysis with project-specific knowledge to catch issues that generic linters miss.
 

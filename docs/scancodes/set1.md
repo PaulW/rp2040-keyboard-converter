@@ -97,6 +97,43 @@ Set 1 Print Screen sequences include "fake shift" codes:
 
 Modern converters should **filter out** these fake shift codes to prevent spurious Shift events.
 
+### Self-Test Code Collision
+
+Set 1 has a collision between self-test codes and valid scancodes. The self-test passed code `0xAA` is identical to the Left Shift break code (`0x2A | 0x80 = 0xAA`). This creates a potential for misinterpreting keyboard reset events as key releases.
+
+**Protocol Layer Filtering:**
+
+The protocol layer (XT, AT/PS2) filters self-test codes (`0xAA`, `0xFC`) during keyboard initialization:
+- **XT Protocol**: Filters `0xAA` whilst in `UNINITIALISED` state
+- **AT/PS2 Protocol**: Filters `0xAA` and `0xFC` whilst in `UNINITIALISED` and `INIT_AWAIT_SELFTEST` states
+- Once `INITIALISED`, all codes pass through to the scancode layer
+
+**Defense-in-Depth at Scancode Layer:**
+
+Whilst protocol filtering handles normal initialization, keyboards can send self-test codes post-initialization during hot-plug events or unstable connections. The scancode processor provides defense-in-depth by explicitly filtering these codes:
+
+```c
+// Set 1 scancode processor (simplified)
+if (code == 0xAA || code == 0xFC) {
+    // Filter self-test codes (0xAA overlaps with Left Shift break 0x2A | 0x80)
+    LOG_DEBUG("!INIT! (0x%02X)\n", code);
+} else if (code <= 0xD3) {
+    // Valid make (0x01-0x53) or break (0x81-0xD3) codes
+    handle_keyboard_report(code & 0x7F, code < 0x80);
+} else {
+    // Invalid codes above 0xD3
+    LOG_DEBUG("!INIT! (0x%02X)\n", code);
+}
+```
+
+This follows the IBM BIOS strategy of "throwing away invalid codes" (IBM PC AT BIOS listing, keyboard interrupt handler K2S routine, lines 132-164).
+
+**Why This Matters:**
+
+Without scancode-layer filtering, hot-plugging a keyboard would send `0xAA`, which the scancode processor would interpret as Left Shift break (`0x2A & 0x7F = 0x2A`, with bit 7 indicating release). This would create a spurious Shift key release event.
+
+TMK's implementation handles Set 2/3 self-test codes with intentional fall-through (comment: "replug or unstable connection probably"), but Set 1 requires explicit blacklisting due to the collision.
+
 ## State Machine
 
 Set 1 requires a **5-state** state machine to handle all sequences:
@@ -148,13 +185,13 @@ The keyspace is limited to 128 make codes (7-bit), which becomes a problem for m
 
 | Code | Description |
 |------|-------------|
-| `0xAA` | Self-test passed (BAT - Basic Assurance Test) |
+| `0xAA` | Self-test passed (BAT - Basic Assurance Test) [⚠️ Collision](#self-test-code-collision) |
 | `0xE0` | Extended key prefix |
 | `0xE1` | Pause/Break prefix |
 | `0xEE` | Echo response (not used in XT) |
 | `0xF0` | Reserved |
 | `0xFA` | ACK (not used in XT) |
-| `0xFC` | Self-test failed |
+| `0xFC` | Self-test failed [⚠️ Collision](#self-test-code-collision) |
 | `0xFE` | Resend (not used in XT) |
 | `0xFF` | Error/Buffer overflow |
 
@@ -232,7 +269,7 @@ E0-prefixed keys require translation to their logical key codes:
 1. **XT Protocol**: Unidirectional, no host-to-keyboard commands
 2. **No LED Control**: XT keyboards have built-in LED logic, not host-controlled
 3. **No Typematic Control**: Key repeat rate is keyboard-internal
-4. **Self-Test Only**: `0xAA` is sent on power-up, `0xFC` on failure
+4. **Self-Test Code Handling**: Defense-in-depth filtering at both protocol and scancode layers (see [Self-Test Code Collision](#self-test-code-collision))
 
 ## Performance Characteristics
 

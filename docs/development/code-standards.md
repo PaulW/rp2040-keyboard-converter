@@ -87,7 +87,7 @@ if (result > threshold) {
 ```c
 uint8_t scancode_buffer[32];
 void keyboard_interface_setup(uint pin);
-static bool is_initialization_complete(void);
+static bool is_initialisation_complete(void);
 ```
 
 **Constants and macros:** Use `UPPER_CASE`:
@@ -348,7 +348,7 @@ The `LOG_*` macros are defined in `log.h` and handle buffering safely.
 
 The ring buffer uses a single-producer/single-consumer model. The IRQ handler writes (producer), the main loop reads (consumer).
 
-**Never** call `ringbuf_reset()` whilst interrupts are enabled—this violates the single-writer invariant. Only reset during initialization or protocol state resets where interrupts are already disabled.
+**Never** call `ringbuf_reset()` whilst interrupts are enabled—this violates the single-writer invariant. Only reset during initialisation or protocol state resets where interrupts are already disabled.
 
 ```c
 // Bad: resetting with IRQs enabled
@@ -447,21 +447,32 @@ Helper functions that return NULL or error codes typically perform validation in
 ```c
 // Helper centralises atomic allocation with validation
 pio_engine_t claim_pio_and_sm(const pio_program_t* program) {
-    // Try PIO0 first, fallback to PIO1
-    PIO pio = pio_can_add_program(pio0, program) ? pio0 : 
-              (pio_can_add_program(pio1, program) ? pio1 : NULL);
+    pio_engine_t result = {NULL, -1, -1};
     
-    if (pio == NULL) {
-        return (pio_engine_t){.pio = NULL, .sm = -1, .offset = -1};
+    // Try PIO0 first: check program space AND SM availability
+    if (pio_can_add_program(pio0, program)) {
+        int sm = pio_claim_unused_sm(pio0, false);
+        if (sm >= 0) {
+            result.pio    = pio0;
+            result.sm     = sm;
+            result.offset = pio_add_program(pio0, program);
+            return result;
+        }
     }
     
-    int sm = pio_claim_unused_sm(pio, false);
-    if (sm < 0) {
-        return (pio_engine_t){.pio = NULL, .sm = -1, .offset = -1};
+    // PIO0 failed, try PIO1: check program space AND SM availability
+    if (pio_can_add_program(pio1, program)) {
+        int sm = pio_claim_unused_sm(pio1, false);
+        if (sm >= 0) {
+            result.pio    = pio1;
+            result.sm     = sm;
+            result.offset = pio_add_program(pio1, program);
+            return result;
+        }
     }
     
-    int offset = pio_add_program(pio, program);
-    return (pio_engine_t){.pio = pio, .sm = sm, .offset = offset};
+    // Both PIOs exhausted
+    return result;
 }
 
 // Caller delegates validation to helper - single error check
@@ -783,7 +794,7 @@ Start with normal typing to verify basic functionality works as expected. Then s
 
 Test Command Mode by holding both shifts for 3 seconds to verify it activates properly and responds to commands. If your protocol supports LEDs, test Caps Lock, Num Lock, and Scroll Lock to make sure they update correctly—some protocols have quirky LED behaviour that only shows up in real use.
 
-Finally, test error recovery by power cycling the keyboard mid-operation. The converter should detect the keyboard disappearing and recover gracefully when it comes back. This catches issues with state machine initialization and cleanup.
+Finally, test error recovery by power cycling the keyboard mid-operation. The converter should detect the keyboard disappearing and recover gracefully when it comes back. This catches issues with state machine initialisation and cleanup.
 
 These aren't exhaustive tests, but they'll catch most issues before you submit a PR. If you find something that breaks, add a test case for it so it doesn't regress later.
 

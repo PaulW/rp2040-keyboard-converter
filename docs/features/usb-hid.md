@@ -347,7 +347,7 @@ If most keys produce the correct output but specific keys are wrong or non-funct
 
 **Variant keyboards**: Some keyboard models that look identical have different internal controllers with different scancode mappings. Verify you have the exact right firmware variant for your specific keyboard.
 
-**Protocol documentation**: Check the protocol documentation for your keyboard to see if it has any known quirks or special handling requirements. Some keyboards require special initialization sequences or have non-standard key assignments.
+**Protocol documentation**: Check the protocol documentation for your keyboard to see if it has any known quirks or special handling requirements. Some keyboards require special initialisation sequences or have non-standard key assignments.
 
 **Scancode logs**: Connect via UART and watch what scancodes your keyboard actually sends when you press the problem keys. Compare these to the expected scancodes documented for your keyboard model.
 

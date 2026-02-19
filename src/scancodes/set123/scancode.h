@@ -128,7 +128,7 @@ typedef struct {
  * @note This function maintains internal state across calls (static variables)
  * @note State is reset to INIT after processing each complete sequence
  * @note Calls handle_keyboard_report(code, is_make) for each complete key event
- * @note Debug output via printf() for unexpected states (can be disabled)
+ * @note` Debug output via LOG_DEBUG() for unexpected states
  *
  * @see scancode_config_t for configuration details
  * @see handle_keyboard_report() for key event processing

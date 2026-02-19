@@ -142,7 +142,14 @@ void process_scancode(uint8_t code) {
                     state = E1;
                     break;
                 default:  // Handle normal key event
-                    handle_keyboard_report(code & 0x7F, code < 0x80);
+                    if (code == 0xAA || code == 0xFC) {
+                        // Filter self-test codes (0xAA overlaps with valid Left Shift break)
+                        LOG_DEBUG("!INIT! (0x%02X)\n", code);
+                    } else if (code <= 0xD3) {
+                        handle_keyboard_report(code & 0x7F, code < 0x80);
+                    } else {
+                        LOG_DEBUG("!INIT! (0x%02X)\n", code);
+                    }
             }
             break;
 

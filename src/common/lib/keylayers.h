@@ -84,7 +84,7 @@ void keylayers_reset(void);
  * 2. Momentary layers (highest MO layer held)
  * 3. Toggle/base layers (highest bit in bitmap)
  *
- * @return Active layer number (0-7)
+ * @return Active layer number (0 through KEYMAP_MAX_LAYERS-1)
  */
 uint8_t keylayers_get_active(void);
 
@@ -106,7 +106,7 @@ static inline uint8_t keylayers_get_state_bitmap(void) {
  * Fast inline check for layer activity.
  * Layer 0 is always active (bit 0 always set).
  *
- * @param layer Layer number to check (0-7)
+ * @param layer Layer number to check (0 through KEYMAP_MAX_LAYERS-1)
  * @return true if layer is active in the bitmap, false otherwise (or if layer out of range)
  */
 static inline bool keylayers_is_active(uint8_t layer) {

@@ -237,7 +237,7 @@ The converter supports WS2812B addressable RGB LEDs for visual feedback. This is
 
 **Status Colors:**
 - **🟢 Green**: Everything's working, converter's ready
-- **🟠 Orange**: Waiting for keyboard initialization
+- **🟠 Orange**: Waiting for keyboard initialisation
 - **🟣 Magenta**: Bootloader mode (ready for firmware flashing)
 - **💚💙 Flashing Green/Blue**: Command Mode active
 - **💚💖 Flashing Green/Pink**: Log level selection mode  

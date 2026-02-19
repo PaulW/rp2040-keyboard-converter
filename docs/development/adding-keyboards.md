@@ -266,7 +266,7 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
 - `KC_7`: Sends `7` **with** shift modifier (produces shifted character like `&`)
 
 **Per-layer shift-override:**
-Different layers can have different shift behaviours. For example, Layer 0 might use modern PC shift legends while Layer 1 uses terminal shift legends. Simply define multiple entries in the `keymap_shift_override_layers` array:
+Different layers can have different shift behaviours. For example, Layer 0 might use modern PC shift legends whilst Layer 1 uses terminal shift legends. Simply define multiple entries in the `keymap_shift_override_layers` array:
 
 ```c
 const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {

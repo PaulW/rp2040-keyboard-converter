@@ -43,6 +43,9 @@
 
 // clang-format on
 
+/* Layer count override - matches number of layers defined in keymap_map below */
+const uint8_t keymap_layer_count = 1;
+
 // Define Keyboard Layers
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     KEYMAP_M0110A(      /* Layer 0: Base Layer

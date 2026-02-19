@@ -55,7 +55,7 @@ Configuration settings persist across reboots using the flash storage system. LE
 
 The implementation uses a dual-copy redundancy system for data integrity. Two copies (A and B) are stored, each with CRC validation to detect corruption. Writes alternate between the copies for wear leveling, which extends flash life to about 10,000 write cycles per location before degradation. That's plenty for configuration updates that happen occasionally rather than continuously.
 
-Currently stored settings include your log level (ERROR, INFO, or DEBUG), LED brightness level (0-10 scale), protocol initialization parameters, and timing thresholds. The storage system's extensible too, so future features like custom key mappings, macros, or debounce timing adjustments can slot right in without architectural changes.
+Currently stored settings include your log level (ERROR, INFO, or DEBUG), LED brightness level (0-10 scale), protocol initialisation parameters, and timing thresholds. The storage system's extensible too, so future features like custom key mappings, macros, or debounce timing adjustments can slot right in without architectural changes.
 
 **See:** [Configuration Storage Guide](config-storage.md) for technical details about flash allocation and redundancy
 
@@ -72,7 +72,7 @@ LED indicators provide visual feedback about converter status, including operati
 - Power indication
 - Error states and protocol issues
 
-The status LED shows different colours depending on what's happening. Solid green means everything's working normally. Solid orange appears briefly during startup whilst firmware initializes. Alternating green and blue indicates Command Mode is active and waiting for you to press a command key. Solid magenta means bootloader mode (firmware flash mode). These patterns make it easy to tell what's going on without needing to connect debug tools.
+The status LED shows different colours depending on what's happening. Solid green means everything's working normally. Solid orange appears briefly during startup whilst firmware initialises. Alternating green and blue indicates Command Mode is active and waiting for you to press a command key. Solid magenta means bootloader mode (firmware flash mode). These patterns make it easy to tell what's going on without needing to connect debug tools.
 
 **Keyboard Lock Indicators:**
 
@@ -94,7 +94,7 @@ WS2812 RGB LEDs (NeoPixels) can be added for enhanced visual feedback. These con
 
 Mouse support allows connection of a mouse alongside the keyboard, providing complete period-accurate input hardware. The mouse operates independently from the keyboard using separate GPIO pins and a separate PIO state machine, preventing any signal interference.
 
-AT/PS2 protocol mice are currently supported, covering most mice from the mid-1980s through early 2000s. The converter handles standard 3-byte packets (buttons, X movement, Y movement) and extended 4-byte packets for mice with scroll wheels (IntelliMouse protocol). Scroll wheel detection occurs automatically during initialization.
+AT/PS2 protocol mice are currently supported, covering most mice from the mid-1980s through early 2000s. The converter handles standard 3-byte packets (buttons, X movement, Y movement) and extended 4-byte packets for mice with scroll wheels (IntelliMouse protocol). Scroll wheel detection occurs automatically during initialisation.
 
 Mouse support is protocol-agnostic and works with any keyboard protocol. An AT/PS2 mouse can be paired with XT, Amiga, or M0110 keyboards because the mouse uses dedicated hardware lines (CLOCK and DATA separate from keyboard lines), allowing parallel operation without coordination. Press keys whilst moving the mouse, scroll whilst holding modifier keys, click whilst typing—everything works as expected because the signals never cross paths.
 
@@ -121,7 +121,7 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
 
 Keyboard layers provide a way to access multiple sets of key functions from the same physical keys. Think of them as transparent overlays—activate a layer and the keys do different things. This is particularly useful for compact keyboards or when adding modern conveniences like media controls to vintage hardware that lacks dedicated keys.
 
-The converter supports up to 8 layers (numbered 0-7), with common configurations using 2 or 3 layers. Layer 0 is always active as the base layer, and upper layers overlay on top. Keys can be transparent in upper layers, falling through to lower active layers until a keycode is found, so you only need to define the keys that actually change.
+The converter supports up to 8 layers (numbered 0-7). Layer 0 is always active as the base layer, and upper layers overlay on top. Keys can be transparent in upper layers, falling through to lower active layers until a keycode is found, so you only need to define the keys that actually change.
 
 **Layer activation methods:**
 - **Momentary (MO)**: Active whilst held, like a traditional Fn key
@@ -131,7 +131,7 @@ The converter supports up to 8 layers (numbered 0-7), with common configurations
 
 Practical use cases include adding media controls (volume, playback) to keyboards that lack dedicated keys, accessing function keys F13-F24 on compact keyboards, providing numpad navigation for macOS (which doesn't use NumLock), or switching between QWERTY and alternative layouts like Dvorak or Colemak.
 
-The layer system is entirely optional. If your keyboard has all the keys you need and you're not planning to remap anything, a single-layer keymap is perfectly adequate. Layers add flexibility without requiring hardware modifications.
+The layer system is entirely optional. If your keyboard has all the keys you need, and you're not planning to remap anything, a single-layer keymap is perfectly adequate. Layers add flexibility without requiring hardware modifications.
 
 **See:** [Keyboard Layers Guide](layers.md) for concepts and practical examples, or [Custom Keymaps Guide](../development/custom-keymaps.md) for implementation details
 
@@ -145,12 +145,12 @@ The converter provides detailed UART-based logging to help you understand what i
 
 The logging implementation uses DMA-driven UART, which means log messages transmit in the background without blocking keyboard processing. Even at DEBUG log level (which outputs every scancode), logging never adds latency to your keystrokes. The UART operates completely independently from USB, so debug output keeps working even if the USB connection has problems—exactly when you need it most.
 
-You can adjust the log level through Command Mode without reflashing firmware. Press D in Command Mode, then 1 for ERROR (just critical errors), 2 for INFO (initialization and state changes), or 3 for DEBUG (everything including individual scancodes). The setting persists across reboots, so you only need to set it once.
+You can adjust the log level through Command Mode without reflashing firmware. Press D in Command Mode, then 1 for ERROR (just critical errors), 2 for INFO (initialisation and state changes), or 3 for DEBUG (everything including individual scancodes). The setting persists across reboots, so you only need to set it once.
 
 Log output looks like this:
 
 ```
-[INFO] Keyboard interface initialized (AT/PS2)
+[INFO] Keyboard interface initialised (AT/PS2)
 [DBG] Scancode: 0x1C (Make)
 [ERR] Parity error detected
 [INFO] Command mode activated

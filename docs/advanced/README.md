@@ -92,7 +92,7 @@ Hardware testing procedures, code quality enforcement, and validation techniques
 
 **Keys not registering?**
 - Check ring buffer status in UART logs (buffer full indicates USB saturation)
-- Verify protocol initialization completed (look for `!INIT!` markers)
+- Verify protocol initialisation completed (look for `!INIT!` markers)
 - Confirm keymap matches keyboard's scancode set
 
 **Build failures?**
@@ -106,7 +106,7 @@ Hardware testing procedures, code quality enforcement, and validation techniques
 - Check UART logs for protocol timing errors
 
 **Protocol errors on power-up?**
-- Normal for some keyboards—they send garbage during initialization
+- Normal for some keyboards—they send garbage during initialisation
 - Converter should auto-recover within 1-2 seconds
 - Persistent errors indicate timing or signal integrity issues
 

@@ -76,7 +76,7 @@ typedef struct {
 } pio_engine_t;
 ```
 
-All protocol implementations declare this as a static variable with explicit initialization:
+All protocol implementations declare this as a static variable with explicit initialisation:
 
 ```c
 static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
@@ -220,7 +220,7 @@ The AT/PS2 protocol supports both keyboards and mice on separate hardware lines.
 
 ```c
 void mouse_interface_setup(uint data_pin) {
-  // 1. LED initialization
+  // 1. LED initialisation
   #ifdef CONVERTER_LEDS
     converter.state.mouse_ready = 0;
     update_converter_status();
@@ -247,7 +247,7 @@ The mouse still follows the same resource allocation pattern (atomic PIO/SM/prog
 
 ### Error Handling Approach
 
-All protocols now use the consistent atomic allocation pattern:
+All protocols use the atomic PIO resource allocation pattern implemented by `claim_pio_and_sm()`. This function attempts to allocate a PIO instance, state machine, and program memory atomically, trying PIO0 first and falling back to PIO1 if necessary.
 
 ```c
 pio_engine_t pio_engine = claim_pio_and_sm(&program);
@@ -257,16 +257,14 @@ if (pio_engine.pio == NULL) {
 }
 ```
 
-This pattern:
+The `pio_engine_t` struct contains either complete working resources (PIO instance, SM number, program offset) or NULL to indicate complete failure. This pattern:
 - Handles PIO selection (pio0 vs pio1) automatically with fallback
-- Eliminates partial allocation failures
-- Provides clean single-point error handling
+- Eliminates partial allocation failures (no allocated SM without program space)
+- Provides clean single-point error handling (one NULL check covers all failure cases)
 - Returns complete working resources or nothing
-- Type-safe through struct encapsulation"
+- Type-safe through struct encapsulation
 
-Used by: M0110
-
-The manual approach is preferable for new protocols—it's more explicit about error conditions and gives better error messages. The panic approach is simpler but less informative when things go wrong.
+Used across all protocols: AT/PS2 (keyboard and mouse), XT, Amiga, M0110, and WS2812 LED helper.
 
 ### Pin Requirements
 
@@ -377,7 +375,7 @@ If you skip steps or reorder them, you risk initialisation failures, race condit
 
 ### Missing PIO IRQ dispatcher initialisation
 **Problem:** Protocol uses deprecated direct IRQ setup (`irq_set_exclusive_handler()` + `irq_set_priority()`), causing conflicts when multiple devices share a PIO instance  
-**Solution:** Always use centralized PIO IRQ dispatcher:
+**Solution:** Always use centralised PIO IRQ dispatcher:
   1. Call `pio_irq_dispatcher_init(pio_engine.pio)` before registering handlers
   2. Call `pio_irq_register_callback(pio_engine.pio, &handler)` to register protocol handler
   3. Never call `irq_set_priority()` directly in protocol code (managed centrally)

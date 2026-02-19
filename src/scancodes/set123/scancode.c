@@ -247,11 +247,14 @@ static void process_normal_code(uint8_t code, const scancode_config_t* config) {
     // Set-specific special codes
     switch (config->set) {
         case SCANCODE_SET1:
-            // Set 1: Break = make | 0x80
-            if (code < 0x80) {
-                handle_keyboard_report(code, true);
+            // Set 1: Break = make | 0x80, valid break range 0x81-0xD3
+            if (code == 0xAA || code == 0xFC) {
+                // Filter self-test codes (0xAA overlaps with valid Left Shift break)
+                LOG_DEBUG("!INIT! (0x%02X)\n", code);
+            } else if (code <= 0xD3) {
+                handle_keyboard_report(code & 0x7F, code < 0x80);
             } else {
-                handle_keyboard_report(code & 0x7F, false);
+                LOG_DEBUG("!INIT! (0x%02X)\n", code);
             }
             break;
 

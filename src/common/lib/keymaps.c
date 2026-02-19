@@ -29,6 +29,11 @@
 #include "keylayers.h"
 #include "log.h"
 
+// Enforce 4-bit encoding constraint: pos parameter uses upper/lower nibble for row/col
+// This limits maximum keymap dimensions to 16x16 (0-15 range per nibble)
+_Static_assert(KEYMAP_ROWS <= 16 && KEYMAP_COLS <= 16,
+               "Keymap dimensions must fit in 4-bit encoding (pos parameter)");
+
 /**
  * @brief Scans lower layers for layer modifiers only
  *
@@ -188,10 +193,18 @@ uint8_t keymap_get_key_val(uint8_t pos, bool make, bool* suppress_shift) {
         *suppress_shift = false;
     }
 
-    const uint8_t row          = (pos >> 4) & 0x0F;
-    const uint8_t col          = pos & 0x0F;
-    uint8_t       source_layer = 0;  // Track which layer the key came from (for shift-override)
-    uint8_t       key_code     = keymap_search_layers(row, col, &source_layer);
+    const uint8_t row = (pos >> 4) & 0x0F;
+    const uint8_t col = pos & 0x0F;
+
+    // Bounds check: 4-bit encoding allows 0-15, but actual matrix may be smaller
+    if (row >= KEYMAP_ROWS || col >= KEYMAP_COLS) {
+        LOG_WARN("Invalid key position: row=%u, col=%u (max: %u x %u)\n", row, col, KEYMAP_ROWS,
+                 KEYMAP_COLS);
+        return KC_NO;
+    }
+
+    uint8_t source_layer = 0;  // Track which layer the key came from (for shift-override)
+    uint8_t key_code     = keymap_search_layers(row, col, &source_layer);
 
     // Handle layer switching keycodes (0xF0-0xFF)
     if (IS_LAYER_KEY(key_code)) {

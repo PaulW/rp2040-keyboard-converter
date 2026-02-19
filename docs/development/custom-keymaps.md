@@ -308,7 +308,7 @@ If a key doesn't work as expected, the UART debug output is your friend. Enable 
 
 ## Multi-Layer Keymaps
 
-The converter supports multi-layer keymaps (similar to QMK firmware), but most keyboards don't need this—single-layer keymaps are usually sufficient. If you're just remapping keys, you can skip this section entirely.
+The converter supports multi-layer keymaps (similar to QMK firmware), but many keyboards don't need this—single-layer keymaps are usually sufficient. If you're just remapping keys, you can skip this section entirely.
 
 Layers are useful for things like media controls, alternative key functions, or special modes that you access via a function key. The converter supports up to 8 layers (0-7), with Layer 0 being the base layer that's always active.
 
@@ -394,7 +394,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
 };
 ```
 
-Now when you hold the key you assigned as `MO_1` (in this case, the right Alt position), the number row becomes function keys, Q/W/E become media playback controls, and V/B/N become volume controls. Release the layer key and everything goes back to normal typing.
+Now when you hold the key you assigned as `MO_1`, the number row becomes function keys, Q/W/E become media playback controls, and V/B/N become volume controls. Release the layer key and everything goes back to normal typing.
 
 The keys set to `TRNS` behave exactly as they do in Layer 0. You don't need to redefine your entire keyboard layout—just the keys that are different in the upper layer.
 
@@ -412,7 +412,7 @@ The keys set to `TRNS` behave exactly as they do in Layer 0. You don't need to r
 
 ### When Should You Use Layers?
 
-Most keyboards don't need them, I'll grant you. A single-layer keymap where you've remapped a few keys is sufficient for the majority of use cases. But layers are useful when:
+Many keyboards don't need them, I'll grant you. A single-layer keymap where you've remapped a few keys is sufficient for the majority of use cases. But layers are useful when:
 
 - **Media controls** - You want volume, playback, and mute accessible without a separate media keyboard
 - **Function key extensions** - Your keyboard lacks F13-F24 and you want them available on an upper layer
