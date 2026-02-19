@@ -37,6 +37,17 @@
  */
 static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
 
+/**
+ * @brief WS2812 Protocol Timing Constants
+ *
+ * WS2812_BIT_RATE_KHZ: WS2812 data transmission rate (800 kHz)
+ * WS2812_CYCLES_PER_BIT: PIO cycles per bit for accurate timing (10 cycles)
+ */
+enum {
+    WS2812_BIT_RATE_KHZ   = 800,
+    WS2812_CYCLES_PER_BIT = 10,
+};
+
 /*
  * Private Functions
  */
@@ -367,7 +378,7 @@ void ws2812_setup(uint led_pin) {
     }
 
     float rp_clock_khz = 0.001 * clock_get_hz(clk_sys);
-    float clock_div    = roundf(rp_clock_khz / (800 * 10));
+    float clock_div    = roundf(rp_clock_khz / (WS2812_BIT_RATE_KHZ * WS2812_CYCLES_PER_BIT));
 
     LOG_INFO("Effective SM Clock Speed: %.2fkHz\n", (float)(rp_clock_khz / clock_div));
 

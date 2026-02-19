@@ -206,7 +206,8 @@ _Static_assert(CMD_MODE_KEY2 >= 0xE0 && CMD_MODE_KEY2 <= 0xE7,
  * @note Returns on first non-zero key (early exit optimization)
  */
 static inline bool any_key_pressed(const hid_keyboard_report_t* keyboard_report) {
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0;
+         i < (int)(sizeof(keyboard_report->keycode) / sizeof(keyboard_report->keycode[0])); i++) {
         if (keyboard_report->keycode[i] != 0) {
             return true;
         }
@@ -228,7 +229,8 @@ static inline bool any_key_pressed(const hid_keyboard_report_t* keyboard_report)
  * @note Returns on first match (early exit optimization)
  */
 static inline bool is_key_pressed(const hid_keyboard_report_t* keyboard_report, uint8_t keycode) {
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0;
+         i < (int)(sizeof(keyboard_report->keycode) / sizeof(keyboard_report->keycode[0])); i++) {
         if (keyboard_report->keycode[i] == keycode) {
             return true;
         }

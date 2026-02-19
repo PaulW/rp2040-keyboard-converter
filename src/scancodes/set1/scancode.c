@@ -161,6 +161,8 @@ void process_scancode(uint8_t code) {
                         uint8_t translated = switch_e0_code(code < 0x80 ? code : (code & 0x7F));
                         if (translated) {
                             handle_keyboard_report(translated, code < 0x80);
+                        } else {
+                            LOG_DEBUG("!E0! (0x%02X)\n", code);
                         }
                     }
             }

@@ -550,7 +550,7 @@ Measured with IBM Model M Enhanced keyboard (AT/PS2 protocol):
 
 **Keys not registering?**
 
-```
+```text
 Ring buffer full? → USB saturated or main loop blocked (check tud_hid_ready())
 Protocol errors? → Check UART for [ERR]/!INIT! (power cycle keyboard)
 Wrong keymap? → Verify KEYBOARD_CODESET matches keyboard
@@ -558,7 +558,7 @@ Wrong keymap? → Verify KEYBOARD_CODESET matches keyboard
 
 **Build fails?**
 
-```
+```text
 KEYBOARD env var missing? → Set with docker compose run -e KEYBOARD="..."
 keyboard.config missing? → Path: src/keyboards/<brand>/<model>/keyboard.config
 Linker errors? → Verify KEYBOARD_PROTOCOL in keyboard.config
@@ -566,7 +566,7 @@ Linker errors? → Verify KEYBOARD_PROTOCOL in keyboard.config
 
 **High CPU/latency?**
 
-```
+```text
 Check for: sleep_ms(), busy_wait_us(), long loops without yield
 Use: to_ms_since_boot(get_absolute_time()) for timing
 ```
@@ -595,7 +595,7 @@ Use: to_ms_since_boot(get_absolute_time()) for timing
 
 **Public (committed to git):**
 
-- README.md, src/protocols/*/README.md, src/keyboards/README.md, src/scancodes/*/README.md
+- README.md, src/protocols/_/README.md, src/keyboards/README.md, src/scancodes/_/README.md
 - All source code, CMake files, configuration files
 - Public-facing documentation that describes the project
 

@@ -88,11 +88,15 @@ The script runs through seventeen different checks, each targeting a specific ar
    - 📝 **Note**: Mouse protocols excluded (direct event processing, no ring buffer)
    - 📚 **Reference**: See [Protocol Implementation Guide](../docs/development/protocol-implementation.md)
 
-1. **Protocol Setup Consistency (IRQ Priority)** - Validates interrupt priority configuration
-   - ⚠️ **Warns**: Missing `irq_set_priority()` call in protocol setup functions
-   - 💡 **Fix**: Add `irq_set_priority(pio_irq, 0)` after IRQ handler registration for time-critical protocols
-   - 📝 **Note**: Ensures highest priority for timing-sensitive keyboard/mouse protocols
-   - 📚 **Reference**: See [Protocol Implementation Guide](../docs/development/protocol-implementation.md)
+1. **Protocol Setup Consistency (PIO IRQ Dispatcher)** - Validates centralized PIO IRQ management
+   - ❌ **Fails**: Direct `irq_set_priority()` calls in protocol code (deprecated pattern)
+   - ⚠️ **Warns**: Missing `pio_irq_dispatcher_init()` call in protocol setup functions
+   - 💡 **Fix**: Use centralized PIO IRQ dispatcher from pio_helper subsystem
+     - Call `pio_irq_dispatcher_init(pio_engine.pio)` during setup
+     - Call `pio_irq_register_callback(&handler_function)` to register protocol handler
+     - Do NOT call `irq_set_priority()` directly in protocols (managed centrally)
+   - 📝 **Note**: Ensures proper IRQ multiplexing for multi-device support (e.g., keyboard + mouse)
+   - 📚 **Reference**: See [src/common/lib/pio_helper.h](../src/common/lib/pio_helper.h) for API documentation
 
 1. **Indentation Consistency** - Enforces 4-space indentation (detects 2-space)
    - ❌ **Fails**: Files with more than 5 lines using 2-space indentation

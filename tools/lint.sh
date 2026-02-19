@@ -675,36 +675,63 @@ else
 fi
 echo ""
 
-# Check 16: Protocol Setup Consistency - IRQ Priority
-echo -e "${BLUE}[16/17] Checking protocol setup consistency (IRQ priority)...${NC}"
-MISSING_IRQ_PRIORITY=""
+# Check 16: Protocol Setup Consistency - PIO IRQ Dispatcher Usage
+echo -e "${BLUE}[16/17] Checking protocol setup consistency (PIO IRQ dispatcher)...${NC}"
+MISSING_DISPATCHER=""
+DIRECT_IRQ_SETUP=""
 
+# Check keyboard interface files
 while IFS= read -r protocol_file; do
     protocol_name=$(basename "$(dirname "$protocol_file")")
     
-    # Check if this file has keyboard_interface_setup function
-    if grep -q "keyboard_interface_setup" "$protocol_file"; then
-        # Check if irq_set_priority() is called in the file
-        if ! grep -q "irq_set_priority" "$protocol_file"; then
-            MISSING_IRQ_PRIORITY="${MISSING_IRQ_PRIORITY}${protocol_name}: Missing irq_set_priority() in keyboard_interface_setup\n"
+    # Check if this file has keyboard_interface_setup or mouse_interface_setup function
+    if grep -q "keyboard_interface_setup\|mouse_interface_setup" "$protocol_file"; then
+        # Check if they use the centralized PIO IRQ dispatcher
+        if ! grep -q "pio_irq_dispatcher_init" "$protocol_file"; then
+            MISSING_DISPATCHER="${MISSING_DISPATCHER}${protocol_name}: Missing pio_irq_dispatcher_init() call\n"
+        fi
+        
+        # ERROR: Check if they still use old direct IRQ setup pattern
+        if grep -q "irq_set_priority" "$protocol_file"; then
+            DIRECT_IRQ_SETUP="${DIRECT_IRQ_SETUP}${protocol_name}: Uses deprecated irq_set_priority() directly\n"
         fi
     fi
-done < <(find src/protocols/ -name "keyboard_interface.c" 2>/dev/null)
+done < <(find src/protocols/ -name "keyboard_interface.c" -o -name "mouse_interface.c" 2>/dev/null)
 
-if [ -n "$MISSING_IRQ_PRIORITY" ]; then
-    echo -e "${YELLOW}WARNING: Protocol setup missing IRQ priority configuration:${NC}"
+# Report errors first (critical)
+if [ -n "$DIRECT_IRQ_SETUP" ]; then
+    echo -e "${RED}ERROR: Protocols using deprecated direct IRQ setup:${NC}"
     echo ""
-    echo -e "$MISSING_IRQ_PRIORITY"
+    echo -e "$DIRECT_IRQ_SETUP"
     echo ""
-    echo -e "${YELLOW}Setup pattern: All protocols must set IRQ priority to 0 (highest)${NC}"
-    echo "  - Ensures minimal keyboard event latency"
-    echo "  - SDK default is 0x80 (medium priority)"
-    echo "  - Should be irq_set_priority(pio_irq, 0)"
-    echo "  - See docs/development/protocol-implementation.md"
+    echo -e "${RED}Required pattern: Use centralized PIO IRQ dispatcher${NC}"
+    echo "  - Call pio_irq_dispatcher_init(pio_engine.pio) in setup"
+    echo "  - Call pio_irq_register_callback(&handler_function)"
+    echo "  - Do NOT call irq_set_priority() directly in protocols"
+    echo "  - IRQ priority is centrally managed in pio_helper.c"
+    echo "  - See src/common/lib/pio_helper.h for API documentation"
+    echo ""
+    ERRORS=$((ERRORS + 1))
+fi
+
+# Report warnings (missing dispatcher usage)
+if [ -n "$MISSING_DISPATCHER" ]; then
+    echo -e "${YELLOW}WARNING: Protocol setup missing PIO IRQ dispatcher:${NC}"
+    echo ""
+    echo -e "$MISSING_DISPATCHER"
+    echo ""
+    echo -e "${YELLOW}Setup pattern: All protocols must use PIO IRQ dispatcher${NC}"
+    echo "  - Ensures proper IRQ multiplexing for multi-device support"
+    echo "  - Centralizes IRQ priority management (priority 0)"
+    echo "  - Should call pio_irq_dispatcher_init() before callback registration"
+    echo "  - See src/common/lib/pio_helper.h for documentation"
     echo ""
     WARNINGS=$((WARNINGS + 1))
-else
-    echo -e "${GREEN}✓ All protocols configure IRQ priority in setup${NC}"
+fi
+
+# Success message if all checks pass
+if [ -z "$DIRECT_IRQ_SETUP" ] && [ -z "$MISSING_DISPATCHER" ]; then
+    echo -e "${GREEN}✓ All protocols use centralized PIO IRQ dispatcher${NC}"
 fi
 echo ""
 

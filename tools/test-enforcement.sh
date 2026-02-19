@@ -100,6 +100,11 @@ cleanup_test_env() {
     rm -f src/test_*.c
     rm -f docs-internal/test_*.md
     
+    # Remove test protocol directories
+    rm -rf src/protocols/test-protocol
+    rm -rf src/protocols/test-protocol-bad
+    rm -rf src/protocols/test-protocol-incomplete
+    
     # Reset any staged files
     git reset HEAD . >/dev/null 2>&1 || true
     
@@ -314,6 +319,85 @@ test_lint_empty_check() {
     echo ""
 }
 
+# Test 16: Lint Script - PIO IRQ Dispatcher (Correct Usage)
+test_lint_pio_irq_dispatcher_correct() {
+    mkdir -p src/protocols/test-protocol
+    cat > src/protocols/test-protocol/keyboard_interface.c << 'EOF'
+#include "pico/stdlib.h"
+#include "pio_helper.h"
+
+static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
+
+static void __isr keyboard_input_event_handler(void) {
+    // IRQ handler
+}
+
+void keyboard_interface_setup(uint data_pin) {
+    pio_engine = claim_pio_and_sm(&test_program);
+    
+    // Correct pattern: Use PIO IRQ dispatcher
+    pio_irq_dispatcher_init(pio_engine.pio);
+    pio_irq_register_callback(&keyboard_input_event_handler);
+}
+EOF
+    
+    run_test "Lint accepts correct PIO IRQ dispatcher usage" "./tools/lint.sh" "pass"
+    rm -rf src/protocols/test-protocol
+}
+
+# Test 17: Lint Script - PIO IRQ Direct Setup (Deprecated Pattern)
+test_lint_pio_irq_direct_setup() {
+    mkdir -p src/protocols/test-protocol-bad
+    cat > src/protocols/test-protocol-bad/keyboard_interface.c << 'EOF'
+#include "pico/stdlib.h"
+#include "hardware/irq.h"
+
+static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
+
+static void __isr keyboard_input_event_handler(void) {
+    // IRQ handler
+}
+
+void keyboard_interface_setup(uint data_pin) {
+    pio_engine = claim_pio_and_sm(&test_program);
+    
+    // Bad pattern: Direct IRQ setup (deprecated)
+    uint pio_irq = pio_engine.pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+    irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
+    irq_set_priority(pio_irq, 0x00);  // Violation: Direct priority setup
+    irq_set_enabled(pio_irq, true);
+}
+EOF
+    
+    run_test "Lint rejects deprecated direct IRQ setup" "./tools/lint.sh" "fail"
+    rm -rf src/protocols/test-protocol-bad
+}
+
+# Test 18: Lint Script - PIO IRQ Missing Dispatcher (Warning)
+test_lint_pio_irq_missing_dispatcher() {
+    mkdir -p src/protocols/test-protocol-incomplete
+    cat > src/protocols/test-protocol-incomplete/keyboard_interface.c << 'EOF'
+#include "pico/stdlib.h"
+
+static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
+
+static void __isr keyboard_input_event_handler(void) {
+    // IRQ handler
+}
+
+void keyboard_interface_setup(uint data_pin) {
+    pio_engine = claim_pio_and_sm(&test_program);
+    // Missing: pio_irq_dispatcher_init() and pio_irq_register_callback()
+    // This should trigger a warning (not pass in strict mode)
+}
+EOF
+    
+    # Note: Missing dispatcher triggers warning, not error, so base lint passes
+    # but --strict should fail
+    run_test "Lint warns about missing PIO IRQ dispatcher (strict mode)" "./tools/lint.sh --strict" "fail"
+    rm -rf src/protocols/test-protocol-incomplete
+}
+
 # Main test execution
 main() {
     setup_test_env
@@ -326,6 +410,9 @@ main() {
     test_lint_strict_mode
     test_lint_copy_to_ram
     test_multiple_violations
+    test_lint_pio_irq_dispatcher_correct
+    test_lint_pio_irq_direct_setup
+    test_lint_pio_irq_missing_dispatcher
     
     echo -e "${BLUE}======================================== ${NC}"
     echo -e "${BLUE}Git Hook Tests${NC}"

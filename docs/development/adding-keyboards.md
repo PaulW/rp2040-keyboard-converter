@@ -181,7 +181,7 @@ Common shorthand keycodes:
 
 ### Multi-Layer Keymaps
 
-Most keyboards only need a single base layer (Layer 0). However, you might want additional layers for function keys, navigation, or gaming modes. Layer switching is covered in detail in the [Custom Keymaps](custom-keymaps.md) guide, but here's the basic structure:
+A single base layer (Layer 0) may be sufficient for simpler keymaps. However, you might want additional layers for function keys, navigation, or gaming modes. Layer switching is covered in detail in the [Custom Keymaps](custom-keymaps.md) guide, but here's the basic structure:
 
 ```c
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
@@ -202,7 +202,7 @@ Layer keycodes:
 - **OSL_1, OSL_2, OSL_3**: One-shot layer (next key only)
 - **TRNS**: Transparent—passes through to lower layer
 
-**NumLock Handling:** You don't need separate NumLock layers. The numpad keys (KC_P0-KC_P9, KC_P7=7/HOME, KC_P1=1/END, etc.) are dual-function by HID specification—the host OS interprets them as either numeric (NumLock ON) or navigation (NumLock OFF). Windows and Linux handle this natively. On macOS (which doesn't support NumLock), provide navigation keys in a function layer for users who need them.
+**NumLock Handling:** If you need consistent navigation on the numpad across hosts, consider adding a function layer that maps the numpad positions to HOME/UP/PGUP and similar keys rather than creating a dedicated NumLock layer.
 
 **Example—Model F PC/AT with navigation in Fn layer:**
 
@@ -247,7 +247,7 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
         // Keep shift for standard behaviour
         [KC_6] = KC_7,  // Shift+6 → Shift+7 produces & (ampersand, keep shift held)
         
-        // Most entries are 0 (use default shift behaviour)
+        // Entries default to 0 unless explicitly set (use default shift behaviour)
     },
     // Other layers: NULL or define additional shift-override arrays as needed
     // [1] = (const uint8_t[SHIFT_OVERRIDE_ARRAY_SIZE]){ ... },  // Optional: Layer 1 shift-override
@@ -293,7 +293,7 @@ This prevents undefined behaviour from stale or incorrect shift-override definit
 
 **Example keyboards with shift-override:**
 - IBM Model M Type 2 (M122): `src/keyboards/modelm/m122/keyboard.c`
-- Microswitch Type 2 (predicted): `src/keyboards/microswitch/122st13/keyboard.c` (needs hardware testing)
+- Microswitch 122ST13: `src/keyboards/microswitch/122st13/keyboard.c`
 
 **Enabling shift-override:**
 

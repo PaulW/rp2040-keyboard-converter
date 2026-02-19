@@ -273,6 +273,9 @@ static void        start_next_dma_if_needed(void);
  */
 static inline void report_drop_stats(void) {
     static bool in_report = false;  // Prevent recursion
+    if (in_irq()) {
+        return;  // snprintf() is not ISR-safe
+    }
 
     // Skip if already reporting (shouldn't happen with direct enqueue, but safety first)
     if (in_report) {
@@ -383,7 +386,7 @@ static void start_next_dma_if_needed() {
  * Execution Context: Interrupt (keep minimal and fast)
  */
 void __isr dma_handler() {
-    uint32_t mask = 1u << uart_dma_chan;
+    uint32_t mask = 1U << uart_dma_chan;
     if (dma_hw->ints0 & mask) {
         dma_hw->ints0 = mask;  // clear IRQ flag
 
@@ -718,7 +721,7 @@ void init_uart_dma() {
     dma_channel_set_irq0_enabled(uart_dma_chan, true);  // Enable interrupts for this channel
 
     // Clear any pending IRQ for this channel before enabling
-    uint32_t mask = 1u << uart_dma_chan;
+    uint32_t mask = 1U << uart_dma_chan;
     dma_hw->ints0 = mask;
 
     irq_set_exclusive_handler(DMA_IRQ_0, &dma_handler);  // Set our handler function

@@ -21,6 +21,7 @@
 #include "mouse_interface.h"
 
 #include <math.h>
+#include <stdbool.h>
 
 #include "hardware/clocks.h"
 #include "interface.pio.h"
@@ -103,7 +104,7 @@ static void mouse_command_handler(uint8_t data_byte) {
  *
  * @return The calculated XY movement as an int8_t value.
  */
-static int8_t get_xy_movement(uint8_t pos, int sign_bit) {
+static int8_t get_xy_movement(uint8_t pos, bool sign_bit) {
     int16_t new_pos = pos;
     if (sign_bit) {
         new_pos -= 256;
@@ -437,6 +438,10 @@ void mouse_input_event_handler() {
  * @note This function should be called periodically in the main loop, or within a task scheduler.
  */
 void mouse_interface_task() {
+    // Guard against uninitialised PIO engine
+    if (pio_engine.pio == NULL)
+        return;
+
     // Mouse Interface Initialisation helper
     // Here we handle Timeout events. If we don't receive responses from an attached Mouse with a
     // set period of time for any condition other than INITIALISED, we will then perform an
@@ -510,17 +515,14 @@ void mouse_interface_setup(uint data_pin) {
     pio_interface_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin,
                                clock_div);
 
-    // Configure interrupt handling for PIO data reception
-    uint pio_irq = pio_engine.pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+    // Initialize shared PIO IRQ dispatcher (safe to call multiple times)
+    pio_irq_dispatcher_init(pio_engine.pio);
 
-    // Register interrupt handler for RX FIFO events
-    irq_set_exclusive_handler(pio_irq, &mouse_input_event_handler);
-
-    // Set highest interrupt priority for time-critical mouse protocol timing
-    irq_set_priority(pio_irq, 0x00);
-
-    // Enable the IRQ
-    irq_set_enabled(pio_irq, true);
+    // Register mouse event handler with the dispatcher
+    if (!pio_irq_register_callback(&mouse_input_event_handler)) {
+        LOG_ERROR("AT/PS2 Mouse: Failed to register IRQ callback\n");
+        return;
+    }
 
     LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
              (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);

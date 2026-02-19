@@ -702,11 +702,10 @@ if (pio_engine.pio == NULL) {
 // 2. Configure and start
 program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin);
 
-// 4. Setup IRQ handler (if needed)
-pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
-irq_set_exclusive_handler(pio_irq, &handler);
-irq_set_priority(pio_irq, 0x00);        // Set priority before enabling
-irq_set_enabled(pio_irq, true);
+// 4. Setup IRQ handler (if needed) - use centralized dispatcher
+pio_set_irq0_source_enabled(pio_engine.pio, pis_interrupt0, true);
+pio_irq_dispatcher_init(pio_engine.pio);              // Initialize shared IRQ dispatcher
+pio_irq_register_callback(pio_engine.pio, &handler); // Register protocol handler
 ```
 
 **PIO error recovery:**

@@ -204,16 +204,16 @@ void update_converter_status(void) {
  * - Lock key changes are rare (user presses Caps Lock, Num Lock, etc.)
  * - Immediate LED feedback is important for user experience
  *
- * Bounded Wait Strategy:
- * - Uses bounded wait (max 60µs) to ensure LED update completes
- * - 60µs is negligible in USB context (USB frames are 1000µs)
- * - Retries update_converter_leds() until success or max iterations reached
- * - Prevents deferred updates for lock key changes where immediate feedback matters
+ * Non-Blocking Update Strategy:
+ * - Attempts a single LED update via update_converter_leds()
+ * - If the update cannot complete (timing constraint), sets led_update_pending
+ *   so the main-loop wrapper (update_converter_status) retries on the next call
+ * - No blocking or looping — safe for USB interrupt context
  *
  * @param lock_val The HID lock value (bit 0: Num Lock, bit 1: Caps Lock, bit 2: Scroll Lock)
  *
- * @note Called from USB interrupt context - 60µs bounded wait is acceptable here
- * @note Most calls succeed immediately; wait only occurs if called within 60µs of previous update
+ * @note Called from USB interrupt context - non-blocking single attempt only
+ * @note Most calls succeed immediately; deferred retry only if timing constraint active
  */
 
 #ifdef CONVERTER_LEDS

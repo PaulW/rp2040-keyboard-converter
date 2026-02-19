@@ -30,37 +30,65 @@
 #include "hid_interface.h"
 #include "log.h"
 
-// clang-format off
-// Apple M0110A will prefix certain keys with 0x79, or 0x71,0x79.
-// These macros translate these codes.
-#define SWITCH_71_CODE(code) \
-  (code == 0x0F ? 0x2A : /* Cursor Up */ \
-  (code == 0x11 ? 0x32 : /* Cursor Down */ \
-  (code == 0x1B ? 0x3A : /* Cursor Left */ \
-  (code == 0x05 ? 0x42 : /* Cursor Right */ \
-  (code == 0x0D ? 0x4A : /* Keypad 0 */ \
-  0)))))
+/**
+ * @brief Translates M0110A 0x79-prefixed key code to HID keycode
+ *
+ * @param key_code The key code following the 0x79 prefix
+ * @return Translated HID keycode, or 0 if unmapped
+ */
+static uint8_t switch_79_code(uint8_t key_code) {
+    static const struct {
+        uint8_t in;
+        uint8_t out;
+    } map[] = {
+        {0x1B, 0x10}, /* Cursor Up    */
+        {0x11, 0x18}, /* Cursor Down  */
+        {0x0D, 0x20}, /* Cursor Left  */
+        {0x05, 0x28}, /* Cursor Right */
+        {0x25, 0x30}, /* Keypad 0     */
+        {0x27, 0x38}, /* Keypad 1     */
+        {0x29, 0x40}, /* Keypad 2     */
+        {0x2B, 0x48}, /* Keypad 3     */
+        {0x2D, 0x50}, /* Keypad 4     */
+        {0x2F, 0x58}, /* Keypad 5     */
+        {0x31, 0x60}, /* Keypad 6     */
+        {0x33, 0x68}, /* Keypad 7     */
+        {0x37, 0x70}, /* Keypad 8     */
+        {0x39, 0x78}, /* Keypad 9     */
+        {0x03, 0x12}, /* Keypad Dot   */
+        {0x19, 0x1A}, /* Keypad Enter */
+        {0x1D, 0x22}, /* Keypad Minus */
+    };
+    for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
+        if (map[i].in == key_code)
+            return map[i].out;
+    }
+    return 0;
+}
 
-#define SWITCH_79_CODE(code) \
-  (code == 0x1B ? 0x10 : /* Cursor Up */ \
-  (code == 0x11 ? 0x18 : /* Cursor Down */ \
-  (code == 0x0D ? 0x20 : /* Cursor Left */ \
-  (code == 0x05 ? 0x28 : /* Cursor Right */ \
-  (code == 0x25 ? 0x30 : /* Keypad 0 */ \
-  (code == 0x27 ? 0x38 : /* Keypad 1 */ \
-  (code == 0x29 ? 0x40 : /* Keypad 2 */ \
-  (code == 0x2B ? 0x48 : /* Keypad 3 */ \
-  (code == 0x2D ? 0x50 : /* Keypad 4 */ \
-  (code == 0x2F ? 0x58 : /* Keypad 5 */ \
-  (code == 0x31 ? 0x60 : /* Keypad 6 */ \
-  (code == 0x33 ? 0x68 : /* Keypad 7 */ \
-  (code == 0x37 ? 0x70 : /* Keypad 8 */ \
-  (code == 0x39 ? 0x78 : /* Keypad 9 */ \
-  (code == 0x03 ? 0x12 : /* Keypad Dot */ \
-  (code == 0x19 ? 0x1A : /* Keypad Enter */ \
-  (code == 0x1D ? 0x22 : /* Keypad Minus */ \
-  0)))))))))))))))))
-// clang-format on
+/**
+ * @brief Translates M0110A 0x71,0x79-prefixed key code to HID keycode
+ *
+ * @param key_code The key code following the 0x71,0x79 prefix sequence
+ * @return Translated HID keycode, or 0 if unmapped
+ */
+static uint8_t switch_71_code(uint8_t key_code) {
+    static const struct {
+        uint8_t in;
+        uint8_t out;
+    } map[] = {
+        {0x0F, 0x2A}, /* Cursor Up    */
+        {0x11, 0x32}, /* Cursor Down  */
+        {0x1B, 0x3A}, /* Cursor Left  */
+        {0x05, 0x42}, /* Cursor Right */
+        {0x0D, 0x4A}, /* Keypad 0     */
+    };
+    for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
+        if (map[i].in == key_code)
+            return map[i].out;
+    }
+    return 0;
+}
 
 /**
  * @brief Process Apple M0110 Keyboard Scancode Data
@@ -123,10 +151,10 @@ void process_scancode(uint8_t code) {
             break;
 
         case PREFIX_79:
-            // Second byte of 0x79 prefix sequence - translate with SWITCH_79_CODE
+            // Second byte of 0x79 prefix sequence - translate with switch_79_code()
             state = INIT;
             {
-                uint8_t translated_code = SWITCH_79_CODE(key_code);
+                uint8_t translated_code = switch_79_code(key_code);
                 if (translated_code != 0) {
                     handle_keyboard_report(translated_code, make);
                     LOG_DEBUG("Apple M0110 Key (0x79 prefix): 0x%02X->0x%02X (%s) [raw: 0x%02X]\n",
@@ -152,10 +180,10 @@ void process_scancode(uint8_t code) {
             break;
 
         case PREFIX_71_79:
-            // Third byte of 0x71,0x79 prefix sequence - translate with SWITCH_71_CODE
+            // Third byte of 0x71,0x79 prefix sequence - translate with switch_71_code()
             state = INIT;
             {
-                uint8_t translated_code = SWITCH_71_CODE(key_code);
+                uint8_t translated_code = switch_71_code(key_code);
                 if (translated_code != 0) {
                     handle_keyboard_report(translated_code, make);
                     LOG_DEBUG(

@@ -24,11 +24,19 @@
 #include <stdio.h>
 
 #include "hardware/clocks.h"
+#include "hardware/irq.h"
 
 #include "log.h"
 
 /* Compile-time validation of PIO helper constants */
 _Static_assert(1, "PIO helper basic sanity check");  // Always true, validates _Static_assert works
+
+/* PIO IRQ Dispatcher State */
+#define MAX_PIO_IRQ_CALLBACKS 4 /**< Maximum callbacks per PIO (supports multiple devices) */
+
+static pio_irq_callback_t registered_callbacks[MAX_PIO_IRQ_CALLBACKS] = {NULL, NULL, NULL, NULL};
+static bool               dispatcher_initialized = false;  // Init-only flag, not IRQ-shared
+static PIO                active_pio             = NULL;   // Init-only storage, not IRQ-shared
 
 /**
  * @brief Claims PIO resources and loads program atomically with intelligent fallback
@@ -64,7 +72,7 @@ _Static_assert(1, "PIO helper basic sanity check");  // Always true, validates _
  * @endcode
  *
  * @param program The PIO program to allocate resources for and load
- * @return pio_engine_t with allocated PIO/SM/offset, or {NULL, -1, 0} on failure
+ * @return pio_engine_t with allocated PIO/SM/offset, or {NULL, -1, -1} on failure
  *
  * @note Claimed SM remains allocated until explicitly released
  * @note Caller must check pio == NULL for allocation failure
@@ -236,4 +244,234 @@ float calculate_clock_divider(int min_clock_pulse_width_us) {
     LOG_INFO("Effective Sample Interval: %.2fus\n", sample_interval_us);
 
     return clock_div;
+}
+
+/**
+ * @brief PIO IRQ Dispatcher Handler
+ *
+ * Multiplexes PIO IRQ events between multiple protocol handlers. Iterates through
+ * all registered callbacks and invokes them. This allows multiple devices (e.g.,
+ * keyboard and mouse on AT/PS2 protocol) to share the same PIO IRQ without conflicts.
+ *
+ * Execution Model:
+ * - Runs in IRQ context (highest priority 0x00)
+ * - Invokes callbacks sequentially (not concurrent)
+ * - NULL callbacks are skipped (no overhead)
+ * - No locking needed (single-core architecture)
+ *
+ * Performance Characteristics:
+ * - Minimal overhead: NULL checks only
+ * - Deterministic: fixed iteration count (MAX_PIO_IRQ_CALLBACKS)
+ * - Non-blocking: callbacks must be fast
+ *
+ * @note Runs in IRQ context - must be fast and non-blocking
+ * @note Callbacks must complete quickly to avoid protocol timing issues
+ */
+static void __isr pio_irq_dispatcher(void) {
+    for (int i = 0; i < MAX_PIO_IRQ_CALLBACKS; i++) {
+        if (registered_callbacks[i] != NULL) {
+            registered_callbacks[i]();
+        }
+    }
+}
+
+/**
+ * @brief Initializes the PIO IRQ dispatcher for a PIO instance
+ *
+ * Sets up a shared PIO IRQ handler that multiplexes between multiple protocol
+ * event handlers. This enables multiple devices (e.g., AT/PS2 keyboard + mouse)
+ * to coexist on the same PIO without IRQ registration conflicts.
+ *
+ * Initialization Workflow:
+ * 1. Check if dispatcher already initialized for this PIO (idempotent)
+ * 2. Determine IRQ number (PIO0_IRQ_0 or PIO1_IRQ_0)
+ * 3. Register dispatcher as exclusive IRQ handler
+ * 4. Set IRQ priority to 0 (highest) for time-critical protocol timing
+ * 5. Enable the PIO IRQ
+ * 6. Mark dispatcher as initialized
+ *
+ * Resource Management:
+ * - Uses single exclusive handler per PIO (no conflicts)
+ * - Multiplexes up to MAX_PIO_IRQ_CALLBACKS callbacks
+ * - Idempotent: safe to call multiple times for same PIO
+ *
+ * IRQ Priority Rationale:
+ * - Priority 0x00 ensures minimal keyboard/mouse event latency
+ * - Critical for protocols with microsecond-level timing requirements
+ * - Higher priority than USB stack (prevents input lag)
+ *
+ * Thread Safety:
+ * - Must be called during initialization (main context)
+ * - Not safe to call from IRQ context
+ * - Single-core architecture eliminates race conditions
+ *
+ * Example Usage:
+ * @code
+ * pio_engine_t engine = claim_pio_and_sm(&my_program);
+ * if (engine.pio != NULL) {
+ *     pio_irq_dispatcher_init(engine.pio);
+ *     pio_irq_register_callback(&my_irq_handler);
+ * }
+ * @endcode
+ *
+ * @param pio The PIO instance (pio0 or pio1) to configure
+ *
+ * @note Safe to call multiple times - subsequent calls for same PIO are ignored
+ * @note Sets IRQ priority to 0 (highest) for time-critical protocol timing
+ * @note Must call this before pio_irq_register_callback()
+ * @note Log output includes PIO number and IRQ number for debugging
+ */
+void pio_irq_dispatcher_init(PIO pio) {
+    // Prevent re-initialization for the same PIO instance
+    if (dispatcher_initialized && active_pio == pio) {
+        return;
+    }
+
+    active_pio   = pio;
+    uint pio_irq = pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+
+    // Register the dispatcher as the exclusive handler
+    irq_set_exclusive_handler(pio_irq, &pio_irq_dispatcher);
+
+    // Set highest priority for time-critical protocol timing
+    irq_set_priority(pio_irq, 0x00);
+
+    // Enable the IRQ
+    irq_set_enabled(pio_irq, true);
+
+    dispatcher_initialized = true;
+
+    LOG_INFO("PIO IRQ dispatcher initialized for PIO%d (IRQ %d, priority 0x00)\n",
+             pio == pio0 ? 0 : 1, pio_irq);
+}
+
+/**
+ * @brief Registers a callback function for PIO IRQ events
+ *
+ * Adds a protocol-specific IRQ handler to the dispatcher's invocation list.
+ * When the PIO IRQ fires, the dispatcher calls all registered callbacks
+ * sequentially. This allows multiple protocols to share the same PIO IRQ.
+ *
+ * Registration Process:
+ * 1. Search callback array for first NULL slot
+ * 2. Store callback function pointer in slot
+ * 3. Log slot number for debugging
+ * 4. Return success status
+ *
+ * Callback Invocation:
+ * - Called from IRQ context (highest priority 0x00)
+ * - Must be fast and non-blocking
+ * - No parameters passed (callbacks access state via static variables)
+ * - Invoked sequentially (not concurrent)
+ *
+ * Slot Management:
+ * - Maximum MAX_PIO_IRQ_CALLBACKS slots (currently 4)
+ * - First-come-first-served allocation
+ * - NULL slots skipped during dispatch (no overhead)
+ *
+ * Failure Scenarios:
+ * - All callback slots occupied → returns false
+ * - Dispatcher not initialized → undefined behavior (call init first)
+ * - NULL callback pointer → undefined behavior (caller must validate)
+ *
+ * Protocol Integration Pattern:
+ * @code
+ * void __isr my_protocol_irq_handler(void) {
+ *     // Process PIO FIFO data
+ *     if (!pio_sm_is_rx_fifo_empty(pio, sm)) {
+ *         uint32_t data = pio_sm_get(pio, sm);
+ *         ringbuf_put(data);
+ *     }
+ * }
+ *
+ * // In setup function:
+ * pio_irq_dispatcher_init(pio_engine.pio);
+ * if (!pio_irq_register_callback(&my_protocol_irq_handler)) {
+ *     LOG_ERROR("Failed to register IRQ callback\n");
+ *     return;
+ * }
+ * @endcode
+ *
+ * @param callback Function pointer to the protocol IRQ handler
+ * @return true if registration succeeded, false if no slots available
+ *
+ * @note Must call pio_irq_dispatcher_init() before registering callbacks
+ * @note Callbacks invoked in IRQ context - must be fast and non-blocking
+ * @note Callback must not be NULL (undefined behavior)
+ * @note Registration order affects invocation order (FIFO)
+ * @note Logs slot number for debugging multi-device configurations
+ */
+bool pio_irq_register_callback(pio_irq_callback_t callback) {
+    // Find first available slot
+    for (int i = 0; i < MAX_PIO_IRQ_CALLBACKS; i++) {
+        if (registered_callbacks[i] == NULL) {
+            registered_callbacks[i] = callback;
+            LOG_DEBUG("Registered PIO IRQ callback at slot %d\n", i);
+            return true;
+        }
+    }
+    LOG_ERROR("Failed to register PIO IRQ callback: all %d slots occupied\n",
+              MAX_PIO_IRQ_CALLBACKS);
+    return false;  // No free slots
+}
+
+/**
+ * @brief Unregisters a callback from PIO IRQ events
+ *
+ * Removes a previously registered callback from the dispatcher's invocation
+ * list. The callback will no longer be invoked when the PIO IRQ fires. This
+ * is typically used during protocol cleanup or device disconnection.
+ *
+ * Removal Process:
+ * 1. Search callback array for matching function pointer
+ * 2. Set matching slot to NULL (removes from dispatch list)
+ * 3. Log slot number for debugging
+ * 4. Return immediately after removal
+ *
+ * Slot Reclamation:
+ * - NULL slots are reused by pio_irq_register_callback()
+ * - Dispatcher skips NULL slots during IRQ (no overhead)
+ * - No compaction or defragmentation needed
+ *
+ * Safety Characteristics:
+ * - Safe to call even if callback was never registered
+ * - Safe to call multiple times for same callback
+ * - Safe to call during protocol teardown
+ * - Single-core architecture eliminates race conditions
+ *
+ * Error Handling:
+ * - Callback not found → logs warning, continues
+ * - NULL callback → searches for NULL slot (harmless)
+ * - Dispatcher not initialized → safe (no-op)
+ *
+ * Use Cases:
+ * - Protocol cleanup during shutdown
+ * - Device hot-unplug support (future)
+ * - Error recovery and re-initialization
+ * - Unit testing teardown
+ *
+ * Example Usage:
+ * @code
+ * void protocol_cleanup(void) {
+ *     pio_irq_unregister_callback(&my_protocol_irq_handler);
+ *     // Continue with other cleanup
+ * }
+ * @endcode
+ *
+ * @param callback Function pointer to remove from the dispatcher
+ *
+ * @note Safe to call even if callback was never registered
+ * @note Logs warning if callback not found (debugging aid)
+ * @note Does not disable PIO IRQ (other callbacks may still be registered)
+ * @note Slot is freed for future registrations
+ */
+void pio_irq_unregister_callback(pio_irq_callback_t callback) {
+    for (int i = 0; i < MAX_PIO_IRQ_CALLBACKS; i++) {
+        if (registered_callbacks[i] == callback) {
+            registered_callbacks[i] = NULL;
+            LOG_DEBUG("Unregistered PIO IRQ callback from slot %d\n", i);
+            return;
+        }
+    }
+    LOG_WARN("PIO IRQ callback not found during unregister\n");
 }

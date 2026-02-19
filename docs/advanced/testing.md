@@ -206,7 +206,7 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 13. **IRQ handler attributes:** Missing `__isr` attribute on interrupt handlers
 14. **Compile-time validation:** Advisory check for `_Static_assert` and `#error`
 15. **Protocol ring buffer setup:** Missing `ringbuf_reset()` in keyboard protocol initialization
-16. **Protocol IRQ priority:** Missing `irq_set_priority()` in protocol setup
+16. **Protocol PIO IRQ dispatcher:** Missing centralized `pio_irq_dispatcher_init()` or deprecated direct `irq_set_priority()` usage
 17. **Indentation consistency:** Enforces 4-space indentation, detects 2-space violations
 
 **Run before every commit:**

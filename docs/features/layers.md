@@ -2,7 +2,7 @@
 
 Layers let you access different sets of key functions without adding physical keys to your keyboard. Think of them as transparent overlays—you activate a layer and suddenly the same physical keys do different things. Press a key on your numpad and it might be a '7', or it might be HOME, depending on which layer is active.
 
-This isn't a new concept. Most keyboards already use a form of layering—that's what the Shift key is doing. Hold Shift and the '2' key sends '@' instead of '2'. You've got two layers there: the base layer with numbers, and the shifted layer with symbols. The converter just extends this concept further, giving you access to additional layers for functions, media controls, or alternative layouts.
+This isn't a new concept. Keyboards already use a form of layering—the Shift key is one example. Hold Shift and the '2' key sends '@' instead of '2'. You've got two layers there: the base layer with numbers, and the shifted layer with symbols. The converter just extends this concept further, giving you access to additional layers for functions, media controls, or alternative layouts.
 
 ---
 
@@ -10,7 +10,7 @@ This isn't a new concept. Most keyboards already use a form of layering—that's
 
 Vintage keyboards often lack modern conveniences. Many don't have dedicated media keys for volume control or playback. Some are missing function keys beyond F10, and F13-F24 are particularly rare. If you're using a compact keyboard, you might not even have a full navigation cluster. Layers solve these problems by letting you access those functions without modifying the physical keyboard.
 
-A typical setup has a base layer (Layer 0) with your normal key layout—the letters, numbers, and symbols you use for typing. Then you might have Layer 1 activated by holding a function key, giving you access to media controls, extra function keys, or navigation that the base layout doesn't include.
+One approach is to keep a base layer (Layer 0) for normal typing, then add Layer 1 for media controls, extra function keys, or navigation that the base layout doesn't include.
 
 The beauty of this approach is that it's entirely optional. If your keyboard already has everything you need, you don't need layers. But if you're converting a compact keyboard or want to add modern conveniences to vintage hardware, layers give you that flexibility without requiring hardware modifications.
 
@@ -24,7 +24,7 @@ This means you don't need to redefine your entire keyboard layout for each layer
 
 **Important:** Layer 0 (the base layer) must never contain `TRNS` entries. If `TRNS` is encountered in Layer 0 (either through fall-through from an upper layer or when Layer 0 is active directly), the converter logs an error and defaults to `NO` (no key). Always use `NO` explicitly for unmapped keys in Layer 0 rather than `TRNS`.
 
-The system supports up to 8 layers (numbered 0-7), though most keyboards only need 2 or 3. More layers mean more flexibility, but also more complexity in your keymap. Finding the right balance depends on what you're trying to achieve.
+The system supports up to 8 layers (numbered 0-7). Keep the layer count as low as practical to reduce keymap complexity. Finding the right balance depends on what you're trying to achieve.
 
 ### How Transparent Fallthrough Actually Works
 
@@ -36,7 +36,7 @@ What does this mean practically? Say you've activated Layer 1 and Layer 3 via to
 
 Compare this to exclusive mode with `TO_3`: bitmap shows only Layer 0 and Layer 3 active. Same key with `TRNS` in Layer 3 falls through, but now it skips Layers 2 and 1 (both inactive) and goes straight to Layer 0. Different behaviour, different result.
 
-This is identical to how QMK and other keyboard firmware work—standard layer stacking. The bitmap determines both the starting point (highest active layer) and the fallthrough path (only active layers get checked).
+The bitmap determines both the starting point (highest active layer) and the fallthrough path (only active layers get checked).
 
 **Why this matters:**
 
@@ -67,7 +67,7 @@ There are several ways to activate layers, each suited to different use cases. Y
 
 **Permanent layer switching** deactivates **all** current layers except Layer 0, then switches to the specified target layer exclusively. Unlike toggle (which is additive), permanent switching clears the slate—it doesn't matter what was active before, you're now on exactly one upper layer. The bitmap gets reset to just Layer 0 and your target layer. This is useful for forcing a specific mode (like switching to a Dvorak layout layer) where you don't want any layering ambiguity. You'll need another layer switch key in the target layer to switch back—there's no automatic return. Like toggle layers, TO layers also persist across reboots.
 
-**One-shot layers** activate for exactly one keypress, then automatically deactivate. Press the one-shot key, then press another key—that second key uses the upper layer, but the third key is back on the base layer. This is handy for accessing symbols or special characters without holding a modifier. If you don't press another key within about 5 seconds, the one-shot layer deactivates automatically to prevent you getting stuck.
+**One-shot layers** activate for exactly one keypress, then automatically deactivate. Press the one-shot key, then press another key—that second key uses the upper layer, but the third key is back on the base layer. This is handy for accessing symbols or special characters without holding a modifier. If you don't press another key within the configured timeout, the one-shot layer deactivates automatically to prevent you getting stuck.
 
 Each method has trade-offs. Momentary layers require holding a key, which might be awkward for complex shortcuts. Toggle layers risk getting stuck in the wrong layer if you lose track—though you can always toggle back or switch to a known layer with `TO`. Permanent switching forces explicit layer changes and clears whatever was active before—useful for ensuring consistent state, but less flexible than toggle. One-shot layers work brilliantly for occasional access but can be confusing if you're not used to the behaviour. Pick the method that matches how you'll actually use the layer.
 
@@ -171,7 +171,7 @@ The converter stores active layer state in flash memory alongside other configur
 
 Momentary and one-shot layers are designed for temporary access—you hold a key or press it once. Persisting these would be confusing: keyboard boots with "Fn" layer active even though you're not holding the Fn key. Toggle and TO layers are explicit state changes that make sense to preserve.
 
-**Flash wear:** The config storage uses wear-leveling and dual-copy redundancy. Layer state changes write to flash, but typical usage patterns (toggling Dvorak once per session, occasional layout switches) generate minimal wear. Flash has a 10,000+ cycle lifetime per sector, and the alternating write pattern spreads wear across both copies.
+**Flash wear:** The config storage uses wear-leveling and dual-copy redundancy. Layer state changes write to flash, but typical usage patterns (toggling Dvorak once per session, occasional layout switches) generate minimal wear. Flash wear is mitigated by the dual‑copy scheme; avoid excessive toggling if you are concerned about endurance.
 
 ---
 

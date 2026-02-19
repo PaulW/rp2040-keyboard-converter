@@ -45,6 +45,12 @@
 /** Base layer bitmask (Layer 0 always active) */
 #define LAYER_BASE_MASK 0x01u
 
+/** Hash multiplier used by keylayers_compute_hash */
+#define KEYLAYERS_HASH_PRIME 31u
+
+/** Sentinel indicating uninitialised layers hash */
+#define LAYERS_HASH_UNINITIALISED 0xFFFFFFFFu
+
 // Layer count (exported by keyboard.c, defaults to max if undefined)
 __attribute__((weak)) const uint8_t keymap_layer_count = KEYMAP_MAX_LAYERS;
 
@@ -141,9 +147,9 @@ uint32_t keylayers_compute_hash(void) {
     // Simple hash: combine layer count, cols, and rows
     // This will detect layer additions/removals and dimension changes
     uint32_t hash = 0;
-    hash          = (hash * 31) + (uint32_t)keymap_layer_count;
-    hash          = (hash * 31) + KEYMAP_COLS;
-    hash          = (hash * 31) + KEYMAP_ROWS;
+    hash          = (hash * KEYLAYERS_HASH_PRIME) + (uint32_t)keymap_layer_count;
+    hash          = (hash * KEYLAYERS_HASH_PRIME) + KEYMAP_COLS;
+    hash          = (hash * KEYLAYERS_HASH_PRIME) + KEYMAP_ROWS;
     return hash;
 }
 
@@ -223,9 +229,9 @@ void keylayers_init(void) {
     const uint32_t saved_hash        = config_get_layers_hash();
     const uint8_t  saved_layer_state = config_get_layer_state();
 
-    // Sentinel value 0xFFFFFFFF indicates first boot or config reset
+    // Sentinel value LAYERS_HASH_UNINITIALISED indicates first boot or config reset
     // (more robust than 0, which could theoretically be a valid hash)
-    if (saved_hash == 0xFFFFFFFF) {
+    if (saved_hash == LAYERS_HASH_UNINITIALISED) {
         handle_first_boot(current_hash);
     } else if (saved_hash != current_hash) {
         handle_hash_mismatch(saved_hash, current_hash);
@@ -261,7 +267,7 @@ static void keylayers_handle_mo(uint8_t target_layer, uint8_t code, bool make) {
 /**
  * @brief Handle TG (toggle) layer operation
  *
- * @param target_layer The layer to toggle (0-based)
+ * @param target_layer The layer to toggle (1-based)
  * @param make true if key pressed, false if released
  */
 static void keylayers_handle_tg(uint8_t target_layer, bool make) {
@@ -280,7 +286,7 @@ static void keylayers_handle_tg(uint8_t target_layer, bool make) {
 /**
  * @brief Handle TO (switch to) layer operation
  *
- * @param target_layer The layer to switch to (0-based)
+ * @param target_layer The layer to switch to (1-based)
  * @param make true if key pressed, false if released
  */
 static void keylayers_handle_to(uint8_t target_layer, bool make) {
@@ -304,7 +310,7 @@ static void keylayers_handle_to(uint8_t target_layer, bool make) {
 /**
  * @brief Handle OSL (one-shot layer) operation
  *
- * @param target_layer The layer to activate for the next key (0-based)
+ * @param target_layer The layer to activate for the next key (1-based)
  * @param make true if key pressed, false if released
  */
 static void keylayers_handle_osl(uint8_t target_layer, bool make) {

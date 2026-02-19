@@ -376,17 +376,14 @@ void keyboard_interface_setup(uint data_pin) {
     keyboard_interface_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin,
                                     clock_div);
 
-    // Configure interrupt handling for PIO data reception
-    uint pio_irq = pio_engine.pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+    // Initialize shared PIO IRQ dispatcher (safe to call multiple times)
+    pio_irq_dispatcher_init(pio_engine.pio);
 
-    // Register interrupt handler for RX FIFO events
-    irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
-
-    // Set highest interrupt priority for time-critical keyboard protocol timing
-    irq_set_priority(pio_irq, 0x00);
-
-    // Enable the IRQ (PIO RX FIFO source already enabled in program_init above)
-    irq_set_enabled(pio_irq, true);
+    // Register keyboard event handler with the dispatcher
+    if (!pio_irq_register_callback(&keyboard_input_event_handler)) {
+        LOG_ERROR("Amiga Keyboard: Failed to register IRQ callback\n");
+        return;
+    }
 
     LOG_INFO("PIO%d SM%d Amiga Keyboard Interface loaded at offset %d (clock div %.2f)\n",
              pio_engine.pio == pio0 ? 0 : 1, pio_engine.sm, pio_engine.offset, clock_div);

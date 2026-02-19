@@ -23,6 +23,7 @@
 
 #include "hardware/pio.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 /**
  * @brief PIO engine instance for protocol/library use
@@ -47,8 +48,22 @@ typedef struct {
     int offset; /**< PIO program memory offset (0-31), or -1 on failure */
 } pio_engine_t;
 
+/**
+ * `@brief` Claim a PIO instance, state machine, and program offset atomically.
+ *
+ * `@param` program PIO program to load.
+ * `@return` Allocated engine or {NULL, -1, -1} on failure.
+ */
 pio_engine_t claim_pio_and_sm(const pio_program_t* program);
-void         pio_restart(PIO pio, uint sm, uint offset);
+
+/**
+ * `@brief` Restart a PIO state machine at the given offset.
+ *
+ * `@param` pio    PIO instance.
+ * `@param` sm     State machine index.
+ * `@param` offset Program offset to jump to.
+ */
+void pio_restart(PIO pio, uint sm, uint offset);
 
 /**
  * @brief Calculate PIO clock divider for protocol timing requirements
@@ -60,5 +75,54 @@ void         pio_restart(PIO pio, uint sm, uint offset);
  * @return Computed clock divider as float (suitable for PIO hardware)
  */
 float calculate_clock_divider(int min_clock_pulse_width_us);
+
+/**
+ * @brief PIO IRQ Callback Function Type
+ *
+ * Callback function type for PIO IRQ handlers. Protocols register their event
+ * handlers using this type to receive PIO interrupt notifications.
+ */
+typedef void (*pio_irq_callback_t)(void);
+
+/**
+ * @brief Initialize the PIO IRQ dispatcher for a PIO instance
+ *
+ * Sets up a shared PIO IRQ handler that multiplexes between multiple protocol
+ * event handlers. This allows multiple devices (e.g., keyboard + mouse) to share
+ * the same PIO IRQ without conflicts. Must be called before registering callbacks.
+ *
+ * @param pio The PIO instance (pio0 or pio1) to configure
+ *
+ * @note Safe to call multiple times for the same PIO - subsequent calls are ignored
+ * @note Sets IRQ priority to 0 (highest) for time-critical protocol timing
+ */
+void pio_irq_dispatcher_init(PIO pio);
+
+/**
+ * @brief Register a callback for PIO IRQ events
+ *
+ * Adds a callback function to the dispatcher's invocation list. The dispatcher
+ * invokes all registered callbacks when the PIO IRQ fires. Supports up to 4
+ * simultaneous callbacks per PIO instance.
+ *
+ * @param callback Function pointer to the IRQ handler
+ * @return true if registration succeeded, false if no slots available
+ *
+ * @note Must call pio_irq_dispatcher_init() before registering callbacks
+ * @note Callbacks are invoked in IRQ context - must be fast and non-blocking
+ */
+bool pio_irq_register_callback(pio_irq_callback_t callback);
+
+/**
+ * @brief Unregister a callback from PIO IRQ events
+ *
+ * Removes a previously registered callback from the dispatcher. The callback
+ * will no longer be invoked when PIO IRQ fires.
+ *
+ * @param callback Function pointer to remove from the dispatcher
+ *
+ * @note Safe to call even if callback was never registered
+ */
+void pio_irq_unregister_callback(pio_irq_callback_t callback);
 
 #endif /* PIO_HELPER_H */

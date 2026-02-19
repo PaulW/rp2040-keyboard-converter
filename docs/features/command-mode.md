@@ -185,7 +185,7 @@ For more about WS2812 LED hardware and configuration, see the [LED Support docum
 
 ### 'S' - Toggle Shift-Override
 
-Pressing 'S' toggles the shift-override feature on or off for keyboards with non-standard shift legends. This is only relevant for keyboards that define a `keymap_shift_override_layers` array—most standard keyboards don't need this.
+Pressing 'S' toggles the shift-override feature on or off for keyboards with non-standard shift legends. This only applies to keyboards that define a `keymap_shift_override_layers` array; other keyboards ignore the toggle.
 
 **How to use it**:
 
@@ -206,7 +206,7 @@ When shift-override is **enabled**, the converter remaps shifted keys to match t
 Shift-override only works if the keyboard's firmware defines shifted character mappings. Check your keyboard's documentation in `src/keyboards/` to see if it supports shift-override. If the keyboard doesn't define custom shift mappings, pressing 'S' displays a warning message and the setting is not changed.
 
 The shift-override state persists across reboots and is stored in flash memory. However:
-- If you flash firmware for a different keyboard (different make/model/protocol), shift-override is automatically disabled.
+- If you flash firmware for a different keyboard (different make/model/protocol), the state is automatically reset to disabled.
 - If you modify the keyboard firmware to remove the shift-override array but keep the same keyboard ID, the converter detects this on boot and automatically disables shift-override.
 
 These validation checks ensure the config state always matches the actual keyboard capabilities.
