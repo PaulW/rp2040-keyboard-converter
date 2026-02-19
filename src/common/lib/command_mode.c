@@ -726,7 +726,7 @@ static bool process_brightness_select(const hid_keyboard_report_t* keyboard_repo
     // '-' key
     if (is_key_pressed(keyboard_report, KC_MINUS) || is_key_pressed(keyboard_report, KC_KP_MINUS)) {
         uint8_t current = ws2812_get_brightness();
-        if (current > 0) {
+        if (current > WS2812_BRIGHTNESS_MIN) {
             uint8_t new_brightness = current - 1;
             ws2812_set_brightness(new_brightness);
             config_set_led_brightness(new_brightness);

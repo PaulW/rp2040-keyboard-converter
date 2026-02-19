@@ -245,6 +245,11 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * @note No software reset capability - reset via PIO restart only
  */
 static void __isr keyboard_input_event_handler(void) {
+    // Guard against spurious dispatch from shared IRQ - only process if our FIFO has data
+    if (pio_sm_is_rx_fifo_empty(pio_engine.pio, pio_engine.sm)) {
+        return;
+    }
+
     io_ro_32 data_cast = pio_engine.pio->rxf[pio_engine.sm] >> 23;
     uint16_t data      = (uint16_t)data_cast;
 
@@ -353,8 +358,8 @@ void keyboard_interface_task() {
             if (gpio_get(keyboard_data_pin + 1) == 1) {
                 if (detect_stall_count < XT_DETECT_STALL_LIMIT) {
                     detect_stall_count++;
-                    LOG_DEBUG("Keyboard detected, awaiting ACK (%i/5 attempts)\n",
-                              detect_stall_count);
+                    LOG_DEBUG("Keyboard detected, awaiting ACK (%i/%d attempts)\n",
+                              detect_stall_count, XT_DETECT_STALL_LIMIT);
                 } else {
                     LOG_DEBUG("Keyboard detected, but no ACK received!\n");
                     LOG_DEBUG("Requesting keyboard reset\n");
@@ -467,9 +472,16 @@ void keyboard_interface_setup(uint data_pin) {
     // Register keyboard event handler with the dispatcher
     if (!pio_irq_register_callback(&keyboard_input_event_handler)) {
         LOG_ERROR("XT Keyboard: Failed to register IRQ callback\n");
+        // Release PIO resources before returning
+        pio_sm_unclaim(pio_engine.pio, pio_engine.sm);
+        pio_remove_program(pio_engine.pio, &keyboard_interface_program, pio_engine.offset);
+        pio_engine.pio    = NULL;
+        pio_engine.sm     = -1;
+        pio_engine.offset = -1;
         return;
     }
+}
 
-    LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
-             (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);
+LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
+         (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);
 }

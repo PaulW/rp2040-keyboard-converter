@@ -39,6 +39,22 @@ static bool               dispatcher_initialized = false;  // Init-only flag, no
 static PIO                active_pio             = NULL;   // Init-only storage, not IRQ-shared
 
 /**
+ * IMPORTANT LIMITATION: Single PIO Instance per Session
+ *
+ * The dispatcher maintains single-instance state (active_pio, registered_callbacks).
+ * Calling pio_irq_dispatcher_init() with a different PIO instance overwrites active_pio,
+ * causing both PIO0_IRQ_0 and PIO1_IRQ_0 handlers to dispatch from the same callback array.
+ *
+ * This is architecturally safe because:
+ * - Only one protocol loads at runtime (XT, AT/PS2, Amiga, or Apple M0110)
+ * - All devices in that protocol share the same pio_engine.pio instance
+ * - Mouse (if enabled) shares the keyboard's PIO via the dispatcher
+ *
+ * If future requirements demand concurrent multi-protocol operation, the dispatcher
+ * must be extended to maintain per-PIO callback arrays.
+ */
+
+/**
  * @brief Claims PIO resources and loads program atomically with intelligent fallback
  *
  * This function combines PIO program space checking, state machine allocation, and
@@ -305,6 +321,17 @@ static void __isr pio_irq_dispatcher(void) {
  * - Not safe to call from IRQ context
  * - Single-core architecture eliminates race conditions
  *
+ * IMPORTANT - Per-SM IRQ Source Enablement:
+ * This function does NOT call pio_set_irq0_source_enabled() for individual state machines.
+ * Each protocol's .pio program init function MUST enable its SM's rxnempty IRQ source.
+ * Example from at-ps2.pio init:
+ *   pio_sm_set_enabled(pio, sm, false);
+ *   pio_set_irq0_source_enabled(pio, pis_sm0_rx_fifo_not_empty + sm, true);
+ *   pio_sm_set_enabled(pio, sm, true);
+ *
+ * Protocols that omit this source enable in their .pio init will silently fail to
+ * receive interrupts, as this dispatcher only registers the system-level IRQ handler.
+ *
  * Example Usage:
  * @code
  * pio_engine_t engine = claim_pio_and_sm(&my_program);
@@ -400,8 +427,17 @@ void pio_irq_dispatcher_init(PIO pio) {
  * @note Callback must not be NULL (undefined behavior)
  * @note Registration order affects invocation order (FIFO)
  * @note Logs slot number for debugging multi-device configurations
+ * @note Duplicate callback registration prevented (returns false if already registered)
  */
 bool pio_irq_register_callback(pio_irq_callback_t callback) {
+    // Check for duplicate registration (prevent double-invocation)
+    for (int i = 0; i < MAX_PIO_IRQ_CALLBACKS; i++) {
+        if (registered_callbacks[i] == callback) {
+            LOG_WARN("PIO IRQ callback already registered at slot %d (duplicate prevented)\n", i);
+            return false;  // Callback already registered
+        }
+    }
+
     // Find first available slot
     for (int i = 0; i < MAX_PIO_IRQ_CALLBACKS; i++) {
         if (registered_callbacks[i] == NULL) {

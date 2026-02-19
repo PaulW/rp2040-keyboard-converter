@@ -163,6 +163,12 @@ static const char* get_model_description(uint8_t model_byte) {
  * @note This is an internal function - not exposed in keyboard_interface.h
  */
 static void keyboard_command_handler(uint8_t command) {
+    // Guard against setup failure - prevent NULL dereference if PIO allocation failed
+    if (pio_engine.pio == NULL) {
+        LOG_ERROR("M0110 command 0x%02X dropped - PIO not initialized\n", command);
+        return;
+    }
+
     if (pio_sm_is_tx_fifo_full(pio_engine.pio, pio_engine.sm)) {
         LOG_ERROR("M0110 TX FIFO full, command 0x%02X dropped\n", command);
         return;
@@ -271,6 +277,11 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * @note PIO FIFO depth provides buffering for multiple rapid key events
  */
 static void __isr keyboard_input_event_handler(void) {
+    // Guard against spurious dispatch from shared IRQ - only process if our FIFO has data
+    if (pio_sm_is_rx_fifo_empty(pio_engine.pio, pio_engine.sm)) {
+        return;
+    }
+
     // Extract received byte from PIO RX FIFO (MSB-aligned 8-bit data)
     uint8_t data_byte = (uint8_t)pio_engine.pio->rxf[pio_engine.sm];
 
@@ -462,11 +473,17 @@ void keyboard_interface_setup(uint data_pin) {
     // Register keyboard event handler with the dispatcher
     if (!pio_irq_register_callback(&keyboard_input_event_handler)) {
         LOG_ERROR("Apple M0110 Keyboard: Failed to register IRQ callback\n");
+        // Release PIO resources before returning
+        pio_sm_unclaim(pio_engine.pio, pio_engine.sm);
+        pio_remove_program(pio_engine.pio, &keyboard_interface_program, pio_engine.offset);
+        pio_engine.pio    = NULL;
+        pio_engine.sm     = -1;
+        pio_engine.offset = -1;
         return;
     }
 
     LOG_INFO(
-        "PIO%d SM%u Apple M0110 Interface program loaded at offset %u with clock divider of %.2f\n",
+        "PIO%d SM%d Apple M0110 Interface program loaded at offset %d with clock divider of %.2f\n",
         (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);
 
     // Anchor startup delay to setup time (not boot time)

@@ -347,7 +347,12 @@ void handle_keyboard_report(uint8_t rawcode, bool make) {
 
         // Process command mode state machine
         // Returns false if keyboard report should be suppressed (command mode active)
-        bool allow_normal_processing = command_mode_process(&keyboard_report);
+        // Note: Pass copy with original modifiers so command mode can detect shift state
+        hid_keyboard_report_t cmd_report = keyboard_report;
+        if (suppress_shift) {
+            cmd_report.modifier = saved_modifiers;
+        }
+        bool allow_normal_processing = command_mode_process(&cmd_report);
 
         if (!allow_normal_processing) {
             // Command mode is active, suppress normal keyboard reports

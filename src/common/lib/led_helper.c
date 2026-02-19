@@ -99,8 +99,9 @@ bool update_converter_leds(void) {
 #else
     const uint32_t led_count = 1u;  // status only
 #endif
-    const uint32_t min_interval_us = 60u + (led_count * 30u);  // ≥50µs reset + frame time
-    uint32_t       elapsed_us      = now_us - last_led_update_time_us;
+    const uint32_t min_interval_us =
+        WS2812_RESET_PULSE_US + (led_count * WS2812_LED_TRANSMISSION_US);
+    uint32_t elapsed_us = now_us - last_led_update_time_us;
 
     if (elapsed_us < min_interval_us) {
         // Not enough time has passed, mark update as pending
@@ -141,6 +142,7 @@ bool update_converter_leds(void) {
         // All LEDs successfully queued - record time and clear pending flag
         last_led_update_time_us = now_us;
         led_update_pending      = false;
+        __dmb();  // Memory barrier - ensure IRQ-visible writes complete
     } else {
         // One or more LEDs failed to queue - mark as pending for retry
         led_update_pending = true;
@@ -257,41 +259,41 @@ uint32_t hsv_to_rgb(uint16_t hue, uint8_t saturation, uint8_t value) {
     uint8_t q = (value * (255 - ((saturation * remainder) / 255))) / 255;
     uint8_t t = (value * (255 - ((saturation * (255 - remainder)) / 255))) / 255;
 
-    uint8_t r = 0, g = 0, b = 0;
+    uint8_t red_component = 0, green_component = 0, blue_component = 0;
     switch (region) {
         case 0:
-            r = value;
-            g = t;
-            b = p;
+            red_component   = value;
+            green_component = t;
+            blue_component  = p;
             break;
         case 1:
-            r = q;
-            g = value;
-            b = p;
+            red_component   = q;
+            green_component = value;
+            blue_component  = p;
             break;
         case 2:
-            r = p;
-            g = value;
-            b = t;
+            red_component   = p;
+            green_component = value;
+            blue_component  = t;
             break;
         case 3:
-            r = p;
-            g = q;
-            b = value;
+            red_component   = p;
+            green_component = q;
+            blue_component  = value;
             break;
         case 4:
-            r = t;
-            g = p;
-            b = value;
+            red_component   = t;
+            green_component = p;
+            blue_component  = value;
             break;
         default:
-            r = value;
-            g = p;
-            b = q;
+            red_component   = value;
+            green_component = p;
+            blue_component  = q;
             break;
     }
 
-    return (r << 16) | (g << 8) | b;
+    return (red_component << 16) | (green_component << 8) | blue_component;
 }
 #endif
 

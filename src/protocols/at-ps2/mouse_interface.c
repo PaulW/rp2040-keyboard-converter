@@ -386,7 +386,7 @@ void mouse_event_processor(uint8_t data_byte) {
  * - If all the validation checks pass, the data byte is processed by the mouse_event_processor()
  * function.
  */
-void mouse_input_event_handler() {
+static void __isr mouse_input_event_handler(void) {
     io_ro_32 data_cast = pio_engine.pio->rxf[pio_engine.sm] >> 21;
     uint16_t data      = (uint16_t)data_cast;
 
@@ -439,8 +439,9 @@ void mouse_input_event_handler() {
  */
 void mouse_interface_task() {
     // Guard against uninitialised PIO engine
-    if (pio_engine.pio == NULL)
+    if (pio_engine.pio == NULL) {
         return;
+    }
 
     // Mouse Interface Initialisation helper
     // Here we handle Timeout events. If we don't receive responses from an attached Mouse with a

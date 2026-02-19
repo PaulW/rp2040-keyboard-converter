@@ -67,6 +67,11 @@ layer_state_t layer_state = {
  *
  * Clears all layer activations and returns to base layer.
  * Used during initialization and error recovery.
+ *
+ * @note This function only modifies in-RAM state and does NOT persist changes to flash.
+ *       If TG/TO layers were previously saved via config_save(), they will be restored
+ *       on next boot by keylayers_init(). Callers requiring persistent reset must call
+ *       config_set_layer_state() and config_save() explicitly after this function.
  */
 void keylayers_reset(void) {
     layer_state.layer_state = LAYER_BASE_MASK;  // Only layer 0 active
@@ -143,7 +148,7 @@ uint8_t keylayers_get_active(void) {
  *
  * @return 32-bit hash of keymap structure
  */
-uint32_t keylayers_compute_hash(void) {
+static uint32_t keylayers_compute_hash(void) {
     // Simple hash: combine layer count, cols, and rows
     // This will detect layer additions/removals and dimension changes
     uint32_t hash = 0;
@@ -293,10 +298,8 @@ static void keylayers_handle_to(uint8_t target_layer, bool make) {
     if (make) {  // Only act on key press
         // Clear all layers except base (layer 0)
         layer_state.layer_state = LAYER_BASE_MASK;
-        // Activate target layer
-        if (target_layer > 0) {
-            layer_state.layer_state |= (1 << target_layer);
-        }
+        // Activate target layer (target_layer > 0 guaranteed by caller validation)
+        layer_state.layer_state |= (1 << target_layer);
         // Clear momentary tracking (same pattern as keylayers_reset())
         for (uint8_t i = 0; i < KEYMAP_MAX_LAYERS - 1; i++) {
             layer_state.momentary_keys[i] = 0;

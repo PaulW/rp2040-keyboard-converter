@@ -247,7 +247,22 @@ The mouse still follows the same resource allocation pattern (atomic PIO/SM/prog
 
 ### Error Handling Approach
 
-All protocols now use the consistent atomic allocation pattern:\n\n```c\npio_engine_t pio_engine = claim_pio_and_sm(&program);\nif (pio_engine.pio == NULL) {\n  LOG_ERROR(\"No PIO resources available\\n\");\n  return;\n}\n```\n\nThis pattern:\n- Handles PIO selection (pio0 vs pio1) automatically with fallback\n- Eliminates partial allocation failures\n- Provides clean single-point error handling\n- Returns complete working resources or nothing\n- Type-safe through struct encapsulation"
+All protocols now use the consistent atomic allocation pattern:
+
+```c
+pio_engine_t pio_engine = claim_pio_and_sm(&program);
+if (pio_engine.pio == NULL) {
+  LOG_ERROR("No PIO resources available\n");
+  return;
+}
+```
+
+This pattern:
+- Handles PIO selection (pio0 vs pio1) automatically with fallback
+- Eliminates partial allocation failures
+- Provides clean single-point error handling
+- Returns complete working resources or nothing
+- Type-safe through struct encapsulation"
 
 Used by: M0110
 

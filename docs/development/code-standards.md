@@ -702,10 +702,12 @@ if (pio_engine.pio == NULL) {
 // 2. Configure and start
 program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin);
 
-// 4. Setup IRQ handler (if needed) - use centralized dispatcher
-pio_set_irq0_source_enabled(pio_engine.pio, pis_interrupt0, true);
-pio_irq_dispatcher_init(pio_engine.pio);              // Initialize shared IRQ dispatcher
-pio_irq_register_callback(pio_engine.pio, &handler); // Register protocol handler
+// 3. Setup IRQ handler (if needed) - use centralised dispatcher
+pio_irq_dispatcher_init(pio_engine.pio);         // Initialise shared IRQ dispatcher
+if (!pio_irq_register_callback(&handler)) {      // Register protocol handler
+    LOG_ERROR("Failed to register IRQ callback\n");
+    return false;
+}
 ```
 
 **PIO error recovery:**

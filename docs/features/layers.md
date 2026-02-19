@@ -20,7 +20,7 @@ The beauty of this approach is that it's entirely optional. If your keyboard alr
 
 The converter maintains a stack of active layers. Layer 0—the base layer—is always active. When you activate an upper layer, it overlays on top. Each key position checks the highest active layer first. If that layer has a transparent key (`TRNS`) at that position, the lookup falls through to the next lower layer, continuing until it finds an actual keycode or reaches Layer 0.
 
-This means you don't need to redefine your entire keyboard layout for each layer. Most keys in upper layers are transparent, passing through to the base layer. You only define the keys that actually change—media controls on certain keys, function keys on the number row, navigation on the numpad. Everything else remains exactly as it is in the base layer.
+This means you don't need to redefine your entire keyboard layout for each layer. Upper layers can use transparent keys extensively, passing through to the base layer. You only define the keys that actually change—media controls on certain keys, function keys on the number row, navigation on the numpad. Everything else remains exactly as it is in the base layer.
 
 **Important:** Layer 0 (the base layer) must never contain `TRNS` entries. If `TRNS` is encountered in Layer 0 (either through fall-through from an upper layer or when Layer 0 is active directly), the converter logs an error and defaults to `NO` (no key). Always use `NO` explicitly for unmapped keys in Layer 0 rather than `TRNS`.
 
@@ -59,7 +59,7 @@ There are several ways to activate layers, each suited to different use cases. Y
 | TO_1, TO_2, TO_3 | Permanent | Switches to layer, deactivates others | Force specific layout mode |
 | OSL_1, OSL_2, OSL_3 | One-shot | Active for next keypress only | Symbols or special characters |
 
-**Momentary layers** activate whilst you hold a specific key and deactivate when you release it. This is the most common type—it's how Fn keys typically work on laptops and compact keyboards. Hold the Fn key, press another key to access its upper-layer function, release Fn and you're back to normal typing. The IBM Model M Enhanced uses this pattern with MO_1 positioned where Right Alt normally sits.
+**Momentary layers** activate whilst you hold a specific key and deactivate when you release it. Hold the Fn key, press another key to access its upper-layer function, release Fn and you're back to normal typing. The IBM Model M Enhanced uses this pattern with MO_1 positioned where Right Alt normally sits.
 
 **Toggle layers** stay active until you press the toggle key again. Press once to turn the layer on, press again to turn it off. Toggle is **additive**—you can have multiple layers toggled on simultaneously. Each toggle flips that specific layer's bit in the bitmap on or off, leaving other layers alone. This lets you stack layers: activate Layer 1 with `TG_1`, then activate Layer 3 with `TG_3`, and Layer 3 becomes the starting point (highest active) whilst Layer 1 remains underneath. Toggle Layer 3 off and you're back to starting from Layer 1. Useful for switching between different layer "modes" without explicitly selecting each one.
 
@@ -120,7 +120,7 @@ KEYMAP( /* Layer 1: Navigation Layer */
 )
 ```
 
-Hold your function key and the numpad becomes a navigation cluster. Windows/Linux users don't strictly need this (they have NumLock), but it provides consistent behaviour across operating systems.
+Hold your function key and the numpad becomes a navigation cluster, providing consistent behaviour across operating systems.
 
 ### Alternative Layouts
 
@@ -177,7 +177,7 @@ Momentary and one-shot layers are designed for temporary access—you hold a key
 
 ## When You Don't Need Layers
 
-Most keyboards don't need them. If you're converting a full-size keyboard with all the keys you need, and you're not planning to remap the layout or add modern conveniences, a single-layer keymap is perfectly adequate. The implementation adds minimal overhead, but there's no point adding complexity if you won't use it.
+If you're converting a full-size keyboard with all the keys you need, and you're not planning to remap the layout or add modern conveniences, a single-layer keymap is perfectly adequate. The implementation adds minimal overhead, but there's no point adding complexity if you won't use it.
 
 Even keyboards that could benefit from layers don't require them. You can always decide later that you want to add a function layer for media controls. The keymap is just source code—edit it, rebuild, flash, and you're done. There's no need to design the perfect layer system from the start. Build what you need now and extend it if requirements change.
 

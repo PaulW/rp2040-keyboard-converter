@@ -298,6 +298,11 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * @note No blocking operations in ISR
  */
 static void __isr keyboard_input_event_handler(void) {
+    // Guard against spurious dispatch from shared IRQ - only process if our FIFO has data
+    if (pio_sm_is_rx_fifo_empty(pio_engine.pio, pio_engine.sm)) {
+        return;
+    }
+
     // Read byte from PIO RX FIFO (8-bit, rotated format)
     // PIO has already sent the handshake automatically
     uint8_t rotated_byte = (uint8_t)(pio_engine.pio->rxf[pio_engine.sm] & 0xFF);

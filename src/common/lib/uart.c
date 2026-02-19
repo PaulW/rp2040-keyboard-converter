@@ -385,7 +385,7 @@ static void start_next_dma_if_needed() {
  * Handler Priority: Low (configured in init_uart_dma)
  * Execution Context: Interrupt (keep minimal and fast)
  */
-void __isr dma_handler() {
+static void __isr dma_handler() {
     uint32_t mask = 1U << uart_dma_chan;
     if (dma_hw->ints0 & mask) {
         dma_hw->ints0 = mask;  // clear IRQ flag

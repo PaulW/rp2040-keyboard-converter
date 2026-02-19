@@ -24,6 +24,14 @@
 #include <stdbool.h>
 #include "pico/stdlib.h"
 
+// WS2812 Brightness Configuration
+#define WS2812_BRIGHTNESS_MIN 0   // Minimum brightness (off)
+#define WS2812_BRIGHTNESS_MAX 10  // Maximum brightness
+
+// WS2812 Timing Constants (microseconds)
+#define WS2812_RESET_PULSE_US      60u  // Minimum reset pulse duration (≥50µs)
+#define WS2812_LED_TRANSMISSION_US 30u  // Per-LED transmission time (24 bits × 1.25µs)
+
 /**
  * @brief Update WS2812 LED with the specified color (non-blocking)
  *
