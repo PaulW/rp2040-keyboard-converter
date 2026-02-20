@@ -58,7 +58,7 @@ RP2040 Board               USB-UART Adapter
 
 ### Physical Connection Tips
 
-**Keep wires short** - UART is tolerant of wire length, but shorter is better. 30cm or less is ideal to minimize noise.
+**Keep wires short** - UART is tolerant of wire length, but shorter is better. 30cm or less is ideal to minimise noise.
 
 **Avoid parallel routing** - Don't bundle UART wires with high-speed signals (like USB data lines) to reduce electromagnetic interference.
 
@@ -329,11 +329,11 @@ Result: Logging appears instantaneous from the CPU's perspective. No blocking, n
 
 ### Ring Buffer Architecture
 
-To handle multiple concurrent log messages (e.g., protocol events happening while initialisation logs are still transmitting), logging uses a ring buffer:
+To handle multiple concurrent log messages (e.g., protocol events happening whilst initialisation logs are still transmitting), logging uses a ring buffer:
 
 **Main code calls LOG_INFO()** → Message formatted and written to ring buffer → DMA reads from ring buffer → Bytes transmitted over UART
 
-The ring buffer is 16,384 bytes (16KB: 64 message slots × 256 bytes per message), implemented in [`uart.c`](../../src/common/lib/uart.c). If log messages accumulate faster than UART can transmit them (rare, only at debug level during intense activity), new messages overwrite the oldest unread messages. This prevents memory exhaustion while ensuring recent messages are preserved.
+The ring buffer is 16,384 bytes (16KB: 64 message slots × 256 bytes per message), implemented in [`uart.c`](../../src/common/lib/uart.c). If log messages accumulate faster than UART can transmit them (rare, only at debug level during intense activity), new messages overwrite the oldest unread messages. This prevents memory exhaustion whilst ensuring recent messages are preserved.
 
 ### Performance Impact
 
@@ -438,7 +438,7 @@ screen /dev/tty.usbserial-* 115200 | grep "\[ERR\]"
 screen /dev/tty.usbserial-* 115200 | grep -E "\[ERR\]|\[INFO\]"
 ```
 
-This keeps your terminal cleaner while still capturing relevant information.
+This keeps your terminal cleaner whilst still capturing relevant information.
 
 ### Correlating Logs with Actions
 

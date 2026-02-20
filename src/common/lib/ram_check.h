@@ -45,7 +45,7 @@
  * ```c
  * int main(void) {
  *     ram_check_verify();  // Call early in main()
- *     // ... rest of initialization
+ *     // ... rest of initialisation
  * }
  * ```
  *

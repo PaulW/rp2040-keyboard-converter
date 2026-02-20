@@ -8,7 +8,7 @@
 
 ## Overview
 
-The IBM Model F PC/AT keyboard uses buckling spring over capacitive switch technology. This keyboard was designed for the IBM PC/AT (model 5170), before ISO and ANSI layouts were standardized. This configuration is based on the UK layout variant.
+The IBM Model F PC/AT keyboard uses buckling spring over capacitive switch technology. This keyboard was designed for the IBM PC/AT (model 5170), before ISO and ANSI layouts were standardised. This configuration is based on the UK layout variant.
 
 **Part Number**: 6450225 (UK Layout)
 
@@ -27,7 +27,7 @@ The IBM Model F PC/AT keyboard uses buckling spring over capacitive switch techn
 | **Voltage** | 5V |
 | **Switch Type** | Buckling spring over capacitive |
 | **Key Rollover** | Full NKRO |
-| **Layout** | UK layout (pre-ISO/ANSI standardization) |
+| **Layout** | UK layout (pre-ISO/ANSI standardisation) |
 
 ---
 
@@ -51,7 +51,7 @@ See: [Building Firmware Guide](../../getting-started/building-firmware.md)
 
 ## Key Mapping
 
-The default keymap preserves the original IBM 5170 keyboard layout while adding modern functionality through the Fn modifier.
+The default keymap preserves the original IBM 5170 keyboard layout whilst adding modern functionality through the Fn modifier.
 
 ### Base Layer Mapping (from keyboard.h)
 
@@ -197,7 +197,7 @@ See: [AT/PS2 Protocol Documentation](../../protocols/at-ps2.md) for complete tec
 
 ## History & Variants
 
-The Model F PC/AT was designed for the IBM Personal Computer AT (model 5170). This 84-key layout was a transitional design that came before the standardized layouts we got with the Model M keyboards, and it turned out to be one of the last new Model F variants IBM would introduce.
+The Model F PC/AT was designed for the IBM Personal Computer AT (model 5170). This 84-key layout was a transitional design that came before the standardised layouts we got with the Model M keyboards, and it turned out to be one of the last new Model F variants IBM would introduce.
 
 The keyboard uses thick steel construction with dye-sublimated PBT keycaps. The buckling spring switches provide tactile and audible feedback. Unlike the later Model M which uses membrane assembly-based buckling springs, the Model F uses capacitive sensing where a change in capacitance is measured to register key presses.
 

@@ -87,7 +87,7 @@
  * **Example Usage:**
  *
  * ```c
- * // Boot initialization
+ * // Boot initialisation
  * if (!config_init()) {
  *     LOG_WARN("Using factory defaults\n");
  * }
@@ -202,7 +202,7 @@ _Static_assert(sizeof(config_data_t) <= CONFIG_COPY_SIZE, "Config structure exce
 // --- Public API ---
 
 /**
- * @brief Initialize configuration system
+ * @brief Initialise configuration system
  *
  * Loads configuration from flash into RAM. This should be called once
  * at boot before using any other config functions.
@@ -251,7 +251,7 @@ bool config_init(void);
  * const config_data_t *cfg = config_get();
  * printf("Log level: %d\n", cfg->log_level);
  *
- * // Fast inline check (compiler optimizes to constant)
+ * // Fast inline check (compiler optimises to constant)
  * if (config_get()->log_level >= LOG_LEVEL_DEBUG) {
  *     LOG_DEBUG("Debug message\n");
  * }

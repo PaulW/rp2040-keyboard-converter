@@ -90,7 +90,7 @@ typedef enum {
  *
  * Threading Model:
  * - Only accessed from main task context (via command_mode_process)
- * - No interrupt access, no synchronization needed
+ * - No interrupt access, no synchronisation needed
  */
 typedef struct {
     command_mode_state_t state;               /**< Current command mode state */
@@ -203,7 +203,7 @@ _Static_assert(CMD_MODE_KEY2 >= 0xE0 && CMD_MODE_KEY2 <= 0xE7,
  * @return true if any key is pressed, false if array is empty
  *
  * @note Compiler likely inlines this (10-15 cycles)
- * @note Returns on first non-zero key (early exit optimization)
+ * @note Returns on first non-zero key (early exit optimisation)
  */
 static inline bool any_key_pressed(const hid_keyboard_report_t* keyboard_report) {
     for (int i = 0;
@@ -219,14 +219,14 @@ static inline bool any_key_pressed(const hid_keyboard_report_t* keyboard_report)
  * @brief Checks if a specific key is present in keyboard report
  *
  * Scans the 6-key rollover array for a specific keycode.
- * Optimized for the common case where the key is not found.
+ * Optimised for the common case where the key is not found.
  *
  * @param keyboard_report Pointer to keyboard HID report
  * @param keycode HID keycode to search for (KC_* constants)
  * @return true if key is pressed, false otherwise
  *
  * @note Compiler likely inlines this (10-15 cycles)
- * @note Returns on first match (early exit optimization)
+ * @note Returns on first match (early exit optimisation)
  */
 static inline bool is_key_pressed(const hid_keyboard_report_t* keyboard_report, uint8_t keycode) {
     for (int i = 0;
@@ -247,7 +247,7 @@ static inline bool is_key_pressed(const hid_keyboard_report_t* keyboard_report, 
  * keys, preventing accidental activation during normal typing.
  *
  * By default, the activation keys are Left Shift + Right Shift, but this can
- * be customized per keyboard by defining CMD_MODE_KEY1 and CMD_MODE_KEY2.
+ * be customised per keyboard by defining CMD_MODE_KEY1 and CMD_MODE_KEY2.
  *
  * @param keyboard_report Pointer to keyboard HID report structure
  * @return true if only the command keys are pressed, false if other keys present
@@ -686,7 +686,7 @@ static bool process_command_active(const hid_keyboard_report_t* keyboard_report)
     // Note: LED update is handled in command_mode_task() which runs from main loop
     // This ensures smooth LED flashing even when no keys are being pressed
 
-    // Suppress ALL keyboard reports while in command mode
+    // Suppress ALL keyboard reports whilst in command mode
     return false;
 }
 
@@ -728,7 +728,7 @@ static bool process_log_level_select(const hid_keyboard_report_t* keyboard_repor
         return false;
     }
 
-    // Suppress ALL keyboard reports while waiting for level selection
+    // Suppress ALL keyboard reports whilst waiting for level selection
     return false;
 }
 
@@ -774,7 +774,7 @@ static bool process_brightness_select(const hid_keyboard_report_t* keyboard_repo
         return false;
     }
 
-    // Suppress ALL keyboard reports while in brightness selection mode
+    // Suppress ALL keyboard reports whilst in brightness selection mode
     return false;
 }
 #endif

@@ -160,7 +160,7 @@ if [ -n "$RINGBUF_RESET" ]; then
         echo ""
         echo -e "${YELLOW}Architecture rule: Only call ringbuf_reset() with IRQs disabled${NC}"
         echo "  - Never call during normal operation"
-        echo "  - Only during initialization or state machine resets"
+        echo "  - Only during initialisation or state machine resets"
         echo "  - Must verify IRQs are disabled first"
         echo "  - Add '// LINT:ALLOW ringbuf_reset' comment to suppress this warning"
         echo ""
@@ -430,7 +430,7 @@ if [ -n "$MISSING_GUARDS" ]; then
     echo ""
     echo -e "$MISSING_GUARDS"
     echo ""
-    echo -e "${YELLOW}Code organization rule: All .h files need include guards${NC}"
+    echo -e "${YELLOW}Code organisation rule: All .h files need include guards${NC}"
     echo "  - Format: #ifndef FILENAME_H / #define FILENAME_H"
     echo "  - Prevents multiple inclusion errors"
     echo ""
@@ -621,7 +621,7 @@ if [ -n "$MISSING_ISR" ]; then
     echo ""
     echo -e "${YELLOW}Naming convention: IRQ handlers should use __isr attribute${NC}"
     echo "  - void __isr keyboard_irq_handler(void);"
-    echo "  - Helps compiler optimize for interrupt context"
+    echo "  - Helps compiler optimise for interrupt context"
     echo ""
     WARNINGS=$((WARNINGS + 1))
 else
@@ -686,7 +686,7 @@ while IFS= read -r protocol_file; do
     
     # Check if this file has keyboard_interface_setup or mouse_interface_setup function
     if grep -q "keyboard_interface_setup\|mouse_interface_setup" "$protocol_file"; then
-        # Check if they use the centralized PIO IRQ dispatcher
+        # Check if they use the centralised PIO IRQ dispatcher
         if ! grep -q "pio_irq_dispatcher_init" "$protocol_file"; then
             MISSING_DISPATCHER="${MISSING_DISPATCHER}${protocol_name}: Missing pio_irq_dispatcher_init() call\n"
         fi
@@ -704,7 +704,7 @@ if [ -n "$DIRECT_IRQ_SETUP" ]; then
     echo ""
     echo -e "$DIRECT_IRQ_SETUP"
     echo ""
-    echo -e "${RED}Required pattern: Use centralized PIO IRQ dispatcher${NC}"
+    echo -e "${RED}Required pattern: Use centralised PIO IRQ dispatcher${NC}"
     echo "  - Call pio_irq_dispatcher_init(pio_engine.pio) in setup"
     echo "  - Call pio_irq_register_callback(&handler_function)"
     echo "  - Do NOT call irq_set_priority() directly in protocols"
@@ -722,7 +722,7 @@ if [ -n "$MISSING_DISPATCHER" ]; then
     echo ""
     echo -e "${YELLOW}Setup pattern: All protocols must use PIO IRQ dispatcher${NC}"
     echo "  - Ensures proper IRQ multiplexing for multi-device support"
-    echo "  - Centralizes IRQ priority management (priority 0)"
+    echo "  - Centralises IRQ priority management (priority 0)"
     echo "  - Should call pio_irq_dispatcher_init() before callback registration"
     echo "  - See src/common/lib/pio_helper.h for documentation"
     echo ""
@@ -731,7 +731,7 @@ fi
 
 # Success message if all checks pass
 if [ -z "$DIRECT_IRQ_SETUP" ] && [ -z "$MISSING_DISPATCHER" ]; then
-    echo -e "${GREEN}✓ All protocols use centralized PIO IRQ dispatcher${NC}"
+    echo -e "${GREEN}✓ All protocols use centralised PIO IRQ dispatcher${NC}"
 fi
 echo ""
 

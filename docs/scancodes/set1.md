@@ -103,14 +103,14 @@ Set 1 has a collision between self-test codes and valid scancodes. The self-test
 
 **Protocol Layer Filtering:**
 
-The protocol layer (XT, AT/PS2) filters self-test codes (`0xAA`, `0xFC`) during keyboard initialization:
+The protocol layer (XT, AT/PS2) filters self-test codes (`0xAA`, `0xFC`) during keyboard initialisation:
 - **XT Protocol**: Filters `0xAA` whilst in `UNINITIALISED` state
 - **AT/PS2 Protocol**: Filters `0xAA` and `0xFC` whilst in `UNINITIALISED` and `INIT_AWAIT_SELFTEST` states
 - Once `INITIALISED`, all codes pass through to the scancode layer
 
 **Defense-in-Depth at Scancode Layer:**
 
-Whilst protocol filtering handles normal initialization, keyboards can send self-test codes post-initialization during hot-plug events or unstable connections. The scancode processor provides defense-in-depth by explicitly filtering these codes:
+Whilst protocol filtering handles normal initialisation, keyboards can send self-test codes post-initialisation during hot-plug events or unstable connections. The scancode processor provides defense-in-depth by explicitly filtering these codes:
 
 ```c
 // Set 1 scancode processor (simplified)

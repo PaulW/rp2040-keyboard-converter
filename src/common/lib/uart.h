@@ -28,22 +28,22 @@
  *
  * Key Features:
  * - **Configurable queue policies**: DROP, WAIT_FIXED, or WAIT_EXP behavior when queue full
- * - **Large message queue**: 64-entry buffer handles initialization bursts without loss
+ * - **Large message queue**: 64-entry buffer handles initialisation bursts without loss
  * - **DMA-driven transmission**: Minimal CPU overhead during log output
  * - **stdio integration**: Works transparently with printf(), puts(), etc.
  * - **Thread-safe multi-producer**: Lock-free atomic operations prevent races
  * - **IRQ-aware policies**: Never blocks in interrupt context
  * - **Low priority**: Designed to not interfere with PIO or USB operations
- * - **Compile-time optimization**: Zero runtime overhead for policy selection
+ * - **Compile-time optimisation**: Zero runtime overhead for policy selection
  *
  * Usage:
  * ```c
- * // Initialize once during system startup
+ * // Initialise once during system startup
  * init_uart_dma();
  *
  * // Use standard C library functions - they automatically use DMA transmission
  * printf("Debug: key pressed = 0x%02X\n", scancode);
- * puts("System initialized");
+ * puts("System initialised");
  * ```
  *
  * Configuration:
@@ -85,7 +85,7 @@
  * - USB callback functions
  *
  * The implementation uses lock-free algorithms with atomic compare-and-swap
- * operations to ensure thread safety without explicit synchronization primitives.
+ * operations to ensure thread safety without explicit synchronisation primitives.
  * IRQ context is detected automatically and policies adapt accordingly.
  *
  * Queue Policy Behavior:
@@ -105,7 +105,7 @@
 #include <stdbool.h>
 
 /**
- * @brief Initialize DMA-Based UART Logging System
+ * @brief Initialise DMA-Based UART Logging System
  *
  * Sets up the complete UART logging infrastructure including:
  * - UART hardware configuration (baud rate, pins from config.h)
@@ -113,12 +113,12 @@
  * - Interrupt handler registration (low priority)
  * - stdio driver integration for transparent printf() support
  *
- * This function must be called once during system initialization before
- * any logging operations. After initialization, all standard C library
+ * This function must be called once during system initialisation before
+ * any logging operations. After initialisation, all standard C library
  * output functions (printf, puts, putchar, etc.) will automatically
  * use the DMA-based transmission system with the configured queue policy.
  *
- * Initialization Sequence:
+ * Initialisation Sequence:
  * 1. **Hardware Setup**: UART0 configuration with format and FIFO settings
  * 2. **DMA Configuration**: Channel allocation with explicit transfer parameters
  * 3. **Interrupt Setup**: Low-priority handler registration with IRQ clearing
@@ -140,13 +140,13 @@
  * - 16KB: Message queue (64 × 256-byte entries)
  * - ~100 bytes: Control structures and state
  *
- * @note **CRITICAL**: Must be called once during system initialization
+ * @note **CRITICAL**: Must be called once during system initialisation
  * @note **TIMING**: Call before any printf/logging operations
  * @note **IDEMPOTENT**: Safe to call multiple times (subsequent calls ignored)
  * @note **STDIO REPLACEMENT**: Completely replaces standard Pico SDK UART stdio
  * @note **REAL-TIME SAFE**: Uses low-priority interrupts and configurable policies
  *
- * @warning Do not call from interrupt context during initialization
+ * @warning Do not call from interrupt context during initialisation
  * @warning Calling printf() before this function results in no output
  */
 void init_uart_dma();

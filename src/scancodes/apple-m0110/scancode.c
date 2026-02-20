@@ -33,7 +33,7 @@
  *
  * O(1) lookup for extended keypad and cursor keys. Unmapped codes return 0.
  */
-static const uint8_t code_79_translation[256] = {
+static const uint8_t code_79_translation[64] = {
     [0x03] = 0x12,  // Keypad Dot
     [0x05] = 0x28,  // Cursor Right
     [0x0D] = 0x20,  // Cursor Left
@@ -59,7 +59,7 @@ static const uint8_t code_79_translation[256] = {
  *
  * O(1) lookup for double-extended keypad and cursor keys. Unmapped codes return 0.
  */
-static const uint8_t code_71_translation[256] = {
+static const uint8_t code_71_translation[64] = {
     [0x05] = 0x42,  // Cursor Right
     [0x0D] = 0x4A,  // Keypad 0
     [0x0F] = 0x2A,  // Cursor Up

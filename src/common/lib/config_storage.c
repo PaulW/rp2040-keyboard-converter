@@ -135,8 +135,8 @@ static const config_data_t DEFAULT_CONFIG = {
 /** RAM-resident configuration (loaded at boot, accessed directly) */
 static config_data_t g_config;
 
-/** Initialization flag */
-static bool g_initialized = false;
+/** Initialisation flag */
+static bool g_initialised = false;
 
 // --- CRC-16/CCITT Implementation ---
 
@@ -144,7 +144,7 @@ static bool g_initialized = false;
  * @brief Update CRC-16/CCITT with new data
  *
  * Continues a CRC-16/CCITT calculation over additional data. This allows
- * computing a CRC over non-contiguous memory regions while maintaining
+ * computing a CRC over non-contiguous memory regions whilst maintaining
  * proper algorithm integrity.
  *
  * Uses polynomial 0x1021 (x^16 + x^12 + x^5 + 1) for error detection.
@@ -275,9 +275,9 @@ static size_t get_config_size_for_version(uint16_t version) {
 }
 
 /**
- * @brief Initialize config with factory defaults
+ * @brief Initialise config with factory defaults
  *
- * @param cfg Config structure to initialize
+ * @param cfg Config structure to initialise
  */
 static void init_factory_defaults(config_data_t* cfg) {
     memcpy(cfg, &DEFAULT_CONFIG, sizeof(config_data_t));
@@ -288,12 +288,12 @@ static void init_factory_defaults(config_data_t* cfg) {
 // --- Public API Implementation ---
 
 bool config_init(void) {
-    if (g_initialized) {
-        LOG_WARN("Config already initialized\n");
+    if (g_initialised) {
+        LOG_WARN("Config already initialised\n");
         return true;
     }
 
-    LOG_INFO("Initializing configuration system...\n");
+    LOG_INFO("Initialising configuration system...\n");
 
     // Read both copies from flash
     const config_data_t* copy_a = read_flash_config(0);
@@ -321,7 +321,7 @@ bool config_init(void) {
         // Both corrupt - use factory defaults
         LOG_WARN("Config corrupt: Using factory defaults\n");
         init_factory_defaults(&g_config);
-        g_initialized = true;
+        g_initialised = true;
         config_save();  // Save fresh config
         return false;
     }
@@ -348,7 +348,7 @@ bool config_init(void) {
         } else {
             LOG_ERROR("Invalid config size for v%d, using defaults\n", source->version);
             init_factory_defaults(&g_config);
-            g_initialized = true;
+            g_initialised = true;
             config_save();
             return false;
         }
@@ -357,12 +357,12 @@ bool config_init(void) {
         LOG_ERROR("Config from future version %d (current: %d), using defaults\n", source->version,
                   CONFIG_VERSION_CURRENT);
         init_factory_defaults(&g_config);
-        g_initialized = true;
+        g_initialised = true;
         config_save();
         return false;
     }
 
-    g_initialized = true;
+    g_initialised = true;
 
     // Smart persistence: Check if keyboard configuration changed
     uint32_t current_keyboard_id = get_keyboard_id();
@@ -396,16 +396,16 @@ bool config_init(void) {
 }
 
 const config_data_t* config_get(void) {
-    if (!g_initialized) {
-        LOG_ERROR("Config not initialized!\n");
+    if (!g_initialised) {
+        LOG_ERROR("Config not initialised!\n");
         // Return pointer anyway (will be zeros if not init)
     }
     return &g_config;
 }
 
 void config_set_log_level(uint8_t level) {
-    if (!g_initialized) {
-        LOG_ERROR("Config not initialized!\n");
+    if (!g_initialised) {
+        LOG_ERROR("Config not initialised!\n");
         return;
     }
 
@@ -417,8 +417,8 @@ void config_set_log_level(uint8_t level) {
 }
 
 void config_set_led_brightness(uint8_t level) {
-    if (!g_initialized) {
-        LOG_ERROR("Config not initialized!\n");
+    if (!g_initialised) {
+        LOG_ERROR("Config not initialised!\n");
         return;
     }
 
@@ -435,8 +435,8 @@ void config_set_led_brightness(uint8_t level) {
 }
 
 uint8_t config_get_led_brightness(void) {
-    if (!g_initialized) {
-        LOG_WARN("Config not initialized, returning default brightness\n");
+    if (!g_initialised) {
+        LOG_WARN("Config not initialised, returning default brightness\n");
         return LED_BRIGHTNESS_DEFAULT;  // Return compile-time default
     }
 
@@ -444,8 +444,8 @@ uint8_t config_get_led_brightness(void) {
 }
 
 void config_set_shift_override_enabled(bool enabled) {
-    if (!g_initialized) {
-        LOG_ERROR("Config not initialized!\n");
+    if (!g_initialised) {
+        LOG_ERROR("Config not initialised!\n");
         return;
     }
 
@@ -458,8 +458,8 @@ void config_set_shift_override_enabled(bool enabled) {
 }
 
 bool config_get_shift_override_enabled(void) {
-    if (!g_initialized) {
-        LOG_WARN("Config not initialized, shift-override disabled\n");
+    if (!g_initialised) {
+        LOG_WARN("Config not initialised, shift-override disabled\n");
         return false;  // Default to disabled
     }
 
@@ -467,8 +467,8 @@ bool config_get_shift_override_enabled(void) {
 }
 
 bool config_save(void) {
-    if (!g_initialized) {
-        LOG_ERROR("Config not initialized!\n");
+    if (!g_initialised) {
+        LOG_ERROR("Config not initialised!\n");
         return false;
     }
 
@@ -539,9 +539,9 @@ bool config_save(void) {
 void config_factory_reset(void) {
     LOG_WARN("Factory reset: Restoring defaults\n");
 
-    // Initialize with factory defaults (sequence starts at 0)
+    // Initialise with factory defaults (sequence starts at 0)
     init_factory_defaults(&g_config);
-    g_initialized = true;
+    g_initialised = true;
 
     // Erase entire config sector to clear both copies
     // This ensures a true "factory reset" with no old data
@@ -557,8 +557,8 @@ void config_factory_reset(void) {
 // --- Layer State Persistence (v3) ---
 
 void config_set_layer_state(uint8_t layer_state) {
-    if (!g_initialized) {
-        LOG_ERROR("Config not initialized!\n");
+    if (!g_initialised) {
+        LOG_ERROR("Config not initialised!\n");
         return;
     }
 
@@ -571,8 +571,8 @@ void config_set_layer_state(uint8_t layer_state) {
 }
 
 uint8_t config_get_layer_state(void) {
-    if (!g_initialized) {
-        LOG_WARN("Config not initialized, returning Layer 0 only\n");
+    if (!g_initialised) {
+        LOG_WARN("Config not initialised, returning Layer 0 only\n");
         return LAYER_0_ACTIVE_BIT;  // Only Layer 0 active
     }
 
@@ -581,8 +581,8 @@ uint8_t config_get_layer_state(void) {
 }
 
 void config_set_layers_hash(uint32_t layers_hash) {
-    if (!g_initialized) {
-        LOG_ERROR("Config not initialized!\n");
+    if (!g_initialised) {
+        LOG_ERROR("Config not initialised!\n");
         return;
     }
 
@@ -594,14 +594,14 @@ void config_set_layers_hash(uint32_t layers_hash) {
 }
 
 uint32_t config_get_layers_hash(void) {
-    // Intentional behavior: Return 0 when config system not initialized.
+    // Intentional behavior: Return 0 when config system not initialised.
     // This differs from the LAYERS_HASH_SENTINEL in DEFAULT_CONFIG and
     // g_config.layers_hash (see line 133, 379) which indicates "config loaded
-    // but hash needs computation". Returning 0 here is safe because uninitialized
-    // state means no valid data available, while LAYERS_HASH_SENTINEL in g_config indicates
+    // but hash needs computation". Returning 0 here is safe because uninitialised
+    // state means no valid data available, whilst LAYERS_HASH_SENTINEL in g_config indicates
     // valid config loaded but awaiting hash validation/computation.
-    if (!g_initialized) {
-        LOG_WARN("Config not initialized, returning 0\n");
+    if (!g_initialised) {
+        LOG_WARN("Config not initialised, returning 0\n");
         return 0;
     }
 

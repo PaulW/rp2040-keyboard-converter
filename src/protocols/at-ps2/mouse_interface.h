@@ -48,7 +48,7 @@
  * - Data setup/hold: minimum 5µs before/after clock edge
  * - Inhibit time: minimum 100µs CLOCK low to stop transmission
  *
- * Initialization Sequence:
+ * Initialisation Sequence:
  * 1. Power-on self-test (mouse sends 0xAA on success, 0x00 as device ID)
  * 2. Mouse type detection via sample rate sequence (200-100-80 or 200-200-80)
  * 3. Configuration: resolution, scaling, sample rate, enable data reporting
@@ -87,7 +87,7 @@
 #define ATPS2_MOUSE_ID_INTELLIMOUSE 0x03 /**< IntelliMouse with scroll wheel (4-byte packets) */
 #define ATPS2_MOUSE_ID_INTELLIMOUSE_EXPLORER \
     0x04                            /**< IntelliMouse Explorer with 5 buttons (4-byte packets) */
-#define ATPS2_MOUSE_ID_UNKNOWN 0xFF /**< Unknown or unrecognized mouse ID */
+#define ATPS2_MOUSE_ID_UNKNOWN 0xFF /**< Unknown or unrecognised mouse ID */
 
 /**
  * @brief Mouse Resolution Codes
@@ -116,7 +116,7 @@
 #define ATPS2_MOUSE_PACKET_EXTENDED_SIZE 4 /**< Extended mouse packet size (bytes) */
 
 /**
- * @brief Initializes the AT/PS2 mouse interface
+ * @brief Initialises the AT/PS2 mouse interface
  *
  * Sets up PIO state machine, GPIO configuration, and protocol handlers
  * for AT/PS2 mouse communication. Shares physical interface with keyboard
@@ -130,7 +130,7 @@ void mouse_interface_setup(uint data_pin);
  * @brief Main task function for AT/PS2 mouse interface
  *
  * Manages protocol state machine, processes received data, handles
- * initialization sequence, and maintains mouse communication.
+ * initialisation sequence, and maintains mouse communication.
  * Should be called periodically from main loop.
  */
 void mouse_interface_task();

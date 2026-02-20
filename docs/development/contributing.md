@@ -246,7 +246,7 @@ But don't be afraid to ask questions even if you think it might be obvious. I'd 
 
 A few notes about the project's direction that might help when you're making decisions about how to implement something.
 
-The architecture prioritizes performance over convenience. Low latency and deterministic behaviour matter more than code simplicity here. If a change makes the code simpler but adds latency or introduces blocking operations, it's probably not the right approach for this project—even if it would be fine in most other contexts.
+The architecture prioritises performance over convenience. Low latency and deterministic behaviour matter more than code simplicity here. If a change makes the code simpler but adds latency or introduces blocking operations, it's probably not the right approach for this project—even if it would be fine in most other contexts.
 
 Hardware testing really matters with timing-sensitive embedded firmware. It's genuinely hard to test without real hardware because microsecond timing differences can change behaviour. If you can test on the actual device, please do. Simulators and logic analysers are useful, but nothing quite replaces testing with the real keyboard.
 

@@ -29,7 +29,7 @@
  * @brief E0-Prefixed Scancode Translation Table for AT/PS2 Set 2 Protocol
  *
  * AT/PS2 keyboards use E0-prefixed codes extensively for extended functionality.
- * This lookup table translates E0-prefixed Set 2 scan codes to normalized interface
+ * This lookup table translates E0-prefixed Set 2 scan codes to normalised interface
  * codes used throughout the converter.
  *
  * The table is sparse (most entries are 0) to allow direct indexing by scan code.

@@ -14,7 +14,7 @@ The interface reports up to 6 simultaneous regular keys plus all 8 modifiers (bo
 
 The converter provides low-latency keyboard conversion with minimal processing overhead. The non-blocking architecture ensures responsive keystroke handling without dropped inputs.
 
-The converter can handle simultaneous keyboard and mouse conversion if you have an AT/PS2 mouse to connect. LED indicators (Caps Lock, Num Lock, Scroll Lock) synchronize properly with the host OS, so the keyboard's lock LEDs update when you press the lock keys—assuming your keyboard protocol supports LED control.
+The converter can handle simultaneous keyboard and mouse conversion if you have an AT/PS2 mouse to connect. LED indicators (Caps Lock, Num Lock, Scroll Lock) synchronise properly with the host OS, so the keyboard's lock LEDs update when you press the lock keys—assuming your keyboard protocol supports LED control.
 
 **See:** [USB HID Guide](usb-hid.md) for complete technical details about report formats, timing, and USB polling
 
@@ -76,7 +76,7 @@ The status LED shows different colours depending on what's happening. Solid gree
 
 **Keyboard Lock Indicators:**
 
-For keyboard lock indicators (Caps Lock, Num Lock, Scroll Lock), the converter handles synchronization automatically. When a lock key is pressed, the host OS sends LED states back through the HID protocol. The converter forwards these states to the keyboard using the appropriate LED command format for the protocol—AT/PS2 keyboards receive the 0xED command, Amiga keyboards use handshake timing variations, whilst XT and M0110 keyboards don't support LED control (unidirectional protocols).
+For keyboard lock indicators (Caps Lock, Num Lock, Scroll Lock), the converter handles synchronisation automatically. When a lock key is pressed, the host OS sends LED states back through the HID protocol. The converter forwards these states to the keyboard using the appropriate LED command format for the protocol—AT/PS2 keyboards receive the 0xED command, Amiga keyboards use handshake timing variations, whilst XT and M0110 keyboards don't support LED control (unidirectional protocols).
 
 **Optional WS2812 RGB LED:**
 - Status indicator (Command Mode)
@@ -94,7 +94,7 @@ WS2812 RGB LEDs (NeoPixels) can be added for enhanced visual feedback. These con
 
 Mouse support allows connection of a mouse alongside the keyboard, providing complete period-accurate input hardware. The mouse operates independently from the keyboard using separate GPIO pins and a separate PIO state machine, preventing any signal interference.
 
-AT/PS2 protocol mice are currently supported, covering most mice from the mid-1980s through early 2000s. The converter handles standard 3-byte packets (buttons, X movement, Y movement) and extended 4-byte packets for mice with scroll wheels (IntelliMouse protocol). Scroll wheel detection occurs automatically during initialisation.
+AT/PS2 protocol mice are currently supported, covering mid-1980s through early 2000s devices that follow the standard packet formats. The converter handles standard 3-byte packets (buttons, X movement, Y movement) and extended 4-byte packets for mice with scroll wheels (IntelliMouse protocol). Scroll wheel detection occurs automatically during initialisation.
 
 Mouse support is protocol-agnostic and works with any keyboard protocol. An AT/PS2 mouse can be paired with XT, Amiga, or M0110 keyboards because the mouse uses dedicated hardware lines (CLOCK and DATA separate from keyboard lines), allowing parallel operation without coordination. Press keys whilst moving the mouse, scroll whilst holding modifier keys, click whilst typing—everything works as expected because the signals never cross paths.
 
@@ -189,7 +189,7 @@ This pattern appears throughout the codebase—protocol handlers, Command Mode, 
 
 ---
 
-### Performance Optimization
+### Performance Optimisation
 
 The converter runs on modest hardware—an RP2040 microcontroller with 264KB SRAM and a 125MHz ARM Cortex-M0+ core. Resource constraints matter here, so the implementation is designed for efficiency.
 

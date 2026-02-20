@@ -50,7 +50,7 @@
  * 2. INIT_AWAIT_SELFTEST → Wait for 0xAA (BAT completion)
  * 3. INIT_READ_ID → Request and read 2-byte keyboard ID
  * 4. INIT_SETUP → Configure scan code set and keyboard parameters
- * 5. SET_LOCK_LEDS → Initialize LED states
+ * 5. SET_LOCK_LEDS → Initialise LED states
  * 6. INITIALISED → Normal operation with scan code processing
  *
  * Special Features:
@@ -98,7 +98,7 @@
 #include "scancode_runtime.h"
 #define USING_SET123 1
 
-// Global scancode configuration (set during keyboard initialization)
+// Global scancode configuration (set during keyboard initialisation)
 static const scancode_config_t* g_scancode_config = NULL;
 #else
 #include "scancode.h"
@@ -116,7 +116,7 @@ static uint keyboard_data_pin; /**< GPIO pin for DATA line (CLOCK = DATA + 1) */
  * @brief Terminal Keyboard Detection Macro
  *
  * Determines if the configured keyboard uses Scan Code Set 3, which indicates
- * a terminal keyboard requiring special initialization and handling procedures.
+ * a terminal keyboard requiring special initialisation and handling procedures.
  * Terminal keyboards often have different capabilities and command sets.
  */
 #define CODESET_3 (strcmp(KEYBOARD_CODESET, "set3") == 0)
@@ -142,7 +142,7 @@ static enum {
 /**
  * @brief AT/PS2 Protocol State Machine
  *
- * Manages the complete initialization and operational phases:
+ * Manages the complete initialisation and operational phases:
  * - UNINITIALISED: System startup, sending reset command
  * - INIT_AWAIT_ACK: Waiting for acknowledge to reset command
  * - INIT_AWAIT_SELFTEST: Waiting for Basic Assurance Test (BAT) completion (0xAA)
@@ -191,7 +191,8 @@ static enum {
  *
  * @param data_byte 8-bit command code to transmit to keyboard
  *
- * @note Function executes synchronously - blocks until PIO accepts data
+ * @note Function is non-blocking - writes directly to PIO TX FIFO (data silently dropped if FIFO
+ * full)
  * @note Keyboard responses handled by IRQ event handler
  */
 static void keyboard_command_handler(uint8_t data_byte) {
@@ -202,10 +203,10 @@ static void keyboard_command_handler(uint8_t data_byte) {
 /**
  * @brief AT/PS2 Keyboard Event Processor
  *
- * Processes all data received from the keyboard and manages the complete initialization
+ * Processes all data received from the keyboard and manages the complete initialisation
  * and operational state machine. Handles the complex AT/PS2 protocol sequence:
  *
- * Initialization States:
+ * Initialisation States:
  * - UNINITIALISED: Power-on detection and initial reset command
  * - INIT_AWAIT_ACK: Waiting for command acknowledgment (0xFA)
  * - INIT_AWAIT_SELFTEST: Waiting for BAT completion (0xAA = pass, 0xFC = fail)
@@ -217,14 +218,14 @@ static void keyboard_command_handler(uint8_t data_byte) {
  * - INITIALISED: Normal scan code processing and LED management
  *
  * Protocol Features Handled:
- * - Automatic retry logic for failed initialization steps
+ * - Automatic retry logic for failed initialisation steps
  * - Keyboard ID detection for terminal keyboards (Set 3 scan codes)
  * - Make/break code configuration for advanced keyboards
- * - LED state synchronization with host lock key status
+ * - LED state synchronisation with host lock key status
  * - Error recovery and state machine reset on protocol violations
  *
  * Data Flow:
- * - Initialization responses trigger state transitions
+ * - Initialisation responses trigger state transitions
  * - Scan codes queued to ring buffer for HID processing
  * - LED commands issued when host lock state changes
  * - Status updates for converter LED indicators
@@ -232,15 +233,15 @@ static void keyboard_command_handler(uint8_t data_byte) {
  * @param data_byte 8-bit response/scan code received from keyboard
  *
  * @note Executes in interrupt context - keep processing efficient
- * @note State transitions logged for debugging initialization issues
+ * @note State transitions logged for debugging initialisation issues
  */
 static void keyboard_event_processor(uint8_t data_byte) {
     switch (keyboard_state) {
         case UNINITIALISED:
-            id_retry = false;  // Clear retry flag - starting fresh initialization sequence
+            id_retry = false;  // Clear retry flag - starting fresh initialisation sequence
             __dmb();  // Memory barrier - ensure volatile write completes before state change
             keyboard_id = ATPS2_KEYBOARD_ID_UNKNOWN;  // Reset keyboard ID to unknown state during
-                                                      // initialization
+                                                      // initialisation
             switch (data_byte) {
                 case ATPS2_RESP_BAT_PASSED:
                     // Power-on self-test completed successfully (Basic Assurance Test)
@@ -252,7 +253,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
                     keyboard_state = INIT_READ_ID_1;
                     break;
                 default:
-                    // Unexpected response during initialization - could be failed BAT (0xFC)
+                    // Unexpected response during initialisation - could be failed BAT (0xFC)
                     // or other power-on state requiring explicit reset command
                     LOG_DEBUG("Asking Keyboard to Reset\n");
                     keyboard_state = INIT_AWAIT_ACK;
@@ -360,7 +361,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
             }
             break;
 
-        // Handle LED state synchronization with host lock key status
+        // Handle LED state synchronisation with host lock key status
         case SET_LOCK_LEDS:
             // Process LED command sequence responses (0xED command followed by LED bitmap)
             switch (data_byte) {
@@ -426,7 +427,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * Data Flow:
  * - Valid frames passed to keyboard event processor
  * - Invalid frames rejected with appropriate error logging
- * - State machine restarts maintain protocol synchronization
+ * - State machine restarts maintain protocol synchronisation
  *
  * Performance Considerations:
  * - Executes in interrupt context - minimal processing time
@@ -434,7 +435,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * - Efficient bit manipulation for frame parsing
  *
  * @note ISR function - no blocking operations allowed
- * @note PIO FIFO automatically handles timing and bit synchronization
+ * @note PIO FIFO automatically handles timing and bit synchronisation
  */
 static void __isr keyboard_input_event_handler(void) {
     // Guard against spurious dispatch from shared IRQ - only process if our FIFO has data
@@ -493,28 +494,28 @@ static void __isr keyboard_input_event_handler(void) {
  * @brief AT/PS2 Keyboard Interface Main Task
  *
  * Main task function that coordinates all aspects of AT/PS2 keyboard communication
- * and protocol management. Handles both operational data flow and initialization:
+ * and protocol management. Handles both operational data flow and initialisation:
  *
  * Normal Operation (INITIALISED state):
  * - Processes scan codes from ring buffer when HID interface ready
- * - Manages LED state synchronization (Caps/Num/Scroll Lock)
+ * - Manages LED state synchronisation (Caps/Num/Scroll Lock)
  * - Coordinates scan code translation and HID report generation
- * - Maintains optimal throughput while preventing report queue overflow
+ * - Maintains optimal throughput whilst preventing report queue overflow
  *
- * Initialization Management (Non-INITIALISED states):
- * - Monitors initialization timeouts and implements retry logic
+ * Initialisation Management (Non-INITIALISED states):
+ * - Monitors initialisation timeouts and implements retry logic
  * - Detects keyboard presence via clock line monitoring
- * - Handles stalled initialization with automatic recovery
+ * - Handles stalled initialisation with automatic recovery
  * - Manages keyboard ID read timeouts with graceful fallback
  * - Coordinates LED setup timeout recovery
  *
  * Timeout Handling:
- * - 200ms periodic checks for initialization progress
+ * - 200ms periodic checks for initialisation progress
  * - 2-retry limit for keyboard ID operations before fallback
  * - 5-attempt detection cycle before reset request
  * - Automatic state machine recovery on persistent failures
  *
- * LED Synchronization:
+ * LED Synchronisation:
  * - Detects host lock key state changes
  * - Issues LED command sequence (0xED followed by LED bitmap)
  * - Handles LED command timeout and recovery
@@ -522,7 +523,7 @@ static void __isr keyboard_input_event_handler(void) {
  *
  * Hardware Integration:
  * - Monitors GPIO clock line for keyboard presence detection
- * - Updates converter status LEDs based on initialization state
+ * - Updates converter status LEDs based on initialisation state
  * - Integrates with USB HID subsystem for optimal report timing
  * - Coordinates with ring buffer for efficient data flow
  *
@@ -540,7 +541,7 @@ void keyboard_interface_task() {
     static uint8_t detect_stall_count = 0;
 
     if (keyboard_state == INITIALISED) {
-        // Normal operation: process scan codes and manage LED synchronization
+        // Normal operation: process scan codes and manage LED synchronisation
         // LED state changes and terminal keyboard features handled here
         detect_stall_count = 0;  // Clear timeout counter - keyboard is operational
         if (lock_leds.value != keyboard_lock_leds) {
@@ -562,17 +563,17 @@ void keyboard_interface_task() {
             }
         }
     } else {
-        // Initialization timeout management and keyboard detection logic
+        // Initialisation timeout management and keyboard detection logic
         static uint32_t detect_ms = 0;
         if (board_millis() - detect_ms > 200) {
             detect_ms = board_millis();
             if (gpio_get(keyboard_data_pin + 1) == 1) {
-                // Monitor initialization progress when keyboard detected (CLOCK line high)
-                detect_stall_count++;  // Increment timeout counter for initialization state
+                // Monitor initialisation progress when keyboard detected (CLOCK line high)
+                detect_stall_count++;  // Increment timeout counter for initialisation state
                 switch (keyboard_state) {
                     case INIT_READ_ID_1 ... INIT_SETUP:
                         if (detect_stall_count > 2) {
-                            // Initialization timeout detected during ID read or setup phase
+                            // Initialisation timeout detected during ID read or setup phase
                             __dmb();  // Memory barrier - ensure we see latest volatile value
                             if (!id_retry) {
                                 // First timeout - retry keyboard ID request before giving up
@@ -608,8 +609,8 @@ void keyboard_interface_task() {
                         break;
                     case SET_LOCK_LEDS:
                         if (detect_stall_count > 2) {
-                            // LED command timeout - continue without LED synchronization
-                            LOG_DEBUG("Timeout while setting keyboard lock LEDs, continuing.\n");
+                            // LED command timeout - continue without LED synchronisation
+                            LOG_DEBUG("Timeout whilst setting keyboard lock LEDs, continuing.\n");
                             keyboard_state     = INITIALISED;
                             detect_stall_count = 0;
                         }
@@ -629,7 +630,7 @@ void keyboard_interface_task() {
                 }
             } else if (keyboard_state == UNINITIALISED) {
                 LOG_DEBUG("Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
-                // Clear timeout counter while waiting for keyboard connection
+                // Clear timeout counter whilst waiting for keyboard connection
                 detect_stall_count = 0;
             }
             update_keyboard_ready_led(keyboard_state == INITIALISED);
@@ -638,9 +639,9 @@ void keyboard_interface_task() {
 }
 
 /**
- * @brief AT/PS2 Keyboard Interface Initialization
+ * @brief AT/PS2 Keyboard Interface Initialisation
  *
- * Configures and initializes the complete AT/PS2 keyboard interface using RP2040 PIO
+ * Configures and initialises the complete AT/PS2 keyboard interface using RP2040 PIO
  * hardware for precise timing and protocol implementation. Sets up all hardware and
  * software components required for reliable keyboard communication:
  *
@@ -662,9 +663,9 @@ void keyboard_interface_task() {
  * - Enables interrupt-driven data reception for optimal performance
  * - Links PIO RX FIFO to interrupt system
  *
- * Software Initialization:
+ * Software Initialisation:
  * - Resets ring buffer to ensure clean startup state
- * - Initializes protocol state machine to UNINITIALISED
+ * - Initialises protocol state machine to UNINITIALISED
  * - Resets converter status LEDs when CONVERTER_LEDS enabled
  * - Clears all protocol state variables
  *
@@ -676,23 +677,23 @@ void keyboard_interface_task() {
  *
  * Error Handling:
  * - Validates PIO resource availability before configuration
- * - Reports initialization failures with detailed error messages
+ * - Reports initialisation failures with detailed error messages
  * - Graceful failure if insufficient PIO resources available
- * - Logs successful initialization with configuration details
+ * - Logs successful initialisation with configuration details
  *
  * @param data_pin GPIO pin number for DATA line (CLOCK automatically assigned as data_pin + 1)
  *
  * @note CLOCK pin must be DATA pin + 1 for hardware compatibility
- * @note Function blocks until hardware initialization complete
+ * @note Function blocks until hardware initialisation complete
  * @note Call before any other keyboard interface operations
  */
 void keyboard_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
     converter.state.kb_ready = 0;
-    update_converter_status();  // Initialize converter status LEDs to "not ready" state
+    update_converter_status();  // Initialise converter status LEDs to "not ready" state
 #endif
 
-    // Initialize ring buffer for key data communication between IRQ and main task
+    // Initialise ring buffer for key data communication between IRQ and main task
     ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Safe: IRQs not yet enabled during init
 
     // Claim PIO instance and state machine atomically with fallback
@@ -709,11 +710,11 @@ void keyboard_interface_setup(uint data_pin) {
     // Reference: IBM 84F9735 PS/2 Hardware Interface Technical Reference
     float clock_div = calculate_clock_divider(ATPS2_TIMING_CLOCK_MIN_US);
 
-    // Initialize PIO program with calculated clock divider
+    // Initialise PIO program with calculated clock divider
     pio_interface_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin,
                                clock_div);
 
-    // Initialize shared PIO IRQ dispatcher (safe to call multiple times)
+    // Initialise shared PIO IRQ dispatcher (safe to call multiple times)
     pio_irq_dispatcher_init(pio_engine.pio);
 
     // Register keyboard event handler with the dispatcher

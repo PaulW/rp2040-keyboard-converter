@@ -45,7 +45,7 @@
  * - Data setup/hold: minimum 5µs before/after clock edge
  * - Inhibit time: minimum 100µs CLOCK low to stop transmission
  *
- * Initialization Sequence:
+ * Initialisation Sequence:
  * 1. Power-on self-test (keyboard sends 0xAA on success)
  * 2. Host reads keyboard ID (2-byte response)
  * 3. Host configures scan code set and options
@@ -82,10 +82,10 @@
  */
 #define ATPS2_KEYBOARD_ID_LOW_MASK  0x00FF /**< Mask for low byte of keyboard ID */
 #define ATPS2_KEYBOARD_ID_HIGH_MASK 0xFF00 /**< Mask for high byte of keyboard ID */
-#define ATPS2_KEYBOARD_ID_UNKNOWN   0xFFFF /**< Unknown or unrecognized keyboard ID */
+#define ATPS2_KEYBOARD_ID_UNKNOWN   0xFFFF /**< Unknown or unrecognised keyboard ID */
 
 /**
- * @brief Initializes the AT/PS2 keyboard interface
+ * @brief Initialises the AT/PS2 keyboard interface
  *
  * Sets up PIO state machine, GPIO configuration, and protocol handlers
  * for AT/PS2 keyboard communication.
@@ -98,7 +98,7 @@ void keyboard_interface_setup(uint data_pin);
  * @brief Main task function for AT/PS2 keyboard interface
  *
  * Manages protocol state machine, processes received data, handles
- * initialization sequence, and maintains keyboard communication.
+ * initialisation sequence, and maintains keyboard communication.
  * Should be called periodically from main loop.
  */
 void keyboard_interface_task();

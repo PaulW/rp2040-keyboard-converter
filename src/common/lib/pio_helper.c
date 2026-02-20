@@ -37,7 +37,7 @@ _Static_assert(1, "PIO helper basic sanity check");  // Always true, validates _
 
 static volatile pio_irq_callback_t registered_callbacks[MAX_PIO_IRQ_CALLBACKS] = {NULL, NULL, NULL,
                                                                                   NULL};
-static bool dispatcher_initialized = false;  // Init-only flag, not IRQ-shared
+static bool dispatcher_initialised = false;  // Init-only flag, not IRQ-shared
 static PIO  active_pio             = NULL;   // Init-only storage, not IRQ-shared
 
 /**
@@ -145,7 +145,7 @@ pio_engine_t claim_pio_and_sm(const pio_program_t* program) {
  * Use Cases:
  * - Protocol error recovery (AT/PS2 inhibit, M0110 sync errors)
  * - Clock stretching timeout recovery
- * - Re-initialization after configuration changes
+ * - Re-initialisation after configuration changes
  * - Transitioning between protocol states
  *
  * State Machine Reset Behavior:
@@ -157,9 +157,9 @@ pio_engine_t claim_pio_and_sm(const pio_program_t* program) {
  * - GPIO configuration → unchanged
  *
  * Thread Safety:
- * - This function is NOT interrupt-safe
- * - Caller must ensure no concurrent PIO access
- * - Typically called from main task, not ISRs
+ * - Safe to call from IRQ context (uses only PIO register writes and LOG_* macros)
+ * - Caller must ensure no concurrent access to the same SM from another context
+ * - Called from both ISR error-recovery paths and main task initialisation
  *
  * @param pio    The PIO instance (pio0 or pio1)
  * @param sm     The state machine number (0-3)
@@ -294,19 +294,19 @@ static void __isr pio_irq_dispatcher(void) {
 }
 
 /**
- * @brief Initializes the PIO IRQ dispatcher for a PIO instance
+ * @brief Initialises the PIO IRQ dispatcher for a PIO instance
  *
  * Sets up a shared PIO IRQ handler that multiplexes between multiple protocol
  * event handlers. This enables multiple devices (e.g., AT/PS2 keyboard + mouse)
  * to coexist on the same PIO without IRQ registration conflicts.
  *
- * Initialization Workflow:
- * 1. Check if dispatcher already initialized for this PIO (idempotent)
+ * Initialisation Workflow:
+ * 1. Check if dispatcher already initialised for this PIO (idempotent)
  * 2. Determine IRQ number (PIO0_IRQ_0 or PIO1_IRQ_0)
  * 3. Register dispatcher as exclusive IRQ handler
  * 4. Set IRQ priority to 0 (highest) for time-critical protocol timing
  * 5. Enable the PIO IRQ
- * 6. Mark dispatcher as initialized
+ * 6. Mark dispatcher as initialised
  *
  * Resource Management:
  * - Uses single exclusive handler per PIO (no conflicts)
@@ -319,7 +319,7 @@ static void __isr pio_irq_dispatcher(void) {
  * - Higher priority than USB stack (prevents input lag)
  *
  * Thread Safety:
- * - Must be called during initialization (main context)
+ * - Must be called during initialisation (main context)
  * - Not safe to call from IRQ context
  * - Single-core architecture eliminates race conditions
  *
@@ -351,14 +351,14 @@ static void __isr pio_irq_dispatcher(void) {
  * @note Log output includes PIO number and IRQ number for debugging
  */
 void pio_irq_dispatcher_init(PIO pio) {
-    // Prevent re-initialization for the same PIO instance
-    if (dispatcher_initialized && active_pio == pio) {
+    // Prevent re-initialisation for the same PIO instance
+    if (dispatcher_initialised && active_pio == pio) {
         return;
     }
 
     // Prevent conflicting PIO: dispatcher supports only one PIO instance per session
-    if (dispatcher_initialized && active_pio != pio) {
-        LOG_ERROR("PIO IRQ dispatcher already initialized for PIO%d, cannot switch to PIO%d\n",
+    if (dispatcher_initialised && active_pio != pio) {
+        LOG_ERROR("PIO IRQ dispatcher already initialised for PIO%d, cannot switch to PIO%d\n",
                   active_pio == pio0 ? 0 : 1, pio == pio0 ? 0 : 1);
         return;
     }
@@ -373,11 +373,11 @@ void pio_irq_dispatcher_init(PIO pio) {
     irq_set_priority(pio_irq, 0x00);
 
     // IRQ enabled after first callback registered to avoid race
-    // (prevents IRQ from observing uninitialized callback array)
+    // (prevents IRQ from observing uninitialised callback array)
 
-    dispatcher_initialized = true;
+    dispatcher_initialised = true;
 
-    LOG_INFO("PIO IRQ dispatcher initialized for PIO%d (IRQ %d, priority 0x00)\n",
+    LOG_INFO("PIO IRQ dispatcher initialised for PIO%d (IRQ %d, priority 0x00)\n",
              pio == pio0 ? 0 : 1, pio_irq);
 }
 
@@ -407,7 +407,7 @@ void pio_irq_dispatcher_init(PIO pio) {
  *
  * Failure Scenarios:
  * - All callback slots occupied → returns false
- * - Dispatcher not initialized → undefined behavior (call init first)
+ * - Dispatcher not initialised → undefined behavior (call init first)
  * - NULL callback pointer → undefined behavior (caller must validate)
  *
  * Protocol Integration Pattern:
@@ -454,7 +454,7 @@ bool pio_irq_register_callback(pio_irq_callback_t callback) {
             __dmb();  // Memory barrier: ensure callback write visible to IRQ before enabling
 
             // Enable IRQ after first callback registered (race prevention)
-            if (dispatcher_initialized) {
+            if (dispatcher_initialised) {
                 uint pio_irq = active_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
                 if (!irq_is_enabled(pio_irq)) {
                     irq_set_enabled(pio_irq, true);
@@ -498,12 +498,12 @@ bool pio_irq_register_callback(pio_irq_callback_t callback) {
  * Error Handling:
  * - Callback not found → logs warning, continues
  * - NULL callback → searches for NULL slot (harmless)
- * - Dispatcher not initialized → safe (no-op)
+ * - Dispatcher not initialised → safe (no-op)
  *
  * Use Cases:
  * - Protocol cleanup during shutdown
  * - Device hot-unplug support (future)
- * - Error recovery and re-initialization
+ * - Error recovery and re-initialisation
  * - Unit testing teardown
  *
  * Example Usage:
@@ -525,6 +525,7 @@ void pio_irq_unregister_callback(pio_irq_callback_t callback) {
     for (int i = 0; i < MAX_PIO_IRQ_CALLBACKS; i++) {
         if (registered_callbacks[i] == callback) {
             registered_callbacks[i] = NULL;
+            __dmb();  // Memory barrier: ensure NULL visible to IRQ before caller proceeds
             LOG_DEBUG("Unregistered PIO IRQ callback from slot %d\n", i);
             return;
         }

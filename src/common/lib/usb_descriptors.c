@@ -195,11 +195,11 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     // The RP2040 itself does not have a unique ID.
     // https://cec-code-lab.aps.edu/robotics/resources/pico-c-api/group__pico__unique__id.html
     static char pico_unique_id[32] = {0};
-    static bool id_initialized     = false;
-    if (!id_initialized) {
+    static bool id_initialised     = false;
+    if (!id_initialised) {
         pico_get_unique_board_id_string(pico_unique_id, sizeof(pico_unique_id));
         string_desc_arr[3] = pico_unique_id;
-        id_initialized     = true;
+        id_initialised     = true;
     }
 
     if (index == 0) {

@@ -25,7 +25,7 @@ The converter handles all the scancode translation automatically, but if you're 
 
 **Note**: Apple M0110 keyboards use a unique scancode set that's integrated directly into the [M0110 protocol implementation](../protocols/m0110.md)—there's no separate scancode processor for it.
 
-## Source Code Organization
+## Source Code Organisation
 
 Scancode processors are located in [`src/scancodes/`](../../src/scancodes/):
 

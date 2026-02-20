@@ -320,7 +320,7 @@ Here's the key bit: when you press a key, the lookup starts at the highest activ
 
 What this means practically: you only need to define the keys that are different in your upper layers—everything else can be `TRNS` and will fall through to active lower layers. You're not duplicating entire layouts, you're only overriding specific positions. If you've got Layer 1 and Layer 3 both active (via toggle), and Layer 3 has `TRNS` at a position, it'll check Layer 1 next (skipping inactive Layer 2). If Layer 1 also has `TRNS`, it falls through to Layer 0. Only active layers participate in the fallthrough chain.
 
-This is identical to QMK's behaviour—standard practice for keyboard firmware with layering support.
+This is similar to QMK-style behaviour—standard practice for keyboard firmware with layer support.
 
 ### Defining Multiple Layers
 
@@ -346,7 +346,12 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
         TRNS, TRNS, TRNS, TRNS, TRNS, /* ... */
     ),
 };
+
+/* Layer count - automatically calculated from keymap_map array size */
+const uint8_t keymap_layer_count = sizeof(keymap_map) / sizeof(keymap_map[0]);
 ```
+
+The layer count is automatically calculated using `sizeof` to determine how many layers you've defined. You don't need to manually update a separate count variable—the system calculates it from the `keymap_map` array. This calculation must appear after the keymap definition.
 
 Notice the `MO_1` key in the base layer—that's a momentary layer switch. When you hold that key, Layer 1 becomes active. Release it, and you're back to Layer 0. The keys you've remapped in Layer 1 (like volume controls) only work whilst you're holding the layer switch key.
 
@@ -406,7 +411,7 @@ The keys set to `TRNS` behave exactly as they do in Layer 0. You don't need to r
 
 **Toggle layers persist across reboots** - If you toggle a layer on with TG_1, it stays active even after power cycling the converter. The system validates the saved layer state against the current firmware—if you flash different layer definitions (add/remove layers) or switch keyboards, it automatically resets to Layer 0 for safety. TO layers also persist the same way.
 
-**One-shot layers timeout** - If you activate a one-shot layer (OSL_1) but don't press another key within about 5 seconds, it'll automatically deactivate. This prevents you from getting stuck in an upper layer if you change your mind.
+**One-shot layers are consumed on next key press** - When you activate a one-shot layer (OSL_1), it remains active until you press another key. The `keylayers_consume_oneshot()` function (defined in `src/common/lib/keylayers.c`) is invoked from `keymaps.c` when any non-layer key is pressed, immediately deactivating the one-shot layer after that single keypress. There's no time-based timeout—the layer stays active until you use it.
 
 **Layer keycodes are internal-only** - MO, TG, TO, and OSL keycodes never get sent to your computer. They're processed internally by the converter to manage layer state. When you release a momentary layer key, it doesn't send a keypress—it just changes the active layer.
 

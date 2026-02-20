@@ -34,7 +34,7 @@ If you're not sure about scancodes, the easiest way to find out is to connect a 
 
 Each keyboard gets its own directory under [`src/keyboards/`](../../src/keyboards/)`<brand>/<model>/`. For example:
 
-```
+```text
 src/keyboards/
 ├── modelm/
 │   ├── enhanced/
@@ -193,7 +193,12 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
         // Use TRNS for keys that should pass through to base layer
     ),
 };
+
+/* Layer count - automatically calculated from keymap_map array size */
+const uint8_t keymap_layer_count = sizeof(keymap_map) / sizeof(keymap_map[0]);
 ```
+
+The `keymap_layer_count` variable is automatically calculated using `sizeof` to determine how many layers are defined in `keymap_map`. This eliminates manual maintenance and prevents the layer count from drifting out of sync with the actual number of layers defined. The calculation must appear **after** the `keymap_map` definition so the compiler knows the array's size.
 
 Layer keycodes:
 - **MO_1, MO_2, MO_3**: Momentary layer switch whilst held
@@ -255,8 +260,7 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
 ```
 
 **How it works:**
-- When shift is held and a key pressed, the system checks the shift-override array for the source layer
-- Source layer = layer where key was found (accounting for KC_TRNS fallthrough)
+- When shift is held and a key pressed, the system checks the shift-override array for the source layer (the layer where the key was found, accounting for KC_TRNS fallthrough)
 - If entry exists: send that keycode instead of base key
 - If entry has `SUPPRESS_SHIFT` flag (bit 7): remove shift modifier for final key
 - If entry is 0 or layer has no shift-override array (NULL): use default behaviour (send base key with shift)
@@ -446,6 +450,9 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
         ESC, F1, F2, /* ... and so on */
     ),
 };
+
+/* Layer count - automatically calculated from keymap_map array size */
+const uint8_t keymap_layer_count = sizeof(keymap_map) / sizeof(keymap_map[0]);
 ```
 
 Create `README.md` with specifications, quirks, and build instructions.

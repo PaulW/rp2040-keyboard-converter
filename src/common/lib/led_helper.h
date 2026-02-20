@@ -33,8 +33,8 @@
  * Used to control status LED indicators.
  */
 typedef struct converter_state {
-    unsigned char kb_ready    : 1; /**< Keyboard initialized and ready */
-    unsigned char mouse_ready : 1; /**< Mouse initialized and ready */
+    unsigned char kb_ready    : 1; /**< Keyboard initialised and ready */
+    unsigned char mouse_ready : 1; /**< Mouse initialised and ready */
     unsigned char fw_flash    : 1; /**< Firmware flash mode (bootloader) */
     unsigned char cmd_mode    : 1; /**< Command mode active (for LED feedback) */
 } converter_state;
@@ -69,7 +69,7 @@ extern converter_state_union converter;
  *
  * Threading Model:
  * - Only accessed from main task context (command mode processing)
- * - No synchronization needed
+ * - No synchronisation needed
  */
 extern volatile bool cmd_mode_led_green;
 
@@ -82,7 +82,7 @@ extern volatile bool cmd_mode_led_green;
  *
  * Threading Model:
  * - Only accessed from main task context (command mode processing)
- * - No synchronization needed
+ * - No synchronisation needed
  */
 extern volatile bool log_level_selection_mode;
 #endif
@@ -95,11 +95,11 @@ void update_converter_status(void);
  *
  * Inline helper function to update the keyboard ready LED indicator.
  * Consolidates the common pattern used across all protocol implementations
- * while allowing each protocol to maintain its specific ready condition.
+ * whilst allowing each protocol to maintain its specific ready condition.
  *
  * Benefits:
  * - Eliminates code duplication (4 protocols × multiple call sites = ~10 instances)
- * - Centralizes LED update logic for keyboard state
+ * - Centralises LED update logic for keyboard state
  * - Maintains protocol-specific condition flexibility
  * - Zero overhead (inline, compiled away when CONVERTER_LEDS undefined)
  *
@@ -112,7 +112,7 @@ void update_converter_status(void);
  * update_keyboard_ready_led(keyboard_state >= INITIALISED);
  * ```
  *
- * @param ready true if keyboard is initialized and ready, false otherwise
+ * @param ready true if keyboard is initialised and ready, false otherwise
  *
  * @note Inline function provides zero-overhead abstraction
  * @note Compiled to nothing when CONVERTER_LEDS is not defined
@@ -132,7 +132,7 @@ static inline void update_keyboard_ready_led(bool ready) {
  * @brief Lock Key State Structure
  *
  * Tracks the state of keyboard lock indicators (Num Lock, Caps Lock, Scroll Lock).
- * Synchronized with host operating system lock key states via USB HID reports.
+ * Synchronised with host operating system lock key states via USB HID reports.
  */
 typedef struct lock_keys {
     unsigned char numLock    : 1; /**< Num Lock state */

@@ -127,7 +127,7 @@ Set 3 usage is limited to terminal keyboards and industrial equipment, which mea
 
 **Note**: Set 3 has no `E0` or `E1` codes. Those bytes are not used.
 
-**Self-Test Codes (`0xAA`, `0xFC`):** These keyboard initialization codes are filtered by the protocol layer during initialization. The scancode processor provides defense-in-depth for post-initialization scenarios (hot-plug, unstable connections). Unlike Set 1, Set 3 has no collision issue since break codes use the F0 prefix. See [Set 1 Self-Test Code Collision](set1.md#self-test-code-collision) for comparison.
+**Self-Test Codes (`0xAA`, `0xFC`):** These keyboard initialisation codes are filtered by the protocol layer during initialisation. The scancode processor does not filter these codes, so post‑initialisation filtering relies on the protocol layer. Unlike Set 1, Set 3 has no collision issue since break codes use the F0 prefix. See [Set 1 Self-Test Code Collision](set1.md#self-test-code-collision) for comparison.
 
 ## Example Sequences
 
@@ -221,7 +221,7 @@ Set 3 supports all AT/PS2 commands:
 
 ## Key Layout
 
-Set 3 organizes scancodes more logically than Sets 1 or 2:
+Set 3 organises scancodes more logically than Sets 1 or 2:
 
 ### Function Keys (0x01-0x0E)
 ```
@@ -360,7 +360,7 @@ Generic Set 3 initialisation procedure:
 5. Keyboard is ready
 ```
 
-**Note about this converter**: This implementation **auto-detects** the keyboard's current scancode set based on its ID and does NOT send the `F0 03` command to force-switch scancode sets. Keyboards with IDs 0xBFxx and 0x7Fxx default to Set 3 at power-up, while 0xAB86-0xAB92 keyboards boot in Set 2. The converter configures itself to match the keyboard's native set, eliminating the need for set-switching commands.
+**Note about this converter**: This implementation **auto-detects** the keyboard's current scancode set based on its ID and does NOT send the `F0 03` command to force-switch scancode sets. Keyboards with IDs 0xBFxx and 0x7Fxx default to Set 3 at power-up, whilst 0xAB86-0xAB92 keyboards boot in Set 2. The converter configures itself to match the keyboard's native set, eliminating the need for set-switching commands.
 
 ### Typematic Control
 
@@ -382,7 +382,7 @@ Despite being the cleanest design:
 
 1. **Late introduction**: Sets 1 and 2 were already entrenched by 1987
 2. **BIOS support**: BIOS implementations vary in support for Set 3 (Sets 1 and 2 have broader support)
-3. **Limited hardware**: Only terminal and specialized keyboards used it
+3. **Limited hardware**: Only terminal and specialised keyboards used it
 4. **Backward compatibility**: Standard keyboards stayed with Set 2
 5. **Cost**: No compelling reason to switch for consumer keyboards
 

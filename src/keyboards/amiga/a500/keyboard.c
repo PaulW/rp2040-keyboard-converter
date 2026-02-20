@@ -44,9 +44,6 @@
 
 // clang-format on
 
-/* Layer count override - matches number of layers defined in keymap_map below */
-const uint8_t keymap_layer_count = 1;
-
 /* Define Keyboard Layers */
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     KEYMAP_AMIGA(    /* Base Layer */
@@ -59,6 +56,9 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
                       LALT,  LGUI,                    SPC,                           RGUI,  RALT,                                           PDOT,  P0  // clang-format on
                  ),
 };
+
+/* Layer count - automatically calculated from keymap_map array size */
+const uint8_t keymap_layer_count = sizeof(keymap_map) / sizeof(keymap_map[0]);
 
 /*
  * Key mapping notes for Commodore Amiga 500/2000:

@@ -24,7 +24,7 @@
  *
  * This file implements the Commodore Amiga keyboard protocol used by Amiga computers
  * (A1000, A500, A2000, A3000, A4000) from 1985 onwards. This is a sophisticated
- * bidirectional protocol with handshaking and synchronization recovery.
+ * bidirectional protocol with handshaking and synchronisation recovery.
  *
  * Protocol Characteristics:
  * - 2-wire interface: CLOCK (keyboard clock) + DATA (bidirectional data)
@@ -34,7 +34,7 @@
  * - Bit rotation: Transmitted as 6-5-4-3-2-1-0-7 (bit 7 last)
  * - Active-low logic: HIGH = 0, LOW = 1
  * - Mandatory handshake: Computer must pulse DATA low for 85µs after each byte
- * - Automatic resynchronization on handshake timeout (143ms)
+ * - Automatic resynchronisation on handshake timeout (143ms)
  *
  * Physical Interface:
  * - CLOCK: Keyboard clock output, open-collector with pull-up
@@ -58,7 +58,7 @@
  * - Bits 6-0: Key identification code
  * - Special codes: 0x78, 0xF9, 0xFA, 0xFC, 0xFD, 0xFE
  *
- * Initialization Sequence:
+ * Initialisation Sequence:
  * 1. Keyboard powers up and performs self-test
  * 2. Keyboard clocks out 1-bits slowly until handshake received
  * 3. After sync: keyboard sends 0xFD (initiate powerup key stream)
@@ -125,7 +125,7 @@
 #define AMIGA_BIT_ROTATION_REST 0xFE /**< Transmitted bits 7-1 = original bits 6-0 */
 
 /**
- * @brief Initializes the Commodore Amiga keyboard interface
+ * @brief Initialises the Commodore Amiga keyboard interface
  *
  * Sets up PIO state machine and GPIO configuration for Amiga keyboard
  * communication. Configures bidirectional DATA line for data reception

@@ -41,7 +41,7 @@ static uint    mouse_data_pin;
 static int8_t  data_loop             = 0;  // Packet alignment counter (reset on re-init)
 static uint8_t mouse_config_sequence = 0;  // Configuration sequence counter (reset on re-init)
 
-/* Mouse packet state (cleared on re-initialization) */
+/* Mouse packet state (cleared on re-initialisation) */
 static uint8_t buttons[5]    = {0, 0, 0, 0, 0};
 static uint8_t parameters[4] = {0, 0, 0, 0};
 static int8_t  pos[3]        = {0, 0, 0};
@@ -302,7 +302,7 @@ void mouse_event_processor(uint8_t data_byte) {
                 if (mouse_config_sequence == sizeof(config_sequence) / sizeof(config_sequence[0])) {
                     mouse_config_sequence = 0;
                     mouse_state           = INITIALISED;
-                    data_loop             = 0;  // Reset packet alignment on initialization
+                    data_loop             = 0;  // Reset packet alignment on initialisation
                     // Clear extended-mouse fields in case mouse type changed
                     buttons[BUTTON_BACKWARD] = 0;
                     buttons[BUTTON_FORWARD]  = 0;
@@ -482,8 +482,8 @@ void mouse_interface_task() {
 }
 
 /**
- * @brief Initializes the AT/PS2 PIO interface for the mouse.
- * This function initializes the AT/PS2 PIO interface for the mouse by performing the following
+ * @brief Initialises the AT/PS2 PIO interface for the mouse.
+ * This function initialises the AT/PS2 PIO interface for the mouse by performing the following
  * steps:
  * 1. Resets the converter status if CONVERTER_LEDS is defined.
  * 2. Finds an available PIO to use for the keyboard interface program.
@@ -491,7 +491,7 @@ void mouse_interface_task() {
  * 4. Sets up the IRQ for the PIO state machine.
  * 5. Defines the polling interval and cycles per clock for the state machine.
  * 6. Gets the base clock speed of the RP2040.
- * 7. Initializes the PIO interface program.
+ * 7. Initialises the PIO interface program.
  * 8. Sets the IRQ handler and enables the IRQ.
  *
  * @param data_pin The data pin to be used for the mouse interface.
@@ -499,7 +499,7 @@ void mouse_interface_task() {
 void mouse_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
     converter.state.mouse_ready = 0;
-    update_converter_status();  // Initialize converter status LEDs to "not ready" state
+    update_converter_status();  // Initialise converter status LEDs to "not ready" state
 #endif
 
     // Claim PIO instance and state machine atomically with fallback
@@ -516,15 +516,20 @@ void mouse_interface_setup(uint data_pin) {
     // Reference: IBM 84F9735 PS/2 Hardware Interface Technical Reference
     float clock_div = calculate_clock_divider(ATPS2_TIMING_CLOCK_MIN_US);
 
-    // Initialize PIO program with calculated clock divider
+    // Initialise PIO program with calculated clock divider
     pio_interface_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin,
                                clock_div);
 
-    // Initialize shared PIO IRQ dispatcher (safe to call multiple times)
+    // Initialise shared PIO IRQ dispatcher (safe to call multiple times)
     pio_irq_dispatcher_init(pio_engine.pio);
 
     // Register mouse event handler with the dispatcher
     if (!pio_irq_register_callback(&mouse_input_event_handler)) {
+        pio_sm_unclaim(pio_engine.pio, pio_engine.sm);
+        pio_remove_program(pio_engine.pio, &pio_interface_program, pio_engine.offset);
+        pio_engine.pio    = NULL;
+        pio_engine.sm     = -1;
+        pio_engine.offset = -1;
         LOG_ERROR("AT/PS2 Mouse: Failed to register IRQ callback\n");
         return;
     }

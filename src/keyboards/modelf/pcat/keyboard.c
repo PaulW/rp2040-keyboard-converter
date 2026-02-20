@@ -41,9 +41,6 @@
 
 // clang-format on
 
-/* Layer count override - matches number of layers defined in keymap_map below */
-const uint8_t keymap_layer_count = 2;
-
 /* Define Keyboard Layers */
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     KEYMAP_PCAT(                  /* Layer 0: Base Layer
@@ -67,3 +64,6 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     TRNS,  TRNS,      TRNS,                                            TRNS,                                            APP,              INS,   DEL  // clang-format on
                 ),
 };
+
+/* Layer count - automatically calculated from keymap_map array size */
+const uint8_t keymap_layer_count = sizeof(keymap_map) / sizeof(keymap_map[0]);

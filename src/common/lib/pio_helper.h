@@ -85,7 +85,7 @@ float calculate_clock_divider(int min_clock_pulse_width_us);
 typedef void (*pio_irq_callback_t)(void);
 
 /**
- * @brief Initialize the PIO IRQ dispatcher for a PIO instance
+ * @brief Initialise the PIO IRQ dispatcher for a PIO instance
  *
  * Sets up a shared PIO IRQ handler that multiplexes between multiple protocol
  * event handlers. This allows multiple devices (e.g., keyboard + mouse) to share

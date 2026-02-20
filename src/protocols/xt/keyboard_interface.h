@@ -57,8 +57,8 @@
  * - Break codes: Make code + 0x80 (key release)
  * - No multi-byte sequences or special commands
  *
- * Initialization:
- * - No initialization sequence required
+ * Initialisation:
+ * - No initialisation sequence required
  * - Keyboard begins transmitting immediately when powered
  * - Host simply receives and processes scan codes
  *
@@ -114,7 +114,7 @@
 #define XT_TIMING_SAMPLE_US     10 /**< PIO sampling interval for double-start-bit detection (10µs) */
 
 /**
- * @brief Initializes the IBM XT keyboard interface
+ * @brief Initialises the IBM XT keyboard interface
  *
  * Sets up PIO state machine and GPIO configuration for XT keyboard
  * communication. XT keyboards require minimal setup since they use

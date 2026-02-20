@@ -52,9 +52,9 @@
  *
  * ```c
  * // Standard usage (recommended):
- * LOG_ERROR("Failed to initialize: code=0x%02X\n", error_code);
+ * LOG_ERROR("Failed to initialise: code=0x%02X\n", error_code);
  * LOG_WARN("PIO0 full, falling back to PIO1\n");
- * LOG_INFO("Device initialized successfully\n");
+ * LOG_INFO("Device initialised successfully\n");
  * LOG_DEBUG("Scancode received: 0x%02X\n", scancode);
  *
  * // Runtime level changes (programmatically):
@@ -137,7 +137,7 @@ typedef uint8_t log_level_t;
  * Thread Safety:
  * - Safe to call from any context (atomic uint8_t write on Cortex-M0+)
  * - Changes take effect immediately for subsequent log calls
- * - No synchronization needed
+ * - No synchronisation needed
  *
  * @param level New minimum log level (LOG_LEVEL_ERROR, LOG_LEVEL_INFO, or LOG_LEVEL_DEBUG)
  *
@@ -176,7 +176,7 @@ void log_set_level(log_level_t level);
 log_level_t log_get_level(void);
 
 /**
- * @brief Initialize logging system
+ * @brief Initialise logging system
  *
  * Sets the initial log level from config.h (LOG_LEVEL_DEFAULT).
  * This is automatically called by init_uart_dma(), so explicit
@@ -219,7 +219,7 @@ void log_init(void);
  *
  * Example:
  * ```c
- * LOG_ERROR("Failed to initialize device: error=0x%02X\n", error);
+ * LOG_ERROR("Failed to initialise device: error=0x%02X\n", error);
  * ```
  */
 #define LOG_ERROR(fmt, ...)                       \
@@ -269,7 +269,7 @@ void log_init(void);
  *
  * Example:
  * ```c
- * LOG_INFO("Device initialized: type=0x%04X\n", device_id);
+ * LOG_INFO("Device initialised: type=0x%04X\n", device_id);
  * ```
  */
 #define LOG_INFO(fmt, ...)                        \

@@ -104,7 +104,7 @@ __attribute__((noinline)) void ram_check_verify(void) {
 #else
 
 // Stub implementation when RUN_FROM_RAM_CHECK is not defined
-// Compiler will optimize this away entirely (zero overhead)
+// Compiler will optimise this away entirely (zero overhead)
 void ram_check_verify(void) {
     // No-op in release builds
 }

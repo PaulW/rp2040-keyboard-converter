@@ -35,7 +35,7 @@ The script runs through seventeen different checks, each targeting a specific ar
 
 1. **ringbuf_reset() Usage** - Detects calls to `ringbuf_reset()`
    - ⚠️ **Warns**: Must only be called with IRQs disabled
-   - 💡 **Fix**: Only use during initialization or state machine resets
+   - 💡 **Fix**: Only use during initialisation or state machine resets
    - 💡 **Suppress warning**: Add `// LINT:ALLOW ringbuf_reset` comment on same line
 
 1. **docs-internal/ in Repository** - Checks for committed internal docs
@@ -69,7 +69,7 @@ The script runs through seventeen different checks, each targeting a specific ar
    - ⚠️ **Warns**: Possible camelCase function/variable names
    - 💡 **Fix**: Use snake_case (e.g., `keyboard_interface_task`, not `keyboardInterfaceTask`)
 
-1. **Include Order** - Validates include directive organization
+1. **Include Order** - Validates include directive organisation
    - ⚠️ **Warns**: Own header not first, or SDK headers after project headers
    - 💡 **Fix**: Order: own header → blank line → stdlib → Pico SDK → external libs → project headers
 
@@ -84,14 +84,14 @@ The script runs through seventeen different checks, each targeting a specific ar
 
 1. **Protocol Setup Consistency (Ring Buffer)** - Validates keyboard protocol setup pattern
    - ⚠️ **Warns**: Missing `ringbuf_reset()` call in `keyboard_interface_setup()` (keyboard protocols only)
-   - 💡 **Fix**: Add `ringbuf_reset()` before PIO/IRQ setup as part of the standard 13-step initialization
+   - 💡 **Fix**: Add `ringbuf_reset()` before PIO/IRQ setup as part of the standard 13-step initialisation
    - 📝 **Note**: Mouse protocols excluded (direct event processing, no ring buffer)
    - 📚 **Reference**: See [Protocol Implementation Guide](../docs/development/protocol-implementation.md)
 
-1. **Protocol Setup Consistency (PIO IRQ Dispatcher)** - Validates centralized PIO IRQ management
+1. **Protocol Setup Consistency (PIO IRQ Dispatcher)** - Validates centralised PIO IRQ management
    - ❌ **Fails**: Direct `irq_set_priority()` calls in protocol code (deprecated pattern)
    - ⚠️ **Warns**: Missing `pio_irq_dispatcher_init()` call in protocol setup functions
-   - 💡 **Fix**: Use centralized PIO IRQ dispatcher from pio_helper subsystem
+   - 💡 **Fix**: Use centralised PIO IRQ dispatcher from pio_helper subsystem
      - Call `pio_irq_dispatcher_init(pio_engine.pio)` during setup
      - Call `pio_irq_register_callback(&handler_function)` to register protocol handler
      - Do NOT call `irq_set_priority()` directly in protocols (managed centrally)
@@ -203,7 +203,7 @@ void main_loop(void) {
 
 #### Suppressing ringbuf_reset Warnings
 
-**Problem**: Legitimate `ringbuf_reset()` call during initialization triggers warning
+**Problem**: Legitimate `ringbuf_reset()` call during initialisation triggers warning
 
 **Fix**: Add annotation comment
 ```c
@@ -226,7 +226,7 @@ Debug builds (`cmake -DCMAKE_BUILD_TYPE=Debug`) include a runtime verification t
 int main(void) {
     ram_check_verify();  // Panics if executing from Flash (0x10000000)
                           // Passes if executing from SRAM (0x20000000)
-    // ... rest of initialization
+    // ... rest of initialisation
 }
 ```
 

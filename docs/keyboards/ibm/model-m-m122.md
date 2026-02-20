@@ -61,7 +61,7 @@ See: [Building Firmware Guide](../../getting-started/building-firmware.md)
 
 ## Key Mapping
 
-The default keymap preserves the terminal keyboard layout while adapting it for modern use.
+The default keymap preserves the terminal keyboard layout whilst adapting it for modern use.
 
 ### Base Layer Mapping (Layer 0 - NumLock On)
 
@@ -245,7 +245,7 @@ Example Type 2 part numbers:
 **Check the basics first:**
 - Verify DATA/CLOCK pins match [`config.h`](../../../src/config.h)
 - Check 5V is stable—use external power rather than Pico VBUS if possible
-- DIN connector can oxidize over time—clean the pins with contact cleaner
+- DIN connector can oxidise over time—clean the pins with contact cleaner
 - Test cable continuity—old cables may have broken wires inside
 
 ### Keys Not Registering

@@ -29,14 +29,14 @@
  *
  * This header provides runtime scancode set selection for keyboards that support
  * multiple scancode sets. This is primarily useful for AT/PS2 protocol keyboards
- * which can be queried during initialization to determine their scancode set.
+ * which can be queried during initialisation to determine their scancode set.
  *
  * Protocol-Specific Behavior:
  * ---------------------------
  *
  * **XT Protocol:**
  * - Always uses Set 1 (no choice available)
- * - No initialization or ID commands
+ * - No initialisation or ID commands
  * - Fixed scancode set determined by hardware
  * - Use compile-time configuration (SCANCODE_SET=1)
  *
@@ -58,7 +58,7 @@
  * static const scancode_config_t *g_scancode_config = NULL;
  *
  * void keyboard_interface_init(void) {
- *     // ... AT/PS2 initialization ...
+ *     // ... AT/PS2 initialisation ...
  *
  *     // Read keyboard ID (command 0xF2)
  *     send_command(0xF2);
@@ -181,7 +181,7 @@
  * @brief Scancode Set Detection from Keyboard ID
  *
  * Determines the appropriate scancode set configuration based on the AT/PS2
- * keyboard identification code. This is useful during initialization to
+ * keyboard identification code. This is useful during initialisation to
  * automatically select the correct scancode set.
  *
  * Detection Logic (based on tmk reference implementation):
@@ -231,7 +231,7 @@ static inline const scancode_config_t* scancode_config_from_keyboard_id(uint16_t
  *
  * This macro provides a simple way to use runtime configuration with a global
  * configuration pointer. The protocol implementation sets the pointer during
- * initialization, and this macro provides a backward-compatible interface.
+ * initialisation, and this macro provides a backward-compatible interface.
  *
  * Usage:
  * ```c

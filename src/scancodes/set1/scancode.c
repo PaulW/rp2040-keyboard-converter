@@ -30,7 +30,7 @@
  *
  * Some XT keyboards use E0-prefixed codes for extended keys (arrows, function keys,
  * multimedia keys, etc.). This lookup table translates E0-prefixed scan codes to
- * their normalized interface codes used throughout the converter.
+ * their normalised interface codes used throughout the converter.
  *
  * The table is sparse (most entries are 0) to allow direct indexing by scan code.
  * A return value of 0 indicates the code should be ignored (e.g., fake shifts).
@@ -41,7 +41,7 @@
  * - Used for special keys (Windows/GUI keys, application key)
  * - Used for multimedia keys (power, sleep, wake)
  */
-static const uint8_t e0_code_translation[256] = {
+static const uint8_t e0_code_translation[64] = {
     [0x1C] = 0x6F,  // Keypad Enter
     [0x1D] = 0x7A,  // Right Control
     [0x35] = 0x7F,  // Keypad Slash (/)
@@ -114,7 +114,7 @@ static inline uint8_t switch_e0_code(uint8_t code) {
  * - E0 2A, E0 AA, E0 36, E0 B6: Fake shifts (ignored, some keyboards send these)
  * - E1 sequences: Only used for Pause/Break key
  * - Codes >= 0x80: Break codes (key release)
- * - Self-test codes (0xAA, 0xFC) are handled by protocol layer during initialization
+ * - Self-test codes (0xAA) are handled by protocol layer during initialisation
  *
  * @param code The keycode to process.
  *
@@ -142,10 +142,7 @@ void process_scancode(uint8_t code) {
                     state = E1;
                     break;
                 default:  // Handle normal key event
-                    if (code == 0xAA || code == 0xFC) {
-                        // Filter self-test codes (0xAA overlaps with valid Left Shift break)
-                        LOG_DEBUG("!INIT! (0x%02X)\n", code);
-                    } else if (code <= 0xD3) {
+                    if (code <= 0xD3) {
                         handle_keyboard_report(code & 0x7F, code < 0x80);
                     } else {
                         LOG_DEBUG("!INIT! (0x%02X)\n", code);
@@ -185,6 +182,7 @@ void process_scancode(uint8_t code) {
                     break;
                 default:
                     state = INIT;
+                    LOG_DEBUG("!E1! (0x%02X)\n", code);
                     break;
             }
             break;

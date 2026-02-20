@@ -38,7 +38,7 @@
 //
 // UART_DMA_QUEUE_SIZE: Number of messages that can be queued
 //   - Must be a power of 2 (enforced by compile-time check)
-//   - Typical: 64 entries (handles initialization bursts)
+//   - Typical: 64 entries (handles initialisation bursts)
 //   - Memory usage: 256 × 64 = 16KB (current configuration)
 //   - Larger queue = more burst tolerance but more RAM usage
 //

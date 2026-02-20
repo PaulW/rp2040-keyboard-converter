@@ -35,7 +35,7 @@
  *
  * Some XT keyboards use E0-prefixed codes for extended keys (arrows, function keys,
  * multimedia keys, etc.). This lookup table translates E0-prefixed scan codes to
- * their normalized interface codes used throughout the converter.
+ * their normalised interface codes used throughout the converter.
  *
  * The table is sparse (most entries are 0) to allow direct indexing by scan code.
  * A return value of 0 indicates the code should be ignored (e.g., fake shifts).
@@ -77,7 +77,7 @@ static const uint8_t set1_e0_translation[256] = {
  * @brief E0-Prefixed Scancode Translation Table for AT/PS2 Set 2 Protocol
  *
  * AT/PS2 keyboards use E0-prefixed codes extensively for extended functionality.
- * This lookup table translates E0-prefixed Set 2 scan codes to normalized interface
+ * This lookup table translates E0-prefixed Set 2 scan codes to normalised interface
  * codes used throughout the converter.
  *
  * The table is sparse (most entries are 0) to allow direct indexing by scan code.
@@ -248,13 +248,10 @@ static void process_normal_code(uint8_t code, const scancode_config_t* config) {
     switch (config->set) {
         case SCANCODE_SET1:
             // Set 1: Break = make | 0x80, valid break range 0x81-0xD3
-            if (code == 0xAA || code == 0xFC) {
-                // Filter self-test codes (0xAA overlaps with valid Left Shift break)
-                LOG_DEBUG("!INIT! (0x%02X)\n", code);
-            } else if (code <= 0xD3) {
+            if (code <= 0xD3) {
                 handle_keyboard_report(code & 0x7F, code < 0x80);
             } else {
-                LOG_DEBUG("!INIT! (0x%02X)\n", code);
+                LOG_DEBUG("!INIT! out-of-range (0x%02X)\n", code);
             }
             break;
 

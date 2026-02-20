@@ -54,7 +54,7 @@
 int main(void) {
     hid_device_setup();
     init_uart_dma();
-    command_mode_init();  // Initialize command mode system
+    command_mode_init();  // Initialise command mode system
 
     // Load persistent configuration from flash
     if (!config_init()) {
@@ -64,7 +64,7 @@ int main(void) {
     // Apply saved log level
     log_set_level(config_get()->log_level);
 
-    // Initialize layer system and restore saved layer state
+    // Initialise layer system and restore saved layer state
     keylayers_init();
 
     char pico_unique_id[32];

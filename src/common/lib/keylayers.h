@@ -61,7 +61,7 @@ extern layer_state_t layer_state;
 extern const uint8_t keymap_layer_count __attribute__((weak));
 
 /**
- * @brief Initialize layer system and restore saved layer state
+ * @brief Initialise layer system and restore saved layer state
  *
  * Must be called after config_init() during boot.
  * Validates saved layer state against current keymap configuration.
@@ -72,7 +72,7 @@ void keylayers_init(void);
  * @brief Reset layer state to base layer (layer 0)
  *
  * Clears all layer activations and returns to base layer.
- * Used during initialization and error recovery.
+ * Used during initialisation and error recovery.
  */
 void keylayers_reset(void);
 

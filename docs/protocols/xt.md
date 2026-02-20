@@ -45,8 +45,8 @@ Data flows one way only—keyboard to host. There's no mechanism for the host to
 
 **Event-Driven Synchronous Serial Communication**
 
-The protocol is synchronous—it uses a dedicated clock signal for data transmission. The keyboard sends scancodes whenever keys are pressed (event-driven), but all data transmission is synchronized to the clock signal:
-- **Clock Signal**: Keyboard provides a CLOCK line for bit-level synchronization
+The protocol is synchronous—it uses a dedicated clock signal for data transmission. The keyboard sends scancodes whenever keys are pressed (event-driven), but all data transmission is synchronised to the clock signal:
+- **Clock Signal**: Keyboard provides a CLOCK line for bit-level synchronisation
 - **Data Signal**: Separate DATA line carries the actual scancodes
 - **Synchronous Transmission**: Each bit is clocked out on a dedicated CLOCK line (not a predetermined baud rate)
 - **Event-Driven Protocol**: Keyboard transmits whenever key events occur (no fixed timing between scancodes)
@@ -171,7 +171,7 @@ S   = Start bit (DATA goes HIGH momentarily)
 **Transmission Sequence:**
 
 1. **Request-to-Send (RTS)**: Keyboard pulls both CLOCK and DATA LOW (~40µs) to confirm the host is ready
-2. **Clear-to-Send (CTS)**: Keyboard releases CLOCK (goes HIGH), synchronizing timing domains
+2. **Clear-to-Send (CTS)**: Keyboard releases CLOCK (goes HIGH), synchronising timing domains
 3. **Start Bit**: DATA briefly goes HIGH then LOW
 4. **Data Bits**: 8 bits transmitted with CLOCK pulses, DATA sampled on falling CLOCK edge
 5. **Return to Idle**: Both CLOCK and DATA return HIGH
@@ -195,7 +195,7 @@ S   = Start condition (CLOCK falls, DATA transitions)
 
 **Simplified Sequence:**
 
-1. **Start Condition**: CLOCK falls while DATA transitions
+1. **Start Condition**: CLOCK falls whilst DATA transitions
 2. **Data Bits**: 8 bits transmitted with CLOCK pulses
 3. **Return to Idle**: Both lines return HIGH
 
@@ -322,7 +322,7 @@ uint8_t get_base_key(uint8_t scancode) {
 - 0xFC: Hardware failure detected
 
 **Protocol Layer Filtering:**
-The XT protocol implementation filters 0xAA during initialization (UNINITIALISED state) to prevent it from being processed as a scancode. Once INITIALISED, codes pass through to the scancode layer, which provides defense-in-depth filtering for post-initialization scenarios. See [Scancode Set 1 Self-Test Code Collision](../scancodes/set1.md#self-test-code-collision) for details on why this matters.
+The XT protocol implementation filters 0xAA during initialisation (UNINITIALISED state) to prevent it from being processed as a scancode. Once INITIALISED, codes pass through to the scancode layer, which provides defense-in-depth filtering for post-initialisation scenarios. See [Scancode Set 1 Self-Test Code Collision](../scancodes/set1.md#self-test-code-collision) for details on why this matters.
 
 **Note**: For complete scancode tables with all key mappings, see the **[Scancode Set 1](../scancodes/set1.md)** documentation.
 
@@ -388,7 +388,7 @@ softReset:
 - **Power-on initialisation**: After keyboard powers up and brings CLOCK/DATA HIGH
 - **BAT failure recovery**: When keyboard returns invalid BAT response
 - **Communication error**: When invalid start bit detected (triggers `pio_restart()`)
-- **State machine reset**: After protocol errors or frame synchronization loss
+- **State machine reset**: After protocol errors or frame synchronisation loss
 
 ### Normal Operation
 
@@ -487,7 +487,7 @@ static void __isr keyboard_input_event_handler() {
 
 - PIO handles all timing automatically (no software delays)
 - 10µs sampling rate allows genuine vs clone keyboard detection
-- Start bit validation confirms frame synchronization
+- Start bit validation confirms frame synchronisation
 - Ring buffer queues scancodes for main loop processing
 - Non-blocking architecture (IRQ → ring buffer → main task)
 - Standard protocol setup pattern (see [Protocol Implementation Guide](../development/protocol-implementation.md))

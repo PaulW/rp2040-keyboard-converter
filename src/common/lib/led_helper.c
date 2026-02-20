@@ -29,7 +29,7 @@
 #include "ws2812/ws2812.h"
 #endif
 
-// Initialize the converter state with both keyboard and mouse states set to ready
+// Initialise the converter state with both keyboard and mouse states set to ready
 converter_state_union converter = {.value = 0xC3};
 
 lock_keys_union lock_leds;
@@ -59,8 +59,8 @@ volatile bool log_level_selection_mode = false;
  * This function updates WS2812 RGB LEDs to reflect the converter's operational state.
  * The status LED shows different colors for different states:
  * - Firmware flash mode: Magenta (bootloader active)
- * - Ready (KB + Mouse): Green (all devices initialized)
- * - Not ready: Orange (waiting for device initialization)
+ * - Ready (KB + Mouse): Green (all devices initialised)
+ * - Not ready: Orange (waiting for device initialisation)
  *
  * If CONVERTER_LOCK_LEDS is defined, additional LEDs show lock key states
  * (Num Lock, Caps Lock, Scroll Lock).
@@ -147,6 +147,7 @@ bool update_converter_leds(void) {
     } else {
         // One or more LEDs failed to queue - mark as pending for retry
         led_update_pending = true;
+        __dmb();  // Memory barrier - ensure IRQ-visible writes complete
     }
 
     return success;
@@ -181,6 +182,7 @@ bool update_converter_leds(void) {
  */
 void update_converter_status(void) {
 #ifdef CONVERTER_LEDS
+    __dmb();  // Ensure latest IRQ updates are visible before reads
     static uint8_t status;
     // Update if state changed OR if a previous update is pending
     if (status != converter.value || led_update_pending) {
@@ -249,7 +251,7 @@ void update_converter_status(void) {
  * @note Integer-only math for RP2040 performance
  */
 uint32_t hsv_to_rgb(uint16_t hue, uint8_t saturation, uint8_t value) {
-    // Normalize hue to 0-359
+    // Normalise hue to 0-359
     hue = hue % 360;
 
     // Calculate RGB components using efficient integer math

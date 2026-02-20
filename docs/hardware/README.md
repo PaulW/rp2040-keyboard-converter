@@ -153,7 +153,7 @@ This is another good option if you can find one:
 - **Chip**: TXB0104 with automatic direction sensing
 - **Speed**: 100 Mbps data rate
 - **Slightly more compact** than BSS138 modules
-- **Availability**: More specialized, works just as well
+- **Availability**: More specialised, works just as well
 
 **Important notes:**
 - Both sides need their voltage references (LV=3.3V, HV=5V)

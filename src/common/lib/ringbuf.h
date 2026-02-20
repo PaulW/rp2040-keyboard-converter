@@ -48,10 +48,10 @@
  * - Producer (IRQ): Writes to head pointer, reads tail pointer
  * - Consumer (main): Writes to tail pointer, reads head pointer
  * - Volatile qualifiers ensure visibility across contexts
- * - Memory barriers (DMB) provide explicit synchronization guarantees
+ * - Memory barriers (DMB) provide explicit synchronisation guarantees
  * - No locks needed due to single-producer/single-consumer design
  *
- * Performance Optimizations:
+ * Performance Optimisations:
  * - Inline functions for zero-overhead abstraction
  * - Power-of-2 size enables fast masking (AND) instead of modulo
  * - Caller-checked guards eliminate redundant conditional branches
@@ -82,7 +82,7 @@ typedef struct {
     uint8_t*         buffer;
     volatile uint8_t head;       // Modified by IRQ, read by main loop - must be volatile
     volatile uint8_t tail;       // Modified by main loop, read by IRQ - must be volatile
-    uint8_t          size_mask;  // Constant after initialization - no volatile needed
+    uint8_t          size_mask;  // Constant after initialisation - no volatile needed
 } ringbuf_t;
 
 // External access to ring buffer structure (defined in ringbuf.c)
@@ -130,13 +130,13 @@ static inline bool ringbuf_is_full(void) {
  * @warning No bounds checking - returns stale data if buffer is empty
  * @note Uses __force_inline for zero-overhead abstraction
  *
- * Thread-safety: Safe when called from main loop while IRQ modifies head pointer.
+ * Thread-safety: Safe when called from main loop whilst IRQ modifies head pointer.
  * Double memory barrier pattern ensures:
  * 1. Acquire barrier: See all producer writes before reading data
  * 2. Release barrier: Data read completes before tail update visible to producer
  */
 __force_inline static uint8_t ringbuf_get(void) {
-    __dmb();  // Acquire: synchronize with producer's writes
+    __dmb();  // Acquire: synchronise with producer's writes
     uint8_t data = rbuf.buffer[rbuf.tail];
     __dmb();  // Release: ensure data read completes before tail update visible
     rbuf.tail = (rbuf.tail + 1) & rbuf.size_mask;
@@ -159,7 +159,7 @@ __force_inline static uint8_t ringbuf_get(void) {
  * @note Uses __force_inline for zero-overhead abstraction
  * @note Typically called from IRQ context - must be fast
  *
- * Thread-safety: Safe when called from IRQ while main loop modifies tail pointer.
+ * Thread-safety: Safe when called from IRQ whilst main loop modifies tail pointer.
  * The volatile qualifier ensures head writes are visible to main loop.
  * Memory barrier ensures head update is visible after data write completes.
  */

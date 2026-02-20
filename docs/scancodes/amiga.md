@@ -40,7 +40,7 @@ The Amiga CAPS LOCK key (scancode 0x62) has unique behavior that differs from al
 **Our Implementation**:
 - **CAPS LOCK handling is done in the protocol layer** (`keyboard_interface.c`), NOT in this scancode processor
 - Protocol layer detects CAPS LOCK by key code (0x62)
-- **Smart synchronization**: Compares keyboard LED state (from bit 7) with USB HID CAPS LOCK state
+- **Smart synchronisation**: Compares keyboard LED state (from bit 7) with USB HID CAPS LOCK state
 - **Only toggles if states differ**: Prevents unnecessary HID events and handles desync gracefully
 - Generates press+release pair with configurable hold time (default 125ms, set via `CAPS_LOCK_TOGGLE_TIME_MS` in `config.h`)
 - This scancode processor receives normal make/break codes and processes them uniformly
@@ -49,7 +49,7 @@ The Amiga CAPS LOCK key (scancode 0x62) has unique behavior that differs from al
 
 The Amiga keyboard maintains its own CAPS LOCK LED state internally. The computer cannot control Amiga keyboard LEDs (unlike PC keyboards with LED control commands). By sending the LED state instead of press/release, the keyboard ensures the computer knows the current LED state after each toggle.
 
-USB HID CAPS LOCK is a **toggle key**: each press+release cycle toggles the state. The protocol layer implements smart synchronization that only sends toggle events when keyboard LED and USB HID states differ, handling scenarios like:
+USB HID CAPS LOCK is a **toggle key**: each press+release cycle toggles the state. The protocol layer implements smart synchronisation that only sends toggle events when keyboard LED and USB HID states differ, handling scenarios like:
 - Normal operation (both states match)
 - Desync after converter reboot (keyboard powered, USB reset)
 - Rapid presses before USB completes toggle
@@ -71,12 +71,12 @@ User presses CAPS LOCK (second time):
   Result: Both keyboard LED and USB CAPS are OFF ✓
 
 Reboot scenario (keyboard stays powered):
-  Before: LED ON, USB ON (synchronized)
+  Before: LED ON, USB ON (synchronised)
   After reboot: LED ON (unchanged), USB OFF (reset)
   User presses CAPS LOCK:
     Keyboard: Toggles LED ON→OFF, sends 0xE2 (bit 7=1, "LED now OFF")
     Protocol: Check states - LED=OFF, USB=OFF → Same, skip toggle!
-    Result: Both OFF, automatically resynchronized ✓
+    Result: Both OFF, automatically resynchronised ✓
 ```
 
 ## Key Code Range
@@ -128,7 +128,7 @@ Raw bits    De-rotate        Extract         Keymap
 4. Special case: CAPS LOCK (0x62)
    - Generate press+release pair (ignore bit 7)
    - USB HID toggles on each press+release cycle
-   - Keeps keyboard LED and USB CAPS LOCK synchronized
+   - Keeps keyboard LED and USB CAPS LOCK synchronised
 5. Normal keys: Pass to HID layer with make/break flag
 
 **Output**: Calls `handle_keyboard_report(key_code, make)` for HID processing

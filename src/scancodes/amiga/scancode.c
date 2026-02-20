@@ -39,9 +39,9 @@
  * The Amiga CAPS LOCK key is unique in keyboard history:
  * 1. Only sends code on PRESS (never on release)
  * 2. Bit 7 indicates LED state (not press/release):
- *    - Bit 7 = 0 (0x62): CAPS LOCK LED is now ON (key was pressed while LED was off)
- *    - Bit 7 = 1 (0xE2): CAPS LOCK LED is now OFF (key was pressed while LED was on)
- * 3. Computer must track LED state to stay synchronized
+ *    - Bit 7 = 0 (0x62): CAPS LOCK LED is now ON (key was pressed whilst LED was off)
+ *    - Bit 7 = 1 (0xE2): CAPS LOCK LED is now OFF (key was pressed whilst LED was on)
+ * 3. Computer must track LED state to stay synchronised
  * 4. On power-up, LED starts OFF
  *
  * Why This Design?:
@@ -108,7 +108,7 @@
  * @brief CAPS LOCK timing state machine
  *
  * MacOS and some systems require CAPS LOCK held briefly (~100-150ms) to register.
- * This state machine delays the release event while keeping clean architecture:
+ * This state machine delays the release event whilst keeping clean architecture:
  * - Protocol layer: ISR queues scancodes to ring buffer (single-producer)
  * - Main loop: Reads ring buffer, calls process_scancode()
  * - Scancode processor: Handles HID timing here (not in protocol layer)
@@ -160,7 +160,7 @@ static struct {
  *    - Each press+release cycle toggles the CAPS LOCK state
  *    - Amiga keyboard toggles LED on each physical press
  *    - Our press+release pair causes USB to toggle on each physical press
- *    - Both keyboard LED and USB CAPS LOCK toggle together, staying synchronized
+ *    - Both keyboard LED and USB CAPS LOCK toggle together, staying synchronised
  *
  * Protocol Notes:
  * - All codes arrive after de-rotation (6-5-4-3-2-1-0-7 → 7-6-5-4-3-2-1-0)
@@ -225,7 +225,7 @@ void process_scancode(uint8_t code) {
             LOG_DEBUG("Amiga CAPS LOCK: forced early release before new press\n");
         }
 
-        // Only toggle if states differ (synchronization logic)
+        // Only toggle if states differ (synchronisation logic)
         if (kbd_led_on != hid_caps_on) {
             LOG_DEBUG("Amiga CAPS LOCK out of sync - sending toggle\n");
             // Send press immediately

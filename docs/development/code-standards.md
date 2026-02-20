@@ -106,7 +106,7 @@ typedef struct {
 } ring_buffer_t;
 ```
 
-**Be descriptive:** Function names should describe what they do. Variable names should describe what they contain. Avoid abbreviations unless they're widely recognized (e.g., `pio`, `irq`, `usb`).
+**Be descriptive:** Function names should describe what they do. Variable names should describe what they contain. Avoid abbreviations unless they're widely recognised (e.g., `pio`, `irq`, `usb`).
 
 **Interrupt handlers:** Use `__isr` attribute and descriptive names:
 
@@ -210,7 +210,7 @@ Always document the threading context for functions and data structures:
  * 
  * Threading Model:
  * - Only accessed from main task context (via command_mode_process)
- * - No interrupt access, no synchronization needed
+ * - No interrupt access, no synchronisation needed
  */
 typedef struct {
     command_mode_state_t state;
@@ -312,7 +312,7 @@ The exception to this is debug-only code, which can use blocking operations if a
 
 ### No Multicore APIs
 
-The converter uses only Core 0. Core 1 is unused. Don't use any `multicore_*` or `core1_*` functions. This simplifies the architecture and avoids inter-core synchronization overhead.
+The converter uses only Core 0. Core 1 is unused. Don't use any `multicore_*` or `core1_*` functions. This simplifies the architecture and avoids inter-core synchronisation overhead.
 
 ```c
 // Bad: trying to use Core 1
@@ -376,7 +376,7 @@ Don't change these settings. Flash execution adds latency that breaks protocol t
 
 ### Volatile and Memory Barriers
 
-Variables shared between IRQ and main loop must be `volatile` to prevent compiler optimizations that assume single-threaded access.
+Variables shared between IRQ and main loop must be `volatile` to prevent compiler optimisations that assume single-threaded access.
 
 Use memory barriers (`__dmb()`) after writing volatile variables in IRQ context, and before reading them in main loop context:
 
@@ -563,7 +563,7 @@ This catches configuration errors at compile time rather than runtime.
 
 ---
 
-## Code Organization
+## Code Organisation
 
 ### File Structure
 
@@ -637,7 +637,7 @@ static bool process_make_code(uint8_t scancode) {
 }
 ```
 
-### Specialized Formatting
+### Specialised Formatting
 
 **Keyboard Layout Definitions:**
 
@@ -691,7 +691,7 @@ static const uint8_t e0_code_translation[256] = {
 
 The RP2040's Programmable I/O (PIO) requires special consideration:
 
-### PIO Program Organization
+### PIO Program Organisation
 
 **File structure:**
 - PIO assembly: `protocol_name.pio` or `interface.pio`

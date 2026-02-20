@@ -72,15 +72,15 @@
 #include "scancode.h"
 
 /* Static assert threshold constants */
-#define M0110_INIT_DELAY_MIN_MS        500  /**< Minimum initialization delay (ms) */
+#define M0110_INIT_DELAY_MIN_MS        500  /**< Minimum initialisation delay (ms) */
 #define M0110_MODEL_RETRY_MIN_MS       100  /**< Minimum model retry interval (ms) */
 #define M0110_RESPONSE_TIMEOUT_MIN_MS  100  /**< Minimum response timeout (ms) */
 #define M0110_MODEL_RETRY_MAX_MS       2000 /**< Maximum model retry interval (ms) */
 #define M0110_MODEL_RETRY_MAX_ATTEMPTS 5    /**< Maximum model request retry attempts */
 
 /* Compile-time validation of timing constants */
-_Static_assert(M0110_INITIALIZATION_DELAY_MS >= M0110_INIT_DELAY_MIN_MS,
-               "M0110 initialization delay must be at least 500ms for reliable keyboard startup");
+_Static_assert(M0110_INITIALISATION_DELAY_MS >= M0110_INIT_DELAY_MIN_MS,
+               "M0110 initialisation delay must be at least 500ms for reliable keyboard startup");
 _Static_assert(M0110_MODEL_RETRY_INTERVAL_MS >= M0110_MODEL_RETRY_MIN_MS,
                "M0110 model retry interval must be at least 100ms");
 _Static_assert(M0110_RESPONSE_TIMEOUT_MS >= M0110_RESPONSE_TIMEOUT_MIN_MS,
@@ -96,15 +96,15 @@ static uint keyboard_data_pin; /**< GPIO pin for DATA line (CLOCK = DATA + 1) */
 /**
  * @brief Apple M0110 Protocol State Machine
  *
- * The state machine manages the initialization and operation phases:
+ * The state machine manages the initialisation and operation phases:
  * - UNINITIALISED: Initial state, waiting for 1000ms startup delay
  * - INIT_MODEL_REQUEST: Sending Model Number commands every 500ms, waiting for identification
  * - INITIALISED: Normal operation with key processing and 500ms response timeout monitoring
  */
 static enum {
     UNINITIALISED,      /**< System startup, waiting for initial delay */
-    INIT_MODEL_REQUEST, /**< Sending model commands during initialization */
-    INITIALISED         /**< Initialization complete, transitioning to operation */
+    INIT_MODEL_REQUEST, /**< Sending model commands during initialisation */
+    INITIALISED         /**< Initialisation complete, transitioning to operation */
 } keyboard_state = UNINITIALISED;
 
 /* Timing and State Tracking Variables */
@@ -118,10 +118,10 @@ static volatile uint32_t last_response_time =
  * @brief Returns a human-readable description for an M0110 model response code
  *
  * Model response format (Apple spec): Bits 1-3=keyboard model, Bits 4-6=next device, Bit 7=chained
- * device This function is called only during initialization, so performance is not a concern.
+ * device This function is called only during initialisation, so performance is not a concern.
  *
  * @param model_byte Model identification byte from keyboard
- * @return Pointer to static string describing the keyboard model, or NULL if unrecognized
+ * @return Pointer to static string describing the keyboard model, or NULL if unrecognised
  */
 static const char* get_model_description(uint8_t model_byte) {
     switch (model_byte) {
@@ -165,7 +165,7 @@ static const char* get_model_description(uint8_t model_byte) {
 static void keyboard_command_handler(uint8_t command) {
     // Guard against setup failure - prevent NULL dereference if PIO allocation failed
     if (pio_engine.pio == NULL) {
-        LOG_ERROR("M0110 command 0x%02X dropped - PIO not initialized\n", command);
+        LOG_ERROR("M0110 command 0x%02X dropped - PIO not initialised\n", command);
         return;
     }
 
@@ -183,7 +183,7 @@ static void keyboard_command_handler(uint8_t command) {
  * @brief Processes keyboard response data from Apple M0110
  *
  * This function handles all incoming data from the keyboard, which can be:
- * - Model identification responses during initialization
+ * - Model identification responses during initialisation
  * - Key press/release scan codes during normal operation
  * - NULL responses indicating no key activity
  * - Special responses (keypad detection, etc.)
@@ -196,7 +196,7 @@ static void keyboard_command_handler(uint8_t command) {
  * - INITIALISED: Handle key data (store in ring buffer) or NULL responses
  *
  * Timing Considerations:
- * - Updates response timestamp used by main task for optimized timeout detection
+ * - Updates response timestamp used by main task for optimised timeout detection
  * - Response timing enables wraparound-safe timeout calculations in main loop
  * - Key data buffered for main task processing when USB HID interface ready
  *
@@ -212,14 +212,14 @@ static void keyboard_event_processor(uint8_t data_byte) {
             LOG_ERROR("M0110 received data in UNINITIALISED state: 0x%02X\n", data_byte);
             break;
         case INIT_MODEL_REQUEST:
-            // Handle model number response during initialization phase
+            // Handle model number response during initialisation phase
             {
                 const char* model_desc = NULL;
                 model_desc             = get_model_description(data_byte);
                 if (model_desc) {
                     LOG_INFO("Apple M0110 Keyboard Model: %s, reset and ready\n", model_desc);
                 } else {
-                    LOG_DEBUG("Unknown model response: 0x%02X - proceeding with initialization\n",
+                    LOG_DEBUG("Unknown model response: 0x%02X - proceeding with initialisation\n",
                               data_byte);
                 }
                 keyboard_state = INITIALISED;
@@ -263,7 +263,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
  *
  * This ISR is triggered when the PIO state machine receives a complete 8-bit
  * response from the keyboard. The PIO automatically handles:
- * - Clock synchronization (keyboard-controlled timing)
+ * - Clock synchronisation (keyboard-controlled timing)
  * - Bit reception on rising clock edges
  * - MSB-first bit ordering and assembly
  * - Automatic FIFO push when 8 bits received
@@ -316,7 +316,7 @@ static void __isr keyboard_input_event_handler(void) {
  *    - Key data processing occurs via ring buffer from interrupt handler
  *
  * Timing and Performance:
- * - Optimized timing calculations with single elapsed time computation
+ * - Optimised timing calculations with single elapsed time computation
  * - Timer wraparound protection prevents false timeouts on system rollover
  *
  * Error Recovery:
@@ -326,7 +326,7 @@ static void __isr keyboard_input_event_handler(void) {
  *
  * @note This function manages protocol timing and state transitions
  * @note Actual data reception occurs in interrupt context
- * @note Timer calculations are optimized to handle uint32_t wraparound scenarios
+ * @note Timer calculations are optimised to handle uint32_t wraparound scenarios
  */
 void keyboard_interface_task(void) {
     uint32_t current_time = board_millis();
@@ -340,8 +340,8 @@ void keyboard_interface_task(void) {
 
     switch (keyboard_state) {
         case UNINITIALISED:
-            // Wait for keyboard power-up and internal initialization
-            if (command_elapsed_valid && elapsed_since_command > M0110_INITIALIZATION_DELAY_MS) {
+            // Wait for keyboard power-up and internal initialisation
+            if (command_elapsed_valid && elapsed_since_command > M0110_INITIALISATION_DELAY_MS) {
                 LOG_INFO("Attempting to determine which M0110 keyboard model is connected...\n");
                 keyboard_state = INIT_MODEL_REQUEST;
                 keyboard_command_handler(M0110_CMD_MODEL);
@@ -379,12 +379,12 @@ void keyboard_interface_task(void) {
             if (response_elapsed_valid && elapsed_since_response > M0110_RESPONSE_TIMEOUT_MS) {
                 LOG_ERROR(
                     "No response from keyboard within 1/2 second - keyboard not behaving, "
-                    "reinitializing\n");
+                    "reinitialising\n");
                 keyboard_state    = UNINITIALISED;
                 last_command_time = current_time;
                 ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Clear any stale buffered data during
-                                  // reinitialization
-                break;            // Skip processing, restart initialization
+                                  // reinitialisation
+                break;            // Skip processing, restart initialisation
             }
 
             // Process buffered key data (only reached if keyboard is responding normally)
@@ -401,7 +401,7 @@ void keyboard_interface_task(void) {
 }
 
 /**
- * @brief Initializes the Apple M0110 keyboard interface hardware and software
+ * @brief Initialises the Apple M0110 keyboard interface hardware and software
  *
  * This function configures the RP2040 PIO system to handle the Apple M0110 protocol:
  *
@@ -412,7 +412,7 @@ void keyboard_interface_task(void) {
  *
  * Protocol Setup:
  * - Calculates timing dividers for accurate bit-level timing
- * - Initializes PIO program for MSB-first transmission/reception
+ * - Initialises PIO program for MSB-first transmission/reception
  * - Sets up FIFO buffers for asynchronous data handling
  *
  * Pin Assignment:
@@ -433,18 +433,18 @@ void keyboard_interface_task(void) {
  *                 Must be even number to allow consecutive pin allocation
  *                 Recommended: Use pins with good signal integrity (avoid LED pins)
  *
- * @note Call this function once during system initialization
+ * @note Call this function once during system initialisation
  * @note Requires keyboard_interface_task() to be called regularly for operation
  * @see keyboard_interface_task() for ongoing protocol management
  */
 void keyboard_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
-    // Initialize LED status indicators (if supported by hardware)
+    // Initialise LED status indicators (if supported by hardware)
     converter.state.kb_ready = 0;
     update_converter_status();
 #endif
 
-    // Initialize ring buffer for key data communication between IRQ and main task
+    // Initialise ring buffer for key data communication between IRQ and main task
     ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Safe: IRQs not yet enabled during init
 
     // Claim PIO instance and state machine atomically with fallback
@@ -463,11 +463,11 @@ void keyboard_interface_setup(uint data_pin) {
     // Using 160µs base timing ensures reliable detection of fastest keyboard signals
     float clock_div = calculate_clock_divider(M0110_TIMING_KEYBOARD_LOW_US);
 
-    // Initialize PIO program with calculated clock divider
+    // Initialise PIO program with calculated clock divider
     keyboard_interface_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin,
                                     clock_div);
 
-    // Initialize shared PIO IRQ dispatcher (safe to call multiple times)
+    // Initialise shared PIO IRQ dispatcher (safe to call multiple times)
     pio_irq_dispatcher_init(pio_engine.pio);
 
     // Register keyboard event handler with the dispatcher

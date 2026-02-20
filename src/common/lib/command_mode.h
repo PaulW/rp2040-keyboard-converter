@@ -84,15 +84,15 @@
  *
  * Threading Model:
  * - All functions called from main task context only
- * - No interrupt access, no synchronization primitives needed
+ * - No interrupt access, no synchronisation primitives needed
  * - Safe to call from handle_keyboard_report() context
  */
 
 /**
- * @brief Initializes the command mode system
+ * @brief Initialises the command mode system
  *
  * Sets up initial state for command mode processing. Should be called
- * during system initialization before any keyboard processing begins.
+ * during system initialisation before any keyboard processing begins.
  *
  * @note Called from main() during startup
  * @note Idempotent - safe to call multiple times
@@ -106,7 +106,7 @@ void command_mode_init(void);
  * timely LED updates and timeout processing even when no keyboard events
  * are occurring. Handles state transitions and LED feedback.
  *
- * Performance Optimization:
+ * Performance Optimisation:
  * - Early exit when state is IDLE (~3 CPU cycles)
  * - Only checks time when in active states
  * - LED updates only occur when in COMMAND_ACTIVE state
@@ -127,7 +127,7 @@ void command_mode_init(void);
  * @note Called from main loop (main.c) continuously
  * @note Safe to call even when no keyboard activity
  * @note Must be called regularly for timely state transitions
- * @note Optimized for minimal overhead during normal operation (99.99% of time)
+ * @note Optimised for minimal overhead during normal operation (99.99% of time)
  */
 void command_mode_task(void);
 

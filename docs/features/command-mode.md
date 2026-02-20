@@ -6,7 +6,7 @@ Command Mode provides a keyboard-driven interface for managing the converter's f
 
 ## What Command Mode Does
 
-Once you have the converter up and running, you might need to update firmware, troubleshoot issues, or adjust settings. Normally, this would require physical access to the RP2040 board—holding down the BOOTSEL button while plugging it in, or accessing configuration files. Command Mode eliminates this hassle by letting you trigger these actions directly from your keyboard.
+Once you have the converter up and running, you might need to update firmware, troubleshoot issues, or adjust settings. Normally, this would require physical access to the RP2040 board—holding down the BOOTSEL button whilst plugging it in, or accessing configuration files. Command Mode eliminates this hassle by letting you trigger these actions directly from your keyboard.
 
 The converter supports five main operations through Command Mode:
 
@@ -63,14 +63,17 @@ Throughout Command Mode operation, the converter outputs detailed status message
 - `"Command keys hold detected, waiting for 3 second hold..."` - Both activation keys pressed
 - `"Command mode active! Press:"` - Mode activated (followed by menu)
 - `"Log level selection: Press 1=ERROR, 2=INFO, 3=DEBUG"` - After pressing 'D'
-- `"LED brightness selection: Press +/- to adjust (0-10), current=5"` - After pressing 'L' (shows current level)
-- `"Log level set to DEBUG (2)"` - After selecting log level
-- `"LED brightness increased to 7"` - After each +/- adjustment
+- `"LED brightness selection: Press +/- to adjust (0-10), current=%u"` - After pressing 'L' (shows current level)
+- `"Log level changed to ERROR"` - After selecting log level 1
+- `"Log level changed to INFO"` - After selecting log level 2
+- `"Log level changed to DEBUG"` - After selecting log level 3
+- `"LED brightness increased to %u"` - After each + adjustment
+- `"LED brightness decreased to %u"` - After each - adjustment
 - `"Factory reset requested - restoring default configuration"` - When 'F' pressed
 - `"Bootloader command received"` - When 'B' pressed
 - Various timeout and abort messages
 
-If you have a UART adapter connected (see [Logging documentation](logging.md)), you can monitor these messages in your terminal while using Command Mode. This is particularly helpful when troubleshooting or when you want confirmation that commands are being processed correctly, especially on setups without LED indicators.
+If you have a UART adapter connected (see [Logging documentation](logging.md)), you can monitor these messages in your terminal whilst using Command Mode. This is particularly helpful when troubleshooting or when you want confirmation that commands are being processed correctly, especially on setups without LED indicators.
 
 ### Keyboards with Non-Standard Shift Keys
 
@@ -94,7 +97,7 @@ Once Command Mode is active (indicated by the alternating green/blue LED), you c
 
 Pressing 'B' immediately resets the RP2040 into its bootloader, called BOOTSEL mode. In this mode, the RP2040 appears to your computer as a USB mass storage device—a virtual drive you can drag files onto.
 
-This is exactly the same state you'd enter by holding the physical BOOTSEL button while plugging in the board, but you're triggering it through software instead. It's particularly useful when the RP2040 is mounted inside a case or in a hard-to-reach location.
+This is exactly the same state you'd enter by holding the physical BOOTSEL button whilst plugging in the board, but you're triggering it through software instead. It's particularly useful when the RP2040 is mounted inside a case or in a hard-to-reach location.
 
 **How to use it**:
 
@@ -193,7 +196,7 @@ Pressing 'S' toggles the shift-override feature on or off for keyboards with non
 2. Press the **'S'** key
 3. The converter immediately toggles the shift-override state
 4. The LED flashes briefly to confirm, and Command Mode exits
-5. UART shows: `"Shift-override ENABLED"` or `"Shift-override DISABLED"`
+5. UART shows: `"Shift-override enabled"` or `"Shift-override disabled"`
 
 **What shift-override does**:
 
@@ -242,15 +245,15 @@ For example, to implement the 3-second hold requirement:
 3. Calculate elapsed time: current time minus recorded time
 4. If elapsed time reaches 3000 milliseconds and keys are still held, activate Command Mode
 
-This approach allows the converter to continue processing keystrokes and USB communication while tracking modifier hold duration in the background.
+This approach allows the converter to continue processing keystrokes and USB communication whilst tracking modifier hold duration in the background.
 
 ### HID Report Suppression
 
-While Command Mode is active, the converter suppresses normal HID reports to prevent command keys from appearing as regular keystrokes. When you press 'B' to enter bootloader mode, you don't want your computer to also type a 'b' character.
+Whilst Command Mode is active, the converter suppresses normal HID reports to prevent command keys from appearing as regular keystrokes. When you press 'B' to enter bootloader mode, you don't want your computer to also type a 'b' character.
 
 The suppression logic checks the Command Mode state before generating HID reports. If Command Mode is active, regular keystrokes are dropped—though the converter still receives them and processes their scancodes, it just doesn't forward them to the USB host.
 
-Modifier keys used for activation (like the shifts) are treated specially. While you're holding both shifts to activate Command Mode, the converter stops reporting them as pressed to the host. This prevents applications from interpreting the prolonged shift hold as a shift key stuck down.
+Modifier keys used for activation (like the shifts) are treated specially. Whilst you're holding both shifts to activate Command Mode, the converter stops reporting them as pressed to the host. This prevents applications from interpreting the prolonged shift hold as a shift key stuck down.
 
 ### LED Feedback
 
@@ -301,7 +304,7 @@ The activation keys must be HID modifiers (Shift, Control, Alt, GUI) because of 
 
 Modifiers are handled in the first byte of the HID report and can all be detected simultaneously. Regular keys go into the six key slots and require more complex logic to detect specific combinations. Using modifiers for activation simplifies the detection code and makes it more reliable.
 
-Additionally, modifier combinations are less likely to conflict with application shortcuts. Holding two shifts rarely triggers any application behavior, while holding two regular keys might activate application-specific features.
+Additionally, modifier combinations are less likely to conflict with application shortcuts. Holding two shifts rarely triggers any application behavior, whilst holding two regular keys might activate application-specific features.
 
 ---
 

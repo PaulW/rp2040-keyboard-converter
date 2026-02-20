@@ -47,7 +47,7 @@
  * Non-Blocking Behavior:
  * - Returns true if color data was successfully queued to PIO FIFO
  * - Returns false if PIO TX FIFO is full (caller should defer and retry)
- * - Returns false if called before ws2812_setup() (uninitialized)
+ * - Returns false if called before ws2812_setup() (uninitialised)
  * - Never blocks waiting for FIFO space
  *
  * Multi-LED Cascading:
@@ -65,14 +65,14 @@
 bool ws2812_show(uint32_t led_color);
 
 /**
- * @brief Initialize WS2812 LED interface using PIO
+ * @brief Initialise WS2812 LED interface using PIO
  *
  * Sets up the PIO state machine for WS2812 LED control. Must be called
  * before ws2812_show() can be used.
  *
  * @param data_pin GPIO pin connected to WS2812 data line
  *
- * @note Call once during initialization
+ * @note Call once during initialisation
  * @note Configures PIO hardware for WS2812 timing requirements
  */
 void ws2812_setup(uint data_pin);

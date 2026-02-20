@@ -28,12 +28,12 @@
  *
  * Key Features:
  * - **Configurable queue policies**: DROP, WAIT_FIXED, or WAIT_EXP behavior when queue full
- * - **Large circular buffer queue**: 64-entry buffer handles initialization bursts without loss
+ * - **Large circular buffer queue**: 64-entry buffer handles initialisation bursts without loss
  * - **DMA-driven transmission**: Minimal CPU overhead during output
  * - **stdio integration**: Works transparently with printf(), puts(), etc.
  * - **Thread-safe multi-producer**: Lock-free atomic operations prevent races
  * - **IRQ-aware policies**: Never blocks in interrupt context
- * - **Compile-time optimization**: Zero runtime overhead for policy selection
+ * - **Compile-time optimisation**: Zero runtime overhead for policy selection
  * - **Low interrupt priority**: Designed to not interfere with PIO state machines
  *
  * Architecture:
@@ -65,9 +65,9 @@
  * immediately. The DMA interrupt handler automatically starts subsequent queued
  * messages, providing continuous transmission without CPU intervention.
  *
- * Performance Optimizations:
+ * Performance Optimisations:
  * - **stdio integration**: Direct memcpy() of pre-formatted strings bypasses additional formatting
- * - **Queue size**: 64 entries (power of 2) for handling initialization bursts
+ * - **Queue size**: 64 entries (power of 2) for handling initialisation bursts
  * - **Buffer alignment**: 4-byte aligned for optimal DMA performance
  * - **Bitwise operations**: Uses AND instead of modulo for index calculations
  * - **Atomic operations**: Lock-free multi-producer safety via CAS operations
@@ -88,7 +88,7 @@
  * Integration:
  * This UART implementation completely replaces the standard Pico SDK UART
  * stdio driver, providing a drop-in replacement that works with all standard
- * C library functions while offering superior performance characteristics:
+ * C library functions whilst offering superior performance characteristics:
  *
  * - **stdio functions** (printf, puts, putchar, etc.): Automatically use DMA transmission
  * - **Transparent operation**: No code changes required for existing printf usage
@@ -124,7 +124,7 @@
  * @brief Performance and Buffer Configuration
  *
  * These parameters are defined in config.h and tuned for optimal performance
- * while maintaining compatibility with real-time keyboard protocol operations.
+ * whilst maintaining compatibility with real-time keyboard protocol operations.
  *
  * Configuration options:
  * - UART_DMA_BUFFER_SIZE: Maximum message length (typically 256 bytes)
@@ -244,7 +244,7 @@ static void        start_next_dma_if_needed(void);
  * @brief Report drop statistics when threshold reached
  *
  * This function reports UART message drop statistics in an event-triggered manner.
- * It only outputs when new drops have occurred, preventing log spam while still
+ * It only outputs when new drops have occurred, preventing log spam whilst still
  * providing visibility into queue overflow issues.
  *
  * The function reports every 10 drops to balance between responsiveness and
@@ -378,7 +378,7 @@ static void start_next_dma_if_needed() {
  * It automatically starts the next queued message if available, providing
  * continuous output without CPU intervention.
  *
- * The handler is designed to be as fast as possible to minimize interrupt
+ * The handler is designed to be as fast as possible to minimise interrupt
  * latency impact on real-time operations. It uses low-level register access
  * and efficient queue operations.
  *
@@ -486,7 +486,7 @@ static inline bool wait_for_queue_space(void) {
  *
  * The function uses relaxed memory ordering for the CAS operation since the
  * RP2040's single-core nature and the queue's design make stronger ordering
- * unnecessary while still providing the required atomicity.
+ * unnecessary whilst still providing the required atomicity.
  *
  * @param out_idx Pointer to store the reserved slot index on success
  * @return true if slot successfully reserved, false if queue full or contention (IRQ)
@@ -630,16 +630,16 @@ static stdio_driver_t dma_stdio_driver = {
 };
 
 /**
- * @brief Initialize DMA-Based UART Logging System
+ * @brief Initialise DMA-Based UART Logging System
  *
- * This function performs complete system initialization for the high-performance
+ * This function performs complete system initialisation for the high-performance
  * DMA-based UART logging infrastructure. It configures hardware, allocates
  * resources, and integrates with the Pico SDK stdio system to provide
  * transparent, non-blocking debug output.
  *
- * Initialization Sequence:
+ * Initialisation Sequence:
  * 1. **UART Hardware Setup**:
- *    - Initializes UART0 with configured baud rate (from config.h)
+ *    - Initialises UART0 with configured baud rate (from config.h)
  *    - Configures GPIO pin for UART TX function
  *    - Sets up hardware FIFO and transmission parameters
  *
@@ -675,28 +675,28 @@ static stdio_driver_t dma_stdio_driver = {
  * - 64 x 256 bytes = 16KB: Message queue buffer (static allocation)
  * - ~100 bytes: Control structures and state variables
  *
- * Post-Initialization Behavior:
+ * Post-Initialisation Behavior:
  * After this function completes successfully:
  * - All printf(), puts(), putchar() calls use DMA automatically
  * - System provides configurable non-blocking debug output behavior
  * - No code changes required for existing printf usage
  * - Queue policy determines behavior under load (drop/wait/backoff)
  *
- * @note **CRITICAL**: Must be called once during system initialization
+ * @note **CRITICAL**: Must be called once during system initialisation
  * @note **TIMING**: Call before any printf/logging operations
  * @note **SAFETY**: Safe to call multiple times (subsequent calls ignored)
  * @note **RESOURCES**: Claims hardware resources that remain allocated
  * @note **INTEGRATION**: Completely replaces standard Pico SDK UART stdio
  *
  * @warning Calling printf() before this function results in no output
- * @warning Do not call from interrupt context during initialization
+ * @warning Do not call from interrupt context during initialisation
  */
 void init_uart_dma() {
     if (uart_dma_inited) {
         return;
     }
     uart_dma_inited = true;
-    // Initialize UART hardware with configured baud rate and TX pin
+    // Initialise UART hardware with configured baud rate and TX pin
     uart_init(UART_ID, UART_BAUD);  // UART_BAUD defined in config.h
     uart_set_format(UART_ID, 8, 1, UART_PARITY_NONE);
     uart_set_fifo_enabled(UART_ID, true);
@@ -732,7 +732,7 @@ void init_uart_dma() {
     // This replaces the standard Pico SDK UART stdio functionality
     stdio_set_driver_enabled(&dma_stdio_driver, true);
 
-    // Initialize log level filtering system
+    // Initialise log level filtering system
     log_init();
 }
 
@@ -745,7 +745,7 @@ void init_uart_dma() {
  *
  * The function polls the queue state and waits for the DMA controller to finish
  * all pending transfers. It uses a tight polling loop for maximum responsiveness
- * while still allowing other interrupts to run.
+ * whilst still allowing other interrupts to run.
  *
  * Use Cases:
  * - Before entering bootloader mode

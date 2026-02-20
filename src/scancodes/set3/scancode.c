@@ -88,7 +88,7 @@ static bool try_remap_scancode(uint8_t code, uint8_t* mapped_code) {
  * Typematic Mode Note:
  * - Most Set 3 keyboards default to typematic mode (auto-repeat)
  * - This implementation assumes make/break mode is configured
- * - AT/PS2 protocol initialization sets make/break mode via command 0xFA
+ * - AT/PS2 protocol initialisation sets make/break mode via command 0xFA
  *
  * @param code The keycode to process.
  *

@@ -217,30 +217,30 @@ Produces minimal firmware for mouse-only operation.
 
 ---
 
-## Build Optimization
+## Build Optimisation
 
 ### Compiler Flags
 
-The build uses optimization flags appropriate for embedded systems:
+The build uses optimisation flags appropriate for embedded systems:
 
-**Default optimization:** `-O2` (optimize for speed with size consideration)
+**Default optimisation:** `-O2` (optimise for speed with size consideration)
 - Balances performance and code size
-- Enables most optimizations without excessive code growth
+- Enables most optimisations without excessive code growth
 - Suitable for production use
 
-**Debug builds:** `-Og` (optimize for debugging)
+**Debug builds:** `-Og` (optimise for debugging)
 - Preserves debug information quality
-- Minimal optimizations to keep code structure recognizable
+- Minimal optimisations to keep code structure recognisable
 - Used for GDB debugging sessions
 
-**Size optimization:** `-Os` (optimize for size)
+**Size optimisation:** `-Os` (optimise for size)
 - Prioritizes small code size over speed
 - Useful for configurations approaching memory limits
 - Not currently used—plenty of headroom with `-O2`
 
-### Link-Time Optimization (LTO)
+### Link-Time Optimisation (LTO)
 
-LTO optimizes across translation units during linking:
+LTO optimises across translation units during linking:
 - Inlines functions across file boundaries
 - Eliminates dead code more aggressively
 - Reduces binary size by eliminating unused code
@@ -288,7 +288,7 @@ undefined reference to `at_ps2_keyboard_interface_init'
 PIO program exceeds available instruction memory
 ```
 
-**Solution:** PIO blocks have 32 instructions each. Some complex protocols require optimization or splitting across multiple state machines.
+**Solution:** PIO blocks have 32 instructions each. Some complex protocols require optimisation or splitting across multiple state machines.
 
 **Error: Region RAM overflowed**
 ```
@@ -297,7 +297,7 @@ region `RAM' overflowed by XXXX bytes
 
 **Solution:** Configuration exceeds 264KB SRAM. Either:
 - Reduce feature set (disable mouse, logging, etc.)
-- Optimize code (smaller functions, fewer globals)
+- Optimise code (smaller functions, fewer globals)
 - Request CI limit increase if usage is reasonable
 
 ### Build Verification
@@ -382,7 +382,7 @@ The RP2040 bootloader accepts UF2 files via drag-and-drop or command-line copy. 
 ## Related Documentation
 
 - [Architecture](architecture.md) - SRAM execution rationale and memory layout
-- [Performance](performance.md) - Resource utilization and optimization
+- [Performance](performance.md) - Resource utilisation and optimisation
 - [Hardware Setup](../getting-started/hardware-setup.md) - Physical connections
 - [Building Firmware](../getting-started/building-firmware.md) - Step-by-step build guide
 - [Flashing Firmware](../getting-started/flashing-firmware.md) - UF2 installation

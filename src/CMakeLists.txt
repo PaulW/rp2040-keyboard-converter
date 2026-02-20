@@ -61,7 +61,7 @@ elseif(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../external/pico-sdk/pico_sdk_init.cmak
 else()
   message(FATAL_ERROR "Pico SDK not found. Either:\n"
     "  1) Set PICO_SDK_PATH environment variable, OR\n"
-    "  2) Initialize git submodule: git submodule update --init --recursive")
+    "  2) Initialise git submodule: git submodule update --init --recursive")
 endif()
 
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
@@ -69,13 +69,13 @@ include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 # Set the project name
 project(rp2040-converter C CXX ASM)
 
-# Initialize the Raspberry Pi Pico SDK
+# Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
 add_executable(${PROJECT_NAME})
 
 # Disable default UART and USB stdio
-# We will initialize our own stack which will be more efficient.
+# We will initialise our own stack which will be more efficient.
 # The default stdio causes delays and jitter which is not acceptable
 # when using PIO for device interfacing.  As such, as we log to UART,
 # we see timing issues with the PIO state machines.

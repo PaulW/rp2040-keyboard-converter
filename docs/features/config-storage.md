@@ -12,7 +12,7 @@ The RP2040 doesn't have dedicated EEPROM like some microcontrollers, but it does
 
 However, flash has some quirks we need to handle carefully. Flash cells wear out after many write cycles (manufacturer specifications vary by chip). Flash must be erased in relatively large blocks (4KB sectors on the RP2040) before writing new data. And if power is lost partway through a write operation, the data might end up corrupted.
 
-The configuration storage system addresses all these concerns while keeping the implementation simple and robust.
+The configuration storage system addresses all these concerns whilst keeping the implementation simple and robust.
 
 ---
 
@@ -20,7 +20,7 @@ The configuration storage system addresses all these concerns while keeping the 
 
 The converter persists several settings across reboots:
 
-**Log Level** - Controls how verbose the UART debug output is. Can be ERROR (minimal), INFO (moderate, default), or DEBUG (verbose). You set this through Command Mode using the 'D' command.
+**Log Level** - Controls how verbose the UART debug output is. It can be ERROR (minimal), INFO (moderate, default), or DEBUG (verbose). You set this through Command Mode using the 'D' command.
 
 **LED Brightness** - Controls how bright the status LED and any WS2812 RGB LEDs appear, on a scale from 0 (off) to 10 (maximum). You set this through Command Mode using the 'L' command.
 
@@ -28,7 +28,7 @@ The converter persists several settings across reboots:
 
 **Layer State** - Active toggle (TG) and permanent switch (TO) layers. When you toggle Dvorak on or switch to a gaming layer, that state persists across reboots. Momentary (MO) and one-shot (OSL) layers don't persist—they're temporary by design.
 
-These settings are stored together in a single configuration structure, along with metadata like a version number, sequence counter, and CRC checksum. The configuration structure occupies 2048 bytes total (matching the 2KB copy size), with ~26 bytes of header and settings, ~2 bytes for flags/padding, and ~2020 bytes reserved for future expansion (TLV storage for macros, key remaps, etc.).
+These settings are stored together in a single configuration structure, along with metadata like a version number, sequence counter, and CRC checksum. The configuration structure occupies 2048 bytes total (matching the 2KB copy size), with 26 bytes of header and settings (version, sequence, magic, CRC, log level, LED brightness, keyboard ID, layer state, layers hash, flags, and reserved padding), and 2022 bytes reserved for variable storage (TLV storage for macros, key remaps, etc.).
 
 Future firmware versions might add more settings—custom key remapping, macro definitions, debounce timing adjustments, protocol-specific tweaks. The storage system is designed to accommodate this growth through automatic version migration.
 
@@ -61,7 +61,7 @@ Why use the last 4KB? Several reasons:
 
 **Aligned to sector boundary**: The RP2040 erases flash in 4KB sectors. Placing configuration at a sector boundary means erasing it doesn't affect firmware.
 
-**Minimal waste**: Using 4KB out of 2MB (0.2%) is negligible. We get plenty of room for future settings while barely impacting available firmware space.
+**Minimal waste**: Using 4KB out of 2MB (0.2%) is negligible. We get plenty of room for future settings whilst barely impacting available firmware space.
 
 ---
 
@@ -94,7 +94,7 @@ At any point in this process, at least one valid copy exists. Power failure can'
 
 ### Sequence Numbers Track Freshness
 
-Each configuration copy includes a sequence number that increments with every write. Copy A might have sequence 47, while Copy B has sequence 48. The system knows Copy B is newer.
+Each configuration copy includes a sequence number that increments with every write. Copy A might have sequence 47, whilst Copy B has sequence 48. The system knows Copy B is newer.
 
 When writing new configuration, the sequence number increments again—Copy B (48) gets updated to sequence 49, or if we're alternating, Copy A gets updated from 47 to 49.
 
@@ -149,7 +149,7 @@ Here's the complete boot sequence:
 
 **Step 2**: Read Copy A from flash (2KB from 0x101FF000).
 
-**Step 3**: Validate Copy A by computing its CRC and comparing to the stored CRC. Also check that its version number is recognized.
+**Step 3**: Validate Copy A by computing its CRC and comparing to the stored CRC. Also check that its version number is recognised.
 
 **Step 4**: Read Copy B from flash (2KB from 0x101FF800).
 
@@ -179,7 +179,7 @@ uint8_t current_level = cfg->log_level;
 uint8_t brightness = cfg->led_brightness;
 ```
 
-This design has zero runtime performance cost. Accessing configuration is just a RAM read—no function calls, no indirection, no overhead. The compiler can even optimize these reads into registers when possible.
+This design has zero runtime performance cost. Accessing configuration is just a RAM read—no function calls, no indirection, no overhead. The compiler can even optimise these reads into registers when possible.
 
 The tradeoff is that changes to configuration don't automatically save. When you modify a setting through Command Mode, the code updates the RAM structure and then explicitly calls the save function. This explicit save design gives you control over when the write operation happens.
 
@@ -209,7 +209,7 @@ The entire save operation is a blocking flash write—fast enough to feel instan
 
 ### Blocking vs Non-Blocking
 
-The save operation blocks the main loop and **disables interrupts** while writing to flash. During this time, the converter cannot process IRQ events, including keyboard scancodes or USB communication.
+The save operation blocks the main loop and **disables interrupts** whilst writing to flash. During this time, the converter cannot process IRQ events, including keyboard scancodes or USB communication.
 
 However, data loss is prevented because the **PIO hardware continues operating independently** with its own RX FIFO buffer (4-8 entries deep). Scancodes captured by the PIO are held in this hardware FIFO. When interrupts are re-enabled after the flash write completes, the IRQ handler immediately processes any buffered data and transfers it to the 32-byte ring buffer for normal processing.
 
@@ -245,7 +245,7 @@ When migrating:
 4. New fields retain their default values
 5. Write the migrated configuration to flash with updated version number
 
-This approach preserves user settings while adding new features with sensible defaults.
+This approach preserves user settings whilst adding new features with sensible defaults.
 
 ### Example Migration
 
@@ -301,7 +301,7 @@ extern config_t g_config;
 
 The implementation uses the Pico SDK's flash APIs ([`flash_range_erase`](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_flash) and [`flash_range_program`](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_flash)) which are wrappers around the RP2040's boot ROM flash functions. These boot ROM functions are thoroughly tested and reliable.
 
-One quirk: you can't execute code from flash while writing to flash. The RP2040 bootloader handles this by copying the flash write functions to RAM before calling them. The Pico SDK's flash APIs do this automatically, so the configuration storage code doesn't need special handling.
+One quirk: you can't execute code from flash whilst writing to flash. The RP2040 bootloader handles this by copying the flash write functions to RAM before calling them. The Pico SDK's flash APIs do this automatically, so the configuration storage code doesn't need special handling.
 
 ---
 

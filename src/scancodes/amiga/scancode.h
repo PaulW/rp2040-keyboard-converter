@@ -33,7 +33,7 @@
  * CAPS LOCK special case (0x62/0xE2):
  * - Only sends on press (never on release)
  * - Bit 7 indicates keyboard LED state (0=ON, 1=OFF)
- * - This processor handles synchronization and timing
+ * - This processor handles synchronisation and timing
  *
  * @param code The scancode byte to process (after de-rotation and inversion)
  */

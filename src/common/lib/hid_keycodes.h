@@ -140,8 +140,8 @@
 #define KC_CRUN KC_APPLAUNCH_COMMAND_RUN
 #define KC_MYCM KC_APPLAUNCH_FILE_EXPLORER
 /* App Control */
-#define KC_MXMZ KC_APPCONTROL_MAXIMIZE
-#define KC_MNMZ KC_APPCONTROL_MINIMIZE
+#define KC_MXMS KC_APPCONTROL_MAXIMISE
+#define KC_MNMS KC_APPCONTROL_MINIMISE
 #define KC_WSCH KC_APPCONTROL_SEARCH
 #define KC_WHME KC_APPCONTROL_HOME
 #define KC_WBAK KC_APPCONTROL_BACK
@@ -180,7 +180,7 @@
 // Layer operation base values (0xF0-0xFF range)
 // Rationale: 0xE8-0xEF marked as "special" in IS_SPECIAL macro
 //            0xF0-0xFF is safest for internal use
-#define KC_LAYER_MO_BASE  0xF0  // MO(n): Momentary layer while held
+#define KC_LAYER_MO_BASE  0xF0  // MO(n): Momentary layer whilst held
 #define KC_LAYER_TG_BASE  0xF4  // TG(n): Toggle layer on/off
 #define KC_LAYER_TO_BASE  0xF8  // TO(n): Switch to layer permanently
 #define KC_LAYER_OSL_BASE 0xFC  // OSL(n): One-shot layer (next key only)
@@ -453,8 +453,8 @@ enum hid_consumer_usage_page {
     APPLAUNCH_FILE_EXPLORER = 0x01B4,  // 0x01B4 /* Keyboard File Explorer */
 
     /* App Control */
-    APPCONTROL_MAXIMIZE = 0x0205,   // 0x0205 /* Keyboard Maximize */
-    APPCONTROL_MINIMIZE,            // 0x0206 /* Keyboard Minimize */
+    APPCONTROL_MAXIMISE = 0x0205,   // 0x0205 /* Keyboard Maximise */
+    APPCONTROL_MINIMISE,            // 0x0206 /* Keyboard Minimise */
     APPCONTROL_SEARCH = 0x0221,     // 0x0221 /* Keyboard Search */
     APPCONTROL_HOME   = 0x0223,     // 0x0223 /* Keyboard Home */
     APPCONTROL_BACK,                // 0x0224 /* Keyboard Back */
@@ -505,8 +505,8 @@ enum internal_special_codes {
     KC_APPLAUNCH_FILE_EXPLORER,  // BD
 
     /* App Control */
-    KC_APPCONTROL_MAXIMIZE,   // BE
-    KC_APPCONTROL_MINIMIZE,   // BF
+    KC_APPCONTROL_MAXIMISE,   // BE
+    KC_APPCONTROL_MINIMISE,   // BF
     KC_APPCONTROL_SEARCH,     // C0
     KC_APPCONTROL_HOME,       // C1
     KC_APPCONTROL_BACK,       // C2
@@ -551,8 +551,8 @@ enum internal_special_codes {
     (key == KC_APPLAUNCH_LOCK           ?  APPLAUNCH_LOCK : \
     (key == KC_APPLAUNCH_COMMAND_RUN    ?  APPLAUNCH_COMMAND_RUN : \
     (key == KC_APPLAUNCH_FILE_EXPLORER  ?  APPLAUNCH_FILE_EXPLORER : \
-    (key == KC_APPCONTROL_MAXIMIZE      ?  APPCONTROL_MAXIMIZE : \
-    (key == KC_APPCONTROL_MINIMIZE      ?  APPCONTROL_MINIMIZE : \
+    (key == KC_APPCONTROL_MAXIMISE      ?  APPCONTROL_MAXIMISE : \
+    (key == KC_APPCONTROL_MINIMISE      ?  APPCONTROL_MINIMISE : \
     (key == KC_APPCONTROL_SEARCH        ?  APPCONTROL_SEARCH : \
     (key == KC_APPCONTROL_HOME          ?  APPCONTROL_HOME : \
     (key == KC_APPCONTROL_BACK          ?  APPCONTROL_BACK : \

@@ -8,7 +8,7 @@ I won't dive into every single implementation detail here (that's what the sourc
 
 ## The Big Picture
 
-The converter's built around a single-core architecture running entirely from SRAM. Everything happens on Core 0 of the RP2040, with Core 1 sitting idle. This keeps things simple and avoids all the complexity of synchronizing between cores.
+The converter's built around a single-core architecture running entirely from SRAM. Everything happens on Core 0 of the RP2040, with Core 1 sitting idle. This keeps things simple and avoids all the complexity of synchronising between cores.
 
 The whole design is focused on keeping latency as low as possible whilst making sure nothing blocks. There's no `sleep_ms()` calls or busy-waiting anywhere in the main pipeline—everything uses state machines that check timestamps to see if enough time's passed. This means the main loop runs continuously without ever stalling.
 
@@ -196,7 +196,7 @@ USB callbacks in this implementation set flags or copy small amounts of data. Th
 
 ---
 
-## Thread Safety and Synchronization
+## Thread Safety and Synchronisation
 
 We use a few different patterns to ensure data stays consistent across execution contexts:
 
@@ -240,11 +240,11 @@ The converter's architecture relies on several non-negotiable principles that en
 
 Everything runs on Core 0 of the RP2040. Core 1 sits completely idle, disabled from boot. This might seem inefficient on a dual-core processor, but it eliminates entire categories of bugs whilst delivering more than sufficient performance.
 
-**Why single-core?** Multicore architectures require complex synchronization—mutexes to protect shared data, spinlocks for critical sections, atomic operations for state coordination, memory barriers to enforce ordering, and careful analysis to prevent deadlocks. Each mechanism adds code complexity and execution overhead. Worse, multicore bugs frequently show up as intermittent, timing-dependent failures that are genuinely difficult to reproduce and debug.
+**Why single-core?** Multicore architectures require complex synchronisation—mutexes to protect shared data, spinlocks for critical sections, atomic operations for state coordination, memory barriers to enforce ordering, and careful analysis to prevent deadlocks. Each mechanism adds code complexity and execution overhead. Worse, multicore bugs frequently show up as intermittent, timing-dependent failures that are genuinely difficult to reproduce and debug.
 
 A single-core approach sidesteps all of this. Interrupt handlers share data with the main loop using simple volatile variables and memory barriers—no locks needed. Timing becomes deterministic, latency measurements stay consistent across executions, and debugging follows a single thread of control. Power consumption drops with Core 1 in deep sleep.
 
-The converter's processing requirements are modest. Even if parallelization were possible, the bottleneck remains USB polling (8ms intervals per `bInterval` in [usb_descriptors.c](../../src/common/lib/usb_descriptors.c)), not the processing pipeline.
+The converter's processing requirements are modest. Even if parallelisation were possible, the bottleneck remains USB polling (8ms intervals per `bInterval` in [usb_descriptors.c](../../src/common/lib/usb_descriptors.c)), not the processing pipeline.
 
 **Rule:** Never use `multicore_*` or `core1_*` functions in this codebase. The [`tools/lint.sh`](../../tools/lint.sh) enforcement script detects these violations and blocks commits that attempt to enable Core 1. If you find yourself wanting multicore, there's likely a blocking operation somewhere that needs refactoring into a non-blocking state machine.
 
@@ -271,7 +271,7 @@ The RP2040 includes 264KB of SRAM and 2MB of flash storage. Flash provides persi
 
 **How it works:** The CMake configuration specifies `pico_set_binary_type(rp2040-converter copy_to_ram)`, which instructs the linker to copy the entire program from flash into SRAM during boot. After initialisation completes, all code executes from RAM with predictable timing. This trades memory efficiency (the binary must fit in both flash for storage and SRAM for execution) for performance consistency. The RP2040's memory capacity accommodates this approach comfortably.
 
-**Why it matters:** Flash cache misses introduce unpredictable latency. When code executes from flash, the first execution of a function may require dozens of microseconds to load the instruction stream into cache, whilst subsequent calls complete quickly. This variability makes latency measurements unreliable and creates difficult-to-characterize worst-case scenarios. SRAM execution eliminates this problem—every instruction takes the same time whether it executes for the first time or the millionth time.
+**Why it matters:** Flash cache misses introduce unpredictable latency. When code executes from flash, the first execution of a function may require dozens of microseconds to load the instruction stream into cache, whilst subsequent calls complete quickly. This variability makes latency measurements unreliable and creates difficult-to-characterise worst-case scenarios. SRAM execution eliminates this problem—every instruction takes the same time whether it executes for the first time or the millionth time.
 
 **Verification:** Check the SRAM execution configuration in [`CMakeLists.txt`](../../src/CMakeLists.txt) at line 93 where the binary type is set. The compiled binary's `.elf.map` file shows memory layout, confirming that code sections reside in SRAM regions (addresses starting with 0x20000000) rather than flash addresses (0x10000000).
 
@@ -281,7 +281,7 @@ The ring buffer implements the critical data handoff between interrupt context (
 
 **Single-writer principle:** The interrupt handler acts as the sole producer, calling `ringbuf_put()` to add scancodes as they arrive from PIO hardware. The main loop acts as the sole consumer, calling `ringbuf_get()` to retrieve scancodes for processing. The head pointer (write position) is modified only by the interrupt handler, whilst the tail pointer (read position) is modified only by the main loop. This strict separation eliminates any possibility of concurrent modification.
 
-**Overflow protection:** The interrupt handler checks `ringbuf_is_full()` before writing data to prevent overflow. If the buffer is full, the scancode is dropped and an error is logged (when logging is configured). This situation indicates the main loop cannot maintain pace. The main loop checks `ringbuf_is_empty()` before reading to avoid spurious reads. These guard checks prevent data corruption without requiring expensive synchronization primitives.
+**Overflow protection:** The interrupt handler checks `ringbuf_is_full()` before writing data to prevent overflow. If the buffer is full, the scancode is dropped and an error is logged (when logging is configured). This situation indicates the main loop cannot maintain pace. The main loop checks `ringbuf_is_empty()` before reading to avoid spurious reads. These guard checks prevent data corruption without requiring expensive synchronisation primitives.
 
 **Buffer sizing:** The capacity of 32 bytes (defined as [`RINGBUF_SIZE`](../../src/common/lib/ringbuf.h)) is deliberately small. The main loop polls frequently enough that scancodes move through the buffer within microseconds. Even multi-byte sequences rarely accumulate more than a few bytes before consumption. The small size keeps the buffer in cache and makes overflow immediately apparent rather than allowing problems to hide in deep queues.
 
@@ -294,7 +294,7 @@ All keyboard protocols follow a standard 13-step setup sequence that includes `r
 ## Related Documentation
 
 **Advanced Topics:**
-- [Performance Characteristics](performance.md) - Timing, throughput, and resource utilization
+- [Performance Characteristics](performance.md) - Timing, throughput, and resource utilisation
 - [Build System](build-system.md) - CMake configuration and Docker builds
 - [Testing and Validation](testing.md) - Hardware testing and code quality
 

@@ -51,7 +51,7 @@ A USB-UART adapter connects to the RP2040's UART pins (GPIO 0/1) to display diag
 - Timing measurements and performance data
 - Command Mode activation and menu responses
 
-Enable verbose logging during testing to maximize visibility. See the [Logging guide](../features/logging.md) for configuration options.
+Enable verbose logging during testing to maximise visibility. See the [Logging guide](../features/logging.md) for configuration options.
 
 ### Multimeter
 
@@ -202,11 +202,11 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 9. **Header guards:** Missing `#ifndef`/`#define` guards in .h files
 10. **File headers:** Missing GPL or MIT licence headers
 11. **Naming conventions:** Detects camelCase (expects snake_case)
-12. **Include order:** Validates include directive organization
+12. **Include order:** Validates include directive organisation
 13. **IRQ handler attributes:** Missing `__isr` attribute on interrupt handlers
 14. **Compile-time validation:** Advisory check for `_Static_assert` and `#error`
 15. **Protocol ring buffer setup:** Missing `ringbuf_reset()` in keyboard protocol initialisation
-16. **Protocol PIO IRQ dispatcher:** Missing centralized `pio_irq_dispatcher_init()` or deprecated direct `irq_set_priority()` usage
+16. **Protocol PIO IRQ dispatcher:** Missing centralised `pio_irq_dispatcher_init()` or deprecated direct `irq_set_priority()` usage
 17. **Indentation consistency:** Enforces 4-space indentation, detects 2-space violations
 
 **Run before every commit:**
@@ -248,7 +248,7 @@ The converter avoids dynamic allocation where possible, preferring stack-based a
 - **Const correctness:** Read-only data marked const
 
 **Testing approach:**
-- Build with address sanitizer (requires native build, not ARM cross-compile)
+- Build with address sanitiser (requires native build, not ARM cross-compile)
 - Review .map file for unexpected heap usage
 - Check stack usage doesn't exceed safe limits
 - Verify no global variable overflow

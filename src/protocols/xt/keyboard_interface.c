@@ -34,7 +34,7 @@
  * Communication Protocol:
  * - Unidirectional: Keyboard → Host only
  * - LSB-first bit transmission (bit 0 → bit 7)
- * - No start, stop, or parity bits
+ * - Start bit(s) present; no parity or stop bits
  * - Fixed 8-bit scan code format
  * - No host commands or bidirectional communication
  *
@@ -58,7 +58,7 @@
  *
  * Advantages:
  * - Simple, reliable protocol with minimal overhead
- * - No initialization sequence required
+ * - No initialisation sequence required
  * - Immediate operation on power-up
  * - Compatible with basic keyboard functionality
  *
@@ -104,7 +104,7 @@ static uint keyboard_data_pin; /**< GPIO pin for DATA line (2-wire interface) */
  * @brief IBM XT Protocol State Machine
  *
  * XT keyboards use a very simple state machine since they require no
- * initialization sequence and begin transmitting immediately on power-up.
+ * initialisation sequence and begin transmitting immediately on power-up.
  *
  * - UNINITIALISED: System startup, hardware setup complete
  * - INITIALISED: Normal operation, receiving and processing scan codes
@@ -125,7 +125,7 @@ enum {
  *
  * Processes scan codes received from IBM XT keyboards using the simple unidirectional
  * protocol. XT keyboards begin transmitting immediately upon power-up with no complex
- * initialization sequence required:
+ * initialisation sequence required:
  *
  * Protocol Characteristics:
  * - Unidirectional communication (keyboard to host only)
@@ -224,10 +224,10 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * Reset Handling:
  * - XT keyboards have no software reset command capability
  * - Reset achieved by restarting PIO state machine
- * - PIO initialization triggers hardware-level keyboard reset
+ * - PIO initialisation triggers hardware-level keyboard reset
  * - Automatic recovery from communication errors
  *
- * Performance Optimization:
+ * Performance Optimisation:
  * - Minimal interrupt processing time (< 10µs typical)
  * - Direct FIFO access without buffering overhead
  * - Efficient bit extraction using shift operations
@@ -278,14 +278,14 @@ static void __isr keyboard_input_event_handler(void) {
  * - Maintains optimal data flow between keyboard and USB HID
  * - Prevents HID report queue overflow through ready checking
  *
- * Initialization Management (UNINITIALISED state):
+ * Initialisation Management (UNINITIALISED state):
  * - Monitors GPIO clock line for keyboard presence detection
  * - Implements simple retry logic for keyboard detection
  * - Handles keyboard connection/disconnection events
  * - Manages PIO restart for clean protocol recovery
  *
  * Protocol Simplicity:
- * - No complex initialization sequence (unlike AT/PS2)
+ * - No complex initialisation sequence (unlike AT/PS2)
  * - No LED control capability (hardware limitation)
  * - No bidirectional communication or command/response
  * - Immediate operation once keyboard detected and self-test passed
@@ -310,7 +310,7 @@ static void __isr keyboard_input_event_handler(void) {
  *
  * Performance Characteristics:
  * - Minimal CPU overhead due to protocol simplicity
- * - Fast response time (no initialization delays)
+ * - Fast response time (no initialisation delays)
  * - Efficient ring buffer usage without protocol buffering
  * - Real-time scan code processing capability
  *
@@ -323,7 +323,7 @@ static void __isr keyboard_input_event_handler(void) {
  * @note Must be called periodically from main loop (typically 1-10ms intervals)
  * @note Function is non-blocking and maintains real-time responsiveness
  * @note Much simpler than AT/PS2 due to XT protocol limitations and design
- * @note No LED synchronization capability due to XT protocol constraints
+ * @note No LED synchronisation capability due to XT protocol constraints
  */
 void keyboard_interface_task() {
     static uint8_t detect_stall_count = 0;
@@ -344,7 +344,7 @@ void keyboard_interface_task() {
 #endif
         }
     } else {
-        // Keyboard detection and initialization management
+        // Keyboard detection and initialisation management
         static uint32_t detect_ms = 0;
         // Alternative detection method (unused):
         // if (gpio_get(keyboard_data_pin) == 1) {
@@ -377,9 +377,9 @@ void keyboard_interface_task() {
 }
 
 /**
- * @brief IBM XT Keyboard Interface Initialization
+ * @brief IBM XT Keyboard Interface Initialisation
  *
- * Configures and initializes the IBM XT keyboard interface using RP2040 PIO hardware
+ * Configures and initialises the IBM XT keyboard interface using RP2040 PIO hardware
  * for accurate timing and protocol implementation. Sets up the minimal hardware
  * required for the simple XT unidirectional protocol:
  *
@@ -390,10 +390,10 @@ void keyboard_interface_task() {
  * - Keyboard generates clock signal on dedicated CLOCK line
  *
  * PIO Configuration:
- * - Calculates clock divider for 30µs minimum pulse timing
+ * - Calculates clock divider for 10µs sampling (XT_TIMING_SAMPLE_US)
  * - Configures state machine for unidirectional receive-only operation
  * - Sets up automatic scan code reception and frame processing
- * - Optimized for ~10 kHz keyboard transmission rate
+ * - Optimised for ~10 kHz keyboard transmission rate
  *
  * Interrupt System:
  * - Configures PIO-specific IRQ (PIO0_IRQ_0 or PIO1_IRQ_0)
@@ -401,9 +401,9 @@ void keyboard_interface_task() {
  * - Enables interrupt-driven reception for optimal performance
  * - Links PIO RX FIFO to interrupt processing system
  *
- * Software Initialization:
+ * Software Initialisation:
  * - Resets ring buffer to ensure clean startup state
- * - Initializes protocol state machine to UNINITIALISED
+ * - Initialises protocol state machine to UNINITIALISED
  * - Resets converter status LEDs when CONVERTER_LEDS enabled
  * - Clears all protocol state variables
  *
@@ -415,7 +415,7 @@ void keyboard_interface_task() {
  *
  * Protocol Simplicity:
  * - No bidirectional communication setup needed
- * - No command/response initialization required
+ * - No command/response initialisation required
  * - No LED control or advanced feature configuration
  * - Immediate operation once keyboard powers on
  *
@@ -427,24 +427,24 @@ void keyboard_interface_task() {
  *
  * Error Handling:
  * - Validates PIO resource availability before configuration
- * - Reports initialization failures with detailed error messages
+ * - Reports initialisation failures with detailed error messages
  * - Graceful failure if insufficient PIO resources available
- * - Logs successful initialization with configuration details
+ * - Logs successful initialisation with configuration details
  *
  * @param data_pin GPIO pin number for DATA line (2-wire interface)
  *
  * @note XT protocol uses 2-wire interface: DATA and CLOCK lines
- * @note Function blocks until hardware initialization complete
+ * @note Function blocks until hardware initialisation complete
  * @note Much simpler setup than AT/PS2 due to XT protocol design
  * @note Call before any other XT keyboard interface operations
  */
 void keyboard_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
     converter.state.kb_ready = 0;
-    update_converter_status();  // Initialize converter status LEDs to "not ready" state
+    update_converter_status();  // Initialise converter status LEDs to "not ready" state
 #endif
 
-    // Initialize ring buffer for key data communication between IRQ and main task
+    // Initialise ring buffer for key data communication between IRQ and main task
     ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Safe: IRQs not yet enabled during init
 
     // Claim PIO instance and state machine atomically with fallback
@@ -462,11 +462,11 @@ void keyboard_interface_setup(uint data_pin) {
     // 4 samples per start bit ensures reliable detection of genuine IBM vs clone keyboards
     float clock_div = calculate_clock_divider(XT_TIMING_SAMPLE_US);
 
-    // Initialize PIO program with calculated clock divider
+    // Initialise PIO program with calculated clock divider
     keyboard_interface_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin,
                                     clock_div);
 
-    // Initialize shared PIO IRQ dispatcher (safe to call multiple times)
+    // Initialise shared PIO IRQ dispatcher (safe to call multiple times)
     pio_irq_dispatcher_init(pio_engine.pio);
 
     // Register keyboard event handler with the dispatcher

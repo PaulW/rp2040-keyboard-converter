@@ -6,13 +6,13 @@ This guide helps developers contribute to the RP2040 keyboard converter project,
 
 ### Contributing Guide
 
-Contributing to an embedded systems project requires understanding both the hardware constraints and the software architecture. Before writing any code, you need to internalize the critical design principles that make this converter work reliably across dozens of keyboard models.
+Contributing to an embedded systems project requires understanding both the hardware constraints and the software architecture. Before writing any code, you need to internalise the critical design principles that make this converter work reliably across dozens of keyboard models.
 
 Start by reviewing the [Code Standards](code-standards.md) documentation—this contains the critical architecture rules that must never be violated. The standards explain why blocking operations break protocol timing, why Core 1 stays disabled, and how the ring buffer maintains data integrity without locks. Every rejected pull request traces back to violating principles documented there.
 
 Next, review the [Advanced Topics guide](../advanced/README.md) to understand how PIO state machines handle protocol timing, how the ring buffer coordinates interrupt and main loop contexts, and why code executes from SRAM rather than flash. This architectural overview connects the individual rules to the overall system design, helping you understand the "why" behind each constraint.
 
-Finally, familiarize yourself with the [Protocol Documentation](../protocols/README.md) to see how different keyboard interfaces work—AT/PS2's bidirectional communication, XT's simple unidirectional signaling, Amiga's handshake protocol, and the M0110's variable timing. Understanding these protocols helps you write code that works correctly across the hardware diversity that computing presents.
+Finally, familiarise yourself with the [Protocol Documentation](../protocols/README.md) to see how different keyboard interfaces work—AT/PS2's bidirectional communication, XT's simple unidirectional signaling, Amiga's handshake protocol, and the M0110's variable timing. Understanding these protocols helps you write code that works correctly across the hardware diversity that computing presents.
 
 The contribution process follows standard Git workflows with careful attention to quality. Fork the repository and clone it locally, then create a feature branch using conventional commit prefixes (`git checkout -b feat/my-feature`). Make your changes following the code standards detailed below, ensuring every function has clear comments and variable names explain their purpose. Before committing, run [`./tools/lint.sh`](../../tools/lint.sh) to catch architecture violations—the script must pass with zero errors and zero warnings, or continuous integration will reject your pull request.
 
@@ -24,17 +24,17 @@ The CI pipeline automatically builds all keyboard configurations in the build ma
 
 ### Code Standards
 
-Code quality in embedded systems goes beyond style preferences—it's about writing deterministic, maintainable code that behaves predictably under timing constraints. The project follows C11 standards with conventions optimized for readability and debugging.
+Code quality in embedded systems goes beyond style preferences—it's about writing deterministic, maintainable code that behaves predictably under timing constraints. The project follows C11 standards with conventions optimised for readability and debugging.
 
-Use 4-space indentation throughout (never tabs), which ensures consistent display across editors without configuration. Function and variable names use snake_case for familiarity to C programmers, while macros and constants use UPPER_CASE to make their compile-time nature immediately obvious. Choose descriptive names that explain purpose without needing comments—`keyboard_state_machine_task()` tells you more than `kbd_sm()` ever could.
+Use 4-space indentation throughout (never tabs), which ensures consistent display across editors without configuration. Function and variable names use snake_case for familiarity to C programmers, whilst macros and constants use UPPER_CASE to make their compile-time nature immediately obvious. Choose descriptive names that explain purpose without needing comments—`keyboard_state_machine_task()` tells you more than `kbd_sm()` ever could.
 
 The critical architecture rules deserve special emphasis because violating them breaks functionality rather than just style. Never use blocking operations like `sleep_ms()`, `sleep_us()`, `busy_wait_ms()`, or `busy_wait_us()` anywhere in production code. The main loop must continuously service the ring buffer and USB stack, so even brief blocking causes scancode loss. If you need time-based behavior, implement non-blocking state machines that check elapsed time on each iteration using `to_ms_since_boot(get_absolute_time())`.
 
-Never call multicore APIs (`multicore_*`, `core1_*`) or attempt to use Core 1. The single-core architecture eliminates synchronization complexity and delivers predictable latency. Adding multicore would introduce bugs without performance benefit. Never use `printf()` or related functions in interrupt context—these functions use DMA-driven UART that conflicts with interrupt handlers. Use the `LOG_*` macros instead, which handle interrupt-safe output buffering.
+Never call multicore APIs (`multicore_*`, `core1_*`) or attempt to use Core 1. The single-core architecture eliminates synchronisation complexity and delivers predictable latency. Adding multicore would introduce bugs without performance benefit. Never use `printf()` or related functions in interrupt context—these functions use DMA-driven UART that conflicts with interrupt handlers. Use the `LOG_*` macros instead, which handle interrupt-safe output buffering.
 
-Never call `ringbuf_reset()` with interrupts enabled. The ring buffer implements lock-free single-producer/single-consumer (SPSC) semantics, which breaks if you reset both pointers while an interrupt might be writing. Only reset during initialisation before enabling interrupts, or within an explicit interrupt-disabled critical section. All code must execute from SRAM using the `copy_to_ram` binary type—this ensures deterministic timing without flash cache misses affecting latency measurements.
+Never call `ringbuf_reset()` with interrupts enabled. The ring buffer implements lock-free single-producer/single-consumer (SPSC) semantics, which breaks if you reset both pointers whilst an interrupt might be writing. Only reset during initialisation before enabling interrupts, or within an explicit interrupt-disabled critical section. All code must execute from SRAM using the `copy_to_ram` binary type—this ensures deterministic timing without flash cache misses affecting latency measurements.
 
-Use volatile qualifiers and memory barriers (`__dmb()`) when sharing data between interrupt and main contexts. The compiler and CPU both reorder operations for optimization, which breaks interrupt communication without explicit synchronization. Place `volatile` on variables written in IRQ and read in main, then use `__dmb()` after volatile writes and before volatile reads to enforce ordering.
+Use volatile qualifiers and memory barriers (`__dmb()`) when sharing data between interrupt and main contexts. The compiler and CPU both reorder operations for optimisation, which breaks interrupt communication without explicit synchronisation. Place `volatile` on variables written in IRQ and read in main, then use `__dmb()` after volatile writes and before volatile reads to enforce ordering.
 
 Here's the pattern for non-blocking timeouts:
 - ❌ No multicore APIs (`multicore_*`, `core1_*`)
@@ -70,7 +70,7 @@ void my_task(void) {
 }
 ```
 
-This pattern stores the start time when entering a waiting state, then checks elapsed time on each loop iteration without blocking. The main loop continues servicing other tasks while the timer runs, maintaining system responsiveness. Standards enforcement happens through [`./tools/lint.sh`](../../tools/lint.sh) automated checks and comprehensive rules in [Code Standards](code-standards.md).
+This pattern stores the start time when entering a waiting state, then checks elapsed time on each loop iteration without blocking. The main loop continues servicing other tasks whilst the timer runs, maintaining system responsiveness. Standards enforcement happens through [`./tools/lint.sh`](../../tools/lint.sh) automated checks and comprehensive rules in [Code Standards](code-standards.md).
 
 ---
 
@@ -101,7 +101,7 @@ How to add support for new keyboard protocols:
 
 Start by researching the protocol thoroughly—you need to understand timing (clock frequency, bit duration, frame structure), signaling (voltage levels, idle states, edge polarities), and communication flow (unidirectional vs bidirectional, who generates the clock, how errors get detected). Datasheets, oscilloscope captures, and existing implementations all provide valuable information.
 
-Create a directory structure at `src/protocols/<name>/` containing all the protocol-specific files. The PIO program (`<name>.pio`) implements the low-level bit timing and frame synchronization in PIO assembly—this hardware state machine handles clock edge detection, bit shifting, and interrupt generation without CPU involvement. The protocol interface (`keyboard_interface.h` and `keyboard_interface.c`) implements the state machine for protocol initialisation, error recovery, and LED command handling. The common interface (`common_interface.c`) provides standardized `keyboard_init()`, `keyboard_task()`, and `keyboard_set_leds()` functions that the main loop calls, isolating protocol-specific details from the rest of the system.
+Create a directory structure at `src/protocols/<name>/` containing all the protocol-specific files. The PIO program (`<name>.pio`) implements the low-level bit timing and frame synchronisation in PIO assembly—this hardware state machine handles clock edge detection, bit shifting, and interrupt generation without CPU involvement. The protocol interface (`keyboard_interface.h` and `keyboard_interface.c`) implements the state machine for protocol initialisation, error recovery, and LED command handling. The common interface (`common_interface.c`) provides standardised `keyboard_init()`, `keyboard_task()`, and `keyboard_set_leds()` functions that the main loop calls, isolating protocol-specific details from the rest of the system.
 
 **Protocol Setup Pattern:** All protocol implementations follow a standard initialisation sequence. See the [Protocol Implementation Guide](protocol-implementation.md) for the complete pattern and explanation of why each step matters. Following this pattern ensures consistency, proper resource allocation, and correct error handling across all protocols.
 
@@ -167,7 +167,7 @@ Test exhaustively with hardware—press every key to verify correct translation,
 
 Reference implementations demonstrate the patterns. The [Scancode Set 2](../scancodes/set2.md) implementation handles AT/PS2 with E0 and F0 prefixes. [Scancode Set 1](../scancodes/set1.md) shows simple make/break codes without prefixes. The [Amiga scancode processor](../scancodes/amiga.md) demonstrates 7-bit protocol-specific codes. The [combined Set 1/2/3 processor](../scancodes/set123.md) handles keyboards that can switch sets dynamically.
 
-The [Scancode Sets documentation](../scancodes/README.md) provides detailed documentation for each set, while [HID keycodes](../../src/common/lib/hid_keycodes.h) defines all available USB HID codes for mapping.
+The [Scancode Sets documentation](../scancodes/README.md) provides detailed documentation for each set, whilst [HID keycodes](../../src/common/lib/hid_keycodes.h) defines all available USB HID codes for mapping.
 
 ---
 
@@ -204,7 +204,7 @@ Build resources include the [Building Firmware guide](../getting-started/buildin
 
 Before writing any code, read the [Code Standards](code-standards.md) documentation completely. This isn't a suggestion—it's the authoritative source for architectural constraints that must never be violated. Every architectural decision traces back to achieving precise timing with deterministic latency.
 
-The five absolute prohibitions exist for specific technical reasons. No blocking operations (`sleep_ms`, `sleep_us`, `busy_wait_us`, `busy_wait_ms`) because the main loop must service the ring buffer and USB stack continuously—protocols require precise timing that blocking operations destroy. No multicore APIs (`multicore_*`, `core1_*`) because Core 1 stays disabled—the single-core architecture eliminates synchronization complexity while delivering predictable latency. No `printf` in IRQ context because printf uses DMA-driven UART that conflicts with interrupt handlers—use `LOG_*` macros instead, which implement interrupt-safe buffering. No `ringbuf_reset()` with interrupts enabled because the lock-free SPSC design breaks if both pointers reset while an interrupt might be writing—only reset during initialisation or within explicit interrupt-disabled sections. No Flash execution because flash cache misses introduce unpredictable latency—code must run from SRAM using `copy_to_ram` to guarantee deterministic timing.
+The five absolute prohibitions exist for specific technical reasons. No blocking operations (`sleep_ms`, `sleep_us`, `busy_wait_us`, `busy_wait_ms`) because the main loop must service the ring buffer and USB stack continuously—protocols require precise timing that blocking operations destroy. No multicore APIs (`multicore_*`, `core1_*`) because Core 1 stays disabled—the single-core architecture eliminates synchronisation complexity whilst delivering predictable latency. No `printf` in IRQ context because printf uses DMA-driven UART that conflicts with interrupt handlers—use `LOG_*` macros instead, which implement interrupt-safe buffering. No `ringbuf_reset()` with interrupts enabled because the lock-free SPSC design breaks if both pointers reset whilst an interrupt might be writing—only reset during initialisation or within explicit interrupt-disabled sections. No Flash execution because flash cache misses introduce unpredictable latency—code must run from SRAM using `copy_to_ram` to guarantee deterministic timing.
 
 Understanding the "why" behind each rule helps you write compliant code naturally rather than fighting constraints. See [Advanced Topics](../advanced/README.md) for complete architecture documentation, [Code Standards](code-standards.md) for authoritative rules, and the [main loop implementation](../../src/main.c) for reference patterns.
 
@@ -224,11 +224,11 @@ Three operations are strictly forbidden: never read from IRQ context (only write
 
 ### PIO Programming
 
-The RP2040's Programmable I/O subsystem provides eight independent state machines (four per PIO block) that execute custom assembly programs. These aren't general-purpose processors—they're specialized for GPIO manipulation with a minimal instruction set focused on bit shifting, pin waiting, and conditional jumps. This specialization enables precise protocol timing without CPU involvement.
+The RP2040's Programmable I/O subsystem provides eight independent state machines (four per PIO block) that execute custom assembly programs. These aren't general-purpose processors—they're specialised for GPIO manipulation with a minimal instruction set focused on bit shifting, pin waiting, and conditional jumps. This specialisation enables precise protocol timing without CPU involvement.
 
-PIO handles protocol bit timing by monitoring clock edges and sampling data at precisely the right moment, frame synchronization by detecting start/stop conditions and assembling complete bytes, clock generation when protocols require the host to provide timing signals, and edge detection with precision that software interrupt handlers can't achieve.
+PIO handles protocol bit timing by monitoring clock edges and sampling data at precisely the right moment, frame synchronisation by detecting start/stop conditions and assembling complete bytes, clock generation when protocols require the host to provide timing signals, and edge detection with precision that software interrupt handlers can't achieve.
 
-Rather than studying simplified examples, examine the real implementations to understand production-quality PIO programming. The [AT/PS2 PIO program](../../src/protocols/at-ps2/interface.pio) demonstrates bidirectional communication with clock synchronization. The [XT PIO program](../../src/protocols/xt/keyboard_interface.pio) shows simple unidirectional receive with minimal state. The [Amiga PIO program](../../src/protocols/amiga/keyboard_interface.pio) implements handshake timing for synchronous protocols. The [M0110 PIO program](../../src/protocols/apple-m0110/keyboard_interface.pio) handles variable-timing protocols that adapt to signal conditions.
+Rather than studying simplified examples, examine the real implementations to understand production-quality PIO programming. The [AT/PS2 PIO program](../../src/protocols/at-ps2/interface.pio) demonstrates bidirectional communication with clock synchronisation. The [XT PIO program](../../src/protocols/xt/keyboard_interface.pio) shows simple unidirectional receive with minimal state. The [Amiga PIO program](../../src/protocols/amiga/keyboard_interface.pio) implements handshake timing for synchronous protocols. The [M0110 PIO program](../../src/protocols/apple-m0110/keyboard_interface.pio) handles variable-timing protocols that adapt to signal conditions.
 
 Additional PIO resources include the [PIO helper library](../../src/common/lib/pio_helper.c) and [header](../../src/common/lib/pio_helper.h) for loading and managing PIO programs, the [Advanced Topics](../advanced/README.md) for architectural context, and the [RP2040 Datasheet](https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf) PIO specification for complete instruction set reference.
 
@@ -242,7 +242,7 @@ The project maintains separate public and private documentation with clear bound
 
 Private documentation (`docs-internal/`) stays local and never gets committed. This directory holds development notes, investigation findings, performance analysis, architecture decision records, and other working documents that inform development but don't need public visibility. Git hooks and lint checks actively prevent committing these files, and referencing them in public documentation triggers build failures.
 
-The separation serves an important purpose: docs-internal provides a space for thorough investigation and analysis without worrying about polish or completeness, while public docs maintain high standards for accuracy and clarity. You can freely use docs-internal as a reference source during development—it often contains detailed findings and historical context that inform decisions. Just extract relevant information into properly formatted public documentation rather than linking to the private files.
+The separation serves an important purpose: docs-internal provides a space for thorough investigation and analysis without worrying about polish or completeness, whilst public docs maintain high standards for accuracy and clarity. You can freely use docs-internal as a reference source during development—it often contains detailed findings and historical context that inform decisions. Just extract relevant information into properly formatted public documentation rather than linking to the private files.
 
 Documentation resources include the project structure documented across multiple guides, the main [README](../../README.md) providing project overview, and comprehensive guides in [Getting Started](../getting-started/README.md), [Protocols](../protocols/README.md), and [Features](../features/README.md) directories.
 
@@ -260,7 +260,7 @@ Branch names follow conventional commit prefixes to indicate the type of work: `
 
 Commit messages follow the conventional commits format to maintain a clear, parseable history. The format includes a type prefix (`feat`, `fix`, `docs`, `refactor`, `test`, or `chore`), a colon, and a short description that completes the sentence "This commit will...". The optional body provides additional context about what changed and why. The optional footer references related issues or indicates breaking changes.
 
-Good commit messages explain both what changed and why the change was necessary. "feat: Add support for Amiga protocol" tells you what, while the body explains "Implements Amiga keyboard protocol with handshake timing and Caps Lock synchronization via pulse." Reference related issues in the footer using "Closes #42" for features or "Fixes #38" for bug fixes—this automatically links commits to issues and closes them when merged.
+Good commit messages explain both what changed and why the change was necessary. "feat: Add support for Amiga protocol" tells you what, whilst the body explains "Implements Amiga keyboard protocol with handshake timing and Caps Lock synchronisation via pulse." Reference related issues in the footer using "Closes #42" for features or "Fixes #38" for bug fixes—this automatically links commits to issues and closes them when merged.
 
 For bug fixes, explain the incorrect behavior and what caused it, not just what code changed: "Device was not responding correctly to LED commands. Fixed timing to match specification (10-16.7 kHz clock). Fixes #38" tells the complete story.
 

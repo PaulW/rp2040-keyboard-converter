@@ -38,18 +38,18 @@
  *
  * Thread Safety:
  * - Cortex-M0+ has atomic byte read/write operations
- * - No explicit synchronization needed for uint8_t
+ * - No explicit synchronisation needed for uint8_t
  * - Volatile qualifier ensures visibility across contexts
  * - Safe to call from main loop, IRQs, or DMA handlers
  *
  * Integration:
- * - Automatically initialized by init_uart_dma()
- * - Can be explicitly initialized via log_init()
+ * - Automatically initialised by init_uart_dma()
+ * - Can be explicitly initialised via log_init()
  * - Works transparently with DMA-based UART system
  *
  * Design Philosophy:
- * - Minimize runtime overhead (single volatile uint8_t)
- * - Maximize compile-time optimization (macros with dead code elimination)
+ * - Minimise runtime overhead (single volatile uint8_t)
+ * - Maximise compile-time optimisation (macros with dead code elimination)
  * - Maintain backward compatibility (printf still works)
  * - Support gradual migration (both old and new can coexist)
  */
@@ -70,11 +70,11 @@
  *
  * Thread Safety:
  * - Cortex-M0+ provides atomic byte read/write
- * - No need for explicit synchronization primitives
+ * - No need for explicit synchronisation primitives
  * - Safe to access from any context without locks
  *
  * Default Value:
- * - Initialized to LOG_LEVEL_DEFAULT from config.h
+ * - Initialised to LOG_LEVEL_DEFAULT from config.h
  * - Typically LOG_LEVEL_INFO (errors + info, no debug)
  * - Can be changed at runtime via log_set_level()
  */
@@ -88,7 +88,7 @@ static volatile uint8_t current_log_level = LOG_LEVEL_DEFAULT;
  *
  * Implementation:
  * - Single volatile uint8_t write (atomic on Cortex-M0+)
- * - No locking or synchronization needed
+ * - No locking or synchronisation needed
  * - Effect is immediate for subsequent log calls
  * - Compiler generates 1-2 instructions (mov + strb)
  *
@@ -128,7 +128,7 @@ void log_set_level(log_level_t level) {
  *
  * Implementation:
  * - Single volatile uint8_t read (atomic on Cortex-M0+)
- * - No locking or synchronization needed
+ * - No locking or synchronisation needed
  * - Compiler generates 1-2 instructions (ldrb + mov)
  * - Likely inlined by compiler at call sites
  *
@@ -140,7 +140,7 @@ void log_set_level(log_level_t level) {
  * Thread Safety:
  * - Safe to call from any execution context
  * - Atomic read ensures consistent value
- * - Volatile qualifier prevents optimization
+ * - Volatile qualifier prevents optimisation
  *
  * @return Current log level
  *
@@ -163,7 +163,7 @@ log_level_t log_get_level(void) {
 }
 
 /**
- * @brief Initialize logging system
+ * @brief Initialise logging system
  *
  * Sets the initial log level from config.h. This function is
  * automatically called by init_uart_dma(), so explicit calls
@@ -172,7 +172,7 @@ log_level_t log_get_level(void) {
  * Implementation:
  * - Sets current_log_level to LOG_LEVEL_DEFAULT
  * - Idempotent: safe to call multiple times
- * - No hardware initialization (uses existing UART DMA)
+ * - No hardware initialisation (uses existing UART DMA)
  *
  * When to Call:
  * - Automatically called by init_uart_dma()
@@ -186,7 +186,7 @@ log_level_t log_get_level(void) {
  *
  * @note This is automatically called by init_uart_dma()
  * @note Idempotent: multiple calls are safe
- * @note Does not initialize UART hardware (uart.c handles that)
+ * @note Does not initialise UART hardware (uart.c handles that)
  */
 void log_init(void) {
     current_log_level = LOG_LEVEL_DEFAULT;

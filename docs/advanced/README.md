@@ -1,12 +1,12 @@
 # Advanced Topics
 
-Advanced documentation for developers and power users who want to understand the converter's internals, optimize performance, or contribute to the project.
+Advanced documentation for developers and power users who want to understand the converter's internals, optimise performance, or contribute to the project.
 
 ---
 
 ## Documentation Structure
 
-The advanced topics are organized into specialized guides, each focusing on a specific aspect of the converter:
+The advanced topics are organised into specialised guides, each focusing on a specific aspect of the converter:
 
 ### [System Architecture](architecture.md)
 
@@ -17,7 +17,7 @@ Comprehensive overview of how the converter works internally. If you want to und
 - Main components: PIO state machines, interrupt handlers, ring buffer, scancode processor, keymap translation, HID interface
 - Memory layout and execution contexts
 - Critical design principles: single-core architecture, non-blocking operations, SRAM execution, ring buffer safety
-- Thread safety patterns and synchronization
+- Thread safety patterns and synchronisation
 
 **Read this if you're:**
 - Adding a new keyboard protocol
@@ -33,13 +33,13 @@ Analysis of the converter's performance based on RP2040 specifications and desig
 - Processing pipeline stages and timing
 - CPU and PIO clock rates
 - USB polling intervals and throughput limits
-- Resource utilization (memory, CPU)
+- Resource utilisation (memory, CPU)
 - Protocol timing requirements
 - Latency analysis and deterministic behaviour
 - Benchmarking methodology
 
 **Read this if you're:**
-- Optimizing performance
+- Optimsing performance
 - Understanding latency sources
 - Troubleshooting throughput issues
 - Comparing converter performance to specifications
@@ -53,7 +53,7 @@ Complete guide to the Docker-based build system, CMake configuration, and firmwa
 - Configuration files (keyboard.config)
 - CMake structure and dependency tracking
 - PIO program compilation
-- Memory management and build optimization
+- Memory management and build optimisation
 - Build configurations (keyboard-only, keyboard+mouse)
 - CI/CD pipeline
 - Troubleshooting build errors
@@ -133,7 +133,7 @@ See [Architecture](architecture.md) for complete details.
 
 Four non-negotiable principles ensure reliability:
 
-1. **Single-Core Only** - Core 1 disabled, eliminates multicore synchronization complexity
+1. **Single-Core Only** - Core 1 disabled, eliminates multicore synchronisation complexity
 2. **Non-Blocking Operations** - No `sleep_ms()`, `busy_wait_us()`, or blocking loops
 3. **SRAM Execution** - Code runs from RAM for deterministic timing
 4. **Ring Buffer Safety** - Lock-free single-producer/single-consumer design
@@ -142,7 +142,7 @@ Violations of these principles will cause `./tools/lint.sh` to fail. See [Archit
 
 ---
 
-## Source Code Organization
+## Source Code Organisation
 
 **Core libraries:** [`src/common/lib/`](../../src/common/lib/)
 - `ringbuf.c/h` - Lock-free FIFO queue

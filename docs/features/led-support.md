@@ -12,7 +12,7 @@ The status LED shows different colors and patterns depending on what's happening
 
 **Solid Green** - Everything is working perfectly. The converter has successfully initialised, the keyboard is communicating properly, and USB is connected. This is what you should see during normal operation.
 
-**Solid Orange** - The converter is starting up. You'll see this briefly during power-on while firmware initialises hardware, loads configuration, and establishes communication with your keyboard. Should transition to green within a second or two.
+**Solid Orange** - The converter is starting up. You'll see this briefly during power-on whilst firmware initialises hardware, loads configuration, and establishes communication with your keyboard. Should transition to green once initialisation completes.
 
 **Solid Magenta** - Bootloader mode active (firmware flash mode). The converter is in BOOTSEL mode waiting for a firmware upload. This is normal when holding the BOOTSEL button during power-on or after issuing the 'B' command in Command Mode. See [building-firmware.md](../getting-started/building-firmware.md) for firmware installation instructions.
 
@@ -20,7 +20,7 @@ The status LED shows different colors and patterns depending on what's happening
 
 **Alternating Green/Pink** - You've pressed 'D' in Command Mode and the converter is waiting for you to select a log level (1, 2, or 3).
 
-**Rainbow Cycling** - You've pressed 'L' in Command Mode and the converter is displaying a rainbow cycling pattern while you adjust LED brightness using +/- keys. The LED cycles through all colors of the rainbow (red → yellow → green → cyan → blue → magenta → red...) to help you judge the brightness setting. See [Command Mode - 'L' Command](command-mode.md#l---adjust-led-brightness) for complete details.
+**Rainbow Cycling** - You've pressed 'L' in Command Mode and the converter is displaying a rainbow cycling pattern whilst you adjust LED brightness using +/- keys. The LED cycles through all colors of the rainbow (red → yellow → green → cyan → blue → magenta → red...) to help you judge the brightness setting. See [Command Mode - 'L' Command](command-mode.md#l---adjust-led-brightness) for complete details.
 
 Understanding these patterns helps you diagnose issues quickly. Solid green means everything is working. Solid orange means the converter is still initialising. Solid magenta means bootloader mode is active (this is normal when flashing firmware). The alternating patterns indicate Command Mode is active and waiting for input.
 
@@ -80,7 +80,7 @@ For a single status LED, make these three connections:
 | **GND** | Ground rail | Black wire | Common ground with RP2040 |
 | **DIN** | RP2040 GPIO 29 | Yellow/data wire | Default data pin (configurable in [`config.h`](../../src/config.h)) |
 
-**Power notes**: WS2812 LEDs are specified for 5V operation but work reliably at 3.3V with reduced maximum brightness. Since the converter uses gamma-corrected brightness control (typically running at 10-50% brightness), 3.3V provides plenty of light while simplifying the wiring. If you need maximum brightness, connect VCC to VSYS (5V from USB) instead—just ensure your USB power supply can handle it.
+**Power notes**: WS2812 LEDs are specified for 5V operation but work reliably at 3.3V with reduced maximum brightness. Since the converter uses gamma-corrected brightness control (typically running at 10-50% brightness), 3.3V provides plenty of light whilst simplifying the wiring. If you need maximum brightness, connect VCC to VSYS (5V from USB) instead—just ensure your USB power supply can handle it.
 
 **Signal level**: The RP2040's 3.3V GPIO output works with most WS2812 variants. The LED's data input threshold is typically 0.7 × VCC, so at 3.3V that's 2.31V—well within the RP2040's 3.3V HIGH output. If you experience intermittent behavior or color glitches, try adding a 220-470Ω resistor in series with the data line for signal protection.
 
@@ -214,13 +214,13 @@ These microsecond-level timings are too precise for software loops. Even small d
 
 ### PIO: Dedicated Hardware for Precise Timing
 
-The RP2040's PIO (Programmable I/O) is a specialized processor designed for exactly this kind of task. It's like having a tiny dedicated coprocessor whose only job is generating perfectly-timed signals.
+The RP2040's PIO (Programmable I/O) is a specialised processor designed for exactly this kind of task. It's like having a tiny dedicated coprocessor whose only job is generating perfectly-timed signals.
 
 **Why PIO matters**:
 
-The PIO runs independently at 125MHz with 8-nanosecond resolution. Once you load a program into it and feed it data, it generates the WS2812 signal without any CPU involvement. Your main code continues processing keyboard events while the PIO handles LED timing in parallel.
+The PIO runs independently at 125MHz with 8-nanosecond resolution. Once you load a program into it and feed it data, it generates the WS2812 signal without any CPU involvement. Your main code continues processing keyboard events whilst the PIO handles LED timing in parallel.
 
-This is critical for keyboard operation. If updating LEDs required the CPU to carefully time every microsecond for 180µs, that would be 18 main loop iterations where no keyboard processing happens. You'd lose keystrokes. With PIO, LED updates happen "in the background" while the CPU keeps working.
+This is critical for keyboard operation. If updating LEDs required the CPU to carefully time every microsecond for 180µs, that would be 18 main loop iterations where no keyboard processing happens. You'd lose keystrokes. With PIO, LED updates happen "in the background" whilst the CPU keeps working.
 
 **The PIO program** (from [`ws2812.pio`](../../src/common/lib/ws2812/ws2812.pio)):
 
@@ -258,7 +258,7 @@ If either check fails, the LED system marks the update as "pending" and the main
 
 The actual CPU cost of preparing an LED update is tiny: about 300 nanoseconds per LED. This includes looking up the brightness multiplier, extracting RGB components, scaling them, and reordering to GRB format.
 
-At 10µs per main loop iteration, 300ns is 3% CPU utilization. The PIO handles the actual transmission (30µs per LED) in parallel while the CPU processes keyboard data.
+At 10µs per main loop iteration, 300ns is 3% CPU utilisation. The PIO handles the actual transmission (30µs per LED) in parallel whilst the CPU processes keyboard data.
 
 The converter's non-blocking LED design ensures status indicators never interfere with keyboard operation, even when updating 4 LEDs simultaneously. You get visual feedback without sacrificing responsiveness.
 
@@ -291,7 +291,7 @@ The human eye perceives brightness logarithmically—doubling the electrical pow
 | 9 | 74.5% | ~90% | Very bright |
 | 10 | 100.0% | ~100% | Maximum (full LED capability) |
 
-The practical result: each brightness increment from 1 to 10 produces an approximately equal perceived change in brightness. Without gamma correction, levels 1-5 would barely be visible while 9-10 would be a massive jump. The lookup table makes adjustment intuitive—each step feels like the same increase in brightness.
+The practical result: each brightness increment from 1 to 10 produces an approximately equal perceived change in brightness. Without gamma correction, levels 1-5 would barely be visible whilst 9-10 would be a massive jump. The lookup table makes adjustment intuitive—each step feels like the same increase in brightness.
 
 ---
 
@@ -354,7 +354,7 @@ Understanding the implementation helps explain why LEDs behave the way they do a
 
 The LED system never blocks the main loop. Updating LED color or brightness happens asynchronously, allowing the converter to continue processing keystrokes and USB communication without interruption.
 
-For WS2812 LEDs specifically, the converter uses the RP2040's PIO (Programmable I/O) hardware to generate the precise timing signals these LEDs require. The PIO runs independently of the CPU, meaning LED updates happen in hardware while the CPU continues processing keyboard data. See [`src/common/lib/ws2812/ws2812.pio`](../../src/common/lib/ws2812/ws2812.pio) for the PIO program implementation.
+For WS2812 LEDs specifically, the converter uses the RP2040's PIO (Programmable I/O) hardware to generate the precise timing signals these LEDs require. The PIO runs independently of the CPU, meaning LED updates happen in hardware whilst the CPU continues processing keyboard data. See [`src/common/lib/ws2812/ws2812.pio`](../../src/common/lib/ws2812/ws2812.pio) for the PIO program implementation.
 
 Before sending new color data to WS2812 LEDs, [`ws2812_show()`](../../src/common/lib/ws2812/ws2812.c) checks if the PIO's FIFO (first-in-first-out buffer) has space. If the FIFO is full, the update is deferred. This prevents blocking—if the PIO is busy, we'll try again on the next main loop iteration.
 

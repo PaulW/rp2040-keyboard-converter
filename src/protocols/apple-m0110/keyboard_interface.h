@@ -40,7 +40,7 @@
  * - Request-to-send: 840µs DATA low period
  * - Data hold time: 80µs after final clock edge
  *
- * Initialization Sequence:
+ * Initialisation Sequence:
  * 1. Host sends Model Number command (0x16)
  * 2. Keyboard responds with model ID and resets itself
  * 3. Host begins normal operation with Inquiry commands
@@ -105,10 +105,10 @@
  */
 #define M0110_RESPONSE_TIMEOUT_MS     500 /**< Max time to wait for keyboard response (1/2 second) */
 #define M0110_MODEL_RETRY_INTERVAL_MS 500  /**< Model command retry interval */
-#define M0110_INITIALIZATION_DELAY_MS 1000 /**< Initial delay before first model command */
+#define M0110_INITIALISATION_DELAY_MS 1000 /**< Initial delay before first model command */
 
 /**
- * @brief Initializes the Apple M0110 keyboard interface.
+ * @brief Initialises the Apple M0110 keyboard interface.
  *
  * @param data_pin The GPIO pin connected to the DATA line
  */

@@ -85,7 +85,7 @@ typedef struct {
  * @brief Process Unified XT/AT Scancode
  *
  * This function provides a unified processor for all three XT/AT scancode sets (Set 1, 2, and 3).
- * It consolidates the common state machine logic while allowing per-set configuration via the
+ * It consolidates the common state machine logic whilst allowing per-set configuration via the
  * config parameter.
  *
  * Protocol Overview:
@@ -128,7 +128,7 @@ typedef struct {
  * @note This function maintains internal state across calls (static variables)
  * @note State is reset to INIT after processing each complete sequence
  * @note Calls handle_keyboard_report(code, is_make) for each complete key event
- * @note` Debug output via LOG_DEBUG() for unexpected states
+ * @note Debug output via LOG_DEBUG() for unexpected states
  *
  * @see scancode_config_t for configuration details
  * @see handle_keyboard_report() for key event processing
@@ -140,7 +140,7 @@ void process_scancode(uint8_t code, const scancode_config_t* config);
  *
  * Resets the internal state machine to INIT. This should be called when:
  * - Switching scancode sets dynamically
- * - Re-initializing the keyboard interface
+ * - Re-initialising the keyboard interface
  * - Recovering from protocol errors
  *
  * @note Not normally needed during regular operation

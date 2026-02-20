@@ -114,7 +114,7 @@ enum {
  * @note Array is 0-indexed but brightness levels are 1-indexed (1-10)
  * @note Index 0 contains 0 (unused) - attempting brightness=0 yields black
  * @note Static storage in flash (const) - no RAM consumption
- * @note Compiler may optimize away unused table entries if brightness is compile-time constant
+ * @note Compiler may optimise away unused table entries if brightness is compile-time constant
  */
 #ifdef CONVERTER_LEDS
 static const uint8_t BRIGHTNESS_LUT[11] = {
@@ -143,12 +143,12 @@ static const uint8_t BRIGHTNESS_LUT[11] = {
  * - Thread-safety: All access from main loop context only
  * - Used by ws2812_set_color() to look up multiplier from BRIGHTNESS_LUT
  *
- * Initialization:
+ * Initialisation:
  * - Starts with compile-time default from config.h
  * - Can be overridden at runtime from persistent config (see main.c)
  * - Similar pattern to log level: compile-time default, runtime override
  *
- * @note Initialized here with compile-time default
+ * @note Initialised here with compile-time default
  * @note May be overridden in main.c from config_get_led_brightness()
  * @note Modified by ws2812_set_brightness() during user adjustment
  */
@@ -167,7 +167,7 @@ static uint8_t g_led_brightness = CONVERTER_LEDS_BRIGHTNESS;
  * 1. **Gamma-Corrected Brightness Scaling**:
  *    - Looks up perceptually-linear multiplier from BRIGHTNESS_LUT
  *    - Scales each RGB component: `output = (input * multiplier) / 255`
- *    - Division by 255 normalizes the result back to 8-bit range (0-255)
+ *    - Division by 255 normalises the result back to 8-bit range (0-255)
  *    - Uses integer arithmetic for performance (no floating point)
  *
  * 2. **Color Order Conversion**:
@@ -176,12 +176,12 @@ static uint8_t g_led_brightness = CONVERTER_LEDS_BRIGHTNESS;
  *    - Function reorders color bytes based on CONVERTER_LEDS_TYPE configuration
  *    - Ensures correct color output regardless of LED chip variant
  *
- * Performance Optimizations:
+ * Performance Optimisations:
  * - Function is `static inline` for potential inlining at call site
  * - Brightness multiplier lookup is O(1) array access (not calculated)
  * - Color extraction uses bit shifts and masks (fast bitwise ops)
  * - Integer-only arithmetic (no floating point or division hardware needed)
- * - Switch statement may be optimized to jump table by compiler
+ * - Switch statement may be optimised to jump table by compiler
  * - Conditional compilation (#ifdef) eliminates unused code paths
  *
  * Mathematical Details:
@@ -203,7 +203,7 @@ static uint8_t g_led_brightness = CONVERTER_LEDS_BRIGHTNESS;
  * - Division by 255 gives exact scaling: multiplier 255 = 100%, multiplier 128 = ~50.2%
  * - Division by 256 would give: multiplier 255 = 99.6%, multiplier 128 = 50.0%
  * - Using 255 ensures multiplier=255 doesn't dim the LED by 0.4%
- * - Compiler may optimize `/255` to `(x * 0x8080 + 0x8000) >> 23` or similar
+ * - Compiler may optimise `/255` to `(x * 0x8080 + 0x8000) >> 23` or similar
  *
  * Color Order Examples:
  * ```
@@ -269,14 +269,14 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
     if (g_led_brightness <= 10) {
         const uint8_t multiplier = BRIGHTNESS_LUT[g_led_brightness];
 
-        // Scale each color component by multiplier, normalize back to 8-bit range
+        // Scale each color component by multiplier, normalise back to 8-bit range
         // Formula: output = (input × multiplier) ÷ 255
         //
         // Performance notes:
         // - Multiplication is fast on Cortex-M0+ (1-2 cycles for 8-bit×8-bit)
-        // - Division by 255 may be optimized by compiler to multiply + shift
+        // - Division by 255 may be optimised by compiler to multiply + shift
         // - Alternative: (x * multiplier * 257) >> 16 (faster but less accurate)
-        // - Current approach prioritizes accuracy over marginal speed gain
+        // - Current approach prioritises accuracy over marginal speed gain
         r = (uint8_t)((r * multiplier) / 255);
         g = (uint8_t)((g * multiplier) / 255);
         b = (uint8_t)((b * multiplier) / 255);
@@ -292,8 +292,8 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
     //   - APA102: Uses SPI, not applicable here
     //   - Cheaper clones: Often BGR or other orders
     //
-    // Switch statement allows compiler to optimize to jump table
-    // Only one case is included in final binary (others optimized away)
+    // Switch statement allows compiler to optimise to jump table
+    // Only one case is included in final binary (others optimised away)
     switch (CONVERTER_LEDS_TYPE) {
         case LED_RBG:
             return (r << 16) | (b << 8) | g;  // Red-Blue-Green
@@ -339,13 +339,13 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
  * - FIFO has 4-entry depth, but we check before each write for safety
  *
  * @param led_color The color value to set for the LED (RGB format, 0x00RRGGBB)
- * @return true if color was queued to PIO, false if FIFO was full or not initialized
+ * @return true if color was queued to PIO, false if FIFO was full or not initialised
  *
  * @note Caller should check return value and defer/retry if false
  * @note Color is automatically converted to GRB and adjusted for brightness
  */
 bool ws2812_show(uint32_t led_color) {
-    // Guard against uninitialized PIO/SM
+    // Guard against uninitialised PIO/SM
     if (pio_engine.pio == NULL) {
         return false;
     }
@@ -364,7 +364,7 @@ bool ws2812_show(uint32_t led_color) {
 /**
  * @brief Sets up the WS2812 interface.
  * This function sets up the WS2812 interface by finding an available PIO, claiming an unused
- * state machine (SM), adding the WS2812 program to the PIO, initializing the program with the
+ * state machine (SM), adding the WS2812 program to the PIO, initialising the program with the
  * specified parameters, and printing information about the setup.
  *
  * @param led_pin The GPIO pin connected to the WS2812 LED strip.

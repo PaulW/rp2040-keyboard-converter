@@ -79,7 +79,7 @@ When mouse data arrives, the PIO hardware triggers an interrupt. The interrupt h
 
 Mouse initialisation happens separately from keyboard initialisation on dedicated GPIO pins, so adding mouse support doesn't affect keyboard operation. Both keyboard and mouse reports travel over the same USB connection, with the host operating system automatically distinguishing report types based on format.
 
-The practical result: you can type and move the mouse simultaneously without coordination or timing concerns. Press keys while moving the cursor, scroll while holding modifier keys, click while typing—everything works as expected.
+The practical result: you can type and move the mouse simultaneously without coordination or timing concerns. Press keys whilst moving the cursor, scroll whilst holding modifier keys, click whilst typing—everything works as expected.
 
 For protocol-specific technical details about packet formats, initialisation sequences, and timing specifications, see [AT/PS2 Protocol Documentation](../protocols/at-ps2.md#mouse-implementation).
 

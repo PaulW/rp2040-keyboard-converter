@@ -168,7 +168,7 @@ Register your protocol's interrupt handler as a callback with the PIO IRQ dispat
 pio_irq_register_callback(pio_engine.pio, &keyboard_input_event_handler);
 ```
 
-The dispatcher supports up to 4 callbacks per PIO instance, allowing multiple protocols to share the same PIO hardware (e.g., AT/PS2 keyboard + mouse). Registered handlers are called sequentially from the shared IRQ dispatcher. Each handler must be marked `__isr` and must never block (no `sleep_ms()`, no `printf()`, no loops without exit conditions).
+The dispatcher supports up to 4 callbacks total (global registry) and only one PIO instance per session. Multiple protocols can share a single PIO (e.g., AT/PS2 keyboard + mouse), and handlers are called sequentially from the shared dispatcher.
 
 **Error handling:** If registration fails (e.g., all 4 callback slots full), the function returns `false` and logs an error. Check the return value if your protocol needs to handle this condition.
 
@@ -269,11 +269,13 @@ Used across all protocols: AT/PS2 (keyboard and mouse), XT, Amiga, M0110, and WS
 ### Pin Requirements
 
 **Single pin:**
+
 ```c
 keyboard_data_pin = data_pin;
 ```
 
 **Adjacent pins:**
+
 ```c
 keyboard_data_pin = data_pin;
 keyboard_clock_pin = data_pin + 1;  // Must be adjacent

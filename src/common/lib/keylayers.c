@@ -98,7 +98,7 @@ static void keylayers_update_effective_state(void) {
  * @brief Reset layer state to base layer (layer 0)
  *
  * Clears all layer activations and returns to base layer.
- * Used during initialization and error recovery.
+ * Used during initialisation and error recovery.
  *
  * @note This function only modifies in-RAM state and does NOT persist changes to flash.
  *       If TG/TO layers were previously saved via config_save(), they will be restored
@@ -192,12 +192,12 @@ static uint32_t keylayers_compute_hash(void) {
 }
 
 /**
- * @brief Handle first-boot initialization of layers hash
+ * @brief Handle first-boot initialisation of layers hash
  *
  * @param current_hash The computed hash for the current keymap configuration
  */
 static void handle_first_boot(uint32_t current_hash) {
-    LOG_INFO("Initializing layers hash: 0x%08X (layer_count=%d)\n", (unsigned int)current_hash,
+    LOG_INFO("Initialising layers hash: 0x%08X (layer_count=%d)\n", (unsigned int)current_hash,
              keymap_layer_count);
     persistent_layer_state = 0;  // No persistent layers on first boot
     keylayers_update_effective_state();
@@ -255,7 +255,7 @@ static void handle_valid_hash(uint8_t saved_layer_state) {
 }
 
 /**
- * @brief Initialize layer system and restore saved layer state
+ * @brief Initialise layer system and restore saved layer state
  *
  * This function should be called after config_init() during boot.
  * It computes the current keymap hash and attempts to restore the saved

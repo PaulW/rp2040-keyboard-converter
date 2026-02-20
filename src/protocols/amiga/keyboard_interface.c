@@ -39,7 +39,7 @@
  * - LSB-first after bit rotation (see below)
  * - Active-low logic: HIGH = 0, LOW = 1
  * - Special bit rotation: Transmitted as 6-5-4-3-2-1-0-7 (bit 7 last)
- * - Automatic resynchronization on handshake timeout
+ * - Automatic resynchronisation on handshake timeout
  *
  * Timing Characteristics:
  * - Bit rate: ~17 kbit/sec (keyboard-controlled)
@@ -78,7 +78,7 @@
  *
  * Advantages:
  * - PIO-based handshake ensures precise timing without blocking
- * - Automatic resynchronization from communication errors
+ * - Automatic resynchronisation from communication errors
  * - Sophisticated error recovery without host intervention
  * - Supports advanced features like keyboard-initiated reset
  *
@@ -143,7 +143,7 @@ static enum {
  * - Active-low logic: Inverted from standard convention
  * - Special codes for protocol management (0x78, 0xF9, 0xFA, 0xFC, 0xFD, 0xFE)
  *
- * Initialization Sequence:
+ * Initialisation Sequence:
  * 1. UNINITIALISED: Waiting for first real byte (0xFD or normal key code)
  * 2. First byte received → INITIALISED
  *
@@ -163,7 +163,7 @@ static enum {
  *
  * CAPS LOCK Handling:
  * - CAPS LOCK (0x62/0xE2) queued like normal keys
- * - Scancode processor handles LED synchronization and timing
+ * - Scancode processor handles LED synchronisation and timing
  * - Protocol layer has no special CAPS LOCK logic (clean separation of concerns)
  *
  * Data Flow:
@@ -182,7 +182,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
     // Transition to INITIALISED on first byte received
     if (keyboard_state == UNINITIALISED) {
         keyboard_state = INITIALISED;
-        LOG_INFO("Amiga keyboard initialized\n");
+        LOG_INFO("Amiga keyboard initialised\n");
     }
 
     // Check for special codes first (these override normal key processing)
@@ -257,7 +257,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * - Uses direct PIO RX FIFO register access (pio_engine.pio->rxf[pio_engine.sm])
  * - This matches the established pattern across ALL protocols (AT/PS2, XT, Apple M0110)
  * - Single-byte read is intentional - ISR fires once per byte, not burst
- * - Performance-optimized for minimal ISR latency
+ * - Performance-optimised for minimal ISR latency
  *
  * Handshake Protocol:
  * - PIO automatically sends 85µs handshake pulse after receiving 8 bits
@@ -275,7 +275,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * - Event processor handles state machine and special codes
  * - Scan codes queued to ring buffer for HID processing
  *
- * Performance Optimization:
+ * Performance Optimisation:
  * - Minimal interrupt processing time (no handshake delay in ISR)
  * - Direct FIFO access without buffering overhead
  * - Efficient bit rotation using shift operations
@@ -323,7 +323,7 @@ static void __isr keyboard_input_event_handler(void) {
 /**
  * @brief Setup Amiga keyboard interface
  *
- * Initializes PIO state machine, GPIO configuration, and interrupt handling
+ * Initialises PIO state machine, GPIO configuration, and interrupt handling
  * for Amiga keyboard protocol:
  *
  * PIO Configuration:
@@ -335,7 +335,7 @@ static void __isr keyboard_input_event_handler(void) {
  * GPIO Setup:
  * - DATA (data_pin): Bidirectional, open-collector with pull-up
  * - CLOCK (data_pin + 1): Input only, keyboard-driven, with pull-up
- * - Both pins initialized for PIO control
+ * - Both pins initialised for PIO control
  *
  * Interrupt Configuration:
  * - Enables RX FIFO not empty interrupt
@@ -347,12 +347,12 @@ static void __isr keyboard_input_event_handler(void) {
  */
 void keyboard_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
-    // Initialize converter status LEDs to "not ready" state
+    // Initialise converter status LEDs to "not ready" state
     converter.state.kb_ready = 0;
     update_converter_status();
 #endif
 
-    // Initialize ring buffer for key data communication between IRQ and main task
+    // Initialise ring buffer for key data communication between IRQ and main task
     ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Safe: IRQs not yet enabled during init
 
     // Claim PIO instance and state machine atomically with fallback
@@ -375,13 +375,13 @@ void keyboard_interface_setup(uint data_pin) {
 
     LOG_INFO("Amiga: Effective SM Clock Speed: %.2fkHz\n", effective_clock_khz);
 
-    // Initialize PIO program with calculated clock divider
+    // Initialise PIO program with calculated clock divider
     // Note: keyboard_interface_program_init (in .pio file) enables RX FIFO interrupt via:
     //   pio_set_irq0_source_enabled(pio, pis_sm0_rx_fifo_not_empty + sm, true)
     keyboard_interface_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin,
                                     clock_div);
 
-    // Initialize shared PIO IRQ dispatcher (safe to call multiple times)
+    // Initialise shared PIO IRQ dispatcher (safe to call multiple times)
     pio_irq_dispatcher_init(pio_engine.pio);
 
     // Register keyboard event handler with the dispatcher
@@ -396,7 +396,7 @@ void keyboard_interface_setup(uint data_pin) {
     // Set initial state - transition to INITIALISED happens in ISR on first byte
     keyboard_state = UNINITIALISED;
 
-    LOG_INFO("Amiga keyboard interface initialized, waiting for first byte...\n");
+    LOG_INFO("Amiga keyboard interface initialised, waiting for first byte...\n");
 }
 
 /**
@@ -425,7 +425,7 @@ void keyboard_interface_setup(uint data_pin) {
  * - Handles CAPS LOCK special behavior (press only, LED state tracking)
  *
  * Protocol Features:
- * - No initialization sequence needed (unlike AT/PS2)
+ * - No initialisation sequence needed (unlike AT/PS2)
  * - No LED control capability from computer (keyboard maintains state)
  * - Bidirectional handshake handled entirely in PIO hardware
  * - Special codes (0x78, 0xF9-0xFE) filtered by event processor

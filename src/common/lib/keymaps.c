@@ -81,7 +81,7 @@ static uint8_t scan_lower_layers_for_modifier(uint8_t row, uint8_t col, uint8_t*
  * This allows proper layer stacking with TG (toggle) and exclusive mode with TO (switch to).
  *
  * LAYER MODIFIER SAFETY FEATURE:
- * If a layer modifier key (MO_x, TO_x, TG_x, OSL_x) is found at any layer while searching down,
+ * If a layer modifier key (MO_x, TO_x, TG_x, OSL_x) is found at any layer whilst searching down,
  * it takes precedence over any regular keys found in higher layers. This prevents users from
  * accidentally overriding layer navigation keys by placing regular keys at the same position
  * in higher layers.
@@ -188,7 +188,7 @@ static uint8_t keymap_search_layers(uint8_t row, uint8_t col, uint8_t* source_la
  * @return The HID keycode to send, or KC_NO if consumed by layer operation.
  */
 uint8_t keymap_get_key_val(uint8_t pos, bool make, bool* suppress_shift) {
-    // Initialize output parameter to default false to avoid leaking previous value
+    // Initialise output parameter to default false to avoid leaking previous value
     if (suppress_shift != NULL) {
         *suppress_shift = false;
     }

@@ -1,8 +1,8 @@
 # Amiga Protocol
 
-The Amiga keyboard protocol is a bidirectional serial protocol used in Commodore Amiga computers. Unlike simpler unidirectional protocols like the IBM XT, every byte the Amiga keyboard sends requires a handshake response from the host. If it doesn't receive one within 143ms, the keyboard enters a resynchronization mode to recover, which ensures the keyboard and host stay in sync even if communication temporarily breaks down.
+The Amiga keyboard protocol is a bidirectional serial protocol used in Commodore Amiga computers. Unlike simpler unidirectional protocols like the IBM XT, every byte the Amiga keyboard sends requires a handshake response from the host. If it doesn't receive one within 143ms, the keyboard enters a resynchronisation mode to recover, which ensures the keyboard and host stay in sync even if communication temporarily breaks down.
 
-The protocol uses bit rotation—instead of transmitting bits in the usual 0-7 order, it sends them as 6-5-4-3-2-1-0-7. This means bit 7 (which indicates whether a key is pressed or released) is transmitted last. According to the Commodore Hardware Reference Manual, this design reduces problems from lost synchronization.
+The protocol uses bit rotation—instead of transmitting bits in the usual 0-7 order, it sends them as 6-5-4-3-2-1-0-7. This means bit 7 (which indicates whether a key is pressed or released) is transmitted last. According to the Commodore Hardware Reference Manual, this design reduces problems from lost synchronisation.
 
 ---
 
@@ -30,7 +30,7 @@ Whilst the core protocol remains consistent, there are practical differences bet
 
 - **Keyboard → Host**: Transmits scan codes serially (8 bits, ~60µs per bit)
 - **Host → Keyboard**: Must respond with 85µs handshake pulse within 143ms
-- **Failure Mode**: Missing handshake triggers resynchronization (keyboard sends 1-bits until acknowledged)
+- **Failure Mode**: Missing handshake triggers resynchronisation (keyboard sends 1-bits until acknowledged)
 - **Recovery**: After handshake received, keyboard sends 0xF9 (lost sync) and retransmits last byte
 
 **Bit Rotation (6-5-4-3-2-1-0-7)**:
@@ -153,7 +153,7 @@ Additional pins on multi-pin connectors (RESET, LED signals, etc.) can be left u
 
 **Connector Compatibility Note**
 
-While the protocol is identical, different physical connectors may require adapters or custom cables to connect a keyboard from one Amiga model to another Amiga system or to converter hardware. Always verify your specific keyboard's connector type before wiring.
+Whilst the protocol is identical, different physical connectors may require adapters or custom cables to connect a keyboard from one Amiga model to another Amiga system or to converter hardware. Always verify your specific keyboard's connector type before wiring.
 
 ### Electrical Characteristics
 
@@ -324,7 +324,7 @@ Handshake Requirements:
 - Release: DATA returns HIGH via pull-up resistor
 ```
 
-**Power-Up Synchronization Sequence**:
+**Power-Up Synchronisation Sequence**:
 
 ```
 Keyboard Power-On (Finding Sync):
@@ -351,7 +351,7 @@ DATA                       \___________/
                            ↑           ↑
                         Handshake   Sync Achieved
 
-Result: Keyboard and host now synchronized, normal operation begins
+Result: Keyboard and host now synchronised, normal operation begins
 ```
 
 **Complete Transaction Example (Key Press)**:
@@ -407,7 +407,7 @@ Keyboard ready for next transmission
 | **Implementation** | ~110µs | PIO: 100µs calculated, 110µs measured |
 | **Maximum Delay** | 143ms | Timeout triggers resync mode |
 
-**Why 85µs?** While hardware detects ≥1µs pulses, different keyboard models vary. The 85µs spec ensures universal compatibility (A1000/A500/A2000/A3000). Our 110µs provides +29% safety margin.
+**Why 85µs?** Whilst hardware detects ≥1µs pulses, different keyboard models vary. The 85µs spec ensures universal compatibility (A1000/A500/A2000/A3000). Our 110µs provides +29% safety margin.
 
 #### No Frame Validation Required
 
@@ -427,11 +427,11 @@ The specification provides no conditions under which the handshake should be wit
 | **Missing handshake** | 143ms timeout (keyboard-side) | Keyboard enters resync mode |
 | **Lost sync** | Handshake timeout during transmission | Keyboard sends 0xF9, retransmits byte |
 
-The keyboard's 143ms timeout is the **only error detection mechanism** in the protocol. If the keyboard doesn't receive the handshake pulse within 143ms, it assumes synchronization is lost and enters resynchronization mode (transmitting continuous 1-bits until acknowledged).
+The keyboard's 143ms timeout is the **only error detection mechanism** in the protocol. If the keyboard doesn't receive the handshake pulse within 143ms, it assumes synchronisation is lost and enters resynchronisation mode (transmitting continuous 1-bits until acknowledged).
 
 **Implementation Consequence**: Hardware implementations (such as PIO-based receivers) can safely acknowledge every received byte automatically without software validation. The protocol specification requires this behaviour.
 
-### Error Recovery: Resynchronization Mode
+### Error Recovery: Resynchronisation Mode
 
 If handshake timeout (143ms) occurs, keyboard enters resync mode:
 
@@ -443,7 +443,7 @@ If handshake timeout (143ms) occurs, keyboard enters resync mode:
 
 The 0xF9 code notifies host to discard partial data and reset receive state.
 
-**Timing-Based Recovery**: Resynchronization is triggered **only** by missing handshake timeout, not by detecting bad data. The protocol has no mechanism for the keyboard to determine if transmitted data was corrupted. The keyboard assumes:
+**Timing-Based Recovery**: Resynchronisation is triggered **only** by missing handshake timeout, not by detecting bad data. The protocol has no mechanism for the keyboard to determine if transmitted data was corrupted. The keyboard assumes:
 
 - If handshake received: Host successfully received the byte (regardless of actual data quality)
 - If handshake not received within 143ms: Communication failure, enter resync
@@ -470,14 +470,14 @@ Step 1: Power-On Self-Test
 
 Step 2: Self-Test Results
 SUCCESS:
-  → Proceed to synchronization
+  → Proceed to synchronisation
   
 FAILURE:
   → Send 0xFC (self-test failed) code
   → Enter LED blink error indication mode
   → Keyboard will NOT respond to key presses
   
-Step 3: Synchronization
+Step 3: Synchronisation
 - Keyboard clocks out 1-bits slowly (~60µs per bit)
 - Waits for host to send handshake
 - May continue for seconds/minutes if host still booting
@@ -509,7 +509,7 @@ If self-test fails, the keyboard enters an error state and blinks the CAPS LOCK 
 
 **Recovery**: Self-test failures are fatal—keyboard will not function until repaired. These indicate hardware problems, not communication issues.
 
-**Important**: Unlike some protocols, Amiga keyboards do **not** send a "BAT Passed" (0xAA) code after successful self-test. Instead, they enter synchronization mode and wait for the host to handshake, confirming bidirectional communication works.
+**Important**: Unlike some protocols, Amiga keyboards do **not** send a "BAT Passed" (0xAA) code after successful self-test. Instead, they enter synchronisation mode and wait for the host to handshake, confirming bidirectional communication works.
 
 ### Scan Code Transmission
 
@@ -552,7 +552,7 @@ Examples:
 **Key Code Range**:
 - **0x00 - 0x67**: Standard key codes (104 keys max)
 - **0x78**: Reset warning (see Special Features section)
-- **0xF9**: Lost synchronization (error recovery)
+- **0xF9**: Lost synchronisation (error recovery)
 - **0xFA**: Keyboard buffer overflow (too many simultaneous keys)
 - **0xFC**: Self-test failed (hardware error)
 - **0xFD**: Initiate power-up key stream (internal use)
@@ -562,7 +562,7 @@ Examples:
 
 The Amiga uses a **custom scan code set** based on the physical keyboard matrix layout.
 
-**Matrix Organization**:
+**Matrix Organisation**:
 
 ```
 Structure: 6 rows × 16 columns = 96 possible key positions
@@ -594,7 +594,7 @@ Example:
 
 ### CAPS LOCK LED Control
 
-Amiga keyboards handle CAPS LOCK with unique behavior requiring sophisticated synchronization:
+Amiga keyboards handle CAPS LOCK with unique behavior requiring sophisticated synchronisation:
 
 **Keyboard Behavior**:
 - CAPS LOCK LED is physically in the keyboard
@@ -608,32 +608,32 @@ Amiga keyboards handle CAPS LOCK with unique behavior requiring sophisticated sy
 - Press+release cycle toggles the state
 - Host sends LED state back to device
 
-**Synchronization Challenge**:
+**Synchronisation Challenge**:
 
-The converter must keep keyboard LED state and USB HID state synchronized, especially after reboot:
+The converter must keep keyboard LED state and USB HID state synchronised, especially after reboot:
 
 | Keyboard LED | USB HID | Converter Action | Reason |
 |--------------|---------|------------------|---------|
-| OFF | OFF | **SKIP** toggle | Already synchronized |
+| OFF | OFF | **SKIP** toggle | Already synchronised |
 | OFF | ON | **SEND** toggle | Need to turn USB OFF |
 | ON | OFF | **SEND** toggle | Need to turn USB ON |
-| ON | ON | **SKIP** toggle | Already synchronized |
+| ON | ON | **SKIP** toggle | Already synchronised |
 
 **Implementation Strategy**:
 
-The converter implements smart synchronization by comparing keyboard LED state against USB HID state. Only when states differ does it queue a press+release toggle sequence. A 125ms hold time between press and release ensures MacOS compatibility.
+The converter implements smart synchronisation by comparing keyboard LED state against USB HID state. Only when states differ does it queue a press+release toggle sequence. A 125ms hold time between press and release ensures MacOS compatibility.
 
-**Synchronization Logic**:
+**Synchronisation Logic**:
 ```c
 // Extract from keyboard_interface.c (lines 266-292)
 bool kbd_led_on = (data_byte & AMIGA_BREAK_BIT_MASK) == 0;  // Bit 7=0 means LED ON
 bool hid_caps_on = lock_leds.keys.capsLock; // Current USB HID state
 
 if (kbd_led_on == hid_caps_on) {
-    // States match - keyboard and HID are synchronized
+    // States match - keyboard and HID are synchronised
     // Do nothing - no HID events needed
 } else {
-    // States differ - need to toggle HID to synchronize
+    // States differ - need to toggle HID to synchronise
     // Queue press event (bit 7=0)
     if (!ringbuf_is_full()) {
         ringbuf_put(AMIGA_CAPSLOCK_KEY);        // Press (0x62)
@@ -648,11 +648,11 @@ if (kbd_led_on == hid_caps_on) {
 
 **Example: Reboot Desync Recovery**
 
-1. Before reboot: Keyboard LED **ON**, USB HID **ON** (synchronized)
+1. Before reboot: Keyboard LED **ON**, USB HID **ON** (synchronised)
 2. Converter reboots: Keyboard LED **ON** (still powered), USB HID **OFF** (reset)
 3. User presses CAPS LOCK: Keyboard sends 0xE2 (LED turning **OFF**)
 4. Converter checks: `kbd_led_on=false`, `hid_caps_on=false` → **States match!**
-5. Result: No toggle sent (already synchronized at OFF)
+5. Result: No toggle sent (already synchronised at OFF)
 
 Without this check, the converter would blindly send a toggle, causing USB to go OFF→ON (wrong direction).
 
@@ -680,7 +680,7 @@ The Amiga protocol includes a graceful reset mechanism preventing accidental dat
 |------|-------|-------------|
 | **Reset Warning** | 0x78 | CTRL + both Amiga keys pressed, 10s countdown starts |
 | **Reset Abort** | 0xF8 | User released keys during countdown, reset aborted |
-| **Lost Sync** | 0xF9 | Resynchronization completed, about to retransmit byte |
+| **Lost Sync** | 0xF9 | Resynchronisation completed, about to retransmit byte |
 | **Buffer Overflow** | 0xFA | Too many simultaneous keys, keyboard buffer full |
 | **Self-Test Failed** | 0xFC | Hardware error detected during power-on test |
 | **Initiate Stream** | 0xFD | Power-up key stream start (internal protocol use) |
@@ -709,7 +709,7 @@ The state machine itself is deliberately simple—just two states: UNINITIALISED
 
 Since the Amiga keyboard transmits bits in rotated order (6-5-4-3-2-1-0-7 instead of the standard 0-7 sequence), we need to de-rotate them back to normal byte order before processing. The PIO receives the bits exactly as transmitted, and the interrupt handler performs the de-rotation using a simple inline helper function.
 
-The rotation exists to prevent stuck keys when synchronization is lost—bit 7 (which indicates key up/down) is transmitted last, so incomplete bytes are more likely to be interpreted as transient key presses rather than stuck modifiers. But for our scancode processing, we need the bits back in standard order where bit 7 is in its normal position.
+The rotation exists to prevent stuck keys when synchronisation is lost—bit 7 (which indicates key up/down) is transmitted last, so incomplete bytes are more likely to be interpreted as transient key presses rather than stuck modifiers. But for our scancode processing, we need the bits back in standard order where bit 7 is in its normal position.
 
 ```c
 // Inline helper from keyboard_interface.h
@@ -746,7 +746,7 @@ set pindirs, 0      ; Release DATA (goes high via pull-up)
 The timing works out like this: we're using a clock divider of 500, which gives us 4µs per PIO cycle (125 MHz ÷ 500). The loop runs 25 iterations (counting from 24 down to 0), which gives us exactly 100µs for the handshake pulse.
 
 **Timing Calculation**:
-- Clock divider: 500 (optimized for 20µs CLOCK pulse detection)
+- Clock divider: 500 (optimised for 20µs CLOCK pulse detection)
 - PIO cycle time: 125 MHz / 500 = 4µs per cycle
 - Loop iterations: 25 (counts 24→0)
 - Handshake duration: 25 × 4µs = 100µs
@@ -765,7 +765,7 @@ static enum {
 } keyboard_state = UNINITIALISED;
 ```
 
-When the converter powers up, it starts in UNINITIALISED state. The keyboard will be sending synchronization pulses (1-bits) until it receives a handshake from the PIO. Once we get that first valid byte—whatever it may be—we transition to INITIALISED state (lines 205-207). From that point on, it's just normal operation—receiving scancodes and processing them.
+When the converter powers up, it starts in UNINITIALISED state. The keyboard will be sending synchronisation pulses (1-bits) until it receives a handshake from the PIO. Once we get that first valid byte—whatever it may be—we transition to INITIALISED state (lines 205-207). From that point on, it's just normal operation—receiving scancodes and processing them.
 
 You might expect to see separate states for things like "waiting for handshake" or "processing special codes", but those are handled elsewhere. The PIO takes care of handshaking automatically in hardware (before the ISR even fires), and special codes (like 0xF9 for lost sync or 0x78 for reset warning) are processed in the event handler based on the received byte value rather than as distinct state machine states. This keeps the state machine focused on initialisation vs. normal operation, which makes the code easier to follow and maintain.
 
@@ -812,7 +812,7 @@ The Amiga protocol's bidirectional handshake requires correct timing and connect
      * 85µs minimum handshake pulse requirement  
      * 143ms handshake timeout
      * Bit rotation specification (6-5-4-3-2-1-0-7 transmission order)
-   - [Out-of-Sync Condition](http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0176.html) - Resynchronization behavior
+   - [Out-of-Sync Condition](http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0176.html) - Resynchronisation behavior
    - [Special Codes](http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node017B.html) - Protocol special codes (0x78, 0xF9, 0xFA, 0xFC, 0xFD, 0xFE)
 
 ### Historical and Hardware Information
@@ -834,7 +834,7 @@ This converter implementation is based entirely on the official Commodore specif
 
 6. **[`keyboard_interface.c`](../../src/protocols/amiga/keyboard_interface.c)** - Protocol implementation:
    - Bit de-rotation (received 6-5-4-3-2-1-0-7 → standard 7-6-5-4-3-2-1-0)
-   - CAPS LOCK synchronization logic (handles keyboard LED encoding)
+   - CAPS LOCK synchronisation logic (handles keyboard LED encoding)
    - Special code processing (0xF9 resync, 0x78 reset warning, etc.)
    - State machine for keyboard initialisation sequence
 

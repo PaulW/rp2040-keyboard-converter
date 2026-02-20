@@ -60,7 +60,7 @@ static const uint8_t SHIFT_MODIFIER_MASK = (1 << 1) | (1 << 5);
  *
  * These static variables maintain the current state of HID reports.
  * They are only accessed from the main task context, so no volatile
- * qualification or synchronization is needed.
+ * qualification or synchronisation is needed.
  *
  * Threading Model:
  * - All HID report functions called from main task context
@@ -83,7 +83,7 @@ static hid_mouse_report_t    mouse_report;
  * - Always when transmission fails (for error diagnostics)
  * - Never otherwise (zero overhead in production with DEBUG disabled)
  *
- * This optimized approach constructs the hex dump only once, even if both
+ * This optimised approach constructs the hex dump only once, even if both
  * DEBUG is enabled AND transmission fails. The appropriate log level (DEBUG
  * or ERROR) is chosen based on the final transmission result.
  *
@@ -91,7 +91,7 @@ static hid_mouse_report_t    mouse_report;
  * - LOG_LEVEL < DEBUG + success: Only TinyUSB send (~1.6µs, near-zero overhead)
  * - LOG_LEVEL >= DEBUG + success: TinyUSB send + hex dump + UART (~16µs)
  * - Any level + failure: TinyUSB send attempt + hex dump + UART (~16µs)
- * - Inline function allows compiler to optimize based on call site
+ * - Inline function allows compiler to optimise based on call site
  * - Single hex dump construction (not duplicated if DEBUG enabled AND failure)
  *
  * Memory Overhead:
@@ -201,7 +201,7 @@ static bool hid_keyboard_add_key(uint8_t key) {
     }
 
     // Duplicate prevention approach to fix issue #19:
-    // Single loop checks all 6 slots for duplicates while tracking first empty slot
+    // Single loop checks all 6 slots for duplicates whilst tracking first empty slot
     // Only adds key if: (1) not already present AND (2) empty slot available
     uint8_t validSlot = UINT8_MAX;  // Invalid slot sentinel
     for (uint8_t i = 0; i < 6; i++) {
@@ -243,7 +243,7 @@ static bool hid_keyboard_add_key(uint8_t key) {
  * - Sets matching entry to 0 (marks slot as empty)
  * - Subsequent keys can use freed slots
  *
- * Report Optimization:
+ * Report Optimisation:
  * - Only returns true if report actually changed
  * - Prevents unnecessary USB HID report transmission
  * - Reduces USB bus traffic and improves performance
@@ -316,7 +316,7 @@ static bool hid_keyboard_del_key(uint8_t key) {
  * - Continues operation on failure (transient USB issues)
  * - Could be enhanced with retry queue for critical reports
  *
- * @param rawcode Interface scan code (protocol-normalized, not raw scan code)
+ * @param rawcode Interface scan code (protocol-normalised, not raw scan code)
  *                Example: 0x48 for Pause key across all protocols
  * @param make    true for key press, false for key release
  *
@@ -599,16 +599,16 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
 }
 
 /**
- * @brief Initializes the USB HID device and TinyUSB stack
+ * @brief Initialises the USB HID device and TinyUSB stack
  *
- * This function performs the essential initialization sequence for USB HID operation.
+ * This function performs the essential initialisation sequence for USB HID operation.
  * Must be called once during startup before any USB or HID functionality is used.
  *
- * Initialization Sequence:
- * 1. board_init() - Initializes RP2040 board peripherals (GPIO, clocks, UART)
- * 2. tusb_init() - Initializes TinyUSB stack (USB device controller, endpoints, descriptors)
+ * Initialisation Sequence:
+ * 1. board_init() - Initialises RP2040 board peripherals (GPIO, clocks, UART)
+ * 2. tusb_init() - Initialises TinyUSB stack (USB device controller, endpoints, descriptors)
  *
- * After Initialization:
+ * After Initialisation:
  * - USB device controller configured and ready
  * - HID endpoints created (keyboard, consumer control, mouse)
  * - USB device visible to host (enumeration begins)

@@ -73,7 +73,7 @@ If you're using a different board, have a look at your board's documentation:
 **Tip**: If your board doesn't have a RESET button, you can enter bootloader mode by:
 1. Disconnect USB cable
 2. Hold BOOT button
-3. Reconnect USB cable while holding BOOT
+3. Reconnect USB cable whilst holding BOOT
 4. Release BOOT button
 
 ---
@@ -87,7 +87,7 @@ This is the important bit—you need to put your RP2040 into a state where it ca
 **If your board has both buttons:**
 
 1. **Hold the BOOT button** - Press and hold (don't release yet)
-2. **Press and release RESET** - Quickly tap the RESET button while holding BOOT
+2. **Press and release RESET** - Quickly tap the RESET button whilst holding BOOT
 3. **Release BOOT button** - Let go of BOOT
 4. **Verify**: A USB drive named `RPI-RP2` should appear on your computer
 
@@ -104,7 +104,7 @@ Time:   0s    1s         2s         3s
 
 1. **Disconnect USB cable** - Unplug from RP2040
 2. **Hold BOOT button** - Press and hold
-3. **Reconnect USB cable** - Plug back in while holding BOOT
+3. **Reconnect USB cable** - Plug back in whilst holding BOOT
 4. **Release BOOT button** - Let go after 2 seconds
 5. **Verify**: `RPI-RP2` drive appears
 
