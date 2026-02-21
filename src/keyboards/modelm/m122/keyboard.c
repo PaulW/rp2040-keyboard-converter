@@ -64,7 +64,7 @@ const uint8_t keymap_layer_count = sizeof(keymap_map) / sizeof(keymap_map[0]);
 
 /* Define Shifted Key Overrides */
 /* IBM M122 terminal keyboard has non-standard shifted legends on number row */
-/* SUPPRESS_SHIFT flag controls shift modifier behavior: */
+/* SUPPRESS_SHIFT flag controls shift modifier behaviour: */
 /*   - Without flag: Override keeps shift for compound effect */
 /*   - With flag: Override suppresses shift to get the literal character */
 const uint8_t* const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {

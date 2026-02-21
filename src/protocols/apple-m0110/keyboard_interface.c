@@ -91,8 +91,6 @@ _Static_assert(M0110_MODEL_RETRY_INTERVAL_MS <= M0110_MODEL_RETRY_MAX_MS,
 /* PIO State Machine Configuration */
 static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
 
-static uint keyboard_data_pin; /**< GPIO pin for DATA line (CLOCK = DATA + 1) */
-
 /**
  * @brief Apple M0110 Protocol State Machine
  *
@@ -214,8 +212,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
         case INIT_MODEL_REQUEST:
             // Handle model number response during initialisation phase
             {
-                const char* model_desc = NULL;
-                model_desc             = get_model_description(data_byte);
+                const char* model_desc = get_model_description(data_byte);
                 if (model_desc) {
                     LOG_INFO("Apple M0110 Keyboard Model: %s, reset and ready\n", model_desc);
                 } else {
@@ -455,9 +452,6 @@ void keyboard_interface_setup(uint data_pin) {
         return;
     }
 
-    // Store pin assignment
-    keyboard_data_pin = data_pin;
-
     // Calculate clock divider for M0110 timing requirements
     // KEYBOARD→HOST: 330µs cycles (160µs low, 170µs high)
     // HOST→KEYBOARD: 400µs cycles (180µs low, 220µs high)
@@ -477,7 +471,7 @@ void keyboard_interface_setup(uint data_pin) {
         // Release PIO resources before returning
         pio_sm_set_enabled(pio_engine.pio, (uint)pio_engine.sm, false);
         pio_sm_clear_fifos(pio_engine.pio, (uint)pio_engine.sm);
-        pio_sm_unclaim(pio_engine.pio, pio_engine.sm);
+        pio_sm_unclaim(pio_engine.pio, (uint)pio_engine.sm);
         pio_remove_program(pio_engine.pio, &keyboard_interface_program, pio_engine.offset);
         pio_engine.pio    = NULL;
         pio_engine.sm     = -1;

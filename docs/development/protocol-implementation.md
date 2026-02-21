@@ -239,7 +239,7 @@ void mouse_interface_setup(uint data_pin) {
 ```
 
 **Why this difference?**
-- Keyboard: Multi-byte scancode sequences need buffering (E0 prefixes, Pause key sequences)
+- Keyboard: Multibyte scancode sequences need buffering (E0 prefixes, Pause key sequences)
 - Mouse: Fixed packet format (3-4 bytes), processed as complete packets in IRQ handler
 - Mouse: HID reports sent immediately after packet validation
 
@@ -264,7 +264,7 @@ The `pio_engine_t` struct contains either complete working resources (PIO instan
 - Returns complete working resources or nothing
 - Type-safe through struct encapsulation
 
-Used across all protocols: AT/PS2 (keyboard and mouse), XT, Amiga, M0110, and WS2812 LED helper.
+Used across protocol implementations under `src/protocols/` and the WS2812 helper under `src/common/lib/ws2812/`.
 
 ### Pin Requirements
 

@@ -28,7 +28,7 @@ Code quality in embedded systems goes beyond style preferences—it's about writ
 
 Use 4-space indentation throughout (never tabs), which ensures consistent display across editors without configuration. Function and variable names use snake_case for familiarity to C programmers, whilst macros and constants use UPPER_CASE to make their compile-time nature immediately obvious. Choose descriptive names that explain purpose without needing comments—`keyboard_state_machine_task()` tells you more than `kbd_sm()` ever could.
 
-The critical architecture rules deserve special emphasis because violating them breaks functionality rather than just style. Never use blocking operations like `sleep_ms()`, `sleep_us()`, `busy_wait_ms()`, or `busy_wait_us()` anywhere in production code. The main loop must continuously service the ring buffer and USB stack, so even brief blocking causes scancode loss. If you need time-based behavior, implement non-blocking state machines that check elapsed time on each iteration using `to_ms_since_boot(get_absolute_time())`.
+The critical architecture rules deserve special emphasis because violating them breaks functionality rather than just style. Never use blocking operations like `sleep_ms()`, `sleep_us()`, `busy_wait_ms()`, or `busy_wait_us()` anywhere in production code. The main loop must continuously service the ring buffer and USB stack, so even brief blocking causes scancode loss. If you need time-based behaviour, implement non-blocking state machines that check elapsed time on each iteration using `to_ms_since_boot(get_absolute_time())`.
 
 Never call multicore APIs (`multicore_*`, `core1_*`) or attempt to use Core 1. The single-core architecture eliminates synchronisation complexity and delivers predictable latency. Adding multicore would introduce bugs without performance benefit. Never use `printf()` or related functions in interrupt context—these functions use DMA-driven UART that conflicts with interrupt handlers. Use the `LOG_*` macros instead, which handle interrupt-safe output buffering.
 
@@ -82,7 +82,7 @@ Run the lint script before every commit: `./tools/lint.sh` must pass with zero e
 
 Build testing verifies that your changes compile successfully across different keyboard configurations. Test at least one configuration locally using Docker: `docker compose run --rm -e KEYBOARD="modelm/enhanced" builder`. If your changes affect protocol handling, test multiple protocols: `modelf/pcat` (AT/PS2), `modelf/xt` (XT), and `amiga/standard` (Amiga). The CI pipeline tests all configurations in the build matrix automatically, but catching build failures locally saves iteration time.
 
-Hardware testing with actual keyboards remains essential—timing behavior, signal characteristics, and protocol quirks manifest only with real hardware. Follow the [Hardware Setup guide](../getting-started/hardware-setup.md) for wiring and level shifting. Test all keys systematically, paying special attention to extended keys (E0 prefixes), modifiers, and the Pause key (eleven-byte sequence). Use [Command Mode's keytest function](../features/command-mode.md) to verify HID reports for each key press. Test Command Mode bootloader entry (hold Left Shift + Right Shift for 3 seconds) to ensure the special mode still works. Monitor UART logs using the [Logging guide](../features/logging.md) to observe protocol state transitions and catch errors.
+Hardware testing with actual keyboards remains essential—timing behaviour, signal characteristics, and protocol quirks manifest only with real hardware. Follow the [Hardware Setup guide](../getting-started/hardware-setup.md) for wiring and level shifting. Test all keys systematically, paying special attention to extended keys (E0 prefixes), modifiers, and the Pause key (eleven-byte sequence). Use [Command Mode's keytest function](../features/command-mode.md) to verify HID reports for each key press. Test Command Mode bootloader entry (hold Left Shift + Right Shift for 3 seconds) to ensure the special mode still works. Monitor UART logs using the [Logging guide](../features/logging.md) to observe protocol state transitions and catch errors.
 
 Additional testing resources include [`./tools/lint.sh`](../../tools/lint.sh) for lint checks, [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) for the complete CI build matrix, and [Building Firmware](../getting-started/building-firmware.md) for Docker build procedures.
 
@@ -145,7 +145,7 @@ const uint8_t KEYMAP[256] = KEYMAP_US_ANSI(
 
 If the keyboard lacks both shift keys (like the Apple M0110 which has only one shift), override the Command Mode activation keys by defining `CMD_MODE_KEY1` and `CMD_MODE_KEY2` in `keyboard.h` before including other headers. The default combination (Left Shift + Right Shift) won't work on single-shift keyboards. See [Command Mode customisation](../features/command-mode.md#keyboard-specific-configuration) for details on implementing these overrides.
 
-Create a `README.md` documenting the keyboard's specifications, connector pinout, any quirks or special behavior, and build instructions. This helps users understand what they're building firmware for and assists troubleshooting.
+Create a `README.md` documenting the keyboard's specifications, connector pinout, any quirks or special behaviour, and build instructions. This helps users understand what they're building firmware for and assists troubleshooting.
 
 Build and test with the actual hardware—verify all keys produce correct characters, test modifier combinations, confirm LEDs respond to system state, and validate Command Mode entry. Explore the [`src/keyboards/`](../../src/keyboards/) directory for examples, review the [Keyboards documentation](../keyboards/README.md) for patterns, and examine [`CMakeLists.txt`](../../src/CMakeLists.txt) to understand build integration.
 
@@ -153,15 +153,15 @@ Build and test with the actual hardware—verify all keys produce correct charac
 
 ### Adding Scancode Sets
 
-Supporting a new scancode set requires implementing a state machine that assembles multi-byte sequences and a mapping table that translates scancodes to USB HID keycodes. The challenge lies in handling protocol-specific conventions like prefix bytes, make/break codes, and extended key sequences.
+Supporting a new scancode set requires implementing a state machine that assembles multibyte sequences and a mapping table that translates scancodes to USB HID keycodes. The challenge lies in handling protocol-specific conventions like prefix bytes, make/break codes, and extended key sequences.
 
-Research the scancode format thoroughly—understand whether the protocol uses separate make and break codes or a single code with a prefix, whether extended keys require special prefixes (like E0 in AT/PS2 Set 2), and whether any keys send multi-byte sequences (like the Pause key's eleven-byte sequence). Manufacturer documentation, community reverse-engineering efforts, and existing converter projects provide this information.
+Research the scancode format thoroughly—understand whether the protocol uses separate make and break codes or a single code with a prefix, whether extended keys require special prefixes (like E0 in AT/PS2 Set 2), and whether any keys send multibyte sequences (like the Pause key's eleven-byte sequence). Manufacturer documentation, community reverse-engineering efforts, and existing converter projects provide this information.
 
 Create a directory at [`src/scancodes/`](../../src/scancodes/)`<set>/` for all scancode-specific files (see existing implementations in [docs/scancodes/](../scancodes/README.md) for examples). Implement the state machine in `scancode_processor.h` and `scancode_processor.c`—this code receives individual bytes from the protocol handler and assembles them into complete scancode events. The state machine tracks whether it's expecting a prefix byte, whether the next code represents a key press or release, and how to handle special cases like Pause or Print Screen.
 
 Define the scancode-to-HID mapping in `scancode_map.h`, creating a lookup table that translates each scancode to its corresponding USB HID keycode. This simple mapping handles the bulk of translation, with the state machine managing sequence assembly complexity.
 
-Document the scancode set completely in `README.md`, including tables showing every scancode's meaning, the prefix conventions, and examples of multi-byte sequences. This documentation becomes invaluable when debugging why a specific key doesn't work correctly.
+Document the scancode set completely in `README.md`, including tables showing every scancode's meaning, the prefix conventions, and examples of multibyte sequences. This documentation becomes invaluable when debugging why a specific key doesn't work correctly.
 
 Test exhaustively with hardware—press every key to verify correct translation, test all modifier combinations to catch mapping errors, validate that extended keys work properly, and confirm that special sequences like Pause and Print Screen generate correct HID codes.
 
@@ -262,7 +262,7 @@ Commit messages follow the conventional commits format to maintain a clear, pars
 
 Good commit messages explain both what changed and why the change was necessary. "feat: Add support for Amiga protocol" tells you what, whilst the body explains "Implements Amiga keyboard protocol with handshake timing and Caps Lock synchronisation via pulse." Reference related issues in the footer using "Closes #42" for features or "Fixes #38" for bug fixes—this automatically links commits to issues and closes them when merged.
 
-For bug fixes, explain the incorrect behavior and what caused it, not just what code changed: "Device was not responding correctly to LED commands. Fixed timing to match specification (10-16.7 kHz clock). Fixes #38" tells the complete story.
+For bug fixes, explain the incorrect behaviour and what caused it, not just what code changed: "Device was not responding correctly to LED commands. Fixed timing to match specification (10-16.7 kHz clock). Fixes #38" tells the complete story.
 
 ---
 
@@ -270,7 +270,7 @@ For bug fixes, explain the incorrect behavior and what caused it, not just what 
 
 The pull request template (`.github/PULL_REQUEST_TEMPLATE.md`) provides structure for describing changes comprehensively. Sections include the change description explaining what you've modified and why it matters, an architecture checklist confirming you've read the code standards and followed all critical rules, testing performed detailing how you've verified the changes work correctly, breaking changes noting any incompatibilities with previous versions, and documentation updated confirming you've revised relevant guides.
 
-Requirements for all PRs include lint script passing with zero errors and warnings, build tests passing for at least one configuration (preferably multiple if your changes affect protocols), hardware testing with actual keyboards when changes affect protocol or keyboard support, and documentation updated to reflect any new behavior or configuration options.
+Requirements for all PRs include lint script passing with zero errors and warnings, build tests passing for at least one configuration (preferably multiple if your changes affect protocols), hardware testing with actual keyboards when changes affect protocol or keyboard support, and documentation updated to reflect any new behaviour or configuration options.
 
 ---
 

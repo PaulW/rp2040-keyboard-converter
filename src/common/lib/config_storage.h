@@ -172,11 +172,11 @@ typedef struct __attribute__((packed)) {
     uint32_t sequence; /**< Write counter for dual-copy selection */
 
     // --- Runtime Settings (v1+) ---
-    uint8_t log_level;      /**< LOG_LEVEL_ERROR/INFO/DEBUG */
-    uint8_t led_brightness; /**< LED brightness level 0-10 (0=off, 10=max) */
+    uint8_t log_level; /**< LOG_LEVEL_ERROR/INFO/DEBUG */
 
     // --- Runtime Settings (v2+) ---
-    uint32_t keyboard_id; /**< Hash of keyboard config (make+model+protocol+codeset) */
+    uint8_t  led_brightness; /**< LED brightness level 0-10 (0=off, 10=max) */
+    uint32_t keyboard_id;    /**< Hash of keyboard config (make+model+protocol+codeset) */
 
     // --- Runtime Settings (v3+) ---
     uint8_t layer_state;  /**< Bitmap of active toggle layers (Layer 0 always active, bit 0 always

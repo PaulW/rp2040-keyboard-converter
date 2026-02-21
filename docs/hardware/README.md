@@ -235,7 +235,7 @@ The converter supports WS2812B addressable RGB LEDs for visual feedback. This is
 
 ### What the LED Shows
 
-**Status Colors:**
+**Status Colours:**
 - **🟢 Green**: Everything's working, converter's ready
 - **🟠 Orange**: Waiting for keyboard initialisation
 - **🟣 Magenta**: Bootloader mode (ready for firmware flashing)
@@ -326,7 +326,7 @@ Get yourself an assorted kit with different lengths—you're looking at £5-10 f
 - **Black**: Ground
 - **Yellow**: Clock signals
 - **Green**: Data signals
-- **Other colors**: Whatever else you need
+- **Other colours**: Whatever else you need
 
 **Wire types you'll want:**
 - **Male-to-Male**: Breadboard-to-breadboard connections

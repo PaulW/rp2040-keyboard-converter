@@ -56,7 +56,7 @@
 // #define UART_DMA_DEBUG_STATS
 
 // --- UART DMA Queue Policy Configuration ---
-// Controls behavior when the message queue becomes full during logging bursts.
+// Controls behaviour when the message queue becomes full during logging bursts.
 // The policy is selected at compile time for zero runtime overhead.
 
 #define UART_DMA_WAIT_US 5000  // Maximum wait time in microseconds (applies to WAIT policies)
@@ -119,12 +119,12 @@
 #define CONVERTER_LEDS_TYPE LED_GRB  // Define type of LED which we are using
 #define CONVERTER_LOCK_LEDS          // Enable Lock LED Indicators on Converter Hardware
 
-// Define the colors of the LEDs in HEX.  Regardless of LED Type, we always use RGB Value here.
+// Define the colours of the LEDs in HEX.  Regardless of LED Type, we always use RGB Value here.
 #define CONVERTER_LEDS_BRIGHTNESS 5                     // Brightness of LEDs.  This ranges from 1 to 10.
-#define CONVERTER_LEDS_STATUS_READY_COLOR 0x00FF00      // Color of Status LED when Converter is initialised
-#define CONVERTER_LEDS_STATUS_NOT_READY_COLOR 0xFF2800  // Color of Status LED when Converter is not ready
-#define CONVERTER_LEDS_STATUS_FWFLASH_COLOR 0xFF00FF    // Color of Status LED when in Bootloader Mode (Firmware Flashing)
-#define CONVERTER_LOCK_LEDS_COLOR 0x00FF00              // Color of Lock Light LEDs
+#define CONVERTER_LEDS_STATUS_READY_COLOUR 0x00FF00      // Colour of Status LED when Converter is initialised
+#define CONVERTER_LEDS_STATUS_NOT_READY_COLOUR 0xFF2800  // Colour of Status LED when Converter is not ready
+#define CONVERTER_LEDS_STATUS_FWFLASH_COLOUR 0xFF00FF    // Colour of Status LED when in Bootloader Mode (Firmware Flashing)
+#define CONVERTER_LOCK_LEDS_COLOUR 0x00FF00              // Colour of Lock Light LEDs
 
 // Define the GPIO Pins for the Keyboard Converter.
 #define KEYBOARD_DATA_PIN 2  // This is the starting pin for the connected Keyboard.  Depending on the keyboard, we may use 2, 3 or more pins.
@@ -134,7 +134,7 @@
 // --- CAPS LOCK Toggle Configuration ---
 // Time in milliseconds to hold a CAPS LOCK key press before generating the release event.
 // This is used by keyboards that require toggling CAPS LOCK state (e.g., Amiga, other keyboards).
-// The timing ensures compatibility with modern OS CAPS LOCK behavior (e.g., macOS requires a period of time between make and break events).
+// The timing ensures compatibility with modern OS CAPS LOCK behaviour (e.g., macOS requires a period of time between make and break events).
 #define CAPS_LOCK_TOGGLE_TIME_MS 125  // Hold time for CAPS LOCK toggle (milliseconds)
 
 // Define some Compile Time variables.  Do not modify below this line

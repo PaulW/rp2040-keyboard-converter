@@ -37,7 +37,7 @@
  * This function checks that the calling code is executing from SRAM
  * (0x20000000-0x20042000) rather than Flash (0x10000000-0x15FFFFFF).
  *
- * Behavior:
+ * Behaviour:
  * - If RUN_FROM_RAM_CHECK is defined: Panics if executing from Flash
  * - If RUN_FROM_RAM_CHECK is not defined: No-op (zero overhead)
  *

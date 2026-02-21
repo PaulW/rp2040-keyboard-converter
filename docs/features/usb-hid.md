@@ -114,7 +114,7 @@ The converter processes keystrokes through several stages, from receiving the or
 |-------|--------------|  
 | **Protocol reception** | PIO hardware captures signal, interrupt fires, byte goes into ring buffer |
 | **Main loop pickup** | Main loop polls ring buffer and retrieves byte |
-| **Scancode processing** | State machine handles multi-byte sequences (E0/F0 prefixes, special keys) |
+| **Scancode processing** | State machine handles multibyte sequences (E0/F0 prefixes, special keys) |
 | **Keymap translation** | Convert protocol-specific scancode to USB HID keycode |
 | **USB transmission** | Build HID report, call TinyUSB stack, transmit to host |
 
@@ -258,7 +258,7 @@ Here's how data flows through the entire system (implemented across multiple mod
    [Ring Buffer]
         ↓ Temporary storage (32 bytes)
    [Scancode Processor]
-        ↓ Handle multi-byte sequences and state machine
+        ↓ Handle multibyte sequences and state machine
    [Keymap Translation]
         ↓ Convert scancode to USB HID keycode
    [HID Report Builder]

@@ -467,7 +467,7 @@ static void __isr keyboard_input_event_handler(void) {
     uint8_t data_byte        = (uint8_t)((data_cast >> 1) & 0xFF);
     uint8_t parity_bit_check = interface_parity_table[data_byte];
 
-    // Detect and adapt to non-standard stop bit behavior (Z-150 compatibility)
+    // Detect and adapt to non-standard stop bit behaviour (Z-150 compatibility)
     if (stop_bit_state != (stop_bit ? STOP_BIT_HIGH : STOP_BIT_LOW)) {
         stop_bit_state = stop_bit ? STOP_BIT_HIGH : STOP_BIT_LOW;
         LOG_DEBUG("Stop Bit %s Detected\n", stop_bit ? "High" : "Low");
@@ -741,7 +741,7 @@ void keyboard_interface_setup(uint data_pin) {
         // Release PIO resources before returning
         pio_sm_set_enabled(pio_engine.pio, (uint)pio_engine.sm, false);
         pio_sm_clear_fifos(pio_engine.pio, (uint)pio_engine.sm);
-        pio_sm_unclaim(pio_engine.pio, pio_engine.sm);
+        pio_sm_unclaim(pio_engine.pio, (uint)pio_engine.sm);
         pio_remove_program(pio_engine.pio, &pio_interface_program, pio_engine.offset);
         pio_engine.pio    = NULL;
         pio_engine.sm     = -1;

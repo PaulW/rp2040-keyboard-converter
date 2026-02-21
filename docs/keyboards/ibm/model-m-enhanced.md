@@ -262,7 +262,7 @@ Example part numbers for this keyboard:
 
 ### LEDs Not Working
 
-1. **Normal behavior**: LEDs should respond to Caps/Num/Scroll Lock
+1. **Normal behaviour**: LEDs should respond to Caps/Num/Scroll Lock
 2. **LED failure**: Individual LEDs can fail over time
 3. **Controller issue**: LED control comes from keyboard controller, not converter
 

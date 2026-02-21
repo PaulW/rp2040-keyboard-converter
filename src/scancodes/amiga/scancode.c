@@ -35,7 +35,7 @@
  * - No prefix codes (E0, E1, etc.)
  * - All keys send up/down events EXCEPT CAPS LOCK
  *
- * CAPS LOCK Special Behavior:
+ * CAPS LOCK Special Behaviour:
  * The Amiga CAPS LOCK key is unique in keyboard history:
  * 1. Only sends code on PRESS (never on release)
  * 2. Bit 7 indicates LED state (not press/release):
@@ -138,9 +138,9 @@ static struct {
  * - Pass to HID layer with make/break flag
  *
  * CAPS LOCK Special Handling:
- * The Amiga CAPS LOCK key (0x62) has unique behavior that requires special handling:
+ * The Amiga CAPS LOCK key (0x62) has unique behaviour that requires special handling:
  *
- * 1. Keyboard Behavior:
+ * 1. Keyboard Behaviour:
  *    - Only sends code on press (never on release)
  *    - Maintains internal LED state
  *    - Toggles LED on each press

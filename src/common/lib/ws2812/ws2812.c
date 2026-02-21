@@ -141,7 +141,7 @@ static const uint8_t BRIGHTNESS_LUT[11] = {
  * - Range: 0-10 (0=off, 10=max)
  * - Default: From CONVERTER_LEDS_BRIGHTNESS in config.h (compile-time)
  * - Thread-safety: All access from main loop context only
- * - Used by ws2812_set_color() to look up multiplier from BRIGHTNESS_LUT
+ * - Used by ws2812_set_colour() to look up multiplier from BRIGHTNESS_LUT
  *
  * Initialisation:
  * - Starts with compile-time default from config.h
@@ -160,9 +160,9 @@ static uint8_t g_led_brightness = CONVERTER_LEDS_BRIGHTNESS;
 #endif
 
 /**
- * @brief Applies gamma-corrected brightness and color order to LED color value
+ * @brief Applies gamma-corrected brightness and colour order to LED colour value
  *
- * This function performs two critical transformations on the input RGB color:
+ * This function performs two critical transformations on the input RGB colour:
  *
  * 1. **Gamma-Corrected Brightness Scaling**:
  *    - Looks up perceptually-linear multiplier from BRIGHTNESS_LUT
@@ -170,16 +170,16 @@ static uint8_t g_led_brightness = CONVERTER_LEDS_BRIGHTNESS;
  *    - Division by 255 normalises the result back to 8-bit range (0-255)
  *    - Uses integer arithmetic for performance (no floating point)
  *
- * 2. **Color Order Conversion**:
- *    - Different WS2812-compatible LEDs use different color orders
+ * 2. **Colour Order Conversion**:
+ *    - Different WS2812-compatible LEDs use different colour orders
  *    - Common variants: RGB, GRB (most common), BGR, RBG, GBR, BRG
- *    - Function reorders color bytes based on CONVERTER_LEDS_TYPE configuration
- *    - Ensures correct color output regardless of LED chip variant
+ *    - Function reorders colour bytes based on CONVERTER_LEDS_TYPE configuration
+ *    - Ensures correct colour output regardless of LED chip variant
  *
  * Performance Optimisations:
  * - Function is `static inline` for potential inlining at call site
  * - Brightness multiplier lookup is O(1) array access (not calculated)
- * - Color extraction uses bit shifts and masks (fast bitwise ops)
+ * - Colour extraction uses bit shifts and masks (fast bitwise ops)
  * - Integer-only arithmetic (no floating point or division hardware needed)
  * - Switch statement may be optimised to jump table by compiler
  * - Conditional compilation (#ifdef) eliminates unused code paths
@@ -205,7 +205,7 @@ static uint8_t g_led_brightness = CONVERTER_LEDS_BRIGHTNESS;
  * - Using 255 ensures multiplier=255 doesn't dim the LED by 0.4%
  * - Compiler may optimise `/255` to `(x * 0x8080 + 0x8000) >> 23` or similar
  *
- * Color Order Examples:
+ * Colour Order Examples:
  * ```
  * Input:  0x00FF8040 (R=255, G=128, B=64)
  *
@@ -228,7 +228,7 @@ static uint8_t g_led_brightness = CONVERTER_LEDS_BRIGHTNESS;
  * ```
  * User calls: ws2812_show(0x00FF0000)  // Red in RGB format
  *             ↓
- * ws2812_set_color(0x00FF0000)
+ * ws2812_set_colour(0x00FF0000)
  *   → Extracts: R=255, G=0, B=0
  *   → Applies brightness (e.g., level 3): R=10, G=0, B=0
  *   → Reorders for GRB: returns 0x000A0000 (G=0, R=10, B=0)
@@ -238,24 +238,24 @@ static uint8_t g_led_brightness = CONVERTER_LEDS_BRIGHTNESS;
  *   → LED displays dim red (gamma-corrected)
  * ```
  *
- * @param led_color Input color in RGB format (0x00RRGGBB)
- * @return Color value converted to LED's color order with brightness applied
+ * @param led_colour Input colour in RGB format (0x00RRGGBB)
+ * @return Colour value converted to LED's colour order with brightness applied
  *
  * @note Input is always RGB format (user-facing)
  * @note Output format depends on CONVERTER_LEDS_TYPE configuration
- * @note Brightness is applied before color reordering
+ * @note Brightness is applied before colour reordering
  * @note Function is static inline for performance
  * @note All calculations use integer arithmetic (fast on Cortex-M0+)
  */
-static inline uint32_t ws2812_set_color(uint32_t led_color) {
-    // Extract RGB components from 24-bit color value (bit shifts + masks)
+static inline uint32_t ws2812_set_colour(uint32_t led_colour) {
+    // Extract RGB components from 24-bit colour value (bit shifts + masks)
     // Input format: 0x00RRGGBB
     //   Red:   bits 23-16  (0xFF0000)
     //   Green: bits 15-8   (0x00FF00)
     //   Blue:  bits 7-0    (0x0000FF)
-    uint8_t r = (led_color >> 16) & 0xFF;  // Extract red:   (value >> 16) & 0xFF
-    uint8_t g = (led_color >> 8) & 0xFF;   // Extract green: (value >> 8) & 0xFF
-    uint8_t b = led_color & 0xFF;          // Extract blue:   value & 0xFF
+    uint8_t r = (led_colour >> 16) & 0xFF;  // Extract red:   (value >> 16) & 0xFF
+    uint8_t g = (led_colour >> 8) & 0xFF;   // Extract green: (value >> 8) & 0xFF
+    uint8_t b = led_colour & 0xFF;          // Extract blue:   value & 0xFF
 
     // Apply gamma-corrected brightness scaling using runtime brightness level
     // Uses g_led_brightness (0-10) to look up multiplier from BRIGHTNESS_LUT
@@ -263,13 +263,13 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
     //
     // Brightness level 0 special case:
     // - When g_led_brightness = 0, BRIGHTNESS_LUT[0] = 0
-    // - All color components are multiplied by 0 → LED is off
+    // - All colour components are multiplied by 0 → LED is off
     // - This is intentional: level 0 = LEDs off, level 1 = dimmest visible setting
 #ifdef CONVERTER_LEDS
     if (g_led_brightness <= 10) {
         const uint8_t multiplier = BRIGHTNESS_LUT[g_led_brightness];
 
-        // Scale each color component by multiplier, normalise back to 8-bit range
+        // Scale each colour component by multiplier, normalise back to 8-bit range
         // Formula: output = (input × multiplier) ÷ 255
         //
         // Performance notes:
@@ -282,10 +282,10 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
         b = (uint8_t)((b * multiplier) / 255);
     }
 #endif
-    // If g_led_brightness > 10, use original colors unchanged (shouldn't happen, but safe fallback)
+    // If g_led_brightness > 10, use original colours unchanged (shouldn't happen, but safe fallback)
 
 #ifdef CONVERTER_LEDS_TYPE
-    // Apply color order based on LED chip variant
+    // Apply colour order based on LED chip variant
     // Different WS2812-compatible chips expect different byte orders:
     //   - WS2812B (most common): GRB
     //   - SK6812: GRB or RGB depending on variant
@@ -309,7 +309,7 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
             return (r << 16) | (g << 8) | b;  // Red-Green-Blue (natural order)
     }
 #else
-    // No color type specified - default to RGB (natural order)
+    // No colour type specified - default to RGB (natural order)
     // Most readable format, but less common in actual WS2812 hardware
     return (r << 16) | (g << 8) | b;
 #endif
@@ -320,9 +320,9 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
  */
 
 /**
- * @brief Illuminates the WS2812 LED strip with the specified color
+ * @brief Illuminates the WS2812 LED strip with the specified colour
  *
- * This function sets the color of a single LED in the WS2812 LED strip. It is
+ * This function sets the colour of a single LED in the WS2812 LED strip. It is
  * called sequentially to update multiple LEDs in a chain, with data cascading
  * through each LED to the next.
  *
@@ -338,13 +338,13 @@ static inline uint32_t ws2812_set_color(uint32_t led_color) {
  * - PIO autopull (shift=24) moves data from FIFO to OSR automatically
  * - FIFO has 4-entry depth, but we check before each write for safety
  *
- * @param led_color The color value to set for the LED (RGB format, 0x00RRGGBB)
- * @return true if color was queued to PIO, false if FIFO was full or not initialised
+ * @param led_colour The colour value to set for the LED (RGB format, 0x00RRGGBB)
+ * @return true if colour was queued to PIO, false if FIFO was full or not initialised
  *
  * @note Caller should check return value and defer/retry if false
- * @note Color is automatically converted to GRB and adjusted for brightness
+ * @note Colour is automatically converted to GRB and adjusted for brightness
  */
-bool ws2812_show(uint32_t led_color) {
+bool ws2812_show(uint32_t led_colour) {
     // Guard against uninitialised PIO/SM
     if (pio_engine.pio == NULL) {
         return false;
@@ -357,7 +357,7 @@ bool ws2812_show(uint32_t led_color) {
     }
 
     // FIFO has space - queue the LED data (non-blocking)
-    pio_sm_put(pio_engine.pio, pio_engine.sm, ws2812_set_color(led_color) << 8u);
+    pio_sm_put(pio_engine.pio, pio_engine.sm, ws2812_set_colour(led_colour) << 8u);
     return true;
 }
 

@@ -63,8 +63,8 @@
  * 4. Press 'B' to enter bootloader, 'D' to change log level, 'F' for factory reset, 'L' for LED
  * brightness, 'S' to toggle Shift-Override, or wait 3s for auto-exit
  * 5. If 'D' pressed: Press '1' (ERROR), '2' (INFO), or '3' (DEBUG) to set log level
- * 6. If 'L' pressed: Status LED cycles rainbow colors, press '+'/'-' to adjust brightness (0-10)
- * 7. If 'S' pressed: Toggles Shift-Override (enable/disable custom shift behavior), exits with
+ * 6. If 'L' pressed: Status LED cycles rainbow colours, press '+'/'-' to adjust brightness (0-10)
+ * 7. If 'S' pressed: Toggles Shift-Override (enable/disable custom shift behaviour), exits with
  * confirmation message
  * 8. If any other key is pressed during hold, command mode entry is aborted
  *
@@ -73,7 +73,7 @@
  * - 'D': Change log level (then press 1/2/3 for ERROR/INFO/DEBUG)
  * - 'F': Factory reset (restore default configuration and reboot)
  * - 'L': LED brightness (then press +/- to adjust, 0=off to 10=max)
- * - 'S': Toggle Shift-Override (enable/disable custom shift behavior, saves to flash)
+ * - 'S': Toggle Shift-Override (enable/disable custom shift behaviour, saves to flash)
  *
  * State Machine:
  * - IDLE: Normal operation
@@ -107,11 +107,10 @@ void command_mode_init(void);
  * are occurring. Handles state transitions and LED feedback.
  *
  * Performance Optimisation:
- * - Early exit when state is IDLE (~3 CPU cycles)
+ * - Early exit when state is IDLE
  * - Only checks time when in active states
  * - LED updates only occur when in COMMAND_ACTIVE state
- * - Inlined LED logic to avoid function call overhead
- * - Typical overhead: <1μs when idle, ~10μs when active
+ * - Inlined LED logic to reduce call overhead
  *
  * Responsibilities:
  * - Checks for SHIFT_HOLD_WAIT → COMMAND_ACTIVE transition (3 second timer)
@@ -120,14 +119,14 @@ void command_mode_init(void);
  * - Updates LED flashing (Green/Blue alternating every 100ms)
  *
  * LED Update Frequency:
- * - Should be called frequently from main loop (runs at ~100kHz)
+ * - Should be called regularly from the main loop
  * - LED updates occur every 100ms when in COMMAND_ACTIVE state
  * - Non-blocking: returns immediately if no update needed
  *
  * @note Called from main loop (main.c) continuously
  * @note Safe to call even when no keyboard activity
  * @note Must be called regularly for timely state transitions
- * @note Optimised for minimal overhead during normal operation (99.99% of time)
+ * @note Optimised for minimal overhead during normal operation
  */
 void command_mode_task(void);
 
@@ -147,7 +146,7 @@ void command_mode_task(void);
  * - Detects command keys ('B' for bootloader)
  * - Handles early exit conditions
  *
- * State-Specific Behavior:
+ * State-Specific Behaviour:
  * - IDLE: Returns true (normal HID processing)
  * - SHIFT_HOLD_WAIT: Returns true (shifts sent to host normally)
  * - COMMAND_ACTIVE: Returns false (all HID reports suppressed)

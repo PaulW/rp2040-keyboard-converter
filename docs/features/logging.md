@@ -293,7 +293,7 @@ The converter supports three log levels that control how much information appear
 [DBG] ACK Keyboard ID Request
 ```
 
-The `!PREFIX!` markers indicate scancode sequence states (E0/F0/E1 prefixes), helping troubleshoot multi-byte sequences.
+The `!PREFIX!` markers indicate scancode sequence states (E0/F0/E1 prefixes), helping troubleshoot multibyte sequences.
 
 ### Changing Log Level
 
@@ -398,7 +398,7 @@ If logging works initially then stops:
 
 **Terminal program closed** - Verify your terminal window is still open and connected.
 
-**Firmware crash** - If logging stops abruptly and the converter becomes unresponsive, the firmware may have crashed. Power cycle the converter. Check for consistent crash behavior and file a bug report.
+**Firmware crash** - If logging stops abruptly and the converter becomes unresponsive, the firmware may have crashed. Power cycle the converter. Check for consistent crash behaviour and file a bug report.
 
 **Watchdog reset** - The RP2040 has a watchdog timer. If the main loop blocks for too long (firmware bug), the watchdog resets the chip. You'll see startup messages appear again after the reset.
 
@@ -423,7 +423,7 @@ picocom -b 115200 /dev/ttyUSB0 | tee keyboard-log.txt
 
 **Windows with PuTTY**: Session → Logging → "All session output" → Specify filename
 
-Having a log file lets you review events after they happen, share with others for troubleshooting, or compare behavior across multiple tests.
+Having a log file lets you review events after they happen, share with others for troubleshooting, or compare behaviour across multiple tests.
 
 ### Filtering Output
 

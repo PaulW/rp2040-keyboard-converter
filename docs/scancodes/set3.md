@@ -2,7 +2,7 @@
 
 Scancode Set 3 is what IBM designed for terminal keyboards—a clean-sheet design that represents what happens when you build a scancode set from scratch without worrying about backward compatibility. It's logical and consistent—every key has a single-byte make code, break codes are just F0 followed by the make code, and there are no extended prefixes cluttering things up.
 
-The state machine is refreshingly simple: just two states versus Set 2's nine. The Pause key is finally treated like a normal key instead of requiring a bizarre multi-byte sequence. No fake shifts to filter out, no special cases to handle. It's genuinely elegant.
+The state machine is refreshingly simple: just two states versus Set 2's nine. The Pause key is finally treated like a normal key instead of requiring a bizarre multibyte sequence. No fake shifts to filter out, no special cases to handle. It's genuinely elegant.
 
 However, Set 3 sees limited use. It's found on 122-key terminal keyboards and some industrial equipment. Standard desktop keyboards continue to use Set 2, so Set 3 remains a niche option despite being well-designed.
 
@@ -31,7 +31,7 @@ This simple and consistent scheme:
 
 ### No Extended Keys
 
-Set 3's design philosophy eliminated the need for extended key prefixes entirely. Rather than using E0 and E1 prefixes to create separate namespaces like Sets 1 and 2, Set 3 assigns unique single-byte codes to all keys from the outset. This means keys that require multi-byte sequences in other sets—Right Alt, Right Control, arrow keys, navigation keys—all receive their own dedicated scancodes in the base set.
+Set 3's design philosophy eliminated the need for extended key prefixes entirely. Rather than using E0 and E1 prefixes to create separate namespaces like Sets 1 and 2, Set 3 assigns unique single-byte codes to all keys from the outset. This means keys that require multibyte sequences in other sets—Right Alt, Right Control, arrow keys, navigation keys—all receive their own dedicated scancodes in the base set.
 
 **Key Feature**: Set 3 has no E0 or E1 prefixes!
 
@@ -43,7 +43,7 @@ All keys, including those that require E0 in Sets 1 and 2, have direct single-by
 
 ### Pause/Break Key
 
-Set 3's treatment of Pause/Break demonstrates its cleaner design philosophy. Where Sets 1 and 2 require special multi-byte sequences (6 and 8 bytes respectively), Set 3 treats Pause/Break as an ordinary key with standard make and break codes. This eliminates the special-case logic required in other scancode sets.
+Set 3's treatment of Pause/Break demonstrates its cleaner design philosophy. Where Sets 1 and 2 require special multibyte sequences (6 and 8 bytes respectively), Set 3 treats Pause/Break as an ordinary key with standard make and break codes. This eliminates the special-case logic required in other scancode sets.
 
 Even Pause/Break is simplified:
 
@@ -127,7 +127,7 @@ Set 3 usage is limited to terminal keyboards and industrial equipment, which mea
 
 **Note**: Set 3 has no `E0` or `E1` codes. Those bytes are not used.
 
-**Self-Test Codes (`0xAA`, `0xFC`):** These keyboard initialisation codes are filtered by the protocol layer during initialisation. The scancode processor does not filter these codes, so post‑initialisation filtering relies on the protocol layer. Unlike Set 1, Set 3 has no collision issue since break codes use the F0 prefix. See [Set 1 Self-Test Code Collision](set1.md#self-test-code-collision) for comparison.
+**Self-Test Codes (`0xAA`, `0xFC`):** These keyboard initialisation codes are filtered by the protocol layer during initialisation. The scancode processor does not filter these codes, so post‑initialisation filtering relies on the protocol layer. Unlike Set 1, Set 3 has no collision issue, since break codes use the F0 prefix. See [Set 1 Self-Test Code Collision](set1.md#self-test-code-collision) for comparison.
 
 ## Example Sequences
 

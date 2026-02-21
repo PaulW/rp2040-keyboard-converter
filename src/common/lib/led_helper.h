@@ -62,7 +62,7 @@ extern converter_state_union converter;
 /**
  * @brief Command Mode LED State
  *
- * Tracks which LED color to display during command mode (alternates between
+ * Tracks which LED colour to display during command mode (alternates between
  * green and blue for command active, green and pink for log level selection).
  * This is separate from converter.state to avoid polluting the state byte
  * with rapidly changing LED toggle information.
@@ -76,7 +76,7 @@ extern bool cmd_mode_led_green;
 /**
  * @brief Log Level Selection Mode Flag
  *
- * When true, command mode uses GREEN/PINK alternating colors instead of
+ * When true, command mode uses GREEN/PINK alternating colours instead of
  * GREEN/BLUE. This provides visual distinction between command mode active
  * (waiting for command key) and log level selection mode (waiting for 1/2/3).
  *
@@ -156,28 +156,28 @@ typedef union lock_keys_union {
     unsigned char value;
 } lock_keys_union;
 
-extern lock_keys_union lock_leds;
+extern volatile lock_keys_union lock_leds;
 
 #ifdef CONVERTER_LEDS
 /**
- * @brief Convert HSV color to RGB color
+ * @brief Convert HSV colour to RGB colour
  *
- * Converts HSV (Hue, Saturation, Value) color space to RGB color space.
- * This is useful for generating rainbow effects and smooth color transitions.
+ * Converts HSV (Hue, Saturation, Value) colour space to RGB colour space.
+ * This is useful for generating rainbow effects and smooth colour transitions.
  *
- * HSV Color Space:
+ * HSV Colour Space:
  * - Hue: 0-359 degrees (0=red, 60=yellow, 120=green, 180=cyan, 240=blue, 300=magenta)
- * - Saturation: 0-255 (0=gray, 255=full color)
+ * - Saturation: 0-255 (0=gray, 255=full colour)
  * - Value: 0-255 (0=black, 255=full brightness)
  *
- * RGB Color Format:
- * - Returns 24-bit RGB color: 0xRRGGBB
+ * RGB Colour Format:
+ * - Returns 24-bit RGB colour: 0xRRGGBB
  * - Red: bits 23-16, Green: bits 15-8, Blue: bits 7-0
  *
  * @param hue Hue value (0-359 degrees, wraps around if >359)
  * @param saturation Saturation level (0-255)
  * @param value Brightness level (0-255)
- * @return 24-bit RGB color value
+ * @return 24-bit RGB colour value
  *
  * @note Uses integer math for efficiency (no floating point)
  * @note Thread-safe: pure function with no state

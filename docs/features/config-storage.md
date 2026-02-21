@@ -61,7 +61,7 @@ Why use the last 4KB? Several reasons:
 
 **Aligned to sector boundary**: The RP2040 erases flash in 4KB sectors. Placing configuration at a sector boundary means erasing it doesn't affect firmware.
 
-**Minimal waste**: Using 4KB out of 2MB (0.2%) is negligible. We get plenty of room for future settings whilst barely impacting available firmware space.
+**Minimal waste**: Using 4KB out of 2MB (0.2%) keeps the remaining flash available for firmware growth and future settings.
 
 ---
 
@@ -205,7 +205,7 @@ To persist the change, the system must write the configuration to flash. This ha
 
 **Step 6**: Re-enable interrupts and mark the operation complete.
 
-The entire save operation is a blocking flash write—fast enough to feel instant, but slow enough that we don't want it happening frequently. That's why writes are explicit rather than automatic on every setting change.
+The entire save operation is a blocking flash write—fast enough to feel instant, but slow enough that writes are explicit rather than automatic on every setting change.
 
 ### Blocking vs Non-Blocking
 
@@ -224,8 +224,8 @@ The alternative—a non-blocking async save—would add significant complexity f
 As firmware evolves, the configuration structure might gain new fields. For example, a future version might add a `key_debounce_ms` setting. How do we handle this without breaking existing installations?
 
 The configuration structure includes a version number field. The current version is 3:
-- **v1**: Added log_level and led_brightness
-- **v2**: Added keyboard_id (for smart persistence) and shift_override_enabled flag
+- **v1**: Initial version with log_level only
+- **v2**: Added led_brightness, keyboard_id (for smart persistence), and shift_override_enabled flag
 - **v3**: Added layer_state and layers_hash (for layer persistence with validation)
 
 When the firmware boots, it checks the configuration version:
@@ -301,7 +301,13 @@ extern config_t g_config;
 
 The implementation uses the Pico SDK's flash APIs ([`flash_range_erase`](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_flash) and [`flash_range_program`](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_flash)) which are wrappers around the RP2040's boot ROM flash functions. These boot ROM functions are thoroughly tested and reliable.
 
-One quirk: you can't execute code from flash whilst writing to flash. The RP2040 bootloader handles this by copying the flash write functions to RAM before calling them. The Pico SDK's flash APIs do this automatically, so the configuration storage code doesn't need special handling.
+One quirk: you can't execute code from flash whilst writing to flash. The Pico SDK places `flash_range_erase()` and `flash_range_program()` into RAM at build time via linker attributes (e.g., `__no_inline_not_in_flash_func()`), but does not automatically handle all flash safety constraints. Application code must ensure:
+
+- **Interrupts disabled**: Flash operations require interrupts disabled to prevent execution from flash during writes
+- **Other core not executing from flash**: In multi-core systems, Core 1 must be halted or executing from RAM
+- **Source data in RAM**: The buffer passed to `flash_range_program()` must reside in RAM, not flash
+
+The SDK provides [`flash_safe_execute()`](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_flash) to assist with interrupt management, but application code is still responsible for these constraints. This firmware is single-core only and runs entirely from RAM (`pico_set_binary_type(copy_to_ram)`), satisfying all requirements.
 
 ---
 

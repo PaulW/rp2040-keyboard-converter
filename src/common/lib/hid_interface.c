@@ -486,8 +486,10 @@ void send_empty_keyboard_report(void) {
  */
 void handle_mouse_report(const uint8_t buttons[5], int8_t pos[3]) {
     // Handle Mouse Report
+    // Cast each shifted uint8_t explicitly to avoid implicit integer promotion warnings
     mouse_report.buttons =
-        buttons[0] | (buttons[1] << 1) | (buttons[2] << 2) | (buttons[3] << 3) | (buttons[4] << 4);
+        (uint8_t)(buttons[0] | (uint8_t)(buttons[1] << 1) | (uint8_t)(buttons[2] << 2) |
+                  (uint8_t)(buttons[3] << 3) | (uint8_t)(buttons[4] << 4));
     mouse_report.x     = pos[0];
     mouse_report.y     = pos[1];
     mouse_report.wheel = pos[2];

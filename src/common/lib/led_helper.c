@@ -32,7 +32,7 @@
 // Initialise the converter state with both keyboard and mouse states set to ready
 converter_state_union converter = {.value = 0xC3};
 
-lock_keys_union lock_leds;
+lock_keys_union volatile lock_leds;
 
 #ifdef CONVERTER_LEDS
 // Track last LED update time (us since boot) for non-blocking WS2812 reset timing
@@ -41,13 +41,13 @@ static volatile uint32_t last_led_update_time_us = 0;
 // Track if an update is pending due to timing constraints
 static volatile bool led_update_pending = false;
 
-// Track which LED color to display during command mode (green or blue/pink)
+// Track which LED colour to display during command mode (green or blue/pink)
 bool cmd_mode_led_green = true;
 
-// Track if we're in log level selection mode (changes LED colors to GREEN/PINK)
+// Track if we're in log level selection mode (changes LED colours to GREEN/PINK)
 bool log_level_selection_mode = false;
 
-// Command mode LED colors
+// Command mode LED colours
 #define CMD_MODE_LED_GREEN 0x00FF00 /**< Green LED for command mode phase 1 */
 #define CMD_MODE_LED_BLUE  0x0000FF /**< Blue LED for command mode phase 2 */
 #define CMD_MODE_LED_PINK  0xFF1493 /**< Pink (Deep Pink) LED for log level selection */
@@ -57,7 +57,7 @@ bool log_level_selection_mode = false;
  * @brief Updates the LEDs on the converter based on the current state
  *
  * This function updates WS2812 RGB LEDs to reflect the converter's operational state.
- * The status LED shows different colors for different states:
+ * The status LED shows different colours for different states:
  * - Firmware flash mode: Magenta (bootloader active)
  * - Ready (KB + Mouse): Green (all devices initialised)
  * - Not ready: Orange (waiting for device initialisation)
@@ -68,7 +68,7 @@ bool log_level_selection_mode = false;
  * WS2812 Protocol Implementation:
  * - Data cascades through LED chain (first LED receives all data, passes remainder)
  * - Each ws2812_show() call sends 24 bits (GRB) to next LED in chain
- * - After all LEDs are updated, a ≥50µs reset pulse latches all colors simultaneously
+ * - After all LEDs are updated, a ≥50µs reset pulse latches all colours simultaneously
  * - Uses non-blocking timing check to enforce minimum 60µs between update cycles
  *
  * Non-Blocking Approach with Multiple Safeguards:
@@ -107,36 +107,37 @@ bool update_converter_leds(void) {
     if (elapsed_us < min_interval_us) {
         // Not enough time has passed, mark update as pending
         led_update_pending = true;
+        __dmb();  // Ensure IRQ-visible write is ordered
         return false;
     }
 
-    // Determine status LED color based on converter state
-    uint32_t status_color = CONVERTER_LEDS_STATUS_NOT_READY_COLOR;
+    // Determine status LED colour based on converter state
+    uint32_t status_colour = CONVERTER_LEDS_STATUS_NOT_READY_COLOUR;
     if (converter.state.fw_flash) {
-        status_color = CONVERTER_LEDS_STATUS_FWFLASH_COLOR;
+        status_colour = CONVERTER_LEDS_STATUS_FWFLASH_COLOUR;
     } else if (converter.state.cmd_mode) {
-        // Command mode active - color depends on mode:
+        // Command mode active - colour depends on mode:
         // - Log level selection: GREEN/PINK alternating
         // - Command active: GREEN/BLUE alternating
         if (log_level_selection_mode) {
-            status_color = cmd_mode_led_green ? CMD_MODE_LED_GREEN : CMD_MODE_LED_PINK;
+            status_colour = cmd_mode_led_green ? CMD_MODE_LED_GREEN : CMD_MODE_LED_PINK;
         } else {
-            status_color = cmd_mode_led_green ? CMD_MODE_LED_GREEN : CMD_MODE_LED_BLUE;
+            status_colour = cmd_mode_led_green ? CMD_MODE_LED_GREEN : CMD_MODE_LED_BLUE;
         }
     } else if (converter.state.kb_ready && converter.state.mouse_ready) {
-        status_color = CONVERTER_LEDS_STATUS_READY_COLOR;
+        status_colour = CONVERTER_LEDS_STATUS_READY_COLOUR;
     } else {
-        status_color = CONVERTER_LEDS_STATUS_NOT_READY_COLOR;
+        status_colour = CONVERTER_LEDS_STATUS_NOT_READY_COLOUR;
     }
 
     // Update all LEDs in sequence - if any fail, defer entire update
-    bool success = ws2812_show(status_color);
+    bool success = ws2812_show(status_colour);
 
 #ifdef CONVERTER_LOCK_LEDS
     // Chain success checks - short-circuit on first failure
-    success = success && ws2812_show(lock_leds.keys.numLock ? CONVERTER_LOCK_LEDS_COLOR : 0);
-    success = success && ws2812_show(lock_leds.keys.capsLock ? CONVERTER_LOCK_LEDS_COLOR : 0);
-    success = success && ws2812_show(lock_leds.keys.scrollLock ? CONVERTER_LOCK_LEDS_COLOR : 0);
+    success = success && ws2812_show(lock_leds.keys.numLock ? CONVERTER_LOCK_LEDS_COLOUR : 0);
+    success = success && ws2812_show(lock_leds.keys.capsLock ? CONVERTER_LOCK_LEDS_COLOUR : 0);
+    success = success && ws2812_show(lock_leds.keys.scrollLock ? CONVERTER_LOCK_LEDS_COLOUR : 0);
 #endif
 
     if (success) {
@@ -223,9 +224,9 @@ void update_converter_status(void) {
 
 #ifdef CONVERTER_LEDS
 /**
- * @brief Convert HSV color to RGB color
+ * @brief Convert HSV colour to RGB colour
  *
- * Converts HSV (Hue, Saturation, Value) color space to RGB color space using
+ * Converts HSV (Hue, Saturation, Value) colour space to RGB colour space using
  * efficient integer mathematics. No floating point operations are used.
  *
  * Algorithm:
@@ -233,7 +234,7 @@ void update_converter_status(void) {
  * - Calculates RGB components using region-specific formulas
  * - Returns 24-bit RGB value suitable for WS2812 LEDs
  *
- * Color Wheel:
+ * Colour Wheel:
  * - 0° (0): Red
  * - 60°: Yellow
  * - 120°: Green
@@ -243,9 +244,9 @@ void update_converter_status(void) {
  * - 360° wraps back to 0° (Red)
  *
  * @param hue Hue angle (0-359 degrees, automatically wraps if >= 360)
- * @param saturation Color saturation (0-255, 0=grayscale, 255=full color)
+ * @param saturation Colour saturation (0-255, 0=grayscale, 255=full colour)
  * @param value Brightness value (0-255, 0=black, 255=full brightness)
- * @return 24-bit RGB color in format 0xRRGGBB
+ * @return 24-bit RGB colour in format 0xRRGGBB
  *
  * @note Pure function - thread-safe, no state
  * @note Integer-only math for RP2040 performance
@@ -311,6 +312,7 @@ void set_lock_values_from_hid(uint8_t lock_val) {
     if (!update_converter_leds()) {
         // Update failed (timing constraint), set flag for main loop retry
         led_update_pending = true;
+        __dmb();  // Ensure IRQ-visible write is ordered
     }
 #endif
 }

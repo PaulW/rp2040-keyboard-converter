@@ -72,7 +72,7 @@ LED indicators provide visual feedback about converter status, including operati
 - Power indication
 - Error states and protocol issues
 
-The status LED shows different colours depending on what's happening. Solid green means everything's working normally. Solid orange (`CONVERTER_LEDS_STATUS_NOT_READY_COLOR`) appears whenever the converter is not ready—typically during startup whilst firmware initialises, or if the keyboard/mouse is uninitialised. Alternating green and blue indicates Command Mode is active and waiting for you to press a command key. Solid magenta means bootloader mode (firmware flash mode). These patterns make it easy to tell what's going on without needing to connect debug tools.
+The status LED shows different colours depending on what's happening. Solid green means everything's working normally. Solid orange (`CONVERTER_LEDS_STATUS_NOT_READY_COLOR`) appears whenever the converter is not ready—during startup whilst firmware initialises, or if the keyboard/mouse is uninitialised. Alternating green and blue indicates Command Mode is active and waiting for you to press a command key. Solid magenta means bootloader mode (firmware flash mode). These patterns make it easy to tell what's going on without needing to connect debug tools.
 
 **Keyboard Lock Indicators:**
 

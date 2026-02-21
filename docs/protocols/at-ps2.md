@@ -72,10 +72,10 @@ AT/PS2 keyboards and all PS/2 mice use this connector. The compact mini-DIN conn
 - Pin 5: CLOCK - Clock line (open-drain, bidirectional)
 - Pin 6: N/C - Not connected (reserved for future use)
 
-**Color Coding** (on PC motherboards):
+**Colour Coding** (on PC motherboards):
 - **Purple** connector: Keyboard
 - **Green** connector: Mouse
-- Electrically identical—color only indicates intended use
+- Electrically identical—colour only indicates intended use
 
 ---
 
@@ -402,7 +402,7 @@ bitLoopOutLoop:
 
 ### Keyboard-Specific Features
 
-Whilst the underlying protocol is shared, keyboards have unique commands, data formats, and behaviors that distinguish them from mice.
+Whilst the underlying protocol is shared, keyboards have unique commands, data formats, and behaviours that distinguish them from mice.
 
 ### Scancode Sets
 
@@ -541,15 +541,15 @@ LEDs: Update to reflect new state
 7. Begin processing scancodes from keyboard
 ```
 
-**Hot-Plug Behavior** (Not Recommended):
+**Hot-Plug Behaviour** (Not Recommended):
 
 Whilst hot-swapping keyboards is not recommended and can cause state machine issues, understanding how the converter handles unexpected codes may be helpful for debugging:
 
-**Protocol Layer Behavior:**
+**Protocol Layer Behaviour:**
 - **During initialisation** (UNINITIALISED, INIT_AWAIT_SELFTEST states): The protocol layer expects 0xAA (BAT_PASSED) or triggers reset on any other byte (including 0xFC for failed BAT)
 - **Once INITIALISED**: All received bytes are forwarded unchanged to the scancode processor via the ring buffer—no protocol-layer filtering of 0xAA, 0xFC, or any other codes
 
-**Scancode Layer Behavior:**
+**Scancode Layer Behaviour:**
 - **Set 1**: When in the E0-prefixed state, codes 0x2A, 0xAA, 0x36, and 0xB6 are ignored as "fake shift" sequences (see [Set 1 Self-Test Code Collision](../scancodes/set1.md#self-test-code-collision)). This is NOT a universal blacklist—0xAA is only handled specially when E0-prefixed. In INIT state, codes > 0xD3 log generically as `!INIT!` but are not processed as key events
 - **Set 2/3**: Codes 0xAA and 0xFC fall through to the default unmapped-code handler. In INIT state, any code ≥ 0x80 logs generically as `LOG_DEBUG("!INIT! (0x%02X)\n", code)`. This is not intentional "re-plug" detection—it's simply the generic logging for unmapped or out-of-range scancodes
 
@@ -557,7 +557,7 @@ Whilst hot-swapping keyboards is not recommended and can cause state machine iss
 - No active hot-swap detection or monitoring for unexpected 0xAA
 - No automatic re-initialisation sequence on detection of device reset
 - No automatic scancode processor state reset
-- No clearing of partial multi-byte sequences
+- No clearing of partial multibyte sequences
 
 **Hypothetical Graceful Detection Approach:**
 

@@ -28,7 +28,7 @@ For the physical connection, you'll need either a breakout board with the approp
 
 Pull-up resistors are required on the CLOCK and DATA signal lines. The typical value is 4.7kΩ connected between each signal and 3.3V. Many breakout boards include these resistors already, so check your board's specifications before adding external resistors. If your board already has pull-ups, adding more external ones is harmless.
 
-For protocol-specific details including connector types, pinout diagrams, wire colors, and electrical requirements, see the [AT/PS2 Protocol Documentation](../protocols/at-ps2.md#physical-interface).
+For protocol-specific details including connector types, pinout diagrams, wire colours, and electrical requirements, see the [AT/PS2 Protocol Documentation](../protocols/at-ps2.md#physical-interface).
 
 ---
 
@@ -103,7 +103,7 @@ If you're running many bright LEDs with both keyboard and mouse, you might be ap
 
 Erratic or jittery cursor movement is usually a mechanical issue with the mouse itself—dirty rollers on ball mice or faulty sensors on optical mice. Clean the mouse hardware and test on different surfaces.
 
-Electrical noise can cause erratic behavior. Keep wiring short (under 30cm) and avoid routing mouse wires parallel to USB cables or power supplies.
+Electrical noise can cause erratic behaviour. Keep wiring short (under 30cm) and avoid routing mouse wires parallel to USB cables or power supplies.
 
 If cursor axes are reversed, adjust the axis direction in your operating system's mouse settings—this is an OS configuration issue, not a converter problem.
 

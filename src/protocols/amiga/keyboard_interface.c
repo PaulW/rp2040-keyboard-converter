@@ -391,7 +391,7 @@ void keyboard_interface_setup(uint data_pin) {
         // Release PIO resources before returning
         pio_sm_set_enabled(pio_engine.pio, (uint)pio_engine.sm, false);
         pio_sm_clear_fifos(pio_engine.pio, (uint)pio_engine.sm);
-        pio_sm_unclaim(pio_engine.pio, pio_engine.sm);
+        pio_sm_unclaim(pio_engine.pio, (uint)pio_engine.sm);
         pio_remove_program(pio_engine.pio, &keyboard_interface_program, pio_engine.offset);
         pio_engine.pio    = NULL;
         pio_engine.sm     = -1;
@@ -431,7 +431,7 @@ void keyboard_interface_setup(uint data_pin) {
  * - Non-blocking ring buffer processing for real-time performance
  * - HID-ready checking prevents USB report queue overflow
  * - Scan codes processed through dedicated Amiga processor
- * - Handles CAPS LOCK special behavior (press only, LED state tracking)
+ * - Handles CAPS LOCK special behaviour (press only, LED state tracking)
  *
  * Protocol Features:
  * - No initialisation sequence needed (unlike AT/PS2)

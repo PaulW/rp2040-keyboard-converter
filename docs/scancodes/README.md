@@ -74,7 +74,7 @@ The three PC scancode sets evolved over time as keyboards got more sophisticated
 
 **Set 3** simplifies things considerably. No prefixes for extended keys, consistent two-byte break codes (`F0` + scancode), and no special Pause key handling. It's a cleaner design, used primarily on terminal keyboards.
 
-**Amiga** scancodes are completely different—they're 7-bit codes with bit 7 indicating make (0) or break (1). No multi-byte sequences, no prefixes, just simple single-byte scancodes with the release bit included. Much simpler than the PC scancode sets, though obviously only used on Amiga keyboards.
+**Amiga** scancodes are completely different—they're 7-bit codes with bit 7 indicating make (0) or break (1). No multibyte sequences, no prefixes, just simple single-byte scancodes with the release bit included. Much simpler than the PC scancode sets, though obviously only used on Amiga keyboards.
 
 ---
 
@@ -113,7 +113,7 @@ Whilst `set123` handles the general case, there are times when you might want to
 Each scancode documentation includes:
 
 - **Encoding schemes** - How make and break codes are formed
-- **Extended key sequences** - Multi-byte scancode patterns (E0, E1 prefixes)
+- **Extended key sequences** - Multibyte scancode patterns (E0, E1 prefixes)
 - **Special cases** - Pause key, Print Screen, and other unusual scancodes
 - **Timing requirements** - Protocol-specific timing constraints
 - **Complete scancode tables** - Every key and its corresponding scancode(s)

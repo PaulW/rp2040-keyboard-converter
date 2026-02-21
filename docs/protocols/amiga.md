@@ -594,16 +594,16 @@ Example:
 
 ### CAPS LOCK LED Control
 
-Amiga keyboards handle CAPS LOCK with unique behavior requiring sophisticated synchronisation:
+Amiga keyboards handle CAPS LOCK with unique behaviour requiring sophisticated synchronisation:
 
-**Keyboard Behavior**:
+**Keyboard Behaviour**:
 - CAPS LOCK LED is physically in the keyboard
 - Keyboard sends event **only on key press** (never on release)
 - Bit 7 indicates **LED state** (not key state):
   - **Bit 7 = 0** (0x62): LED is **ON** (CAPS LOCK active)
   - **Bit 7 = 1** (0xE2): LED is **OFF** (CAPS LOCK inactive)
 
-**USB HID Behavior**:
+**USB HID Behaviour**:
 - Host computer controls CAPS LOCK via HID reports
 - Press+release cycle toggles the state
 - Host sends LED state back to device
@@ -812,7 +812,7 @@ The Amiga protocol's bidirectional handshake requires correct timing and connect
      * 85µs minimum handshake pulse requirement  
      * 143ms handshake timeout
      * Bit rotation specification (6-5-4-3-2-1-0-7 transmission order)
-   - [Out-of-Sync Condition](http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0176.html) - Resynchronisation behavior
+   - [Out-of-Sync Condition](http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0176.html) - Resynchronisation behaviour
    - [Special Codes](http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node017B.html) - Protocol special codes (0x78, 0xF9, 0xFA, 0xFC, 0xFD, 0xFE)
 
 ### Historical and Hardware Information

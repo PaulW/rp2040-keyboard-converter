@@ -282,7 +282,7 @@ This solution allows a single receiver implementation to work with both genuine 
 
 ## Scan Code Set
 
-The XT protocol uses a fixed scancode set. It's simple—no multi-byte sequences, no mode switching, just simple make and break codes.
+The XT protocol uses a fixed scancode set. It's simple—no multibyte sequences, no mode switching, just simple make and break codes.
 
 **Scancode Structure:**
 

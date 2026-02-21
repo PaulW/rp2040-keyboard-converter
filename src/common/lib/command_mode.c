@@ -40,7 +40,7 @@
 #endif
 
 #ifdef CONVERTER_LEDS
-// External flag from led_helper.c to control LED colors during log level selection
+// External flag from led_helper.c to control LED colours during log level selection
 extern bool log_level_selection_mode;
 #endif
 
@@ -66,7 +66,7 @@ extern bool log_level_selection_mode;
  *                      ├─> IDLE (key '3' = DEBUG level)
  *                      └─> IDLE (3 second timeout)
  *
- * HID Report Behavior:
+ * HID Report Behaviour:
  * - IDLE: Normal HID reports sent to host
  * - SHIFT_HOLD_WAIT: Normal HID reports sent (shifts visible to host)
  * - COMMAND_ACTIVE: ALL HID reports suppressed (empty report sent on entry)
@@ -328,7 +328,7 @@ static void command_mode_exit(const char* reason) {
     LOG_INFO("%s\n", reason);
     cmd_mode.state = CMD_MODE_IDLE;
 #ifdef CONVERTER_LEDS
-    log_level_selection_mode = false;  // Reset LED colors to GREEN/BLUE
+    log_level_selection_mode = false;  // Reset LED colours to GREEN/BLUE
     // Disable command mode LED and restore normal LED operation
     converter.state.cmd_mode = 0;
 #endif
@@ -361,7 +361,7 @@ static void handle_shift_hold_wait_timeout(uint32_t now_ms) {
         send_empty_keyboard_report();
 
 #ifdef CONVERTER_LEDS
-        // Enable command mode LED and set initial color to green
+        // Enable command mode LED and set initial colour to green
         converter.state.cmd_mode = 1;
         cmd_mode_led_green       = true;
         update_converter_status();
@@ -395,16 +395,15 @@ static bool handle_command_timeout(uint32_t now_ms) {
         }
 #endif
 
-        // Use different log messages for debugging clarity
-        const char* reason = "Command mode timeout, returning to idle";
-        if (cmd_mode.state == CMD_MODE_COMMAND_ACTIVE) {
-            reason = "Command mode timeout, returning to idle";
-        } else if (cmd_mode.state == CMD_MODE_LOG_LEVEL_SELECT) {
+        const char* reason;
+        if (cmd_mode.state == CMD_MODE_LOG_LEVEL_SELECT) {
             reason = "Log level selection timeout, returning to idle";
 #ifdef CONVERTER_LEDS
-        } else {
+        } else if (cmd_mode.state == CMD_MODE_BRIGHTNESS_SELECT) {
             reason = "LED brightness selection timeout, returning to idle";
 #endif
+        } else {
+            reason = "Command mode timeout, returning to idle";
         }
         command_mode_exit(reason);
         return true;
@@ -416,7 +415,7 @@ static bool handle_command_timeout(uint32_t now_ms) {
 /**
  * @brief Update command mode LED feedback (toggle green/pink)
  *
- * Toggles LED color every 100ms for visual feedback in COMMAND_ACTIVE
+ * Toggles LED colour every 100ms for visual feedback in COMMAND_ACTIVE
  * and LOG_LEVEL_SELECT states.
  *
  * @param now_ms Current timestamp in milliseconds
@@ -424,7 +423,7 @@ static bool handle_command_timeout(uint32_t now_ms) {
 static void update_command_mode_leds(uint32_t now_ms) {
     // Toggle LED every 100ms (CMD_MODE_LED_TOGGLE_MS)
     if (now_ms - cmd_mode.last_led_toggle_ms >= CMD_MODE_LED_TOGGLE_MS) {
-        // Toggle the LED color
+        // Toggle the LED colour
         cmd_mode_led_green          = !cmd_mode_led_green;
         cmd_mode.last_led_toggle_ms = now_ms;
 
@@ -438,7 +437,7 @@ static void update_command_mode_leds(uint32_t now_ms) {
 /**
  * @brief Update brightness selection rainbow effect
  *
- * Cycles through rainbow colors on status LED for visual feedback
+ * Cycles through rainbow colours on status LED for visual feedback
  * during brightness adjustment mode.
  *
  * @param now_ms Current timestamp in milliseconds
@@ -447,17 +446,17 @@ static void update_brightness_rainbow(uint32_t now_ms) {
     // Update rainbow hue every 50ms for smooth cycling (faster than command mode toggle)
     const uint32_t RAINBOW_CYCLE_MS = 50;
     const uint16_t rainbow_hue_step = 6;    // Hue increment per update (6° = 3s cycle at 50ms)
-    const uint16_t rainbow_hue_max  = 360;  // Full color wheel in degrees
+    const uint16_t rainbow_hue_max  = 360;  // Full colour wheel in degrees
 
     if (now_ms - cmd_mode.last_led_toggle_ms >= RAINBOW_CYCLE_MS) {
         // Increment hue for rainbow effect and wrap at maximum
         brightness_rainbow_hue = (brightness_rainbow_hue + rainbow_hue_step) % rainbow_hue_max;
 
-        // Convert HSV to RGB (full saturation and brightness for vivid colors)
-        uint32_t rainbow_color = hsv_to_rgb(brightness_rainbow_hue, 255, 255);
+        // Convert HSV to RGB (full saturation and brightness for vivid colours)
+        uint32_t rainbow_colour = hsv_to_rgb(brightness_rainbow_hue, 255, 255);
 
         // Set the status LED directly (bypass normal LED helper logic)
-        ws2812_show(rainbow_color);
+        ws2812_show(rainbow_colour);
 
         cmd_mode.last_led_toggle_ms = now_ms;
     }
@@ -560,7 +559,7 @@ static bool command_handle_log_level_select(void) {
     cmd_mode.state               = CMD_MODE_LOG_LEVEL_SELECT;
     cmd_mode.state_start_time_ms = to_ms_since_boot(get_absolute_time());
 #ifdef CONVERTER_LEDS
-    log_level_selection_mode = true;  // Change LED colors to GREEN/PINK
+    log_level_selection_mode = true;  // Change LED colours to GREEN/PINK
 #endif
     LOG_INFO("Log level selection: Press 1=ERROR, 2=INFO, 3=DEBUG\n");
     return false;
@@ -691,6 +690,29 @@ static bool process_command_active(const hid_keyboard_report_t* keyboard_report)
 }
 
 /**
+ * @brief Apply new log level and persist to flash
+ *
+ * Helper function for log level selection. Applies the selected log level
+ * to both the runtime logging system and persistent configuration storage,
+ * saves the configuration to flash, and exits command mode.
+ *
+ * This function is called by process_log_level_select() when the user
+ * presses 1/2/3 to select ERROR/INFO/DEBUG log level.
+ *
+ * @param level Log level to apply (LOG_LEVEL_ERROR, LOG_LEVEL_INFO, or LOG_LEVEL_DEBUG)
+ * @param exit_msg Message to log when exiting command mode (e.g., "Log level changed to DEBUG")
+ *
+ * @note Configuration is immediately saved to flash to persist across reboots
+ * @note Always exits command mode after applying level
+ */
+static void apply_log_level(log_level_t level, const char* exit_msg) {
+    log_set_level(level);
+    config_set_log_level(level);
+    config_save();
+    command_mode_exit(exit_msg);
+}
+
+/**
  * @brief Process keyboard input in LOG_LEVEL_SELECT state
  *
  * Waits for user to press 1, 2, or 3 to select log level.
@@ -703,28 +725,19 @@ static bool process_log_level_select(const hid_keyboard_report_t* keyboard_repor
     // Wait for user to press 1, 2, or 3 to select log level
     if (is_key_pressed(keyboard_report, KC_1)) {
         // Set log level to ERROR (only errors visible)
-        log_set_level(LOG_LEVEL_ERROR);
-        config_set_log_level(LOG_LEVEL_ERROR);
-        config_save();  // Persist to flash
-        command_mode_exit("Log level changed to ERROR");
+        apply_log_level(LOG_LEVEL_ERROR, "Log level changed to ERROR");
         return false;
     }
 
     if (is_key_pressed(keyboard_report, KC_2)) {
         // Set log level to INFO (info + error visible, debug hidden)
-        log_set_level(LOG_LEVEL_INFO);
-        config_set_log_level(LOG_LEVEL_INFO);
-        config_save();  // Persist to flash
-        command_mode_exit("Log level changed to INFO");
+        apply_log_level(LOG_LEVEL_INFO, "Log level changed to INFO");
         return false;
     }
 
     if (is_key_pressed(keyboard_report, KC_3)) {
         // Set log level to DEBUG (all messages visible)
-        log_set_level(LOG_LEVEL_DEBUG);
-        config_set_log_level(LOG_LEVEL_DEBUG);
-        config_save();  // Persist to flash
-        command_mode_exit("Log level changed to DEBUG");
+        apply_log_level(LOG_LEVEL_DEBUG, "Log level changed to DEBUG");
         return false;
     }
 

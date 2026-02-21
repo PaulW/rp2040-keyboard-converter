@@ -21,7 +21,7 @@
 // NOTE: Apple M0110/M0110A protocol and scancode support is currently under
 // development and considered incomplete/placeholder. The protocol implementation
 // and scancode translation may require further refinement based on hardware
-// testing and real-world keyboard behavior.
+// testing and real-world keyboard behaviour.
 
 #include "scancode.h"
 

@@ -31,7 +31,7 @@
  * multiple scancode sets. This is primarily useful for AT/PS2 protocol keyboards
  * which can be queried during initialisation to determine their scancode set.
  *
- * Protocol-Specific Behavior:
+ * Protocol-Specific Behaviour:
  * ---------------------------
  *
  * **XT Protocol:**

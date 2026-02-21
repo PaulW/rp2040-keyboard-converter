@@ -48,11 +48,11 @@ Command Mode provides two types of feedback to help you understand what's happen
 
 **LED Visual Feedback** (if WS2812 LEDs are configured):
 
-**Before 3 seconds**: LED shows normal status (green for ready, other colors if there's an issue). Hold both shifts and wait.
+**Before 3 seconds**: LED shows normal status (green for ready, other colours if there's an issue). Hold both shifts and wait.
 
 **After 3 seconds**: LED alternates green/blue rapidly. This is your signal that Command Mode is active and waiting for a command key.
 
-**After command key press**: LED changes to indicate which operation is running. The specific color pattern depends on which command you chose.
+**After command key press**: LED changes to indicate which operation is running. The specific colour pattern depends on which command you chose.
 
 **Timeout or completion**: LED returns to normal green status.
 
@@ -182,7 +182,7 @@ The brightness setting persists across reboots—you only need to set it once.
 
 Brightness adjustment uses [gamma correction](../../src/common/lib/ws2812/ws2812.c) to make the perceived brightness change linearly as you step through the levels. Without gamma correction, LED brightness appears to jump from very dim to blindingly bright in just a couple steps. With correction, each level increment produces an approximately equal perceived brightness change. The gamma-corrected brightness lookup table compensates for the non-linear response of human vision, using a power curve (γ ≈ 2.5) to ensure each brightness step appears visually equal.
 
-The rainbow cycling during adjustment serves two purposes: it provides engaging visual feedback that you're in adjustment mode, and it lets you see how the current brightness level affects LED visibility across different colors.
+The rainbow cycling during adjustment serves two purposes: it provides engaging visual feedback that you're in adjustment mode, and it lets you see how the current brightness level affects LED visibility across different colours.
 
 For more about WS2812 LED hardware and configuration, see the [LED Support documentation](led-support.md).
 
@@ -262,9 +262,9 @@ Throughout Command Mode operations, the LED provides visual feedback about what'
 The LED update functions run in the main loop and check Command Mode state to decide which pattern to show. For example:
 - If Command Mode is active but no command selected: alternate green/blue
 - If 'D' command active awaiting log level: alternate green/pink
-- If 'L' command active awaiting brightness: rainbow cycling through all colors
+- If 'L' command active awaiting brightness: rainbow cycling through all colours
 
-The LED patterns use non-blocking timing as well—tracking when to toggle colors based on elapsed time rather than using delays.
+The LED patterns use non-blocking timing as well—tracking when to toggle colours based on elapsed time rather than using delays.
 
 ---
 
@@ -304,7 +304,7 @@ The activation keys must be HID modifiers (Shift, Control, Alt, GUI) because of 
 
 Modifiers are handled in the first byte of the HID report and can all be detected simultaneously. Regular keys go into the six key slots and require more complex logic to detect specific combinations. Using modifiers for activation simplifies the detection code and makes it more reliable.
 
-Additionally, modifier combinations are less likely to conflict with application shortcuts. Holding two shifts rarely triggers any application behavior, whilst holding two regular keys might activate application-specific features.
+Additionally, modifier combinations are less likely to conflict with application shortcuts. Holding two shifts rarely triggers any application behaviour, whilst holding two regular keys might activate application-specific features.
 
 ---
 
@@ -369,7 +369,7 @@ You've added WS2812 RGB LEDs to your converter but they're too bright at night:
 
 1. Press and hold both shifts for 3 seconds (LED alternates green/blue)
 2. Release shifts and press 'L'
-3. LED begins cycling through rainbow colors
+3. LED begins cycling through rainbow colours
 4. Press '-' several times to decrease brightness to a comfortable level
 5. Wait 3 seconds—the converter saves the new brightness and exits to normal operation
 6. The brightness setting persists after power cycling

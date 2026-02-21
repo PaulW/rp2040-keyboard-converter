@@ -156,6 +156,7 @@ void mouse_event_processor(uint8_t data_byte) {
                     LOG_INFO("Detecting Mouse Type\n");
                     mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;  // Reset Mouse ID
                     mouse_state = INIT_AWAIT_ID;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
                     break;
                 default:
                     // If we hit this, then either the self test failed, or we have an error.
@@ -480,8 +481,9 @@ void mouse_interface_task() {
                 if (detect_stall_count > ATPS2_MOUSE_STALL_LIMIT) {
                     // Reset Mouse as we have not received any data for 1 second.
                     LOG_ERROR("Mouse Interface Timeout.  Resetting Mouse...\n");
-                    mouse_id           = ATPS2_MOUSE_ID_UNKNOWN;  // Reset Mouse ID
-                    mouse_state        = INIT_AWAIT_ACK;     // Set State to Await Acknowledgement
+                    mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;  // Reset Mouse ID
+                    mouse_state = INIT_AWAIT_ACK;          // Set State to Await Acknowledgement
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
                     detect_stall_count = 0;                  // Reset Stall Counter
                     mouse_command_handler(ATPS2_CMD_RESET);  // Send Reset Command
                 }
@@ -546,7 +548,7 @@ void mouse_interface_setup(uint data_pin) {
         // Release PIO resources before returning
         pio_sm_set_enabled(pio_engine.pio, (uint)pio_engine.sm, false);
         pio_sm_clear_fifos(pio_engine.pio, (uint)pio_engine.sm);
-        pio_sm_unclaim(pio_engine.pio, pio_engine.sm);
+        pio_sm_unclaim(pio_engine.pio, (uint)pio_engine.sm);
         pio_remove_program(pio_engine.pio, &pio_interface_program, pio_engine.offset);
         pio_engine.pio    = NULL;
         pio_engine.sm     = -1;

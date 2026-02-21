@@ -148,7 +148,7 @@ pio_engine_t claim_pio_and_sm(const pio_program_t* program) {
  * - Re-initialisation after configuration changes
  * - Transitioning between protocol states
  *
- * State Machine Reset Behavior:
+ * State Machine Reset Behaviour:
  * - Program Counter (PC) → 0
  * - Output Shift Register (OSR) → cleared
  * - Input Shift Register (ISR) → cleared
@@ -407,8 +407,8 @@ void pio_irq_dispatcher_init(PIO pio) {
  *
  * Failure Scenarios:
  * - All callback slots occupied → returns false
- * - Dispatcher not initialised → undefined behavior (call init first)
- * - NULL callback pointer → undefined behavior (caller must validate)
+ * - Dispatcher not initialised → undefined behaviour (call init first)
+ * - NULL callback pointer → undefined behaviour (caller must validate)
  *
  * Protocol Integration Pattern:
  * @code
@@ -433,7 +433,7 @@ void pio_irq_dispatcher_init(PIO pio) {
  *
  * @note Must call pio_irq_dispatcher_init() before registering callbacks
  * @note Callbacks invoked in IRQ context - must be fast and non-blocking
- * @note Callback must not be NULL (undefined behavior)
+ * @note Callback must not be NULL (undefined behaviour)
  * @note Registration order affects invocation order (FIFO)
  * @note Logs slot number for debugging multi-device configurations
  * @note Duplicate callback registration prevented (returns false if already registered)

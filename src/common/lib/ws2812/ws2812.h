@@ -33,19 +33,19 @@
 #define WS2812_LED_TRANSMISSION_US 30u  // Per-LED transmission time (24 bits × 1.25µs)
 
 /**
- * @brief Update WS2812 LED with the specified color (non-blocking)
+ * @brief Update WS2812 LED with the specified colour (non-blocking)
  *
- * Queues a color update to a WS2812 LED via the PIO state machine. This is a
+ * Queues a colour update to a WS2812 LED via the PIO state machine. This is a
  * non-blocking operation that checks the PIO TX FIFO before writing. If the
  * FIFO is full, the function returns false immediately without blocking.
  *
- * Color Format:
- * - 24-bit RGB color value (0x00RRGGBB format)
+ * Colour Format:
+ * - 24-bit RGB colour value (0x00RRGGBB format)
  * - Automatically converted to WS2812 GRB format
  * - Brightness adjustment applied based on configuration
  *
- * Non-Blocking Behavior:
- * - Returns true if color data was successfully queued to PIO FIFO
+ * Non-Blocking Behaviour:
+ * - Returns true if colour data was successfully queued to PIO FIFO
  * - Returns false if PIO TX FIFO is full (caller should defer and retry)
  * - Returns false if called before ws2812_setup() (uninitialised)
  * - Never blocks waiting for FIFO space
@@ -53,16 +53,16 @@
  * Multi-LED Cascading:
  * - Call once per LED in the chain
  * - First call updates first LED, second call updates second LED, etc.
- * - After all LEDs updated, a ≥50µs reset pulse latches colors simultaneously
+ * - After all LEDs updated, a ≥50µs reset pulse latches colours simultaneously
  *
- * @param led_color RGB color value in 0x00RRGGBB format
+ * @param led_colour RGB colour value in 0x00RRGGBB format
  * @return true if update was queued successfully, false if deferred (retry later)
  *
  * @note Fully non-blocking - safe to call from any context
  * @note Caller must handle false return by deferring update
  * @note Call sites in led_helper.c implement proper deferral logic
  */
-bool ws2812_show(uint32_t led_color);
+bool ws2812_show(uint32_t led_colour);
 
 /**
  * @brief Initialise WS2812 LED interface using PIO

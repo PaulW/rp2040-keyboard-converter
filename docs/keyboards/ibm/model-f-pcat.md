@@ -265,9 +265,9 @@ Verify your OS keyboard layout settings match what you're expecting. You can cus
 - [Deskthority Wiki: IBM Model F](https://deskthority.net/wiki/IBM_Model_F) - Community-maintained technical information
 - [Capacitive Buckling Spring Technology](https://deskthority.net/wiki/Buckling_spring#Capacitive) - Switch technology details
 
-### Scancode Behavior
+### Scancode Behaviour
 
-- **[VintagePC - IBM 6450225](https://www.seasip.info/VintagePC/ibm_6450225.html)** - Detailed scancode behavior documentation
+- **[VintagePC - IBM 6450225](https://www.seasip.info/VintagePC/ibm_6450225.html)** - Detailed scancode behaviour documentation
 - [AEB Linux Keyboard Scancodes](https://www.aeb.win.tue.nl/linux/kbd/scancodes-10.html) - Scancode Set translation tables
 
 ### Historical Context

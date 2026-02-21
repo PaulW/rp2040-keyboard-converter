@@ -255,9 +255,9 @@ static bool validate_config(const config_data_t* cfg) {
 static size_t get_config_size_for_version(uint16_t version) {
     switch (version) {
         case 1:
-            // v1: log_level, led_brightness, flags (no shift_override_enabled bit)
-            // Size up to (but not including) keyboard_id field
-            return offsetof(config_data_t, keyboard_id);
+            // v1: log_level only (initial version)
+            // Size up to (but not including) led_brightness field
+            return offsetof(config_data_t, led_brightness);
 
         case 2:
             // v2: Added keyboard_id, shift_override_enabled flag
@@ -669,7 +669,7 @@ void config_set_layers_hash(uint32_t layers_hash) {
 }
 
 uint32_t config_get_layers_hash(void) {
-    // Intentional behavior: Return 0 when config system not initialised.
+    // Intentional behaviour: Return 0 when config system not initialised.
     // This differs from the LAYERS_HASH_SENTINEL in DEFAULT_CONFIG and
     // g_config.layers_hash (see line 133, 379) which indicates "config loaded
     // but hash needs computation". Returning 0 here is safe because uninitialised

@@ -169,7 +169,7 @@ Test the converter with multiple host operating systems to ensure HID compatibil
 
 ### Extended Key Test
 
-Test keys that use multi-byte scancode sequences.
+Test keys that use multibyte scancode sequences.
 
 **Test procedure:**
 1. **Extended keys (E0 prefix):**
@@ -180,7 +180,7 @@ Test keys that use multi-byte scancode sequences.
 3. **Print Screen:** Press with and without modifiers
 4. Check UART output to verify scancode sequences are decoded correctly
 
-**Expected results:** All extended keys register correctly. Multi-byte sequences are assembled properly. No spurious keypresses from sequence fragments.
+**Expected results:** All extended keys register correctly. Multibyte sequences are assembled properly. No spurious keypresses from sequence fragments.
 
 ---
 
@@ -288,7 +288,7 @@ Whilst the converter doesn't have automated unit tests (integration testing on h
 2. **Command Mode still functions** - Verify all commands work
 3. **LEDs still update** - Test lock key indicators
 4. **Protocol error recovery** - Power-cycle test
-5. **Multi-byte sequences** - Test extended keys and Pause
+5. **Multibyte sequences** - Test extended keys and Pause
 6. **Fast typing handling** - Burst typing test
 7. **Build system works** - All configurations compile
 8. **Memory usage acceptable** - No significant size increases

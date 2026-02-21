@@ -10,7 +10,7 @@ The converter translates scancodes (what your keyboard sends) into HID keycodes 
 
 When you press a key on your keyboard, there's a process that happens before your computer sees it. The keyboard's internal controller detects the keypress and sends a scancode over its protocol—AT/PS2, XT, or whatever it uses. Different keyboards use different scancode sets, which is one reason why we need the converter in the first place.
 
-Now, some scancodes are multi-byte sequences. Extended keys like the arrow keys get prefixed with `E0`, and some special keys like Pause send even longer sequences. The scancode processor handles all this complexity and produces complete make/break events—effectively "key down" and "key up" notifications.
+Now, some scancodes are multibyte sequences. Extended keys like the arrow keys get prefixed with `E0`, and some special keys like Pause send even longer sequences. The scancode processor handles all this complexity and produces complete make/break events—effectively "key down" and "key up" notifications.
 
 That's where the keymap comes in. It's a lookup table that translates the scancode into an HID keycode—the USB standard code for that key. So if scancode 0x1C comes in (which is usually the 'A' key on most keyboards), the keymap looks that up and returns the HID keycode for 'A'. The HID interface then packages this into a USB HID report and sends it to your computer, where the OS interprets it.
 
@@ -312,7 +312,7 @@ The converter supports multi-layer keymaps (similar to QMK firmware), but if you
 
 Layers are useful for things like media controls, alternative key functions, or special modes that you access via a function key. The converter supports up to 8 layers (0-7, defined by `KEYMAP_MAX_LAYERS = 8` in [`src/common/lib/keymaps.h`](../../src/common/lib/keymaps.h)), with Layer 0 being the base layer that's always active.
 
-**Layer switching limitation:** Layer-switching keycodes (MO, TG, TO, OSL) are currently only defined for layers 1-3 in [`src/common/lib/hid_keycodes.h`](../../src/common/lib/hid_keycodes.h). Whilst you can define up to 8 layers in your keymap, you can only directly switch to layers 1-3 using the keycode macros described below. If you need layers 4-7, you would need to extend the keycode definitions in `hid_keycodes.h`, though three switchable layers (plus base layer 0) is typically sufficient for most use cases.
+**Layer switching limitation:** Layer-switching keycodes (MO, TG, TO, OSL) are currently only defined for layers 1-3 in [`src/common/lib/hid_keycodes.h`](../../src/common/lib/hid_keycodes.h). Whilst you can define up to 8 layers in your keymap, you can only directly switch to layers 1-3 using the keycode macros described below. If you need layers 4-7, extend the keycode definitions in `hid_keycodes.h`. The default keycode set only covers layers 1-3 plus the base layer 0.
 
 ### How Layers Work
 
@@ -322,7 +322,7 @@ Here's the key bit: when you press a key, the lookup starts at the highest activ
 
 What this means practically: you only need to define the keys that are different in your upper layers—everything else can be `TRNS` and will fall through to active lower layers. You're not duplicating entire layouts, you're only overriding specific positions. If you've got Layer 1 and Layer 3 both active (via toggle), and Layer 3 has `TRNS` at a position, it'll check Layer 1 next (skipping inactive Layer 2). If Layer 1 also has `TRNS`, it falls through to Layer 0. Only active layers participate in the fallthrough chain.
 
-This is similar to QMK-style behaviour—standard practice for keyboard firmware with layer support.
+This is similar to QMK-style behaviour.
 
 ### Defining Multiple Layers
 
@@ -373,7 +373,7 @@ There are four types of layer operations, each with a different behaviour:
 **One-Shot (OSL)** - Layer activates for next keypress only  
 `OSL_1`, `OSL_2`, `OSL_3` activate the layer for a single keypress, then automatically deactivate. Press the one-shot key, then press another key—that key uses the upper layer, then you're back to the base layer. Useful for accessing symbols or special characters without holding a modifier.
 
-These keycodes follow a pattern: the operation type (MO, TG, TO, OSL) followed by an underscore and the layer number. The current implementation only defines keycodes for layers 1-3 (stored in the 0xF0-0xFF keycode range in `hid_keycodes.h`). Accessing layers 4-7 would require extending these definitions by adding `KC_MO_4` through `KC_MO_7` and corresponding macros, though most use cases are well served by three switchable layers plus the base layer.
+These keycodes follow a pattern: the operation type (MO, TG, TO, OSL) followed by an underscore and the layer number. The current implementation only defines keycodes for layers 1-3 (stored in the 0xF0-0xFF keycode range in `hid_keycodes.h`). Accessing layers 4-7 requires extending these definitions by adding `KC_MO_4` through `KC_MO_7` and corresponding macros. The default keycode set only covers layers 1-3 plus the base layer.
 
 ### Practical Example: Media Control Layer
 

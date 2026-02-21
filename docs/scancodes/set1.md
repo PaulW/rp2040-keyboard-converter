@@ -2,7 +2,7 @@
 
 Scancode Set 1 is the scancode design used by IBM PC and PC/XT keyboards. The designation "XT scancode set" derives from its use in the PC/XT keyboard. Set 1 continues to be used by keyboards operating in XT compatibility mode or implementing XT protocol support.
 
-The encoding scheme: each key generates a make code when pressed and a break code when released. Break codes use the make code with bit 7 set (adding 0x80). Extended keys require multi-byte sequences using E0 and E1 prefixes to encode keys not present on the original XT keyboard layout. Set 1 has been in use for over 40 years across multiple keyboard generations.
+The encoding scheme: each key generates a make code when pressed and a break code when released. Break codes use the make code with bit 7 set (adding 0x80). Extended keys require multibyte sequences using E0 and E1 prefixes to encode keys not present on the original XT keyboard layout. Set 1 has been in use for over 40 years across multiple keyboard generations.
 
 ## Encoding Scheme
 
@@ -109,7 +109,7 @@ The collision is mitigated by protocol-layer filtering during keyboard initialis
 - **AT/PS2 Protocol**: Expects `0xAA` (BAT_PASSED) in `INIT_AWAIT_SELFTEST` state—any other byte triggers a reset sequence; only after successful self-test does it transition to `INIT_READ_ID_1` and eventually `INITIALISED` (see [`src/protocols/at-ps2/keyboard_interface.c`](../../src/protocols/at-ps2/keyboard_interface.c) lines 278-298)
 - Once `INITIALISED`, all codes are forwarded unchanged to the scancode layer via the ring buffer—no protocol-layer filtering
 
-**Scancode Layer Behavior:**
+**Scancode Layer Behaviour:**
 
 The Set 1 scancode processor ([`src/scancodes/set1/scancode.c`](../../src/scancodes/set1/scancode.c)) does **not** filter self-test codes. It performs a range check (`if (code <= 0xD3)`) that processes all valid scancodes, including `0xAA`:
 
@@ -272,7 +272,7 @@ E0-prefixed keys require translation to their logical key codes:
 
 ## Performance Characteristics
 
-- **Average bytes per keystroke**: 1.5 (single-byte scancodes, with multi-byte sequences for extended keys)
+- **Average bytes per keystroke**: 1.5 (single-byte scancodes, with multibyte sequences for extended keys)
 - **State machine complexity**: Medium (5 states)
 - **Processing overhead**: Low (simple bit manipulation)
 - **Memory requirements**: ~256 bytes for E0 translation table

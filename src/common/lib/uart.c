@@ -27,7 +27,7 @@
  * operations such as keyboard protocol timing or USB HID communication.
  *
  * Key Features:
- * - **Configurable queue policies**: DROP, WAIT_FIXED, or WAIT_EXP behavior when queue full
+ * - **Configurable queue policies**: DROP, WAIT_FIXED, or WAIT_EXP behaviour when queue full
  * - **Large circular buffer queue**: 64-entry buffer handles initialisation bursts without loss
  * - **DMA-driven transmission**: Minimal CPU overhead during output
  * - **stdio integration**: Works transparently with printf(), puts(), etc.
@@ -74,7 +74,7 @@
  * - **Low priority**: DMA and IRQ configured to not interfere with timing-critical code
  * - **Configurable queue policies**: Compile-time selection eliminates runtime overhead
  * - **Exponential backoff**: CPU-friendly waiting with progressive delays (WAIT_EXP policy)
- * - **IRQ-aware behavior**: Policies adapt to interrupt context automatically
+ * - **IRQ-aware behaviour**: Policies adapt to interrupt context automatically
  *
  * Thread Safety:
  * The implementation is designed to be safely called from any context, including
@@ -83,7 +83,7 @@
  * - **Compare-and-swap operations** for multi-producer safety
  * - **Acquire/release semantics** for proper memory ordering
  * - **DMA hardware handling** the actual transmission
- * - **IRQ context detection** that adapts policy behavior appropriately
+ * - **IRQ context detection** that adapts policy behaviour appropriately
  *
  * Integration:
  * This UART implementation completely replaces the standard Pico SDK UART
@@ -93,7 +93,7 @@
  * - **stdio functions** (printf, puts, putchar, etc.): Automatically use DMA transmission
  * - **Transparent operation**: No code changes required for existing printf usage
  * - **Performance gains**: Non-blocking DMA transmission with configurable queue policies
- * - **Real-time safe**: Configurable behavior from immediate drop to CPU-friendly backoff
+ * - **Real-time safe**: Configurable behaviour from immediate drop to CPU-friendly backoff
  */
 
 #include "uart.h"
@@ -178,7 +178,7 @@ static bool uart_dma_inited = false;  // LINT:ALLOW non-volatile - write-once du
  *
  * These counters track UART DMA operation statistics when UART_DMA_DEBUG_STATS
  * is defined in config.h. Statistics are used to identify queue sizing issues
- * and monitor system behavior under load.
+ * and monitor system behaviour under load.
  */
 static volatile uint32_t stats_enqueued      = 0; /**< Total messages successfully enqueued */
 static volatile uint32_t stats_dropped       = 0; /**< Total messages dropped (queue full) */
@@ -198,7 +198,7 @@ static volatile uint32_t stats_last_reported = 0; /**< Last reported drop count 
  * @return true if queue is empty (head equals tail)
  * @return false if queue contains messages
  */
-static inline bool queue_empty() {
+static inline bool queue_empty(void) {
     return q_head == q_tail;
 }
 
@@ -211,7 +211,7 @@ static inline bool queue_empty() {
  * @return true if queue is full (would overflow on next write)
  * @return false if queue has space for more messages
  */
-static inline bool queue_full() {
+static inline bool queue_full(void) {
     return ((q_head + 1) & (UART_DMA_QUEUE_SIZE - 1)) == q_tail;
 }
 
@@ -221,7 +221,7 @@ static inline bool queue_full() {
  * Determines if the current execution context is within an interrupt service
  * routine by checking the VECTACTIVE field of the Interrupt Control and State Register.
  *
- * This function is used by the queue policy implementation to adapt behavior
+ * This function is used by the queue policy implementation to adapt behaviour
  * in interrupt context, ensuring that potentially blocking operations (like
  * sleep_us or extended polling) are avoided when called from ISRs.
  *
@@ -286,14 +286,15 @@ static inline void report_drop_stats(void) {
 
     // Report every 10 drops to balance visibility vs log spam
     if (current_drops > stats_last_reported && (current_drops % 10 == 0)) {
-        uint32_t total    = stats_enqueued + stats_dropped;
-        uint32_t drop_pct = (total > 0) ? (stats_dropped * 100 / total) : 0;
+        uint32_t current_enqueued = stats_enqueued;
+        uint32_t total            = current_enqueued + current_drops;
+        uint32_t drop_pct         = (total > 0) ? (current_drops * 100 / total) : 0;
 
         // Format stats message to local buffer
         char stats_msg[UART_DMA_BUFFER_SIZE];
         int  len = snprintf(stats_msg, sizeof(stats_msg),
                             "[UART Stats] Dropped: %lu, Enqueued: %lu, Drop rate: %lu%%\n",
-                            (unsigned long)stats_dropped, (unsigned long)stats_enqueued,
+                            (unsigned long)current_drops, (unsigned long)current_enqueued,
                             (unsigned long)drop_pct);
 
         if (len <= 0 || len >= (int)sizeof(stats_msg)) {
@@ -407,7 +408,7 @@ static void __isr uart_dma_complete_handler(void) {  // NOLINT(bugprone-reserved
 }
 
 /**
- * @brief Queue full policy handler with configurable behavior
+ * @brief Queue full policy handler with configurable behaviour
  *
  * This function implements the compile-time selected queue full policy:
  *
@@ -415,7 +416,7 @@ static void __isr uart_dma_complete_handler(void) {  // NOLINT(bugprone-reserved
  * - **WAIT_FIXED Policy**: Busy-waits with tight polling until timeout
  * - **WAIT_EXP Policy**: Uses exponential backoff delays (CPU-friendly)
  *
- * The behavior is determined at compile time by UART_DMA_POLICY setting,
+ * The behaviour is determined at compile time by UART_DMA_POLICY setting,
  * ensuring zero runtime overhead for policy selection. The maximum wait
  * time is controlled by UART_DMA_WAIT_US configuration parameter.
  *
@@ -478,7 +479,7 @@ static inline bool wait_for_queue_space(void) {
  * race conditions when multiple execution contexts (main thread + ISRs)
  * attempt to enqueue messages simultaneously.
  *
- * Behavior:
+ * Behaviour:
  * - **Thread context**: Retries briefly on CAS contention to handle rare races
  * - **IRQ context**: Single attempt only to avoid spinning in interrupt handlers
  * - **Queue full**: Returns false immediately regardless of context
@@ -524,14 +525,14 @@ static inline bool try_reserve_slot(uint8_t* out_idx) {
  *
  * Key Features:
  * - **Thread-safe operation**: Uses atomic slot reservation to prevent races
- * - **Configurable queue policies**: DROP/WAIT_FIXED/WAIT_EXP behavior selection
+ * - **Configurable queue policies**: DROP/WAIT_FIXED/WAIT_EXP behaviour selection
  * - **Input validation**: Length limiting and bounds checking
  * - **Publish-subscribe pattern**: Atomic length update signals message ready
  * - **Automatic DMA initiation**: Starts transmission when controller is idle
  * - **Statistics tracking**: Optional drop/enqueue counting (UART_DMA_DEBUG_STATS)
  *
  * Message Flow:
- * 1. **Policy check**: wait_for_queue_space() applies configured behavior
+ * 1. **Policy check**: wait_for_queue_space() applies configured behaviour
  * 2. **Slot reservation**: try_reserve_slot() atomically claims queue entry
  * 3. **Data copy**: memcpy() transfers pre-formatted message to queue buffer
  * 4. **Publish**: Atomic length store marks entry ready for DMA consumption
@@ -547,7 +548,7 @@ static inline bool try_reserve_slot(uint8_t* out_idx) {
  *
  * @note Used internally by stdio integration - not for direct application calls
  * @note Thread-safe: Safe to call from any context including interrupts
- * @note IRQ-aware: Adapts behavior based on execution context
+ * @note IRQ-aware: Adapts behaviour based on execution context
  * @note Performance: Direct memcpy with atomic publish for efficiency
  */
 static void uart_dma_write_raw(const char* s, int len) {
@@ -675,12 +676,12 @@ static stdio_driver_t dma_stdio_driver = {
  * - 64 x 256 bytes = 16KB: Message queue buffer (static allocation)
  * - ~100 bytes: Control structures and state variables
  *
- * Post-Initialisation Behavior:
+ * Post-Initialisation Behaviour:
  * After this function completes successfully:
  * - All printf(), puts(), putchar() calls use DMA automatically
- * - System provides configurable non-blocking debug output behavior
+ * - System provides configurable non-blocking debug output behaviour
  * - No code changes required for existing printf usage
- * - Queue policy determines behavior under load (drop/wait/backoff)
+ * - Queue policy determines behaviour under load (drop/wait/backoff)
  *
  * @note **CRITICAL**: Must be called once during system initialisation
  * @note **TIMING**: Call before any printf/logging operations
@@ -691,7 +692,7 @@ static stdio_driver_t dma_stdio_driver = {
  * @warning Calling printf() before this function results in no output
  * @warning Do not call from interrupt context during initialisation
  */
-void init_uart_dma() {
+void init_uart_dma(void) {
     if (uart_dma_inited) {
         return;
     }
@@ -786,7 +787,7 @@ void uart_dma_flush(void) {
  * - Total messages dropped due to queue full
  * - Derived drop rate percentage
  *
- * Use this function to monitor queue behavior and identify if queue sizing
+ * Use this function to monitor queue behaviour and identify if queue sizing
  * adjustments are needed. High drop rates may indicate:
  * - Queue too small for burst logging patterns
  * - UART baud rate too slow for message volume

@@ -2,7 +2,7 @@
 
 Scancode Set 2 was introduced with the IBM PC/AT and is used by PS/2 keyboards and many USB keyboards that internally use PS/2-style scancodes.
 
-Set 2 differs from Set 1 in encoding: break codes use an F0 prefix rather than a high-bit flag (bit 7), allowing the full 8-bit range for make codes. The F0 prefix encoding requires a 9-state processing state machine compared to Set 1's 5-state machine. Certain sequences such as Pause/Break use longer multi-byte sequences in Set 2 than in Set 1. Set 2 supports bidirectional communication—the host can send commands to the keyboard for LED control, typematic (key repeat) configuration, and scancode set selection.
+Set 2 differs from Set 1 in encoding: break codes use an F0 prefix rather than a high-bit flag (bit 7), allowing the full 8-bit range for make codes. The F0 prefix encoding requires a 9-state processing state machine compared to Set 1's 5-state machine. Certain sequences such as Pause/Break use longer multibyte sequences in Set 2 than in Set 1. Set 2 supports bidirectional communication—the host can send commands to the keyboard for LED control, typematic (key repeat) configuration, and scancode set selection.
 
 ## Encoding Scheme
 
@@ -29,7 +29,7 @@ This scheme provides:
 
 The IBM Enhanced Keyboard (introduced with the IBM AT) added keys not present on the original keyboard. Set 2 uses the E0 prefix byte to encode these extended keys in a separate namespace from existing scancodes. Extended keys use three bytes for a complete press/release cycle: E0 (prefix), scancode (press), and F0 + scancode (release).
 
-Extended keys use a multi-byte sequence:
+Extended keys use a multibyte sequence:
 
 | Event | Encoding | Example (Right Control = 0x14) |
 |-------|----------|--------------------------------|

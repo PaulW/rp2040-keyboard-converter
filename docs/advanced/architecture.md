@@ -46,7 +46,7 @@ When you press a key on your keyboard, here's an example journey it takes before
        │
        ▼
 ┌──────────────────────────┐
-│  Scancode Processor      │  Handles multi-byte sequences
+│  Scancode Processor      │  Handles multibyte sequences
 │  (Main Loop - CPU)       │  Deals with E0/F0 prefixes, Pause key
 └──────┬───────────────────┘
        │
@@ -115,7 +115,7 @@ One thing to watch out for: you can't call `ringbuf_reset()` whilst interrupts a
 
 ### Scancode Processor
 
-Not all scancodes are single bytes. Some protocols (like AT/PS2 Scancode Set 2) use multi-byte sequences—escape prefixes like `E0` and `F0` (for extended keys and key releases), and even longer sequences like the Pause key which sends `E1 14 77 E1 F0 14 F0 77`.
+Not all scancodes are single bytes. Some protocols (like AT/PS2 Scancode Set 2) use multibyte sequences—escape prefixes like `E0` and `F0` (for extended keys and key releases), and even longer sequences like the Pause key which sends `E1 14 77 E1 F0 14 F0 77`.
 
 The scancode processor runs in the main loop on the CPU (not in the PIO—the PIO only handles bit-level protocol timing). It reads bytes from the ring buffer and assembles them into complete scancode events. Once it's got a complete sequence, it knows whether it's a make (key press) or break (key release), and what the actual scancode is.
 
@@ -283,7 +283,7 @@ The ring buffer implements the critical data handoff between interrupt context (
 
 **Overflow protection:** The interrupt handler checks `ringbuf_is_full()` before writing data to prevent overflow. If the buffer is full, the scancode is dropped and an error is logged (when logging is configured). This situation indicates the main loop cannot maintain pace. The main loop checks `ringbuf_is_empty()` before reading to avoid spurious reads. These guard checks prevent data corruption without requiring expensive synchronisation primitives.
 
-**Buffer sizing:** The capacity of 32 bytes (defined as [`RINGBUF_SIZE`](../../src/common/lib/ringbuf.h)) is deliberately small. The main loop polls frequently enough that scancodes move through the buffer within microseconds. Even multi-byte sequences rarely accumulate more than a few bytes before consumption. The small size keeps the buffer in cache and makes overflow immediately apparent rather than allowing problems to hide in deep queues.
+**Buffer sizing:** The capacity of 32 bytes (defined as [`RINGBUF_SIZE`](../../src/common/lib/ringbuf.h)) is deliberately small. The main loop polls frequently enough that scancodes move through the buffer within microseconds. Even multibyte sequences rarely accumulate more than a few bytes before consumption. The small size keeps the buffer in cache and makes overflow immediately apparent rather than allowing problems to hide in deep queues.
 
 **Critical rule:** Never call `ringbuf_reset()` with interrupts enabled. This function resets both head and tail pointers to zero, which corrupts buffer state if an interrupt arrives during the reset operation. Only call this function during initialisation before enabling interrupts, or after explicitly disabling interrupts for error recovery.
 
@@ -300,7 +300,7 @@ All keyboard protocols follow a standard 13-step setup sequence that includes `r
 
 **Protocol Details:**
 - [Protocols Overview](../protocols/README.md) - Protocol specifications and timing
-- [Scancode Sets](../scancodes/README.md) - Scancode decoding and multi-byte sequences
+- [Scancode Sets](../scancodes/README.md) - Scancode decoding and multibyte sequences
 
 **Development:**
 - [Code Standards](../development/code-standards.md) - Coding conventions and architecture rules

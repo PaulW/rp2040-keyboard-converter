@@ -93,7 +93,7 @@ You'll need to know which wires carry the power and signal lines. Have a look at
 
 First, connect the power and ground connections to all the components.
 
-| From | To | Wire Color | Purpose |
+| From | To | Wire Colour | Purpose |
 |------|-----|------------|---------|
 | RP2040 **VSYS** pin | Power Rail **Upper** | Red | 5V for level shifter HV side and device |
 | RP2040 **GND** pin | Power Rail **Lower** | Black | Common ground |
@@ -134,7 +134,7 @@ We should've already connected the LV, HV and GND pins in the previous step, so 
 
 ### Signal Line Connections
 
-| From | To | Wire Color | Purpose |
+| From | To | Wire Colour | Purpose |
 |------|----|------------|---------|
 | RP2040 **DATA** pin | Level Shifter **A1** | Green | DATA signal (3.3V side) |
 | RP2040 **CLOCK** pin | Level Shifter **A2** | Green | CLOCK signal (3.3V side) |
@@ -198,11 +198,11 @@ DIN ─┤     X     ├─ DOUT
 
 **Connections:**
 
-| WS2812B Pin | Connect To | Wire Color | Notes |
+| WS2812B Pin | Connect To | Wire Colour | Notes |
 |-------------|------------|------------|-------|
 | **VCC** | RP2040 **3V3** pin | Red | Use 3.3V, not 5V |
 | **GND** | Power Rail **Lower** | Black | Common ground |
-| **DIN** (Data In) | RP2040 **`GPIO 29`** | Any color | Default data pin |
+| **DIN** (Data In) | RP2040 **`GPIO 29`** | Any colour | Default data pin |
 
 **A couple of things to note**: 
 - Use the **DIN** (Data In) pin, not DOUT (Data Out). You'd only use DOUT if you're chaining multiple LEDs together.

@@ -63,7 +63,7 @@ See: [Building Firmware Guide](../../getting-started/building-firmware.md)
 
 The default keymap preserves the terminal keyboard layout whilst adapting it for modern use.
 
-### Base Layer Mapping (Layer 0 - NumLock On)
+### Base Layer Mapping (Layer 0)
 
 From [`keyboard.c`](../../../src/keyboards/modelm/m122/keyboard.c):
 
@@ -134,7 +134,7 @@ IBM Model M M122 Terminal Keyboard (Scancode Set 3):
 
 ### Layer System
 
-The keyboard defines a single layer (Layer 0) as the base layer. The numpad keys (P7, P8, P9, etc.) are sent directly to the host—Windows and Linux handle NumLock state natively, toggling between numeric and navigation functions.
+The keyboard defines a single layer (Layer 0) as the base layer.
 
 ---
 

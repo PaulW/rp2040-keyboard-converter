@@ -107,7 +107,7 @@ static uint8_t scan_lower_layers_for_modifier(uint8_t row, uint8_t col, uint8_t*
  *   Layer 3: MO_4
  *   Layer 4: KC_C
  *
- * Results:
+ * Results (assuming layers 1–4 are all active):
  *   - Active Layer 1 or 2: Returns KC_A (normal fallthrough)
  *   - Active Layer 3: Returns MO_4 (layer modifier)
  *   - Active Layer 4: Returns MO_4 (KC_C ignored because Layer 3 has modifier)

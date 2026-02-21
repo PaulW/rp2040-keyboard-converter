@@ -55,9 +55,9 @@ typedef enum {
 /**
  * @brief Unified Scancode Processor Configuration
  *
- * This structure configures the behavior of the unified scancode processor.
+ * This structure configures the behaviour of the unified scancode processor.
  * It allows a single processor to handle all three XT/AT scancode sets with
- * appropriate translation tables and behavior flags.
+ * appropriate translation tables and behaviour flags.
  *
  * Usage Example:
  * ```c
@@ -123,7 +123,7 @@ typedef struct {
  * ```
  *
  * @param code The scancode byte to process
- * @param config Pointer to scancode set configuration (defines behavior)
+ * @param config Pointer to scancode set configuration (defines behaviour)
  *
  * @note This function maintains internal state across calls (static variables)
  * @note State is reset to INIT after processing each complete sequence

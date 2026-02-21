@@ -168,7 +168,7 @@ Use Doxygen-style comments for functions, especially in header files:
 /**
  * @brief Processes a single scancode from the ring buffer.
  * 
- * Handles multi-byte sequences (E0/F0 prefixes) and assembles complete
+ * Handles multibyte sequences (E0/F0 prefixes) and assembles complete
  * scancode events. Updates internal state machine for sequence tracking.
  * 
  * @param scancode Raw scancode byte from ring buffer

@@ -25,11 +25,11 @@ Bits 6-0: Key code (0x00-0x67)
 - Left Shift (0x60) pressed: `0x60`
 - Left Shift (0x60) released: `0xE0`
 
-### CAPS LOCK Special Behavior
+### CAPS LOCK Special Behaviour
 
-The Amiga CAPS LOCK key (scancode 0x62) has unique behavior that differs from all other keyboard protocols:
+The Amiga CAPS LOCK key (scancode 0x62) has unique behaviour that differs from all other keyboard protocols:
 
-**Keyboard Behavior**:
+**Keyboard Behaviour**:
 1. **Only sends on press** (never on release)
 2. Keyboard maintains internal LED state
 3. LED toggles on each press
@@ -156,27 +156,27 @@ Amiga keyboards have independent matrix positions for all modifiers:
 | Right Alt | `0x65` | `0xE5` | Independent matrix position |
 | Left Amiga | `0x66` | `0xE6` | Maps to Left Windows/Command |
 | Right Amiga | `0x67` | `0xE7` | Maps to Right Windows/Command |
-| CAPS LOCK | `0x62` or `0xE2` | None | Special behavior (see above) |
+| CAPS LOCK | `0x62` or `0xE2` | None | Special behaviour (see above) |
 
 ## Comparison with Other Protocols
 
 ### vs. PC/XT (Set 1)
 - **Simpler**: No E0/E1 prefix codes
 - **Simpler**: No fake shifts
-- **Different**: CAPS LOCK special behavior
+- **Different**: CAPS LOCK special behaviour
 - **Similar**: Basic make/break with bit 7 flag
 
 ### vs. Apple M0110
 - **Similar**: Simple make/break encoding
-- **Similar**: No multi-byte sequences
+- **Similar**: No multibyte sequences
 - **Different**: M0110 uses bits 6-1 for keycode, bit 0 always 1
-- **Different**: CAPS LOCK behavior (M0110 is normal key)
+- **Different**: CAPS LOCK behaviour (M0110 is normal key)
 
 ### vs. PS/2 (Set 2)
-- **Simpler**: No multi-byte sequences
+- **Simpler**: No multibyte sequences
 - **Simpler**: No typematic control
 - **Different**: Make code = base, break code = base + 0x80 (vs. PS/2 F0 prefix)
-- **Different**: CAPS LOCK special behavior
+- **Different**: CAPS LOCK special behaviour
 
 ## Testing Considerations
 
