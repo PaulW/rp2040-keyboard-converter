@@ -12,19 +12,23 @@ The RP2040 doesn't have dedicated EEPROM like some microcontrollers, but it does
 
 However, flash has some quirks we need to handle carefully. Flash cells wear out after many write cycles (manufacturer specifications vary by chip). Flash must be erased in relatively large blocks (4KB sectors on the RP2040) before writing new data. And if power is lost partway through a write operation, the data might end up corrupted.
 
-The configuration storage system addresses all these concerns while keeping the implementation simple and robust.
+The configuration storage system addresses all these concerns whilst keeping the implementation simple and robust.
 
 ---
 
 ## What Gets Stored
 
-Currently, the converter stores two settings:
+The converter persists several settings across reboots:
 
-**Log Level** - Controls how verbose the UART debug output is. Can be ERROR (minimal), INFO (moderate, default), or DEBUG (verbose). You set this through Command Mode using the 'D' command.
+**Log Level** - Controls how verbose the UART debug output is. It can be ERROR (minimal), INFO (moderate, default), or DEBUG (verbose). You set this through Command Mode using the 'D' command.
 
 **LED Brightness** - Controls how bright the status LED and any WS2812 RGB LEDs appear, on a scale from 0 (off) to 10 (maximum). You set this through Command Mode using the 'L' command.
 
-These settings are stored together in a single configuration structure, along with metadata like a version number, sequence counter, and CRC checksum. The configuration structure occupies 2048 bytes total (matching the 2KB copy size), with 16 bytes of header and settings, 1 byte for flags/padding, and 2028 bytes reserved for future expansion (TLV storage for macros, key remaps, etc.).
+**Shift-Override Enable** - Runtime toggle for keyboards with non-standard shift legends (terminal keyboards, vintage layouts). Disabled by default, enabled via Command Mode 'S' command. Only affects keyboards that define shift-override arrays.
+
+**Layer State** - Active toggle (TG) and permanent switch (TO) layers. When you toggle Dvorak on or switch to a gaming layer, that state persists across reboots. Momentary (MO) and one-shot (OSL) layers don't persist—they're temporary by design.
+
+These settings are stored together in a single configuration structure, along with metadata like a version number, sequence counter, and CRC checksum. The configuration structure occupies 2048 bytes total (matching the 2KB copy size), with 26 bytes of header and settings (version, sequence, magic, CRC, log level, LED brightness, keyboard ID, layer state, layers hash, flags, and reserved padding), and 2022 bytes reserved for variable storage (TLV storage for macros, key remaps, etc.).
 
 Future firmware versions might add more settings—custom key remapping, macro definitions, debounce timing adjustments, protocol-specific tweaks. The storage system is designed to accommodate this growth through automatic version migration.
 
@@ -57,7 +61,7 @@ Why use the last 4KB? Several reasons:
 
 **Aligned to sector boundary**: The RP2040 erases flash in 4KB sectors. Placing configuration at a sector boundary means erasing it doesn't affect firmware.
 
-**Minimal waste**: Using 4KB out of 2MB (0.2%) is negligible. We get plenty of room for future settings while barely impacting available firmware space.
+**Minimal waste**: Using 4KB out of 2MB (0.2%) keeps the remaining flash available for firmware growth and future settings.
 
 ---
 
@@ -90,7 +94,7 @@ At any point in this process, at least one valid copy exists. Power failure can'
 
 ### Sequence Numbers Track Freshness
 
-Each configuration copy includes a sequence number that increments with every write. Copy A might have sequence 47, while Copy B has sequence 48. The system knows Copy B is newer.
+Each configuration copy includes a sequence number that increments with every write. Copy A might have sequence 47, whilst Copy B has sequence 48. The system knows Copy B is newer.
 
 When writing new configuration, the sequence number increments again—Copy B (48) gets updated to sequence 49, or if we're alternating, Copy A gets updated from 47 to 49.
 
@@ -141,11 +145,11 @@ When the converter powers on, one of the first things it does is load configurat
 
 Here's the complete boot sequence:
 
-**Step 1**: Initialize the configuration system. This sets up pointers to the flash storage locations and prepares the runtime configuration structure in RAM.
+**Step 1**: Initialise the configuration system. This sets up pointers to the flash storage locations and prepares the runtime configuration structure in RAM.
 
 **Step 2**: Read Copy A from flash (2KB from 0x101FF000).
 
-**Step 3**: Validate Copy A by computing its CRC and comparing to the stored CRC. Also check that its version number is recognized.
+**Step 3**: Validate Copy A by computing its CRC and comparing to the stored CRC. Also check that its version number is recognised.
 
 **Step 4**: Read Copy B from flash (2KB from 0x101FF800).
 
@@ -175,7 +179,7 @@ uint8_t current_level = cfg->log_level;
 uint8_t brightness = cfg->led_brightness;
 ```
 
-This design has zero runtime performance cost. Accessing configuration is just a RAM read—no function calls, no indirection, no overhead. The compiler can even optimize these reads into registers when possible.
+This design adds no function-call overhead: accessing configuration is a direct RAM read via the inline pointer, with no extra indirection beyond the struct access. The compiler can even optimise these reads into registers when possible.
 
 The tradeoff is that changes to configuration don't automatically save. When you modify a setting through Command Mode, the code updates the RAM structure and then explicitly calls the save function. This explicit save design gives you control over when the write operation happens.
 
@@ -201,11 +205,11 @@ To persist the change, the system must write the configuration to flash. This ha
 
 **Step 6**: Re-enable interrupts and mark the operation complete.
 
-The entire save operation is a blocking flash write—fast enough to feel instant, but slow enough that we don't want it happening frequently. That's why writes are explicit rather than automatic on every setting change.
+The entire save operation is a blocking flash write—fast enough to feel instant, but slow enough that writes are explicit rather than automatic on every setting change.
 
 ### Blocking vs Non-Blocking
 
-The save operation blocks the main loop and **disables interrupts** while writing to flash. During this time, the converter cannot process IRQ events, including keyboard scancodes or USB communication.
+The save operation blocks the main loop and **disables interrupts** whilst writing to flash. During this time, the converter cannot process IRQ events, including keyboard scancodes or USB communication.
 
 However, data loss is prevented because the **PIO hardware continues operating independently** with its own RX FIFO buffer (4-8 entries deep). Scancodes captured by the PIO are held in this hardware FIFO. When interrupts are re-enabled after the flash write completes, the IRQ handler immediately processes any buffered data and transfers it to the 32-byte ring buffer for normal processing.
 
@@ -219,7 +223,12 @@ The alternative—a non-blocking async save—would add significant complexity f
 
 As firmware evolves, the configuration structure might gain new fields. For example, a future version might add a `key_debounce_ms` setting. How do we handle this without breaking existing installations?
 
-The configuration structure includes a version number field. The current version is 1. When the firmware boots, it checks the configuration version:
+The configuration structure includes a version number field. The current version is 3:
+- **v1**: Initial version with log_level only
+- **v2**: Added led_brightness, keyboard_id (for smart persistence), and shift_override_enabled flag
+- **v3**: Added layer_state and layers_hash (for layer persistence with validation)
+
+When the firmware boots, it checks the configuration version:
 
 - **Version matches**: Configuration is current, use it as-is
 - **Version older**: Run migration code to add new fields with defaults
@@ -231,16 +240,16 @@ The current implementation uses a simple migration strategy: if the configuratio
 
 When migrating:
 1. Read the old configuration into a temporary buffer
-2. Create a new configuration structure initialized to defaults
+2. Create a new configuration structure initialised to defaults
 3. Copy all fields that exist in both old and new versions
 4. New fields retain their default values
 5. Write the migrated configuration to flash with updated version number
 
-This approach preserves user settings while adding new features with sensible defaults.
+This approach preserves user settings whilst adding new features with sensible defaults.
 
 ### Example Migration
 
-Suppose Version 1 has `log_level` and `led_brightness`. Version 2 adds `key_debounce_ms`:
+This is a simplified hypothetical example to illustrate the migration process. Suppose Version 1 has `log_level` and `led_brightness`. Version 2 adds `key_debounce_ms`:
 
 1. Boot with Version 2 firmware
 2. Read configuration from flash, find it's Version 1 (smaller size)
@@ -251,13 +260,15 @@ Suppose Version 1 has `log_level` and `led_brightness`. Version 2 adds `key_debo
 
 The user's log level and brightness settings are preserved, and the new debounce setting starts at a sensible default they can adjust if needed.
 
+(Note: The actual v1→v2→v3 migration history is documented above, but this example uses simplified field names for clarity.)
+
 ---
 
 ## Factory Reset
 
 The Command Mode 'F' command (implemented in [`command_mode.c`](../../src/common/lib/command_mode.c)) performs a factory reset, which wipes all saved configuration and restores defaults. After the reset completes, the converter automatically reboots to apply the factory defaults. This is implemented by:
 
-1. Initialize configuration structure to factory defaults (INFO log level, brightness 5)
+1. Initialise configuration structure to factory defaults (INFO log level, brightness 5)
 2. Set version number to current version
 3. Set sequence number to 0
 4. Write to both Copy A and Copy B
@@ -266,7 +277,7 @@ The Command Mode 'F' command (implemented in [`command_mode.c`](../../src/common
 
 After factory reset, both copies contain identical factory-default configuration with sequence 0. The next save will increment sequence to 1 and alternate between copies as normal.
 
-Factory reset is useful when you've experimented with settings and want a clean start, or when handing the converter to someone else and want to clear your customizations.
+Factory reset is useful when you've experimented with settings and want a clean start, or when handing the converter to someone else and want to clear your customisations.
 
 ---
 
@@ -290,7 +301,13 @@ extern config_t g_config;
 
 The implementation uses the Pico SDK's flash APIs ([`flash_range_erase`](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_flash) and [`flash_range_program`](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_flash)) which are wrappers around the RP2040's boot ROM flash functions. These boot ROM functions are thoroughly tested and reliable.
 
-One quirk: you can't execute code from flash while writing to flash. The RP2040 bootloader handles this by copying the flash write functions to RAM before calling them. The Pico SDK's flash APIs do this automatically, so the configuration storage code doesn't need special handling.
+One quirk: you can't execute code from flash whilst writing to flash. The Pico SDK places `flash_range_erase()` and `flash_range_program()` into RAM at build time via linker attributes (e.g., `__no_inline_not_in_flash_func()`), but does not automatically handle all flash safety constraints. Application code must ensure:
+
+- **Interrupts disabled**: Flash operations require interrupts disabled to prevent execution from flash during writes
+- **Other core not executing from flash**: In multi-core systems, Core 1 must be halted or executing from RAM
+- **Source data in RAM**: The buffer passed to `flash_range_program()` must reside in RAM, not flash
+
+The SDK provides [`flash_safe_execute()`](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_flash) to assist with interrupt management, but application code is still responsible for these constraints. This firmware is single-core only and runs entirely from RAM (`pico_set_binary_type(copy_to_ram)`), satisfying all requirements.
 
 ---
 

@@ -30,9 +30,33 @@ The firmware runs in a constrained environment with tight timing requirements. C
 
 ## Code Formatting
 
+### Formatting Guidelines
+
+The project defines formatting guidelines based on clang-format style (Google style with customisations) for code review consistency. This configuration is documented in `.coderabbit.yaml` and used by automated PR reviews to assess code style:
+
+```text
+{ BasedOnStyle: Google, ReflowComments: true, UseTab: Never, AllowShortIfStatementsOnASingleLine: false, AllowShortFunctionsOnASingleLine: false, AlwaysBreakBeforeMultilineStrings: true, AllowAllParametersOfDeclarationOnNextLine: true, AlignConsecutiveAssignments: true, AlignConsecutiveBitFields: true, AlignConsecutiveDeclarations: true, AlignConsecutiveMacros: true, ColumnLimit: 100, IndentWidth: 4 }
+```
+
+**Important:** There is no `.clang-format` file in the repository, and clang-format is not run during CI or build processes. The configuration above serves as a guideline for manual code review and editor formatting only.
+
+**Key formatting guidelines:**
+- **IndentWidth: 4** - Four spaces per indentation level
+- **UseTab: Never** - Spaces only, no tab characters
+- **ColumnLimit: 100** - Target line length (can exceed for alignment)
+- **AlignConsecutive* options** - Align assignments, declarations, macros, and bitfields for readability
+- **AllowShortIfStatementsOnASingleLine: false** - Always use braces and multiple lines
+- **AllowShortFunctionsOnASingleLine: false** - Function bodies always on separate lines
+
+**Indentation Enforcement:** The 4-space indentation rule and tab prohibition are enforced by [`tools/lint.sh`](../../tools/lint.sh), which validates all source files before commits. Code between `// clang-format off` and `// clang-format on` markers is exempt from indentation checks to allow hand-formatted tables or aligned data structures.
+
+**Editor Support (Optional):** If using VSCode, copy `.vscode.example/settings.json` to `.vscode/settings.json` to enable editor-level formatting on save for convenience. This is not required and does not affect project-level enforcement.
+
 ### Indentation and Spacing
 
-Use **4 spaces per indentation level**. No tabs. This keeps the code looking consistent regardless of editor settings.
+Use **4 spaces per indentation level**. No tabs. This keeps the code looking consistent regardless of editor settings. The tab validation and indentation-consistency checks in lint.sh enforce this—files with tab characters or 2-space indentation will fail the check.
+
+**Note:** Code within `// clang-format off` and `// clang-format on` blocks is excluded from indentation validation, allowing for hand-formatted tables or aligned data structures.
 
 **Braces:** Use K&R style—opening brace on the same line as the control statement, closing brace on its own line:
 
@@ -67,7 +91,7 @@ if (result > threshold) {
 ```c
 uint8_t scancode_buffer[32];
 void keyboard_interface_setup(uint pin);
-static bool is_initialization_complete(void);
+static bool is_initialisation_complete(void);
 ```
 
 **Constants and macros:** Use `UPPER_CASE`:
@@ -86,7 +110,7 @@ typedef struct {
 } ring_buffer_t;
 ```
 
-**Be descriptive:** Function names should describe what they do. Variable names should describe what they contain. Avoid abbreviations unless they're widely recognized (e.g., `pio`, `irq`, `usb`).
+**Be descriptive:** Function names should describe what they do. Variable names should describe what they contain. Avoid abbreviations unless they're widely recognised (e.g., `pio`, `irq`, `usb`).
 
 **Interrupt handlers:** Use `__isr` attribute and descriptive names:
 
@@ -144,7 +168,7 @@ Use Doxygen-style comments for functions, especially in header files:
 /**
  * @brief Processes a single scancode from the ring buffer.
  * 
- * Handles multi-byte sequences (E0/F0 prefixes) and assembles complete
+ * Handles multibyte sequences (E0/F0 prefixes) and assembles complete
  * scancode events. Updates internal state machine for sequence tracking.
  * 
  * @param scancode Raw scancode byte from ring buffer
@@ -190,7 +214,7 @@ Always document the threading context for functions and data structures:
  * 
  * Threading Model:
  * - Only accessed from main task context (via command_mode_process)
- * - No interrupt access, no synchronization needed
+ * - No interrupt access, no synchronisation needed
  */
 typedef struct {
     command_mode_state_t state;
@@ -292,7 +316,7 @@ The exception to this is debug-only code, which can use blocking operations if a
 
 ### No Multicore APIs
 
-The converter uses only Core 0. Core 1 is unused. Don't use any `multicore_*` or `core1_*` functions. This simplifies the architecture and avoids inter-core synchronization overhead.
+The converter uses only Core 0. Core 1 is unused. Don't use any `multicore_*` or `core1_*` functions. This simplifies the architecture and avoids inter-core synchronisation overhead.
 
 ```c
 // Bad: trying to use Core 1
@@ -328,7 +352,7 @@ The `LOG_*` macros are defined in `log.h` and handle buffering safely.
 
 The ring buffer uses a single-producer/single-consumer model. The IRQ handler writes (producer), the main loop reads (consumer).
 
-**Never** call `ringbuf_reset()` whilst interrupts are enabled—this violates the single-writer invariant. Only reset during initialization or protocol state resets where interrupts are already disabled.
+**Never** call `ringbuf_reset()` whilst interrupts are enabled—this violates the single-writer invariant. Only reset during initialisation or protocol state resets where interrupts are already disabled.
 
 ```c
 // Bad: resetting with IRQs enabled
@@ -356,7 +380,7 @@ Don't change these settings. Flash execution adds latency that breaks protocol t
 
 ### Volatile and Memory Barriers
 
-Variables shared between IRQ and main loop must be `volatile` to prevent compiler optimizations that assume single-threaded access.
+Variables shared between IRQ and main loop must be `volatile` to prevent compiler optimisations that assume single-threaded access.
 
 Use memory barriers (`__dmb()`) after writing volatile variables in IRQ context, and before reading them in main loop context:
 
@@ -416,6 +440,95 @@ bool keyboard_interface_setup(uint data_pin) {
 }
 ```
 
+#### Guard Patterns and Validation Delegation
+
+Helper functions often centralise validation logic for code reuse and consistency. Before adding validation guards, trace the call chain to ensure you're not duplicating checks that already exist upstream.
+
+**Validation Delegation Pattern:**
+
+Helper functions that return NULL or error codes typically perform validation internally. Callers delegate validation by checking the return value:
+
+```c
+// Helper centralises atomic allocation with validation
+pio_engine_t claim_pio_and_sm(const pio_program_t* program) {
+    pio_engine_t result = {NULL, -1, -1};
+    
+    // Try PIO0 first: check program space AND SM availability
+    if (pio_can_add_program(pio0, program)) {
+        int sm = pio_claim_unused_sm(pio0, false);
+        if (sm >= 0) {
+            result.pio    = pio0;
+            result.sm     = sm;
+            result.offset = pio_add_program(pio0, program);
+            return result;
+        }
+    }
+    
+    // PIO0 failed, try PIO1: check program space AND SM availability
+    if (pio_can_add_program(pio1, program)) {
+        int sm = pio_claim_unused_sm(pio1, false);
+        if (sm >= 0) {
+            result.pio    = pio1;
+            result.sm     = sm;
+            result.offset = pio_add_program(pio1, program);
+            return result;
+        }
+    }
+    
+    // Both PIOs exhausted
+    return result;
+}
+
+// Caller delegates validation to helper - single error check
+pio_engine_t pio_engine = claim_pio_and_sm(&keyboard_interface_program);
+if (pio_engine.pio == NULL) {  // Validation already done by helper
+    LOG_ERROR("No PIO resources available\n");
+    return;
+}
+
+// ❌ WRONG: Redundant check - helper already validated this
+if (!pio_can_add_program(pio_engine.pio, &keyboard_interface_program)) {
+    // This can never trigger - helper already checked
+}
+```
+
+**Single Validation Point Pattern:**
+
+When a public function validates inputs before calling private helpers, the helpers don't need to duplicate validation:
+
+```c
+// Public function validates once
+void keylayers_process_key(uint8_t code, bool make) {
+    const uint8_t target_layer = GET_LAYER_TARGET(code);
+    
+    // Single validation point for all downstream helpers
+    if (target_layer >= max_layers) {
+        return;
+    }
+    
+    // Helpers rely on caller's validation
+    keylayers_handle_mo(target_layer, code, make);
+}
+
+// Private helper - no redundant validation needed
+static void keylayers_handle_mo(uint8_t target_layer, uint8_t code, bool make) {
+    // Bounds already validated by caller - see function documentation
+    layer_state.momentary_keys[target_layer - 1] = code;
+}
+```
+
+**When to add guards:**
+- ✅ Public API entry points (callers may not validate)
+- ✅ Genuinely missing from entire call chain
+- ✅ Race conditions between check and use
+
+**When NOT to add guards:**
+- ❌ Helper already validates and returns NULL/error
+- ❌ Caller validates before calling helper function
+- ❌ Would duplicate established pattern across codebase
+
+**Tracing validation**: Use `grep -rn "function_name" src/` to find where functions are called, then read the calling function and any helper functions to understand the validation chain.
+
 ### Use Assertions for Invariants
 
 Use `assert()` for conditions that should never happen but indicate a serious bug if they do:
@@ -454,7 +567,7 @@ This catches configuration errors at compile time rather than runtime.
 
 ---
 
-## Code Organization
+## Code Organisation
 
 ### File Structure
 
@@ -528,7 +641,7 @@ static bool process_make_code(uint8_t scancode) {
 }
 ```
 
-### Specialized Formatting
+### Specialised Formatting
 
 **Keyboard Layout Definitions:**
 
@@ -582,7 +695,7 @@ static const uint8_t e0_code_translation[256] = {
 
 The RP2040's Programmable I/O (PIO) requires special consideration:
 
-### PIO Program Organization
+### PIO Program Organisation
 
 **File structure:**
 - PIO assembly: `protocol_name.pio` or `interface.pio`
@@ -591,28 +704,25 @@ The RP2040's Programmable I/O (PIO) requires special consideration:
 
 **PIO state machine lifecycle:**
 
-Setting up a PIO state machine follows a specific sequence. First, find an available PIO instance—there are only two (PIO0 and PIO1), and program space is limited:
+Setting up a PIO state machine uses atomic allocation that claims PIO, state machine, and loads the program in a single operation. There are only two PIO instances (PIO0 and PIO1) with limited program space:
 
 ```c
-// 1. Find available PIO instance
-PIO pio = find_available_pio(&program);
-if (!pio) {
-    LOG_ERROR("No PIO space available\n");
+// 1. Claim PIO and SM atomically (loads program automatically)
+pio_engine_t pio_engine = claim_pio_and_sm(&program);
+if (pio_engine.pio == NULL) {
+    LOG_ERROR("No PIO resources available\n");
     return false;
 }
 
-// 2. Load program and claim state machine
-offset = pio_add_program(pio, &program);
-sm = pio_claim_unused_sm(pio, true);
+// 2. Configure and start
+program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin);
 
-// 3. Configure and start
-program_init(pio, sm, offset, data_pin);
-
-// 4. Setup IRQ handler (if needed)
-pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
-irq_set_exclusive_handler(pio_irq, &handler);
-irq_set_priority(pio_irq, 0x00);        // Set priority before enabling
-irq_set_enabled(pio_irq, true);
+// 3. Setup IRQ handler (if needed) - use centralised dispatcher
+pio_irq_dispatcher_init(pio_engine.pio);         // Initialise shared IRQ dispatcher
+if (!pio_irq_register_callback(&handler)) {      // Register protocol handler
+    LOG_ERROR("Failed to register IRQ callback\n");
+    return false;
+}
 ```
 
 **PIO error recovery:**
@@ -688,7 +798,7 @@ Start with normal typing to verify basic functionality works as expected. Then s
 
 Test Command Mode by holding both shifts for 3 seconds to verify it activates properly and responds to commands. If your protocol supports LEDs, test Caps Lock, Num Lock, and Scroll Lock to make sure they update correctly—some protocols have quirky LED behaviour that only shows up in real use.
 
-Finally, test error recovery by power cycling the keyboard mid-operation. The converter should detect the keyboard disappearing and recover gracefully when it comes back. This catches issues with state machine initialization and cleanup.
+Finally, test error recovery by power cycling the keyboard mid-operation. The converter should detect the keyboard disappearing and recover gracefully when it comes back. This catches issues with state machine initialisation and cleanup.
 
 These aren't exhaustive tests, but they'll catch most issues before you submit a PR. If you find something that breaks, add a test case for it so it doesn't regress later.
 

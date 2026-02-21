@@ -105,10 +105,10 @@ extern "C" {
 #define MOUSE_TUD_HID 0
 #endif
 
-#define CFG_TUD_HID (KEYBOARD_TUD_HID + MOUSE_TUD_HID)
-#define CFG_TUD_CDC 0
-#define CFG_TUD_MSC 0
-#define CFG_TUD_MIDI 0
+#define CFG_TUD_HID    (KEYBOARD_TUD_HID + MOUSE_TUD_HID)
+#define CFG_TUD_CDC    0
+#define CFG_TUD_MSC    0
+#define CFG_TUD_MIDI   0
 #define CFG_TUD_VENDOR 0
 
 // Define both Keyboard and Consumer interface buffer sizes.

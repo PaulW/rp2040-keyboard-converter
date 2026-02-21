@@ -100,6 +100,11 @@ cleanup_test_env() {
     rm -f src/test_*.c
     rm -f docs-internal/test_*.md
     
+    # Remove test protocol directories
+    rm -rf src/protocols/test-protocol
+    rm -rf src/protocols/test-protocol-bad
+    rm -rf src/protocols/test-protocol-incomplete
+    
     # Reset any staged files
     git reset HEAD . >/dev/null 2>&1 || true
     
@@ -161,7 +166,27 @@ EOF
     rm -f src/test_multicore.c
 }
 
-# Test 4: Git Hook - Prevent docs-internal staging
+# Test 4: Lint Script - Detect 2-Space Indentation
+test_lint_indentation() {
+    cat > src/test_indentation.c << 'EOF'
+#include "pico/stdlib.h"
+
+void bad_indentation(void) {
+  uint8_t var1 = 0;
+  uint8_t var2 = 1;
+  uint8_t var3 = 2;
+  uint8_t var4 = 3;
+  if (var1 == 0) {
+    var2 = var3;
+  }
+}
+EOF
+    
+    run_test "Lint detects 2-space indentation" "./tools/lint.sh" "fail"
+    rm -f src/test_indentation.c
+}
+
+# Test 5: Git Hook - Prevent docs-internal staging
 test_hook_docs_internal_staging() {
     mkdir -p docs-internal
     echo "test" > docs-internal/test_file.md
@@ -173,13 +198,13 @@ test_hook_docs_internal_staging() {
     rm -f docs-internal/test_file.md
 }
 
-# Test 5: Git Hook - Commit Message Check
+# Test 6: Git Hook - Commit Message Check
 test_hook_commit_message() {
     # Create empty commit with bad message
     run_test "Commit-msg hook blocks docs-internal reference" "git commit --allow-empty -m 'Add feature (see docs-internal/notes.md)'" "fail"
 }
 
-# Test 6: Git Hook - Clean Commit Message
+# Test 7: Git Hook - Clean Commit Message
 test_hook_clean_message() {
     # Create empty commit with clean message
     run_test "Commit-msg hook allows clean message" "git commit --allow-empty -m 'Add test feature'" "pass"
@@ -188,14 +213,14 @@ test_hook_clean_message() {
     git reset --soft HEAD~1 >/dev/null 2>&1
 }
 
-# Test 7: Lint Script - Strict Mode
+# Test 8: Lint Script - Strict Mode
 test_lint_strict_mode() {
     # Strict mode should pass if codebase is clean (which it now is)
     # This verifies the strict flag works correctly
     run_test "Lint strict mode passes on clean code" "./tools/lint.sh --strict" "pass"
 }
 
-# Test 8: CI Checks - docs-internal Detection
+# Test 9: CI Checks - docs-internal Detection
 test_ci_docs_internal() {
     # Simulate CI check for docs-internal files
     mkdir -p docs-internal
@@ -213,7 +238,7 @@ test_ci_docs_internal() {
     git rm --cached -f docs-internal/test_ci.md >/dev/null 2>&1 || true
 }
 
-# Test 9: Lint Script - Copy to RAM Check
+# Test 10: Lint Script - Copy to RAM Check
 test_lint_copy_to_ram() {
     # This should pass since src/CMakeLists.txt has copy_to_ram
     # Use same pattern as lint.sh: grep recursively from repo root
@@ -226,7 +251,7 @@ test_lint_copy_to_ram() {
         "pass"
 }
 
-# Test 10: Hook Bypass (--no-verify)
+# Test 11: Hook Bypass (--no-verify)
 test_hook_bypass() {
     echo -e "${YELLOW}[Info] Testing --no-verify bypass (should work but is discouraged)${NC}"
     run_test "Commit with --no-verify bypasses hooks" "git commit --allow-empty -m 'Test bypass docs-internal' --no-verify" "pass"
@@ -235,7 +260,7 @@ test_hook_bypass() {
     git reset --soft HEAD~1 >/dev/null 2>&1
 }
 
-# Test 11: Multiple Violations
+# Test 12: Multiple Violations
 test_multiple_violations() {
     cat > src/test_multiple.c << 'EOF'
 #include "pico/stdlib.h"
@@ -255,7 +280,7 @@ EOF
     rm -f src/test_multiple.c >/dev/null 2>&1
 }
 
-# Test 12: Commit Template
+# Test 13: Commit Template
 test_commit_template() {
     # Verify commit template is configured
     TEMPLATE=$(git config commit.template)
@@ -270,7 +295,7 @@ test_commit_template() {
     echo ""
 }
 
-# Test 13: Hook Permissions
+# Test 14: Hook Permissions
 test_hook_permissions() {
     echo -e "${BLUE}[Test $((TESTS_RUN + 1))] Hook file permissions${NC}"
     TESTS_RUN=$((TESTS_RUN + 1))
@@ -285,13 +310,92 @@ test_hook_permissions() {
     echo ""
 }
 
-# Test 14: Lint Script with No Source Files
+# Test 15: Lint Script with No Source Files
 test_lint_empty_check() {
     # Temporarily hide src directory to test empty check handling
     # (Skip this test - too invasive)
     echo -e "${YELLOW}[Test $((TESTS_RUN + 1))] Skipped - Empty source check (too invasive)${NC}"
     TESTS_RUN=$((TESTS_RUN + 1))
     echo ""
+}
+
+# Test 16: Lint Script - PIO IRQ Dispatcher (Correct Usage)
+test_lint_pio_irq_dispatcher_correct() {
+    mkdir -p src/protocols/test-protocol
+    cat > src/protocols/test-protocol/keyboard_interface.c << 'EOF'
+#include "pico/stdlib.h"
+#include "pio_helper.h"
+
+static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
+
+static void __isr keyboard_input_event_handler(void) {
+    // IRQ handler
+}
+
+void keyboard_interface_setup(uint data_pin) {
+    pio_engine = claim_pio_and_sm(&test_program);
+    
+    // Correct pattern: Use PIO IRQ dispatcher
+    pio_irq_dispatcher_init(pio_engine.pio);
+    pio_irq_register_callback(&keyboard_input_event_handler);
+}
+EOF
+    
+    run_test "Lint accepts correct PIO IRQ dispatcher usage" "./tools/lint.sh" "pass"
+    rm -rf src/protocols/test-protocol
+}
+
+# Test 17: Lint Script - PIO IRQ Direct Setup (Deprecated Pattern)
+test_lint_pio_irq_direct_setup() {
+    mkdir -p src/protocols/test-protocol-bad
+    cat > src/protocols/test-protocol-bad/keyboard_interface.c << 'EOF'
+#include "pico/stdlib.h"
+#include "hardware/irq.h"
+
+static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
+
+static void __isr keyboard_input_event_handler(void) {
+    // IRQ handler
+}
+
+void keyboard_interface_setup(uint data_pin) {
+    pio_engine = claim_pio_and_sm(&test_program);
+    
+    // Bad pattern: Direct IRQ setup (deprecated)
+    uint pio_irq = pio_engine.pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
+    irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
+    irq_set_priority(pio_irq, 0x00);  // Violation: Direct priority setup
+    irq_set_enabled(pio_irq, true);
+}
+EOF
+    
+    run_test "Lint rejects deprecated direct IRQ setup" "./tools/lint.sh" "fail"
+    rm -rf src/protocols/test-protocol-bad
+}
+
+# Test 18: Lint Script - PIO IRQ Missing Dispatcher (Warning)
+test_lint_pio_irq_missing_dispatcher() {
+    mkdir -p src/protocols/test-protocol-incomplete
+    cat > src/protocols/test-protocol-incomplete/keyboard_interface.c << 'EOF'
+#include "pico/stdlib.h"
+
+static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
+
+static void __isr keyboard_input_event_handler(void) {
+    // IRQ handler
+}
+
+void keyboard_interface_setup(uint data_pin) {
+    pio_engine = claim_pio_and_sm(&test_program);
+    // Missing: pio_irq_dispatcher_init() and pio_irq_register_callback()
+    // This should trigger a warning (not pass in strict mode)
+}
+EOF
+    
+    # Note: Missing dispatcher triggers warning, not error, so base lint passes
+    # but --strict should fail
+    run_test "Lint warns about missing PIO IRQ dispatcher (strict mode)" "./tools/lint.sh --strict" "fail"
+    rm -rf src/protocols/test-protocol-incomplete
 }
 
 # Main test execution
@@ -302,9 +406,13 @@ main() {
     test_lint_clean
     test_lint_blocking_ops
     test_lint_multicore
+    test_lint_indentation
     test_lint_strict_mode
     test_lint_copy_to_ram
     test_multiple_violations
+    test_lint_pio_irq_dispatcher_correct
+    test_lint_pio_irq_direct_setup
+    test_lint_pio_irq_missing_dispatcher
     
     echo -e "${BLUE}======================================== ${NC}"
     echo -e "${BLUE}Git Hook Tests${NC}"

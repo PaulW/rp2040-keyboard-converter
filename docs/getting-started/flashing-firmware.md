@@ -73,7 +73,7 @@ If you're using a different board, have a look at your board's documentation:
 **Tip**: If your board doesn't have a RESET button, you can enter bootloader mode by:
 1. Disconnect USB cable
 2. Hold BOOT button
-3. Reconnect USB cable while holding BOOT
+3. Reconnect USB cable whilst holding BOOT
 4. Release BOOT button
 
 ---
@@ -87,7 +87,7 @@ This is the important bit—you need to put your RP2040 into a state where it ca
 **If your board has both buttons:**
 
 1. **Hold the BOOT button** - Press and hold (don't release yet)
-2. **Press and release RESET** - Quickly tap the RESET button while holding BOOT
+2. **Press and release RESET** - Quickly tap the RESET button whilst holding BOOT
 3. **Release BOOT button** - Let go of BOOT
 4. **Verify**: A USB drive named `RPI-RP2` should appear on your computer
 
@@ -104,7 +104,7 @@ Time:   0s    1s         2s         3s
 
 1. **Disconnect USB cable** - Unplug from RP2040
 2. **Hold BOOT button** - Press and hold
-3. **Reconnect USB cable** - Plug back in while holding BOOT
+3. **Reconnect USB cable** - Plug back in whilst holding BOOT
 4. **Release BOOT button** - Let go after 2 seconds
 5. **Verify**: `RPI-RP2` drive appears
 
@@ -184,7 +184,7 @@ Copy-Item build\rp2040-converter.uf2 D:\
 **After flashing:**
 - The RP2040 automatically reboots
 - Your new firmware starts running immediately
-- The status LED shows orange (if an LED is installed—means it's waiting for device initialization), and should change to green if everything's OK!
+- The status LED shows orange (if an LED is installed—means it's waiting for device initialisation), and should change to green if everything's OK!
 
 **Important**: The `RPI-RP2` drive disappearing is **normal and expected**. This means the firmware was successfully written and the RP2040 rebooted into normal mode.
 
@@ -197,8 +197,8 @@ Now let's test your newly flashed converter to confirm everything's working as i
 ### Initial Power-Up Checks
 
 **1. Status LED (if installed):**
-- **🟠 Orange**: Waiting for keyboard initialization (normal at startup)
-- **🟢 Green**: Converter ready (keyboard initialized successfully)
+- **🟠 Orange**: Waiting for keyboard initialisation (normal at startup)
+- **🟢 Green**: Converter ready (keyboard initialised successfully)
 - **No light**: Either no LED installed, configuration or wiring issue
 
 **2. Computer Recognition:**
@@ -278,6 +278,7 @@ Once Command Mode is active (flashing green/blue LED), press one of these keys:
 | **L** | **LED Brightness** | Adjust status LED brightness (0-10) |
 | **D** | **Debug Level** | Change UART log verbosity (ERROR/INFO/DEBUG) |
 | **F** | **Factory Reset** | Restore all settings to defaults and reboot |
+| **S** | **Shift-Override** | Toggle Shift-Override for non-standard shift legends |
 
 We'll cover the Bootloader command in detail next. The other commands are explained in the [Features documentation](../features/command-mode.md).
 
@@ -323,7 +324,7 @@ After your initial flash, use Command Mode to update firmware without touching t
 5. **Automatic reboot**:
    - Drive disappears (normal!)
    - RP2040 reboots with new firmware
-   - LED shows orange → green as converter initializes
+   - LED shows orange → green as converter initialises
 
 **Tip**: Once you press 'B', the bootloader stays active indefinitely—take your time copying the firmware file. There's no timeout once you're in bootloader mode.
 
@@ -531,7 +532,7 @@ Learn more about what your converter can do:
 - **[Command Mode](../features/command-mode.md)** - Full guide to all Command Mode features
 - **[Keyboard Layouts](../keyboards/README.md)** - Details about specific keyboard models
 
-### Customization and Advanced Use
+### Customisation and Advanced Use
 
 Ready to go deeper?
 - **[Custom Keymaps](../development/custom-keymaps.md)** - Remap keys to your preference
@@ -572,6 +573,7 @@ Once you're familiar with the process, here's the condensed version:
 - **L** = LED brightness adjustment
 - **D** = Debug log level selection
 - **F** = Factory reset
+- **S** = Shift-Override toggle
 
 ---
 

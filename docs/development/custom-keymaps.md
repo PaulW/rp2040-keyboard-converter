@@ -10,7 +10,7 @@ The converter translates scancodes (what your keyboard sends) into HID keycodes 
 
 When you press a key on your keyboard, there's a process that happens before your computer sees it. The keyboard's internal controller detects the keypress and sends a scancode over its protocol—AT/PS2, XT, or whatever it uses. Different keyboards use different scancode sets, which is one reason why we need the converter in the first place.
 
-Now, some scancodes are multi-byte sequences. Extended keys like the arrow keys get prefixed with `E0`, and some special keys like Pause send even longer sequences. The scancode processor handles all this complexity and produces complete make/break events—effectively "key down" and "key up" notifications.
+Now, some scancodes are multibyte sequences. Extended keys like the arrow keys get prefixed with `E0`, and some special keys like Pause send even longer sequences. The scancode processor handles all this complexity and produces complete make/break events—effectively "key down" and "key up" notifications.
 
 That's where the keymap comes in. It's a lookup table that translates the scancode into an HID keycode—the USB standard code for that key. So if scancode 0x1C comes in (which is usually the 'A' key on most keyboards), the keymap looks that up and returns the HID keycode for 'A'. The HID interface then packages this into a USB HID report and sends it to your computer, where the OS interprets it.
 
@@ -308,25 +308,126 @@ If a key doesn't work as expected, the UART debug output is your friend. Enable 
 
 ## Multi-Layer Keymaps
 
-The converter supports multi-layer keymaps (similar to QMK firmware), but most keyboards don't need this—single-layer keymaps are usually sufficient.
+The converter supports multi-layer keymaps (similar to QMK firmware), but if you're only remapping a few keys a single-layer keymap may be enough for that goal. If you're just remapping keys, you can skip this section entirely.
 
-If you do want multiple layers (e.g., a function layer accessed via a modifier key), you can define additional layers in the keymap array:
+Layers are useful for things like media controls, alternative key functions, or special modes that you access via a function key. The converter supports up to 8 layers (0-7, defined by `KEYMAP_MAX_LAYERS = 8` in [`src/common/lib/keymaps.h`](../../src/common/lib/keymaps.h)), with Layer 0 being the base layer that's always active.
+
+**Layer switching limitation:** Layer-switching keycodes (MO, TG, TO, OSL) are currently only defined for layers 1-3 in [`src/common/lib/hid_keycodes.h`](../../src/common/lib/hid_keycodes.h). Whilst you can define up to 8 layers in your keymap, you can only directly switch to layers 1-3 using the keycode macros described below. If you need layers 4-7, extend the keycode definitions in `hid_keycodes.h`. The default keycode set only covers layers 1-3 plus the base layer 0.
+
+### How Layers Work
+
+The layer system uses a priority-based activation model with a bitmap tracking which layers are active. Layer 0 is the base layer and always sits at the bottom. When you activate upper layers (via MO, TG, or TO keycodes), the converter maintains a bitmap of which layers are currently active. The **highest active layer** in that bitmap becomes your starting point for keymap lookups.
+
+Here's the key bit: when you press a key, the lookup starts at the highest active layer. If that layer has `TRNS` (transparent) at that position, the lookup falls through to the **next lower active layer** in the bitmap—it skips any layers that aren't currently active. This continues checking active layers downward until it finds a non-transparent keycode or reaches Layer 0 (which is always active).
+
+What this means practically: you only need to define the keys that are different in your upper layers—everything else can be `TRNS` and will fall through to active lower layers. You're not duplicating entire layouts, you're only overriding specific positions. If you've got Layer 1 and Layer 3 both active (via toggle), and Layer 3 has `TRNS` at a position, it'll check Layer 1 next (skipping inactive Layer 2). If Layer 1 also has `TRNS`, it falls through to Layer 0. Only active layers participate in the fallthrough chain.
+
+This is similar to QMK-style behaviour.
+
+### Defining Multiple Layers
+
+First up, you need to define the additional layers in your keymap. Each layer gets its own `KEYMAP()` definition in the `keymap_map` array:
 
 ```c
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
-    // Layer 0: Default
+    // Layer 0: Base layer (standard keyboard layout)
     KEYMAP(
-        ESC, F1, F2, /* ... */
+        ESC,  1,    2,    3,    4,    5,    /* ... */
+        TAB,  Q,    W,    E,    R,    T,    /* ... */
+        CAPS, A,    S,    D,    F,    G,    /* ... */
+        LSFT, Z,    X,    C,    V,    B,    /* ... */
+        LCTL, LGUI, LALT, SPC,  MO_1, /* ... hold for Layer 1 */
     ),
     
-    // Layer 1: Function layer
+    // Layer 1: Function/media layer
     KEYMAP(
-        TRNS, F13, F14, /* ... */
+        GRV,  F1,   F2,   F3,   F4,   F5,   /* Changed: numbers become function keys */
+        TRNS, VOLD, VOLU, TRNS, TRNS, TRNS, /* Changed: Q/W become volume controls */
+        TRNS, TRNS, TRNS, TRNS, TRNS, TRNS, /* Transparent: behave like base layer */
+        TRNS, TRNS, TRNS, TRNS, TRNS, TRNS, /* Transparent: behave like base layer */
+        TRNS, TRNS, TRNS, TRNS, TRNS, /* ... */
+    ),
+};
+
+/* Layer count - automatically calculated from keymap_map array size */
+const uint8_t keymap_layer_count = sizeof(keymap_map) / sizeof(keymap_map[0]);
+```
+
+The layer count is automatically calculated using `sizeof` to determine how many layers you've defined. You don't need to manually update a separate count variable—the system calculates it from the `keymap_map` array. This calculation must appear after the keymap definition.
+
+Notice the `MO_1` key in the base layer—that's a momentary layer switch. When you hold that key, Layer 1 becomes active. Release it, and you're back to Layer 0. The keys you've remapped in Layer 1 (like volume controls) only work whilst you're holding the layer switch key.
+
+### Layer Switching Keycodes
+
+There are four types of layer operations, each with a different behaviour:
+
+**Momentary (MO)** - Layer active only whilst held  
+`MO_1`, `MO_2`, `MO_3` activate Layers 1-3 temporarily. Release the key and the layer deactivates. This is the most common type—useful for Function layers or media control layers.
+
+**Toggle (TG)** - Layer stays active until toggled again  
+`TG_1`, `TG_2`, `TG_3` toggle Layers 1-3 on or off. Press once to activate, press again to deactivate. Useful for modes you want to stay in without holding a key (like a gaming layer or alternative layout).
+
+**Switch To (TO)** - Permanently switch to layer  
+`TO_1`, `TO_2`, `TO_3` permanently switch to that layer, deactivating all others except Layer 0. Layer 0 always remains active underneath as the base layer. You'll need another `TO_x` key in the target layer to switch back.
+
+**One-Shot (OSL)** - Layer activates for next keypress only  
+`OSL_1`, `OSL_2`, `OSL_3` activate the layer for a single keypress, then automatically deactivate. Press the one-shot key, then press another key—that key uses the upper layer, then you're back to the base layer. Useful for accessing symbols or special characters without holding a modifier.
+
+These keycodes follow a pattern: the operation type (MO, TG, TO, OSL) followed by an underscore and the layer number. The current implementation only defines keycodes for layers 1-3 (stored in the 0xF0-0xFF keycode range in `hid_keycodes.h`). Accessing layers 4-7 requires extending these definitions by adding `KC_MO_4` through `KC_MO_7` and corresponding macros. The default keycode set only covers layers 1-3 plus the base layer.
+
+### Practical Example: Media Control Layer
+
+Right, let's say you want to add media controls to your keyboard. You'll create Layer 1 with volume and playback controls, accessed by holding a designated function key:
+
+```c
+const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
+    // Layer 0: Standard QWERTY
+    KEYMAP(
+        ESC,  1,    2,    3,    4,    5,    6,    7,    8,    9,    0,    MINS, EQL,  BSPC,
+        TAB,  Q,    W,    E,    R,    T,    Y,    U,    I,    O,    P,    LBRC, RBRC, BSLS,
+        CAPS, A,    S,    D,    F,    G,    H,    J,    K,    L,    SCLN, QUOT, ENT,
+        LSFT, Z,    X,    C,    V,    B,    N,    M,    COMM, DOT,  SLSH, RSFT,
+        LCTL, LGUI, LALT, SPC,  MO_1, RALT, RGUI, RCTL  /* MO_1 = hold for media layer */
+    ),
+    
+    // Layer 1: Media controls (activated by holding MO_1 key)
+    KEYMAP(
+        TRNS, F1,   F2,   F3,   F4,   F5,   F6,   F7,   F8,   F9,   F10,  F11,  F12,  DEL,   /* Numbers → Function keys */
+        TRNS, MPRV, MPLY, MNXT, TRNS, TRNS, TRNS, TRNS, TRNS, TRNS, TRNS, TRNS, TRNS, TRNS,  /* Q/W/E → Media controls */
+        TRNS, TRNS, TRNS, TRNS, TRNS, TRNS, TRNS, TRNS, TRNS, TRNS, TRNS, TRNS, TRNS,        /* All transparent */
+        TRNS, TRNS, TRNS, TRNS, VOLD, VOLU, MUTE, TRNS, TRNS, TRNS, TRNS, TRNS,              /* V/B/N → Volume controls */
+        TRNS, TRNS, TRNS, TRNS, TRNS, TRNS, TRNS, TRNS                                        /* Modifiers transparent */
     ),
 };
 ```
 
-You'd then need to add layer switching logic in the `keymap_actions` array (via a function key or modifier). This is more advanced—single-layer keymaps are sufficient for standard keyboard remapping.
+Now when you hold the key you assigned as `MO_1`, the number row becomes function keys, Q/W/E become media playback controls, and V/B/N become volume controls. Release the layer key and everything goes back to normal typing.
+
+The keys set to `TRNS` behave exactly as they do in Layer 0. You don't need to redefine your entire keyboard layout—just the keys that are different in the upper layer.
+
+### Things to Keep in Mind
+
+**Layer 0 is always active** - It's the base layer. Upper layers overlay on top of it, but transparent keys (`TRNS`) fall through to the next lower active layer in the bitmap—inactive layers are skipped.
+
+**You can stack layers** - Holding MO_1 and MO_2 simultaneously (or using TG to toggle multiple on) gives you multiple active layers. The **highest** active layer becomes your starting point for lookups. If that layer has `TRNS` at a position, the lookup falls through to the next lower active layer only—inactive layers are skipped during fallthrough. This is how layer stacking works: active layers compose together, inactive layers are ignored.
+
+**Toggle layers persist across reboots** - If you toggle a layer on with TG_1, it stays active even after power cycling the converter. The system validates the saved layer state against the current firmware—if you flash different layer definitions (add/remove layers) or switch keyboards, it automatically resets to Layer 0 for safety. TO layers also persist the same way.
+
+**One-shot layers are consumed on next key press** - When you activate a one-shot layer (OSL_1), it remains active until you press another key. The `keylayers_consume_oneshot()` function (defined in `src/common/lib/keylayers.c`) is invoked from `keymaps.c` when any non-layer key is pressed, immediately deactivating the one-shot layer after that single keypress. There's no time-based timeout—the layer stays active until you use it.
+
+**Layer keycodes are internal-only** - MO, TG, TO, and OSL keycodes never get sent to your computer. They're processed internally by the converter to manage layer state. When you release a momentary layer key, it doesn't send a keypress—it just changes the active layer.
+
+### When Should You Use Layers?
+
+If you're only remapping a few keys, a single-layer keymap may be enough. Layers are useful when:
+
+- **Media controls** - You want volume, playback, and mute accessible without a separate media keyboard
+- **Function key extensions** - Your keyboard lacks F13-F24 and you want them available on an upper layer
+- **Alternative layouts** - Switch between QWERTY and Dvorak/Colemak on the fly
+- **Gaming modes** - Toggle NumLock, remap WASD, or disable the Windows key during gaming
+- **Special symbols** - Access programming symbols or international characters without hunting through character maps
+
+The implementation is designed to be efficient—there's no performance penalty for inactive layers, and the lookup is fast enough that you won't notice any latency when switching between layers.
 
 ---
 

@@ -19,7 +19,7 @@ IBM produced two XT keyboard variants with different reset mechanisms:
 
 Data transmission, timing, frame structure, and scancodes are identical between variants. The reset mechanism is the only difference.
 
-This converter implements the Type 2 soft reset method (pulling CLOCK and DATA LOW during initialization). Type 1 keyboards have not been tested—compatibility with Type 1 reset mechanism cannot be confirmed.
+This converter implements the Type 2 soft reset method (pulling CLOCK and DATA LOW during initialisation). Type 1 keyboards have not been tested—compatibility with Type 1 reset mechanism cannot be confirmed.
 
 **Note**: The Type 1/Type 2 distinction is documented only for IBM keyboards. Whether other manufacturers (clones, third-party keyboards) implemented Type 1, Type 2, or some other variation is not known. The Type 2 soft reset mechanism appears to be the most common implementation based on available documentation.
 
@@ -45,8 +45,8 @@ Data flows one way only—keyboard to host. There's no mechanism for the host to
 
 **Event-Driven Synchronous Serial Communication**
 
-The protocol is synchronous—it uses a dedicated clock signal for data transmission. The keyboard sends scancodes whenever keys are pressed (event-driven), but all data transmission is synchronized to the clock signal:
-- **Clock Signal**: Keyboard provides a CLOCK line for bit-level synchronization
+The protocol is synchronous—it uses a dedicated clock signal for data transmission. The keyboard sends scancodes whenever keys are pressed (event-driven), but all data transmission is synchronised to the clock signal:
+- **Clock Signal**: Keyboard provides a CLOCK line for bit-level synchronisation
 - **Data Signal**: Separate DATA line carries the actual scancodes
 - **Synchronous Transmission**: Each bit is clocked out on a dedicated CLOCK line (not a predetermined baud rate)
 - **Event-Driven Protocol**: Keyboard transmits whenever key events occur (no fixed timing between scancodes)
@@ -171,7 +171,7 @@ S   = Start bit (DATA goes HIGH momentarily)
 **Transmission Sequence:**
 
 1. **Request-to-Send (RTS)**: Keyboard pulls both CLOCK and DATA LOW (~40µs) to confirm the host is ready
-2. **Clear-to-Send (CTS)**: Keyboard releases CLOCK (goes HIGH), synchronizing timing domains
+2. **Clear-to-Send (CTS)**: Keyboard releases CLOCK (goes HIGH), synchronising timing domains
 3. **Start Bit**: DATA briefly goes HIGH then LOW
 4. **Data Bits**: 8 bits transmitted with CLOCK pulses, DATA sampled on falling CLOCK edge
 5. **Return to Idle**: Both CLOCK and DATA return HIGH
@@ -195,7 +195,7 @@ S   = Start condition (CLOCK falls, DATA transitions)
 
 **Simplified Sequence:**
 
-1. **Start Condition**: CLOCK falls while DATA transitions
+1. **Start Condition**: CLOCK falls whilst DATA transitions
 2. **Data Bits**: 8 bits transmitted with CLOCK pulses
 3. **Return to Idle**: Both lines return HIGH
 
@@ -221,7 +221,7 @@ Hold Time: Data stable after CLOCK rising edge (minimum ~5µs after edge)
 Inter-byte Gap: 1-10ms typical between consecutive scan codes
 ```
 
-**Reset and Initialization Timing**:
+**Reset and Initialisation Timing**:
 
 ```
 Soft Reset Sequence:
@@ -282,7 +282,7 @@ This solution allows a single receiver implementation to work with both genuine 
 
 ## Scan Code Set
 
-The XT protocol uses a fixed scancode set. It's simple—no multi-byte sequences, no mode switching, just simple make and break codes.
+The XT protocol uses a fixed scancode set. It's simple—no multibyte sequences, no mode switching, just simple make and break codes.
 
 **Scancode Structure:**
 
@@ -321,6 +321,9 @@ uint8_t get_base_key(uint8_t scancode) {
 - 0xAA: Everything OK, keyboard ready
 - 0xFC: Hardware failure detected
 
+**Protocol Layer Filtering:**
+The XT protocol implementation filters 0xAA during initialisation (UNINITIALISED state) to prevent it from being processed as a scancode. Once INITIALISED, codes pass through to the scancode layer, which provides defense-in-depth filtering for post-initialisation scenarios. See [Scancode Set 1 Self-Test Code Collision](../scancodes/set1.md#self-test-code-collision) for details on why this matters.
+
 **Note**: For complete scancode tables with all key mappings, see the **[Scancode Set 1](../scancodes/set1.md)** documentation.
 
 ---
@@ -329,10 +332,10 @@ uint8_t get_base_key(uint8_t scancode) {
 
 ### Power-On Sequence
 
-Power on an XT keyboard and it runs through a predictable initialization sequence:
+Power on an XT keyboard and it runs through a predictable initialisation sequence:
 
 ```
-Power-On Initialization:
+Power-On Initialisation:
 1. Keyboard receives power from Pin 5 (VCC)
 2. Internal microcontroller boots and runs self-test (~200-500ms)
 3. Tests performed:
@@ -382,14 +385,14 @@ softReset:
 
 **When Soft Reset Occurs:**
 
-- **Power-on initialization**: After keyboard powers up and brings CLOCK/DATA HIGH
+- **Power-on initialisation**: After keyboard powers up and brings CLOCK/DATA HIGH
 - **BAT failure recovery**: When keyboard returns invalid BAT response
 - **Communication error**: When invalid start bit detected (triggers `pio_restart()`)
-- **State machine reset**: After protocol errors or frame synchronization loss
+- **State machine reset**: After protocol errors or frame synchronisation loss
 
 ### Normal Operation
 
-Once initialized, the keyboard runs a continuous scan loop:
+Once initialised, the keyboard runs a continuous scan loop:
 
 ```
 Continuous Scan Loop:
@@ -460,7 +463,7 @@ sm_config_set_clkdiv(&c, clock_div);
 ```c
 static void __isr keyboard_input_event_handler() {
     // Read 9-bit frame from PIO FIFO
-    io_ro_32 data_cast = keyboard_pio->rxf[keyboard_sm] >> 23;
+    io_ro_32 data_cast = pio_engine.pio->rxf[pio_engine.sm] >> 23;
     uint16_t data = (uint16_t)data_cast;
 
     // Extract start bit and data byte
@@ -471,7 +474,7 @@ static void __isr keyboard_input_event_handler() {
     if (start_bit != 1) {
         // Invalid frame - restart PIO
         keyboard_state = UNINITIALISED;
-        pio_restart(keyboard_pio, keyboard_sm, keyboard_offset);
+        pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
         return;
     }
 
@@ -484,7 +487,7 @@ static void __isr keyboard_input_event_handler() {
 
 - PIO handles all timing automatically (no software delays)
 - 10µs sampling rate allows genuine vs clone keyboard detection
-- Start bit validation confirms frame synchronization
+- Start bit validation confirms frame synchronisation
 - Ring buffer queues scancodes for main loop processing
 - Non-blocking architecture (IRQ → ring buffer → main task)
 - Standard protocol setup pattern (see [Protocol Implementation Guide](../development/protocol-implementation.md))
@@ -524,7 +527,7 @@ If you're running into issues with your XT keyboard, the problems usually fall i
 | Symptom | Likely Cause | What to Check |
 |---------|---------------|---------------|
 | No response | Power issue, bad connections | Check VCC, GND, verify pull-up resistor on DATA |
-| Initialization fails | Missing soft reset, too early | Execute CLOCK LOW soft reset, wait 500ms after power-on |
+| Initialisation fails | Missing soft reset, too early | Execute CLOCK LOW soft reset, wait 500ms after power-on |
 | Garbled scancodes | Wrong bit order, sampling edge | Verify LSB-first, sample on CLOCK rising edge |
 | Missing key events | Buffer overflow, timing | Check ring buffer size, verify interrupt latency |
 | Intermittent operation | Cable issues, signal quality | Use shorter cable (<2m), check connector pins |

@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -24,8 +24,8 @@
 // ============================================================================
 // Command Mode Configuration
 // ============================================================================
-// Apple M0110A has only one shift key (both physical keys return the same 
-// scancode 0x71), so the default Command Mode activation (Left Shift + Right 
+// Apple M0110A has only one shift key (both physical keys return the same
+// scancode 0x71), so the default Command Mode activation (Left Shift + Right
 // Shift) won't work. Use Shift + Option (Alt) instead.
 //
 // Activation: Hold Left Shift + Left Alt for 3 seconds to enter Command Mode.

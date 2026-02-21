@@ -45,13 +45,13 @@ A USB-UART adapter connects to the RP2040's UART pins (GPIO 0/1) to display diag
 - **115200 baud rate** (default UART configuration)
 
 **What you'll see:**
-- Protocol state transitions (initialization, LED commands, etc.)
+- Protocol state transitions (initialisation, LED commands, etc.)
 - Error conditions (`[ERR]` messages for protocol violations)
 - Received scancodes in hexadecimal
 - Timing measurements and performance data
 - Command Mode activation and menu responses
 
-Enable verbose logging during testing to maximize visibility. See the [Logging guide](../features/logging.md) for configuration options.
+Enable verbose logging during testing to maximise visibility. See the [Logging guide](../features/logging.md) for configuration options.
 
 ### Multimeter
 
@@ -141,15 +141,15 @@ Verify the converter recovers gracefully from protocol errors.
    - Wait 2-3 seconds
    - Reconnect keyboard
 3. Verify converter detects disconnection (UART shows protocol errors)
-4. Verify converter reinitializes protocol automatically
+4. Verify converter reinitialises protocol automatically
 5. Test keyboard functions normally after reconnection
 
-**Expected results:** Converter detects keyboard disconnection, logs `[ERR]` messages, attempts reinitialization, resumes normal operation when keyboard returns. No manual reset required.
+**Expected results:** Converter detects keyboard disconnection, logs `[ERR]` messages, attempts reinitialisation, resumes normal operation when keyboard returns. No manual reset required.
 
 **Common scenarios:**
 - Keyboard unplugged during use
 - Keyboard power-cycled (USB hub reset)
-- Protocol timing violations during initialization
+- Protocol timing violations during initialisation
 - Transient electrical issues causing garbage scancodes
 
 ### Multi-OS Compatibility Test
@@ -169,7 +169,7 @@ Test the converter with multiple host operating systems to ensure HID compatibil
 
 ### Extended Key Test
 
-Test keys that use multi-byte scancode sequences.
+Test keys that use multibyte scancode sequences.
 
 **Test procedure:**
 1. **Extended keys (E0 prefix):**
@@ -180,7 +180,7 @@ Test keys that use multi-byte scancode sequences.
 3. **Print Screen:** Press with and without modifiers
 4. Check UART output to verify scancode sequences are decoded correctly
 
-**Expected results:** All extended keys register correctly. Multi-byte sequences are assembled properly. No spurious keypresses from sequence fragments.
+**Expected results:** All extended keys register correctly. Multibyte sequences are assembled properly. No spurious keypresses from sequence fragments.
 
 ---
 
@@ -191,11 +191,23 @@ Test keys that use multi-byte scancode sequences.
 The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for critical rule violations.
 
 **What it detects:**
-- **Blocking operations:** `sleep_ms()`, `sleep_us()`, `busy_wait_ms()`, `busy_wait_us()`
-- **Multicore APIs:** `multicore_*`, `core1_*` functions (forbidden)
-- **Unsafe ring buffer resets:** `ringbuf_reset()` without IRQ guard
-- **printf in IRQ:** `printf()` calls in files containing `__isr` (use `LOG_*` macros)
-- **docs-internal references:** Ensures private docs never leak into public files
+1. **Blocking operations:** `sleep_ms()`, `sleep_us()`, `busy_wait_ms()`, `busy_wait_us()`
+2. **Multicore APIs:** `multicore_*`, `core1_*` functions (forbidden)
+3. **printf in IRQ:** `printf()` calls in files containing `__isr` (use `LOG_*` macros)
+4. **Ring buffer reset annotation:** `ringbuf_reset()` calls without required `// LINT:ALLOW ringbuf_reset` annotation (linter verifies annotation presence, not runtime IRQ protection)
+5. **docs-internal exposure:** Ensures private docs never leak into repository
+6. **Flash execution:** Missing `copy_to_ram` configuration in CMakeLists.txt
+7. **IRQ variable safety:** Missing `volatile` or `__dmb()` barriers for IRQ-shared variables
+8. **Tab characters:** Enforces spaces-only indentation (4 spaces)
+9. **Header guards:** Missing `#ifndef`/`#define` guards in .h files
+10. **File headers:** Missing GPL or MIT licence headers
+11. **Naming conventions:** Detects camelCase (expects snake_case)
+12. **Include order:** Validates include directive organisation
+13. **IRQ handler attributes:** Missing `__isr` attribute on interrupt handlers
+14. **Compile-time validation:** Advisory check for `_Static_assert` and `#error`
+15. **Protocol ring buffer setup:** Missing `ringbuf_reset()` in keyboard protocol initialisation
+16. **Protocol PIO IRQ dispatcher:** Missing centralised `pio_irq_dispatcher_init()` or deprecated direct `irq_set_priority()` usage
+17. **Indentation consistency:** Enforces 4-space indentation, detects 2-space violations
 
 **Run before every commit:**
 ```bash
@@ -204,7 +216,9 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 
 **Expected result:** 0 errors, 0 warnings. Script exits with code 0.
 
-**CI enforcement:** Pull requests automatically run lint checks. Violations block merging.
+**CI enforcement:** Pull requests automatically run lint checks in strict mode. Violations block merging.
+
+**Detailed documentation:** See [`tools/README.md`](../../tools/README.md) for comprehensive check descriptions and fix examples.
 
 ### Static Analysis
 
@@ -234,7 +248,7 @@ The converter avoids dynamic allocation where possible, preferring stack-based a
 - **Const correctness:** Read-only data marked const
 
 **Testing approach:**
-- Build with address sanitizer (requires native build, not ARM cross-compile)
+- Build with address sanitiser (requires native build, not ARM cross-compile)
 - Review .map file for unexpected heap usage
 - Check stack usage doesn't exceed safe limits
 - Verify no global variable overflow
@@ -274,7 +288,7 @@ Whilst the converter doesn't have automated unit tests (integration testing on h
 2. **Command Mode still functions** - Verify all commands work
 3. **LEDs still update** - Test lock key indicators
 4. **Protocol error recovery** - Power-cycle test
-5. **Multi-byte sequences** - Test extended keys and Pause
+5. **Multibyte sequences** - Test extended keys and Pause
 6. **Fast typing handling** - Burst typing test
 7. **Build system works** - All configurations compile
 8. **Memory usage acceptable** - No significant size increases
@@ -382,7 +396,7 @@ The converter provides configurable logging levels (see [Logging guide](../featu
 
 - **ERROR:** Critical failures only
 - **WARN:** Protocol errors, unexpected conditions
-- **INFO:** Initialization messages, state changes
+- **INFO:** Initialisation messages, state changes
 - **DEBUG:** Detailed scancode traces, timing information
 
 **For testing:** Use DEBUG level to see everything. For production: INFO or WARN.

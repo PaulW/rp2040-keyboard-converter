@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -32,14 +32,14 @@
 
 /**
  * @brief E0-Prefixed Scancode Translation Table for XT/Set 1 Protocol
- * 
+ *
  * Some XT keyboards use E0-prefixed codes for extended keys (arrows, function keys,
  * multimedia keys, etc.). This lookup table translates E0-prefixed scan codes to
- * their normalized interface codes used throughout the converter.
- * 
+ * their normalised interface codes used throughout the converter.
+ *
  * The table is sparse (most entries are 0) to allow direct indexing by scan code.
  * A return value of 0 indicates the code should be ignored (e.g., fake shifts).
- * 
+ *
  * Protocol Reference:
  * - E0 prefix indicates extended key codes in XT/Set 1 protocol
  * - Used for navigation keys (arrows, home, end, page up/down)
@@ -75,21 +75,21 @@ static const uint8_t set1_e0_translation[256] = {
 
 /**
  * @brief E0-Prefixed Scancode Translation Table for AT/PS2 Set 2 Protocol
- * 
+ *
  * AT/PS2 keyboards use E0-prefixed codes extensively for extended functionality.
- * This lookup table translates E0-prefixed Set 2 scan codes to normalized interface
+ * This lookup table translates E0-prefixed Set 2 scan codes to normalised interface
  * codes used throughout the converter.
- * 
+ *
  * The table is sparse (most entries are 0) to allow direct indexing by scan code.
  * A return value of 0 indicates the code should be ignored or is unmapped.
- * 
+ *
  * Protocol Reference:
  * - E0 prefix indicates extended key codes in AT/PS2 Set 2 protocol
  * - Used for navigation keys (arrows, home, end, page up/down, insert, delete)
  * - Used for special keys (Right Alt, Right Ctrl, GUI/Windows keys, Menu/App key)
  * - Used for multimedia and ACPI keys (volume, media control, power management)
  * - Some multimedia keys mapped to F13-F24 for compatibility
- * 
+ *
  * Note: Code 0x12 and 0x59 are fake shifts and should be ignored (mapped to 0).
  */
 static const uint8_t set2_e0_translation[256] = {
@@ -144,26 +144,18 @@ static const uint8_t set2_e0_translation[256] = {
 // Configuration Structures (Exported for easy setup)
 // ============================================================================
 
-const scancode_config_t SCANCODE_CONFIG_SET1 = {
-    .set = SCANCODE_SET1,
-    .e0_translation = set1_e0_translation,
-    .has_e0_prefix = true,
-    .has_e1_prefix = true
-};
+const scancode_config_t SCANCODE_CONFIG_SET1 = {.set            = SCANCODE_SET1,
+                                                .e0_translation = set1_e0_translation,
+                                                .has_e0_prefix  = true,
+                                                .has_e1_prefix  = true};
 
-const scancode_config_t SCANCODE_CONFIG_SET2 = {
-    .set = SCANCODE_SET2,
-    .e0_translation = set2_e0_translation,
-    .has_e0_prefix = true,
-    .has_e1_prefix = true
-};
+const scancode_config_t SCANCODE_CONFIG_SET2 = {.set            = SCANCODE_SET2,
+                                                .e0_translation = set2_e0_translation,
+                                                .has_e0_prefix  = true,
+                                                .has_e1_prefix  = true};
 
 const scancode_config_t SCANCODE_CONFIG_SET3 = {
-    .set = SCANCODE_SET3,
-    .e0_translation = NULL,
-    .has_e0_prefix = false,
-    .has_e1_prefix = false
-};
+    .set = SCANCODE_SET3, .e0_translation = NULL, .has_e0_prefix = false, .has_e1_prefix = false};
 
 // ============================================================================
 // State Machine
@@ -171,26 +163,26 @@ const scancode_config_t SCANCODE_CONFIG_SET3 = {
 
 /**
  * @brief Unified State Machine States
- * 
+ *
  * This enum defines all possible states for the unified XT/AT scancode processor.
  * Different scancode sets use different subsets of these states:
- * 
+ *
  * - Set 1: INIT, E0, E1, E1_1D, E1_9D (5 states)
  * - Set 2: INIT, F0, E0, E0_F0, E1, E1_14, E1_F0, E1_F0_14, E1_F0_14_F0 (9 states)
  * - Set 3: INIT, F0 (2 states)
  */
 typedef enum {
-    INIT,           // Initial state / ready for next scancode
-    F0,             // Break prefix received (Set 2/3)
-    E0,             // E0 prefix received (Set 1/2)
-    E0_F0,          // E0 F0 sequence (Set 2)
-    E1,             // E1 prefix received (Set 1/2)
-    E1_1D,          // E1 1D sequence (Set 1 Pause make)
-    E1_9D,          // E1 9D sequence (Set 1 Pause break)
-    E1_14,          // E1 14 sequence (Set 2 Pause make)
-    E1_F0,          // E1 F0 sequence (Set 2 Pause break)
-    E1_F0_14,       // E1 F0 14 sequence (Set 2 Pause break)
-    E1_F0_14_F0     // E1 F0 14 F0 sequence (Set 2 Pause break)
+    INIT,        // Initial state / ready for next scancode
+    F0,          // Break prefix received (Set 2/3)
+    E0,          // E0 prefix received (Set 1/2)
+    E0_F0,       // E0 F0 sequence (Set 2)
+    E1,          // E1 prefix received (Set 1/2)
+    E1_1D,       // E1 1D sequence (Set 1 Pause make)
+    E1_9D,       // E1 9D sequence (Set 1 Pause break)
+    E1_14,       // E1 14 sequence (Set 2 Pause make)
+    E1_F0,       // E1 F0 sequence (Set 2 Pause break)
+    E1_F0_14,    // E1 F0 14 sequence (Set 2 Pause break)
+    E1_F0_14_F0  // E1 F0 14 F0 sequence (Set 2 Pause break)
 } scancode_state_t;
 
 static scancode_state_t state = INIT;
@@ -201,12 +193,12 @@ static scancode_state_t state = INIT;
 
 /**
  * @brief Translate E0-prefixed code using appropriate table
- * 
+ *
  * @param code The E0-prefixed scancode to translate
  * @param config Pointer to scancode configuration
  * @return Translated interface code, or 0 if unmapped/ignored
  */
-static inline uint8_t translate_e0_code(uint8_t code, const scancode_config_t *config) {
+static inline uint8_t translate_e0_code(uint8_t code, const scancode_config_t* config) {
     if (config->e0_translation == NULL) {
         return 0;
     }
@@ -215,19 +207,19 @@ static inline uint8_t translate_e0_code(uint8_t code, const scancode_config_t *c
 
 /**
  * @brief Check if code is a fake shift for the current set
- * 
+ *
  * Fake shifts are spurious shift codes sent by some keyboards with certain
  * extended keys. They should be ignored.
- * 
+ *
  * Set 1: E0 2A, E0 AA, E0 36, E0 B6
  * Set 2: E0 12, E0 59
  * Set 3: None
- * 
+ *
  * @param code The scancode to check
  * @param config Pointer to scancode configuration
  * @return true if code is a fake shift (should be ignored)
  */
-static inline bool is_fake_shift(uint8_t code, const scancode_config_t *config) {
+static inline bool is_fake_shift(uint8_t code, const scancode_config_t* config) {
     switch (config->set) {
         case SCANCODE_SET1:
             return (code == 0x2A || code == 0xAA || code == 0x36 || code == 0xB6);
@@ -242,11 +234,11 @@ static inline bool is_fake_shift(uint8_t code, const scancode_config_t *config) 
 
 /**
  * @brief Process normal (non-prefixed) scancode
- * 
+ *
  * @param code The scancode to process
  * @param config Pointer to scancode configuration
  */
-static void process_normal_code(uint8_t code, const scancode_config_t *config) {
+static void process_normal_code(uint8_t code, const scancode_config_t* config) {
     // Validate configuration pointer
     if (!config) {
         return;
@@ -255,11 +247,11 @@ static void process_normal_code(uint8_t code, const scancode_config_t *config) {
     // Set-specific special codes
     switch (config->set) {
         case SCANCODE_SET1:
-            // Set 1: Break = make | 0x80
-            if (code < 0x80) {
-                handle_keyboard_report(code, true);
+            // Set 1: Break = make | 0x80, valid break range 0x81-0xD3
+            if (code <= 0xD3) {
+                handle_keyboard_report(code & 0x7F, code < 0x80);
             } else {
-                handle_keyboard_report(code & 0x7F, false);
+                LOG_DEBUG("!INIT! out-of-range (0x%02X)\n", code);
             }
             break;
 
@@ -295,11 +287,11 @@ static void process_normal_code(uint8_t code, const scancode_config_t *config) {
 
 /**
  * @brief Process break code (F0 prefix for Set 2/3, or Set 2 special codes)
- * 
+ *
  * @param code The scancode following F0 prefix
  * @param config Pointer to scancode configuration
  */
-static void process_break_code(uint8_t code, const scancode_config_t *config) {
+static void process_break_code(uint8_t code, const scancode_config_t* config) {
     switch (config->set) {
         case SCANCODE_SET2:
             // Set 2: Special codes 0x83 (F7) and 0x84 (SysReq)
@@ -339,7 +331,7 @@ static void process_break_code(uint8_t code, const scancode_config_t *config) {
 // Main Processor
 // ============================================================================
 
-void process_scancode(uint8_t code, const scancode_config_t *config) {
+void process_scancode(uint8_t code, const scancode_config_t* config) {
     switch (state) {
         case INIT:
             // Check for prefix codes
@@ -347,7 +339,8 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
                 state = E0;
             } else if (code == 0xE1 && config->has_e1_prefix) {
                 state = E1;
-            } else if (code == 0xF0 && (config->set == SCANCODE_SET2 || config->set == SCANCODE_SET3)) {
+            } else if (code == 0xF0 &&
+                       (config->set == SCANCODE_SET2 || config->set == SCANCODE_SET3)) {
                 state = F0;
             } else {
                 // Normal scancode
@@ -373,9 +366,10 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
             } else {
                 // E0-prefixed make code
                 state = INIT;
-                uint8_t base_code = (config->set == SCANCODE_SET1 && code >= 0x80) ? (code & 0x7F) : code;
+                uint8_t base_code =
+                    (config->set == SCANCODE_SET1 && code >= 0x80) ? (code & 0x7F) : code;
                 bool is_make = (config->set == SCANCODE_SET1) ? (code < 0x80) : true;
-                
+
                 if (base_code < 0x80) {
                     uint8_t translated = translate_e0_code(base_code, config);
                     if (translated) {
@@ -457,7 +451,7 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
             if (code == 0x77) {
                 uint8_t translated = translate_e0_code(code, config);
                 if (translated) {
-                handle_keyboard_report(translated, true);
+                    handle_keyboard_report(translated, true);
                 }
             } else {
                 LOG_DEBUG("!E1_14! (0x%02X)\n", code);
@@ -490,7 +484,7 @@ void process_scancode(uint8_t code, const scancode_config_t *config) {
             if (code == 0x77) {
                 uint8_t translated = translate_e0_code(code, config);
                 if (translated) {
-                handle_keyboard_report(translated, false);
+                    handle_keyboard_report(translated, false);
                 }
             } else {
                 LOG_DEBUG("!E1_F0_14_F0! (0x%02X)\n", code);

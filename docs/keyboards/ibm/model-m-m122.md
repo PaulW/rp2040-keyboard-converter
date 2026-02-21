@@ -61,9 +61,9 @@ See: [Building Firmware Guide](../../getting-started/building-firmware.md)
 
 ## Key Mapping
 
-The default keymap preserves the terminal keyboard layout while adapting it for modern use.
+The default keymap preserves the terminal keyboard layout whilst adapting it for modern use.
 
-### Base Layer Mapping (Layer 0 - NumLock On)
+### Base Layer Mapping (Layer 0)
 
 From [`keyboard.c`](../../../src/keyboards/modelm/m122/keyboard.c):
 
@@ -132,25 +132,17 @@ IBM Model M M122 Terminal Keyboard (Scancode Set 3):
 | **F13-F24** | Extended function keys | Row above standard F-keys, fully mapped and functional |
 | **Left Side Keys** | Various modern functions | Volume, brightness, App, GUI keys |
 
-### Function Layer
+### Layer System
 
-The Fn modifier key provides access to bootloader entry functionality:
-
-| Fn + Key | Function | Notes |
-|----------|----------|-------|
-| **Fn (assigned)** | Function layer access | Enables bootloader entry via Left Shift + Right Shift |
-
-### Fn Modifier Key
-
-The Fn modifier is assigned for bootloader entry even though it may not be physically present on the keyboard. This preserves command mode functionality.
+The keyboard defines a single layer (Layer 0) as the base layer.
 
 ---
 
-## Customization
+## Customisation
 
 ### Modifying Key Layout
 
-To customize the key layout, edit the keymap in [`keyboard.c`](../../../src/keyboards/modelm/m122/keyboard.c). You can remap F13-F24 to media keys or macros, or adjust any of the function key assignments.
+To customise the key layout, edit the keymap in [`keyboard.c`](../../../src/keyboards/modelm/m122/keyboard.c). You can remap F13-F24 to media keys or macros, or adjust any of the function key assignments.
 
 Keycode definitions are in [`hid_keycodes.h`](../../../src/common/lib/hid_keycodes.h).
 
@@ -195,11 +187,11 @@ See: [Hardware Setup Guide](../../getting-started/hardware-setup.md)
 
 The Model M M122 uses the AT/PS2 protocol with bidirectional communication. The keyboard sends scancodes to the host, and the converter can send configuration commands back. The keyboard uses Scancode Set 3.
 
-### Initialization Configuration
+### Initialisation Configuration
 
-Terminal keyboards using Set 3 aren't in make/break mode by default. During initialization, the converter sends command **0xF8** (Set All Keys to Make/Break) to configure the keyboard to send both key press (make) and key release (break) events for all keys. This is essential for proper operation with modern USB HID.
+Terminal keyboards using Set 3 aren't in make/break mode by default. During initialisation, the converter sends command **0xF8** (Set All Keys to Make/Break) to configure the keyboard to send both key press (make) and key release (break) events for all keys. This is essential for proper operation with modern USB HID.
 
-**Initialization sequence** (from [`keyboard_interface.c`](../../../src/protocols/at-ps2/keyboard_interface.c)):
+**Initialisation sequence** (from [`keyboard_interface.c`](../../../src/protocols/at-ps2/keyboard_interface.c)):
 1. Keyboard reset (0xFF) and self-test (waits for 0xAA response)
 2. Read keyboard ID (0xF2) - detects Set 3 terminal keyboard
 3. Set all keys to make/break mode (0xF8) - enables key release events
@@ -251,7 +243,7 @@ Example Type 2 part numbers:
 **Check the basics first:**
 - Verify DATA/CLOCK pins match [`config.h`](../../../src/config.h)
 - Check 5V is stable—use external power rather than Pico VBUS if possible
-- DIN connector can oxidize over time—clean the pins with contact cleaner
+- DIN connector can oxidise over time—clean the pins with contact cleaner
 - Test cable continuity—old cables may have broken wires inside
 
 ### Keys Not Registering

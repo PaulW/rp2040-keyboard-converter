@@ -4,14 +4,25 @@ When I found an IBM Model F PC/AT keyboard (model 6450225) in my parents' attic,
 
 ## Table of Contents
 
-- [Why Build a Custom PCB?](#why-build-a-custom-pcb)
-- [Design and Specifications](#design-and-specifications)
-- [PCB Layout](#pcb-layout)
-- [Manufacturing](#manufacturing)
-- [Installation](#installation)
-- [Design Iterations](#design-iterations)
-- [Fabrication Files](#fabrication-files)
-- [Related Documentation](#related-documentation)
+- [Custom PCB Design](#custom-pcb-design)
+  - [Table of Contents](#table-of-contents)
+  - [Why Build a Custom PCB?](#why-build-a-custom-pcb)
+  - [Design and Specifications](#design-and-specifications)
+  - [PCB Layout](#pcb-layout)
+    - [PCB Trace Design (Top)](#pcb-trace-design-top)
+    - [PCB Trace Design (Bottom)](#pcb-trace-design-bottom)
+    - [2D PCB Render (Top)](#2d-pcb-render-top)
+    - [2D PCB Render (Bottom)](#2d-pcb-render-bottom)
+    - [3D PCB Render (Top)](#3d-pcb-render-top)
+    - [3D PCB Render (Bottom)](#3d-pcb-render-bottom)
+  - [Manufacturing](#manufacturing)
+    - [Manufactured PCBs](#manufactured-pcbs)
+  - [Installation](#installation)
+    - [Installed Converter Board](#installed-converter-board)
+    - [Fully Assembled Board](#fully-assembled-board)
+  - [Design Iterations](#design-iterations)
+  - [Fabrication Files](#fabrication-files)
+  - [Related Documentation](#related-documentation)
 
 ---
 
@@ -129,7 +140,7 @@ This is actually Revision 2 of the design. The first version was more of a test-
 
 **Changes in Rev 2:**
 - Completely redid component placement
-- Optimized trace routing (fewer vias, cleaner layout)
+- Optimised trace routing (fewer vias, cleaner layout)
 - Adjusted board outline to fit the case better
 - Added proper level shifter circuit (Rev 1 didn't have this)
 

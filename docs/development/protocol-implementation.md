@@ -53,49 +53,65 @@ The `LINT:ALLOW` annotation tells the lint checker this is intentional. Normally
 Now find an available PIO instance that has enough instruction memory for your protocol's program. The RP2040 has two PIO blocks (PIO0 and PIO1), each with 32 instruction memory slots. The helper function searches both and returns the first one with enough space.
 
 ```c
-keyboard_pio = find_available_pio(&pio_interface_program);
-if (keyboard_pio == NULL) {
+pio_engine_t pio_engine = claim_pio_and_sm(&pio_interface_program);
+if (pio_engine.pio == NULL) {
   LOG_ERROR("No PIO available for AT/PS2 Keyboard Interface Program\n");
   return;
 }
 ```
 
-If allocation fails, log an error and return early. There's no point continuing—without a PIO instance, the protocol can't function. The error message should identify which protocol failed (helpful when debugging multi-protocol builds or when system resources are exhausted).
+The `claim_pio_and_sm()` helper function handles PIO allocation, state machine claiming, and program loading atomically. It tries PIO0 first, then falls back to PIO1 if needed. If both PIO blocks are exhausted, it returns a struct with `pio = NULL`.
 
-### 4. State Machine Claiming
+This atomic allocation ensures no partial failures—you either get a complete working PIO engine (instance + state machine + loaded program) or nothing. The error message should identify which protocol failed (helpful when debugging multi-protocol builds or when system resources are exhausted).
 
-After getting a PIO instance, claim an unused state machine. Each PIO has 4 state machines (numbered 0-3), and you need one for the keyboard interface.
+### 4. PIO Engine Structure
 
-Most protocols use the panic-on-failure pattern:
-
-```c
-keyboard_sm = (uint)pio_claim_unused_sm(keyboard_pio, true);
-```
-
-The `true` parameter means "panic if no state machine is available". This is reasonable for most protocols—if you can't get a state machine, the system is misconfigured or out of resources, and there's not much you can do about it.
-
-However, the Apple M0110 protocol takes a different approach with manual error handling:
+The `pio_engine_t` struct returned by `claim_pio_and_sm()` contains everything needed to use the PIO hardware:
 
 ```c
-int sm = pio_claim_unused_sm(keyboard_pio, false);
-if (sm < 0) {
-  LOG_ERROR("No PIO state machine available for M0110 Keyboard Interface\n");
-  return;
-}
-keyboard_sm = (unsigned int)sm;
+typedef struct {
+    PIO pio;    // PIO instance (pio0/pio1), or NULL on failure
+    int sm;     // State machine (0-3), or -1 on failure
+    int offset; // Program memory offset (0-31), or -1 on failure
+} pio_engine_t;
 ```
 
-This is actually the better pattern if you're writing a new protocol. It gives you control over error handling and allows for cleaner error messages. The panic approach is simpler but less graceful.
-
-### 5. Program Loading
-
-Load your protocol's PIO program into the instruction memory. The function returns an offset indicating where the program was loaded (because multiple programs can coexist in the same PIO's instruction memory).
+All protocol implementations declare this as a static variable with explicit initialisation:
 
 ```c
-keyboard_offset = pio_add_program(keyboard_pio, &pio_interface_program);
+static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
 ```
 
-This can't fail—the helper in step 3 already verified there's enough space. The offset is used later when initialising the state machine (it needs to know where your program starts).
+The struct stores `sm` and `offset` as signed values so the project can use `-1` as a clear sentinel for "unallocated/invalid". Protocol code must validate allocation succeeded before passing these values to Pico SDK helpers that take `uint` parameters.
+
+### 5. Why Atomic Allocation?
+
+The previous pattern required three separate steps:
+
+```c
+// Old pattern (deprecated)
+PIO pio = find_available_pio(&program);  // Step 1: Check space
+if (pio == NULL) return;
+int sm = pio_claim_unused_sm(pio, false);  // Step 2: Claim SM
+if (sm < 0) return;
+int offset = pio_add_program(pio, &program);  // Step 3: Load program
+```
+
+This created opportunities for partial failures and duplicated error handling across all protocols. The atomic approach is cleaner:
+
+```c
+// Current pattern
+pio_engine_t pio_engine = claim_pio_and_sm(&program);
+if (pio_engine.pio == NULL) return;  // Single error check
+// Ready to use: pio_engine.pio, pio_engine.sm, pio_engine.offset
+```
+
+Benefits:
+- Single error check instead of three
+- No partial allocation state
+- Automatic fallback from PIO0 to PIO1
+- Consistent pattern across all protocols
+- Type safety through struct encapsulation
 
 ### 6. Pin Assignment
 
@@ -127,33 +143,34 @@ The timing constant should be defined in your protocol's header file, not hardco
 Initialise the state machine with your program. This sets up the PIO hardware: configures pins, sets the clock divider, loads the initial state, and prepares the state machine to run.
 
 ```c
-pio_interface_program_init(keyboard_pio, keyboard_sm, keyboard_offset, data_pin, clock_div);
+pio_interface_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin, clock_div);
 ```
 
-The init function is generated by `pioasm` (the PIO assembler) and is specific to your protocol's `.pio` file. It knows how to configure the state machine for your particular program's requirements.
+The init function is generated by `pioasm` (the PIO assembler) and is specific to your protocol's `.pio` file. It knows how to configure the state machine for your particular program's requirements. The function accepts `uint` parameters for `sm` and `offset`, but we pass `int` values from the `pio_engine` struct. This implicit conversion is safe because we've validated that allocation succeeded (the values are non-negative).
 
-### 9. IRQ Handler Registration
+### 9. PIO IRQ Dispatcher Initialisation
 
-Register your interrupt handler for this PIO instance. The handler will be called when the PIO raises an interrupt (typically when it receives a complete scancode).
+Initialise the centralised PIO IRQ dispatcher for this PIO instance. This sets up a shared interrupt handler that can multiplex callbacks from multiple protocols (e.g., keyboard + mouse on the same PIO).
 
 ```c
-uint pio_irq = keyboard_pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0;
-irq_set_exclusive_handler(pio_irq, &keyboard_input_event_handler);
+pio_irq_dispatcher_init(pio_engine.pio);
 ```
 
-The IRQ number depends on which PIO instance you got (PIO0 or PIO1). Each has its own IRQ line. The handler must be marked `__isr` and must never block (no `sleep_ms()`, no `printf()`, no loops without exit conditions).
+The dispatcher manages IRQ priority (set to 0x00 - highest priority) and provides callback registration for protocol handlers. This centralised approach prevents conflicts when multiple devices share the same PIO instance.
 
-### 10. IRQ Priority Configuration
+**Important:** The dispatcher is designed to be called multiple times safely (e.g., once during keyboard setup, again during mouse setup for the same PIO). Subsequent calls are idempotent—they detect existing configuration and return immediately without reconfiguring the IRQ.
 
-Set the interrupt priority before enabling the IRQ. All keyboard protocols use priority 0x00 (highest) to ensure keyboard events are processed before other interrupts.
+### 10. IRQ Handler Registration
+
+Register your protocol's interrupt handler as a callback with the PIO IRQ dispatcher. The handler will be called when the PIO raises an interrupt (typically when it receives a complete scancode).
 
 ```c
-irq_set_priority(pio_irq, 0x00);
+pio_irq_register_callback(&keyboard_input_event_handler);
 ```
 
-The Pico SDK defaults to priority 0x80 (medium priority). Setting priority 0x00 elevates the keyboard interrupt above the default, ensuring minimal latency for keyboard events. The RP2040 only uses the top 2 bits of the priority value, so the four effective levels are 0x00 (highest), 0x40, 0x80, and 0xC0 (lowest).
+The dispatcher supports up to 4 callbacks total (global registry) and only one PIO instance per session. Multiple protocols can share a single PIO (e.g., AT/PS2 keyboard + mouse), and handlers are called sequentially from the shared dispatcher.
 
-**Important:** Set priority *before* enabling the IRQ to avoid a race condition window where the handler could execute at default priority if a PIO event fires between enable and priority set.
+**Error handling:** If registration fails (e.g., all 4 callback slots full), the function returns `false` and logs an error. Check the return value if your protocol needs to handle this condition.
 
 ### 11. IRQ Enable
 
@@ -184,7 +201,7 @@ Finally, log confirmation that setup completed. Include relevant details like wh
 
 ```c
 LOG_INFO("PIO%d SM%d AT/PS2 Interface program loaded at offset %d with clock divider of %.2f\n",
-         (keyboard_pio == pio0 ? 0 : 1), keyboard_sm, keyboard_offset, clock_div);
+         (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);
 ```
 
 This appears in the UART debug output and helps verify the protocol initialised correctly. It's particularly useful when debugging resource allocation issues or when multiple protocols are loaded simultaneously.
@@ -203,7 +220,7 @@ The AT/PS2 protocol supports both keyboards and mice on separate hardware lines.
 
 ```c
 void mouse_interface_setup(uint data_pin) {
-  // 1. LED initialization
+  // 1. LED initialisation
   #ifdef CONVERTER_LEDS
     converter.state.mouse_ready = 0;
     update_converter_status();
@@ -211,50 +228,54 @@ void mouse_interface_setup(uint data_pin) {
 
   // 2. NO ringbuf_reset() - mouse doesn't use ring buffer
 
-  // 3-13. Standard PIO/IRQ setup (same as keyboard)
-  mouse_pio = find_available_pio(&pio_interface_program);
-  // ... rest of setup follows keyboard pattern
+  // 3. Claim PIO resources atomically
+  pio_engine_t pio_engine = claim_pio_and_sm(&pio_interface_program);
+  if (pio_engine.pio == NULL) {
+    LOG_ERROR("No PIO resources available for mouse\n");
+    return;
+  }
+  // ... rest of setup continues with pio_engine.pio, pio_engine.sm, pio_engine.offset
 }
 ```
 
 **Why this difference?**
-- Keyboard: Multi-byte scancode sequences need buffering (E0 prefixes, Pause key sequences)
+- Keyboard: Multibyte scancode sequences need buffering (E0 prefixes, Pause key sequences)
 - Mouse: Fixed packet format (3-4 bytes), processed as complete packets in IRQ handler
 - Mouse: HID reports sent immediately after packet validation
 
-The mouse still follows the same resource allocation pattern (PIO → SM → Program → Clock → IRQ → Priority), just without the ring buffer reset step.
+The mouse still follows the same resource allocation pattern (atomic PIO/SM/program allocation via `claim_pio_and_sm()`), just without the ring buffer reset step.
 
 ### Error Handling Approach
 
-**Panic on failure:**
-```c
-keyboard_sm = (uint)pio_claim_unused_sm(keyboard_pio, true);
-```
+All protocols use the atomic PIO resource allocation pattern implemented by `claim_pio_and_sm()`. This function attempts to allocate a PIO instance, state machine, and program memory atomically, trying PIO0 first and falling back to PIO1 if necessary.
 
-Used by: AT/PS2, XT, Amiga
-
-**Manual error handling:**
 ```c
-int sm = pio_claim_unused_sm(keyboard_pio, false);
-if (sm < 0) {
-  LOG_ERROR("No state machine available\n");
+pio_engine_t pio_engine = claim_pio_and_sm(&program);
+if (pio_engine.pio == NULL) {
+  LOG_ERROR("No PIO resources available\n");
   return;
 }
-keyboard_sm = (unsigned int)sm;
 ```
 
-Used by: M0110
+The `pio_engine_t` struct contains either complete working resources (PIO instance, SM number, program offset) or NULL to indicate complete failure. This pattern:
+- Handles PIO selection (pio0 vs pio1) automatically with fallback
+- Eliminates partial allocation failures (no allocated SM without program space)
+- Provides clean single-point error handling (one NULL check covers all failure cases)
+- Returns complete working resources or nothing
+- Type-safe through struct encapsulation
 
-The manual approach is preferable for new protocols—it's more explicit about error conditions and gives better error messages. The panic approach is simpler but less informative when things go wrong.
+Used across protocol implementations under `src/protocols/` and the WS2812 helper under `src/common/lib/ws2812/`.
 
 ### Pin Requirements
 
 **Single pin:**
+
 ```c
 keyboard_data_pin = data_pin;
 ```
 
 **Adjacent pins:**
+
 ```c
 keyboard_data_pin = data_pin;
 keyboard_clock_pin = data_pin + 1;  // Must be adjacent
@@ -354,9 +375,12 @@ If you skip steps or reorder them, you risk initialisation failures, race condit
 **Problem:** Unclear what the value represents, hard to tune  
 **Solution:** Use named constants defined in protocol header
 
-### Missing IRQ priority
-**Problem:** Keyboard events handled at default priority (0x80) instead of high priority (0x00), or handler executes at default priority during race condition window  
-**Solution:** Always call `irq_set_priority(pio_irq, 0x00)` *before* `irq_set_enabled()` to avoid timing window
+### Missing PIO IRQ dispatcher initialisation
+**Problem:** Protocol uses deprecated direct IRQ setup (`irq_set_exclusive_handler()` + `irq_set_priority()`), causing conflicts when multiple devices share a PIO instance  
+**Solution:** Always use centralised PIO IRQ dispatcher:
+  1. Call `pio_irq_dispatcher_init(pio_engine.pio)` before registering handlers
+  2. Call `pio_irq_register_callback(&handler)` to register protocol handler
+  3. Never call `irq_set_priority()` directly in protocol code (managed centrally)
 
 ### Wrong error message protocol name
 **Problem:** Confusing error messages when debugging  

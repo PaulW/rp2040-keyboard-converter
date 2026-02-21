@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -21,6 +21,8 @@
 #ifndef HID_INTERFACE_H
 #define HID_INTERFACE_H
 
+#include <stdbool.h>
+#include <stdint.h>
 #include "config.h"
 #include "pico/stdlib.h"
 
@@ -28,5 +30,6 @@ void handle_keyboard_report(uint8_t rawcode, bool make);
 void handle_mouse_report(const uint8_t buttons[5], int8_t pos[3]);
 void hid_device_setup(void);
 void send_empty_keyboard_report(void);
+bool hid_is_shift_pressed(void);
 
 #endif /* HID_INTERFACE_H */

@@ -28,7 +28,7 @@ For the physical connection, you'll need either a breakout board with the approp
 
 Pull-up resistors are required on the CLOCK and DATA signal lines. The typical value is 4.7kΩ connected between each signal and 3.3V. Many breakout boards include these resistors already, so check your board's specifications before adding external resistors. If your board already has pull-ups, adding more external ones is harmless.
 
-For protocol-specific details including connector types, pinout diagrams, wire colors, and electrical requirements, see the [AT/PS2 Protocol Documentation](../protocols/at-ps2.md#physical-interface).
+For protocol-specific details including connector types, pinout diagrams, wire colours, and electrical requirements, see the [AT/PS2 Protocol Documentation](../protocols/at-ps2.md#physical-interface).
 
 ---
 
@@ -77,25 +77,25 @@ The RP2040's PIO (Programmable I/O) hardware handles the precise protocol timing
 
 When mouse data arrives, the PIO hardware triggers an interrupt. The interrupt handler (see [`mouse_interface.c`](../../src/protocols/at-ps2/mouse_interface.c)) processes incoming data, assembling complete packets before sending reports directly to the USB HID interface. This direct processing architecture prevents any cross-contamination with keyboard data.
 
-Mouse initialization happens separately from keyboard initialization on dedicated GPIO pins, so adding mouse support doesn't affect keyboard operation. Both keyboard and mouse reports travel over the same USB connection, with the host operating system automatically distinguishing report types based on format.
+Mouse initialisation happens separately from keyboard initialisation on dedicated GPIO pins, so adding mouse support doesn't affect keyboard operation. Both keyboard and mouse reports travel over the same USB connection, with the host operating system automatically distinguishing report types based on format.
 
-The practical result: you can type and move the mouse simultaneously without coordination or timing concerns. Press keys while moving the cursor, scroll while holding modifier keys, click while typing—everything works as expected.
+The practical result: you can type and move the mouse simultaneously without coordination or timing concerns. Press keys whilst moving the cursor, scroll whilst holding modifier keys, click whilst typing—everything works as expected.
 
-For protocol-specific technical details about packet formats, initialization sequences, and timing specifications, see [AT/PS2 Protocol Documentation](../protocols/at-ps2.md#mouse-implementation).
+For protocol-specific technical details about packet formats, initialisation sequences, and timing specifications, see [AT/PS2 Protocol Documentation](../protocols/at-ps2.md#mouse-implementation).
 
 ---
 
 ## Troubleshooting
 
-### Mouse Not Detected or Initialization Fails
+### Mouse Not Detected or Initialisation Fails
 
 If your mouse isn't working at all, start by verifying the wiring. Check that GPIO pin connections match the definitions in [`config.h`](../../src/config.h), with DATA connecting to `MOUSE_DATA_PIN` and CLOCK to `MOUSE_DATA_PIN + 1`. Verify power and ground are properly connected.
 
 Confirm pull-up resistors are present on both CLOCK and DATA lines. If you're using a breakout board, check whether it has pull-ups built in. If wiring directly to a connector, ensure external pull-up resistors are installed.
 
-Try testing with a different mouse to isolate hardware-specific initialization issues. Some mice have quirks that prevent standard initialization.
+Try testing with a different mouse to isolate hardware-specific initialisation issues. Some mice have quirks that prevent standard initialisation.
 
-Connect debug UART (see [Logging documentation](logging.md)) to watch the initialization sequence during power-on. Error messages will indicate where initialization fails.
+Connect debug UART (see [Logging documentation](logging.md)) to watch the initialisation sequence during power-on. Error messages will indicate where initialisation fails.
 
 If you're running many bright LEDs with both keyboard and mouse, you might be approaching the USB 500mA power limit. Try reducing LED brightness or temporarily disconnecting LEDs to test whether power is the issue.
 
@@ -103,15 +103,15 @@ If you're running many bright LEDs with both keyboard and mouse, you might be ap
 
 Erratic or jittery cursor movement is usually a mechanical issue with the mouse itself—dirty rollers on ball mice or faulty sensors on optical mice. Clean the mouse hardware and test on different surfaces.
 
-Electrical noise can cause erratic behavior. Keep wiring short (under 30cm) and avoid routing mouse wires parallel to USB cables or power supplies.
+Electrical noise can cause erratic behaviour. Keep wiring short (under 30cm) and avoid routing mouse wires parallel to USB cables or power supplies.
 
 If cursor axes are reversed, adjust the axis direction in your operating system's mouse settings—this is an OS configuration issue, not a converter problem.
 
-Complete lack of movement despite successful initialization usually indicates incorrect GPIO wiring. Verify physical wiring matches the pin numbers in [`config.h`](../../src/config.h).
+Complete lack of movement despite successful initialisation usually indicates incorrect GPIO wiring. Verify physical wiring matches the pin numbers in [`config.h`](../../src/config.h).
 
 ### Scroll Wheel Not Working
 
-Connect debug UART during power-on to see the detected mouse type. If scroll wheel isn't detected during initialization, the mouse may not support the required protocol extensions.
+Connect debug UART during power-on to see the detected mouse type. If the scroll wheel isn't detected during initialisation, the mouse may not support the required protocol extensions.
 
 Try a different mouse to rule out mouse-specific protocol compatibility issues.
 
@@ -131,7 +131,7 @@ Check for wiring shorts between signal lines or between signals and power rails 
 
 ## Configuration
 
-### Customizing GPIO Pins
+### Customising GPIO Pins
 
 Mouse GPIO pins are defined in [`config.h`](../../src/config.h):
 

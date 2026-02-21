@@ -8,7 +8,7 @@
 
 ## Overview
 
-The IBM Model F PC/AT keyboard uses buckling spring over capacitive switch technology. This keyboard was designed for the IBM PC/AT (model 5170), before ISO and ANSI layouts were standardized. This configuration is based on the UK layout variant.
+The IBM Model F PC/AT keyboard uses buckling spring over capacitive switch technology. This keyboard was designed for the IBM PC/AT (model 5170), before ISO and ANSI layouts were standardised. This configuration is based on the UK layout variant.
 
 **Part Number**: 6450225 (UK Layout)
 
@@ -27,7 +27,7 @@ The IBM Model F PC/AT keyboard uses buckling spring over capacitive switch techn
 | **Voltage** | 5V |
 | **Switch Type** | Buckling spring over capacitive |
 | **Key Rollover** | Full NKRO |
-| **Layout** | UK layout (pre-ISO/ANSI standardization) |
+| **Layout** | UK layout (pre-ISO/ANSI standardisation) |
 
 ---
 
@@ -51,7 +51,7 @@ See: [Building Firmware Guide](../../getting-started/building-firmware.md)
 
 ## Key Mapping
 
-The default keymap preserves the original IBM 5170 keyboard layout while adding modern functionality through the Fn modifier.
+The default keymap preserves the original IBM 5170 keyboard layout whilst adding modern functionality through the Fn modifier.
 
 ### Base Layer Mapping (from keyboard.h)
 
@@ -140,15 +140,15 @@ The numpad doubles as a navigation cluster when using the Fn modifier:
 
 ### Fn Modifier Key
 
-**Default Fn Key**: F9 (can be customized in [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c))
+**Default Fn Key**: F9 (can be customised in [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c))
 
 ---
 
-## Customization
+## Customisation
 
 ### Modifying Key Layout
 
-To customize the key layout, edit the keymap in [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c). Available keycodes are defined in [`hid_keycodes.h`](../../../src/common/lib/hid_keycodes.h).
+To customise the key layout, edit the keymap in [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c). Available keycodes are defined in [`hid_keycodes.h`](../../../src/common/lib/hid_keycodes.h).
 
 ### Command Mode Keys
 
@@ -197,7 +197,7 @@ See: [AT/PS2 Protocol Documentation](../../protocols/at-ps2.md) for complete tec
 
 ## History & Variants
 
-The Model F PC/AT was designed for the IBM Personal Computer AT (model 5170). This 84-key layout was a transitional design that came before the standardized layouts we got with the Model M keyboards, and it turned out to be one of the last new Model F variants IBM would introduce.
+The Model F PC/AT was designed for the IBM Personal Computer AT (model 5170). This 84-key layout was a transitional design that came before the standardised layouts we got with the Model M keyboards, and it turned out to be one of the last new Model F variants IBM would introduce.
 
 The keyboard uses thick steel construction with dye-sublimated PBT keycaps. The buckling spring switches provide tactile and audible feedback. Unlike the later Model M which uses membrane assembly-based buckling springs, the Model F uses capacitive sensing where a change in capacitance is measured to register key presses.
 
@@ -218,7 +218,7 @@ Example part numbers:
 
 ### Keyboard Not Detected
 
-Check your wiring first—DATA should be GPIO2 and CLOCK should be GPIO3 by default (check [`config.h`](../../../src/config.h) to confirm). Make sure you have stable 5V power—external power's better than relying on the Pico's VBUS directly. 5-pin DIN connectors can have dodgy contacts, so clean them with contact cleaner if you're having issues. Model F keyboards need a power cycle to initialize properly.
+Check your wiring first—DATA should be GPIO2 and CLOCK should be GPIO3 by default (check [`config.h`](../../../src/config.h) to confirm). Make sure you have stable 5V power—external power's better than relying on the Pico's VBUS directly. 5-pin DIN connectors can have dodgy contacts, so clean them with contact cleaner if you're having issues. Model F keyboards need a power cycle to initialise properly.
 
 ### Keys Not Registering
 
@@ -234,7 +234,7 @@ The LEDs should respond to Caps Lock and Num Lock. If they're not working, indiv
 
 ### Some Keys Produce Wrong Characters
 
-Verify your OS keyboard layout settings match what you're expecting. You can customize [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c) to match your preferred layout if needed.
+Verify your OS keyboard layout settings match what you're expecting. You can customise [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c) to match your preferred layout if needed.
 
 ---
 
@@ -265,9 +265,9 @@ Verify your OS keyboard layout settings match what you're expecting. You can cus
 - [Deskthority Wiki: IBM Model F](https://deskthority.net/wiki/IBM_Model_F) - Community-maintained technical information
 - [Capacitive Buckling Spring Technology](https://deskthority.net/wiki/Buckling_spring#Capacitive) - Switch technology details
 
-### Scancode Behavior
+### Scancode Behaviour
 
-- **[VintagePC - IBM 6450225](https://www.seasip.info/VintagePC/ibm_6450225.html)** - Detailed scancode behavior documentation
+- **[VintagePC - IBM 6450225](https://www.seasip.info/VintagePC/ibm_6450225.html)** - Detailed scancode behaviour documentation
 - [AEB Linux Keyboard Scancodes](https://www.aeb.win.tue.nl/linux/kbd/scancodes-10.html) - Scancode Set translation tables
 
 ### Historical Context

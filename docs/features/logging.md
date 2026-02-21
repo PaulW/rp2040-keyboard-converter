@@ -58,7 +58,7 @@ RP2040 Board               USB-UART Adapter
 
 ### Physical Connection Tips
 
-**Keep wires short** - UART is tolerant of wire length, but shorter is better. 30cm or less is ideal to minimize noise.
+**Keep wires short** - UART is tolerant of wire length, but shorter is better. 30cm or less is ideal to minimise noise.
 
 **Avoid parallel routing** - Don't bundle UART wires with high-speed signals (like USB data lines) to reduce electromagnetic interference.
 
@@ -133,7 +133,7 @@ Once connected, you should immediately see log output scrolling by (assuming the
 
 ## Understanding Log Output
 
-The converter logs initialization steps, protocol events, errors, and debug information (see [`log.h`](../../src/common/lib/log.h) for implementation). Understanding the log format helps you diagnose issues quickly.
+The converter logs initialisation steps, protocol events, errors, and debug information (see [`log.h`](../../src/common/lib/log.h) for implementation). Understanding the log format helps you diagnose issues quickly.
 
 ### Log Format
 
@@ -159,7 +159,7 @@ Examples:
 
 ### Startup Sequence
 
-When the converter powers on, you'll see initialization messages:
+When the converter powers on, you'll see initialisation messages:
 
 ```
 --------------------------------
@@ -183,7 +183,7 @@ This startup sequence confirms:
 4. Keyboard make, model, and description from configuration
 5. Active protocol and scancode set
 
-If something goes wrong during initialization, you'll see `[ERR]` messages explaining the failure.
+If something goes wrong during initialisation, you'll see `[ERR]` messages explaining the failure.
 
 ### Normal Operation
 
@@ -248,7 +248,7 @@ The converter supports three log levels that control how much information appear
 
 **What you see**: Only `[ERR]` and `[WARN]` messages indicating problems.
 
-**When to use**: Normal daily use. You don't need to see every keystroke or initialization step—you only want to know if something breaks.
+**When to use**: Normal daily use. You don't need to see every keystroke or initialisation step—you only want to know if something breaks.
 
 **Impact on performance**: Minimal. Error logging is extremely lightweight since errors are rare.
 
@@ -261,7 +261,7 @@ The converter supports three log levels that control how much information appear
 
 ### Log Level 1: Info (Default)
 
-**What you see**: `[ERR]` and `[WARN]` messages plus `[INFO]` messages about significant events (initialization, Command Mode activation, settings changes).
+**What you see**: `[ERR]` and `[WARN]` messages plus `[INFO]` messages about significant events (initialisation, Command Mode activation, settings changes).
 
 **When to use**: Default setting. Provides enough visibility to understand what the converter is doing without overwhelming detail.
 
@@ -293,7 +293,7 @@ The converter supports three log levels that control how much information appear
 [DBG] ACK Keyboard ID Request
 ```
 
-The `!PREFIX!` markers indicate scancode sequence states (E0/F0/E1 prefixes), helping troubleshoot multi-byte sequences.
+The `!PREFIX!` markers indicate scancode sequence states (E0/F0/E1 prefixes), helping troubleshoot multibyte sequences.
 
 ### Changing Log Level
 
@@ -329,11 +329,11 @@ Result: Logging appears instantaneous from the CPU's perspective. No blocking, n
 
 ### Ring Buffer Architecture
 
-To handle multiple concurrent log messages (e.g., protocol events happening while initialization logs are still transmitting), logging uses a ring buffer:
+To handle multiple concurrent log messages (e.g., protocol events happening whilst initialisation logs are still transmitting), logging uses a ring buffer:
 
 **Main code calls LOG_INFO()** → Message formatted and written to ring buffer → DMA reads from ring buffer → Bytes transmitted over UART
 
-The ring buffer is 16,384 bytes (16KB: 64 message slots × 256 bytes per message), implemented in [`uart.c`](../../src/common/lib/uart.c). If log messages accumulate faster than UART can transmit them (rare, only at debug level during intense activity), new messages overwrite the oldest unread messages. This prevents memory exhaustion while ensuring recent messages are preserved.
+The ring buffer is 16,384 bytes (16KB: 64 message slots × 256 bytes per message), implemented in [`uart.c`](../../src/common/lib/uart.c). If log messages accumulate faster than UART can transmit them (rare, only at debug level during intense activity), new messages overwrite the oldest unread messages. This prevents memory exhaustion whilst ensuring recent messages are preserved.
 
 ### Performance Impact
 
@@ -398,7 +398,7 @@ If logging works initially then stops:
 
 **Terminal program closed** - Verify your terminal window is still open and connected.
 
-**Firmware crash** - If logging stops abruptly and the converter becomes unresponsive, the firmware may have crashed. Power cycle the converter. Check for consistent crash behavior and file a bug report.
+**Firmware crash** - If logging stops abruptly and the converter becomes unresponsive, the firmware may have crashed. Power cycle the converter. Check for consistent crash behaviour and file a bug report.
 
 **Watchdog reset** - The RP2040 has a watchdog timer. If the main loop blocks for too long (firmware bug), the watchdog resets the chip. You'll see startup messages appear again after the reset.
 
@@ -423,7 +423,7 @@ picocom -b 115200 /dev/ttyUSB0 | tee keyboard-log.txt
 
 **Windows with PuTTY**: Session → Logging → "All session output" → Specify filename
 
-Having a log file lets you review events after they happen, share with others for troubleshooting, or compare behavior across multiple tests.
+Having a log file lets you review events after they happen, share with others for troubleshooting, or compare behaviour across multiple tests.
 
 ### Filtering Output
 
@@ -438,7 +438,7 @@ screen /dev/tty.usbserial-* 115200 | grep "\[ERR\]"
 screen /dev/tty.usbserial-* 115200 | grep -E "\[ERR\]|\[INFO\]"
 ```
 
-This keeps your terminal cleaner while still capturing relevant information.
+This keeps your terminal cleaner whilst still capturing relevant information.
 
 ### Correlating Logs with Actions
 
@@ -470,7 +470,7 @@ These are advanced configurations beyond the scope of this document, but they're
 
 **Implementation details**:
 - [`uart.c`](../../src/common/lib/uart.c) - DMA-based UART implementation with ring buffer
-- [`uart.h`](../../src/common/lib/uart.h) - UART DMA initialization and configuration
+- [`uart.h`](../../src/common/lib/uart.h) - UART DMA initialisation and configuration
 - [`log.h`](../../src/common/lib/log.h) - Log level filtering and LOG_* macros (LOG_ERROR, LOG_WARN, LOG_INFO, LOG_DEBUG)
 - [`log.c`](../../src/common/lib/log.c) - Log level runtime management
 - [`config.h`](../../src/config.h) - UART configuration (GPIO pins, baud rate, buffer sizes, log level defaults)

@@ -91,6 +91,9 @@ reviews:
         - Confirm ring buffer is used correctly (IRQ writes only)
         - Validate memory barriers (__dmb()) after volatile writes
         - Ensure all protocol timing matches specification in README.md
+        - PIO allocation: Use claim_pio_and_sm() for atomic resource allocation
+        - PIO resources: Store in pio_engine_t struct, access via pio_engine.{pio,sm,offset}
+        - Error handling: Check pio_engine.pio == NULL for allocation failures
     
     - path: "src/common/lib/ringbuf.*"
       instructions: |
@@ -113,6 +116,9 @@ reviews:
         - Use to_ms_since_boot(get_absolute_time()) for non-blocking timing
         - Verify code runs from RAM, not Flash
         - Check for proper volatile + memory barrier usage with IRQ-shared data
+        - PIO allocation: Use atomic claim_pio_and_sm(&program) returning pio_engine_t
+        - PIO resources: Access via pio_engine.pio, pio_engine.sm, pio_engine.offset
+        - PIO initialization: Explicitly initialize with {.pio = NULL, .sm = -1, .offset = -1}
     
     - path: "src/**/*.pio"
       instructions: |
@@ -127,7 +133,7 @@ reviews:
         - 100% fact-driven content - verify ALL technical details against source code
         - NO unverified quantifications: "most", "typically", "usually", "common", "popular", "straightforward"
         - Conversational British English: "whilst", "colour", "initialise", "behaviour"
-        - Natural prose flow - avoid bullet lists for processes/workflows
+        - Natural prose flow preferred - allow numbered step lists for instructional flows with adequate detail; avoid terse bullets or simple workflows better as prose
         - NEVER reference docs-internal/ directory
         - Point to directories (src/protocols/, src/keyboards/) instead of listing protocols
         - Explain WHY not just WHAT
@@ -199,28 +205,60 @@ reviews:
     
     # Custom checks specific to embedded systems
     custom_checks:
-      - name: "No blocking operations"
+      - name: "Guard pattern analysis"
         instructions: |
-          Verify that no blocking operations are introduced:
-          - No sleep_ms(), sleep_us(), busy_wait_ms(), busy_wait_us()
+          CRITICAL METHODOLOGY: Before suggesting ANY guard addition:
+          
+          1. TRACE THE CALL CHAIN (MANDATORY):
+             - Read helper function implementations completely (don't assume)
+             - Search codebase: grep -r "function_name" src/ to see usage patterns
+             - Check if guard exists in calling function or helper function
+             - Verify NULL checks handle helper function failures
+          
+          2. IDENTIFY GUARD PATTERNS:
+             - Helper functions often centralize guard logic (check implementation)
+             - Callers may delegate validation to helpers (check return value handling)
+             - Established patterns exist across implementations (verify consistency)
+             - Function naming hints: find_*(), claim_*(), allocate_*() typically validate internally
+          
+          3. VERIFY BEFORE SUGGESTING:
+             - Is guard genuinely missing from ENTIRE call chain?
+             - Would adding guard duplicate existing check in helper?
+             - Does suggestion contradict documented architecture/threading model?
+             - Is pattern consistent across similar code (grep for confirmation)?
+          
+          4. FALSE POSITIVE INDICATORS:
+             - Helper function returns NULL/error code (likely validates internally)
+             - Caller checks helper return value (validation delegated)
+             - Same pattern exists everywhere without suggested guard
+             - Function documented with specific context ("main loop only") contradicts suggested guard
+          
+          RULE: Only suggest guard if missing from ENTIRE call chain AND genuinely needed.
+      
+      - name: "Code formatting compliance"
+        instructions: |
+          Verify code follows formatting standards:
+          - 4 spaces per indentation level (no tabs)
+          - Line length ≤100 characters (except for aligned tables/structures in clang-format off blocks)
+          - Consecutive assignments, declarations, macros, and bitfields should be aligned
+          - No short if statements or functions on single lines
+          - Check compliance with clang-format style: { BasedOnStyle: Google, ReflowComments: true, UseTab: Never, AllowShortIfStatementsOnASingleLine: false, AllowShortFunctionsOnASingleLine: false, AlwaysBreakBeforeMultilineStrings: true, AllowAllParametersOfDeclarationOnNextLine: true, AlignConsecutiveAssignments: true, AlignConsecutiveBitFields: true, AlignConsecutiveDeclarations: true, AlignConsecutiveMacros: true, ColumnLimit: 100, IndentWidth: 4 }
+      
+      - name: "Architecture constraints"
+        instructions: |
+          Verify single-core, non-blocking architecture is maintained:
+          - No blocking operations: sleep_ms(), sleep_us(), busy_wait_ms(), busy_wait_us()
           - Exception: Debug code with LINT:ALLOW blocking annotation + IRQ guard
-          - Check for while(1) loops without yield points
-      
-      - name: "No multicore usage"
-        instructions: |
-          Verify single-core architecture is maintained:
-          - No multicore_* functions
-          - No core1_* functions
+          - No while(1) loops without yield points
+          - No multicore_* or core1_* functions
           - All code runs on Core 0 only
-      
-      - name: "IRQ safety"
-        instructions: |
-          For any IRQ handler changes:
-          - No blocking operations
-          - No printf/fprintf (use LOG_* macros)
-          - Ring buffer writes only (never reads)
-          - Memory barriers after volatile writes
-          - Keep handler execution time minimal
+          
+          IRQ handler safety requirements:
+          - No blocking operations in IRQ context
+          - No printf/fprintf (use LOG_* macros which are DMA-safe)
+          - Ring buffer: IRQ writes only, main loop reads only
+          - Memory barriers (__dmb()) after volatile writes in IRQ handlers
+          - Keep IRQ handler execution time minimal
       
       - name: "Memory execution"
         instructions: |
@@ -228,13 +266,32 @@ reviews:
           - Check CMakeLists.txt has pico_set_binary_type(copy_to_ram)
           - Validate no Flash-specific APIs are used incorrectly
       
-      - name: "Protocol timing"
+      - name: "Protocol and PIO implementation"
         instructions: |
-          For protocol implementation changes:
+          Protocol timing requirements:
           - Verify timing matches specification (check README.md)
           - Validate PIO clock dividers
           - Check IRQ handler latency
           - Ensure microsecond precision requirements are met
+          
+          PIO resource management (atomic allocation pattern):
+          - REQUIRED: Use claim_pio_and_sm(&program) for allocating PIO resources
+          - REQUIRED: Store result in pio_engine_t struct with explicit initialization
+          - REQUIRED: Initialize as {.pio = NULL, .sm = -1, .offset = -1}
+          - REQUIRED: Check pio_engine.pio == NULL for allocation failures
+          - REQUIRED: Access via pio_engine.pio, pio_engine.sm, pio_engine.offset
+          
+          DEPRECATED patterns that MUST NOT be used:
+          - find_available_pio() function (removed - use claim_pio_and_sm() instead)
+          - Separate pio_pio, pio_sm, pio_offset variables (use pio_engine_t struct)
+          - Separate calls to pio_claim_unused_sm() and pio_add_program() (now atomic)
+          - Anonymous struct types (use typedef pio_engine_t defined in pio_helper.h)
+          
+          Type consistency:
+          - pio_engine_t members use int (not uint) matching SDK allocation functions
+          - pio_claim_unused_sm() returns int (-1 for error, 0-3 for success)
+          - pio_add_program() returns int (-1 for error, 0-31 for success)
+          - Implicit int→uint conversion is safe for validated non-negative values
   
   # Tool configuration
   tools:

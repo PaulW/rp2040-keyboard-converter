@@ -34,7 +34,7 @@ If you're not sure about scancodes, the easiest way to find out is to connect a 
 
 Each keyboard gets its own directory under [`src/keyboards/`](../../src/keyboards/)`<brand>/<model>/`. For example:
 
-```
+```text
 src/keyboards/
 ├── modelm/
 │   ├── enhanced/
@@ -179,6 +179,142 @@ Common shorthand keycodes:
 
 **Unmapped keys:** Use `NO` for keys that don't have a mapping or shouldn't send anything.
 
+### Multi-Layer Keymaps
+
+A single base layer (Layer 0) may be sufficient for simpler keymaps. However, you might want additional layers for function keys, navigation, or gaming modes. Layer switching is covered in detail in the [Custom Keymaps](custom-keymaps.md) guide, but here's the basic structure:
+
+```c
+const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
+    [0] = KEYMAP(  // Base layer
+        // Your default key mappings
+    ),
+    [1] = KEYMAP(  // Function layer (activated by MO_1)
+        // Function key mappings, media controls, etc.
+        // Use TRNS for keys that should pass through to base layer
+    ),
+};
+
+/* Layer count - automatically calculated from keymap_map array size */
+const uint8_t keymap_layer_count = sizeof(keymap_map) / sizeof(keymap_map[0]);
+```
+
+The `keymap_layer_count` variable is automatically calculated using `sizeof` to determine how many layers are defined in `keymap_map`. This eliminates manual maintenance and prevents the layer count from drifting out of sync with the actual number of layers defined. The calculation must appear **after** the `keymap_map` definition so the compiler knows the array's size.
+
+**Layer limits:** The firmware supports up to 8 layers (`KEYMAP_MAX_LAYERS = 8` in [`src/common/lib/keymaps.h`](../../src/common/lib/keymaps.h)), but layer-switching keycodes are currently only defined for layers 1–3 in [`src/common/lib/hid_keycodes.h`](../../src/common/lib/hid_keycodes.h). This means you can define up to 8 layers in your keymap, but can only directly switch to layers 1–3 using the keycode macros below.
+
+Layer keycodes (layers 1–3 only):
+- **MO_1, MO_2, MO_3**: Momentary layer switch whilst held
+- **TG_1, TG_2, TG_3**: Toggle layer on/off
+- **TO_1, TO_2, TO_3**: Switch to layer permanently
+- **OSL_1, OSL_2, OSL_3**: One-shot layer (next key only)
+- **TRNS**: Transparent—passes through to lower layer
+
+**Using layers 4–7:** If you need additional layers beyond layer 3, you would need to extend the keycode definitions in `hid_keycodes.h` (adding `KC_MO_4` through `KC_MO_7`, etc.) and update the corresponding macros and static assertions. However, three switchable layers (plus the base layer 0) is typically sufficient for most use cases—one for functions, one for navigation, and one for media or gaming.
+
+**NumLock Handling:** If you need consistent navigation on the numpad across hosts, consider adding a function layer that maps the numpad positions to HOME/UP/PGUP and similar keys rather than creating a dedicated NumLock layer.
+
+**Example—Model F PC/AT with navigation in Fn layer:**
+
+```c
+const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
+    [0] = KEYMAP(  // Base layer
+        // ... ESC, numbers, letters, etc.
+        // Numpad: P7, P8, P9 send as-is (host interprets)
+    ),
+    [1] = KEYMAP(  // Fn layer for macOS navigation
+        TRNS, TRNS, /* ... */
+        HOME, UP,   PGUP,   // Fn+7/8/9 → HOME/UP/PGUP
+        LEFT, TRNS, RIGHT,  // Fn+4/5/6 → LEFT/nochange/RIGHT  
+        END,  DOWN, PGDN,   // Fn+1/2/3 → END/DOWN/PGDN
+    ),
+};
+```
+
+### Shift-Override (Non-Standard Shift Legends)
+
+Some keyboards have non-standard shift legends that don't match the HID keycodes sent by standard keys. This includes terminal keyboards, vintage keyboards, and some international layouts. For example, the IBM Model M Type 2 (M122) has:
+- Physical key labelled `2` and `"` (double quote)
+- Standard shift behaviour: Shift+2 = `@`
+- But key physically shows `"`
+
+For these keyboards, you can define per-layer shift-override tables that remap shifted keys to match the physical legends. This is completely optional—only use it for keyboards where the physical legends genuinely differ from standard.
+
+**Implementation:**
+
+Add a `keymap_shift_override_layers` array to your keyboard.c:
+
+```c
+// Per-layer shift-override table (sparse array of pointers)
+// Array index = layer number, NULL = no shift-override for that layer
+const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
+    [0] = (const uint8_t[SHIFT_OVERRIDE_ARRAY_SIZE]){
+        // Suppress shift and send different key
+        [KC_7] = SUPPRESS_SHIFT | KC_QUOT,   // Shift+7 → ' (apostrophe, suppress shift)
+        [KC_0] = SUPPRESS_SHIFT | KC_NUHS,   // Shift+0 → # (hash/pound, suppress shift)
+        [KC_MINS] = SUPPRESS_SHIFT | KC_EQL, // Shift+- → = (equals, suppress shift)
+        
+        // Keep shift for standard behaviour
+        [KC_6] = KC_7,  // Shift+6 → Shift+7 produces & (ampersand, keep shift held)
+        
+        // Entries default to 0 unless explicitly set (use default shift behaviour)
+    },
+    // Other layers: NULL or define additional shift-override arrays as needed
+    // [1] = (const uint8_t[SHIFT_OVERRIDE_ARRAY_SIZE]){ ... },  // Optional: Layer 1 shift-override
+};
+```
+
+**How it works:**
+- When shift is held and a key pressed, the system checks the shift-override array for the source layer (the layer where the key was found, accounting for KC_TRNS fallthrough)
+- If entry exists: send that keycode instead of base key
+- If entry has `SUPPRESS_SHIFT` flag (bit 7): remove shift modifier for final key
+- If entry is 0 or layer has no shift-override array (NULL): use default behaviour (send base key with shift)
+
+**SUPPRESS_SHIFT flag (0x80):**
+- `SUPPRESS_SHIFT | KC_QUOT`: Sends `'` (apostrophe) **without** shift modifier
+- `KC_7`: Sends `7` **with** shift modifier (produces shifted character like `&`)
+
+**Per-layer shift-override:**
+Different layers can have different shift behaviours. For example, Layer 0 might use modern PC shift legends whilst Layer 1 uses terminal shift legends. Simply define multiple entries in the `keymap_shift_override_layers` array:
+
+```c
+const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
+    [0] = (const uint8_t[SHIFT_OVERRIDE_ARRAY_SIZE]){ /* Standard PC legends */ },
+    [1] = (const uint8_t[SHIFT_OVERRIDE_ARRAY_SIZE]){ /* Terminal legends */ },
+    // Layers 2-7 default to NULL (no shift-override)
+};
+```
+
+**Runtime validation:**
+The firmware performs a simple presence check at boot time and when toggling shift-override via Command Mode:
+
+- **Presence check**: Verifies that `keymap_shift_override_layers` is defined (not NULL)
+- **Boot-time**: If shift-override is enabled in persistent config but the array is missing, the feature is automatically disabled with log messages: `[WARN] Shift-Override enabled in config but keyboard doesn't define shift mappings` and `[INFO] Disabling shift-override`
+- **Command Mode toggle**: If user attempts to enable shift-override (via `S` key) but the array is missing, command rejected: `[WARN] Shift-Override not available`
+
+There's no per-layer validation—the firmware only checks whether the array exists. You're responsible for ensuring shift-override entries correspond to defined layers (layers that exist in `keymap_map`).
+
+**When to use shift-override:**
+- Terminal keyboards with non-standard legends (IBM 327x, 3270, 522x series)
+- International keyboards where physical labels don't match HID standard
+- NOT for standard keyboards—adds complexity without benefit
+
+**Example keyboards with shift-override:**
+- IBM Model M Type 2 (M122): `src/keyboards/modelm/m122/keyboard.c`
+- Microswitch 122ST13: `src/keyboards/microswitch/122st13/keyboard.c`
+
+**Enabling shift-override:**
+
+Shift-Override is **disabled by default** even if your keyboard defines the array. Users must explicitly enable it through Command Mode:
+
+1. Hold both shifts for 3 seconds (enter Command Mode)
+2. Press 'S' to toggle shift-override on/off
+3. If the keyboard doesn't define the array, a warning is displayed and the setting is not changed
+4. State persists across reboots in flash memory
+5. Automatically resets to disabled if different keyboard firmware flashed
+6. Automatically disables if the shift-override array is removed from the keyboard but keyboard ID stays the same
+
+The converter validates shift-override availability on every boot, ensuring the config state always matches the actual keyboard capabilities. This prevents stale configuration from causing undefined behaviour.
+
 ---
 
 ## README.md
@@ -317,6 +453,9 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
         ESC, F1, F2, /* ... and so on */
     ),
 };
+
+/* Layer count - automatically calculated from keymap_map array size */
+const uint8_t keymap_layer_count = sizeof(keymap_map) / sizeof(keymap_map[0]);
 ```
 
 Create `README.md` with specifications, quirks, and build instructions.

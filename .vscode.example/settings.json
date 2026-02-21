@@ -58,8 +58,15 @@
   },
   "c-cpp-flylint.language": "c",
   "c-cpp-flylint.clang.standard": [],
-  "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, ReflowComments: true, ColumnLimit: 100 }",
+  "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, ReflowComments: true, UseTab: Never, AllowShortIfStatementsOnASingleLine: false, AllowShortFunctionsOnASingleLine: false, AlwaysBreakBeforeMultilineStrings: true, AllowAllParametersOfDeclarationOnNextLine: true, AlignConsecutiveAssignments: true, AlignConsecutiveBitFields: true, AlignConsecutiveDeclarations: true, AlignConsecutiveMacros: true, ColumnLimit: 100, IndentWidth: 4 }",
   "C_Cpp.doxygen.generatedStyle": "/**",
-  "C_Cpp.clang_format_style": "{ BasedOnStyle: Google, ReflowComments: true, ColumnLimit: 100 }",
+  "C_Cpp.clang_format_style": "{ BasedOnStyle: Google, ReflowComments: true, UseTab: Never, AllowShortIfStatementsOnASingleLine: false, AllowShortFunctionsOnASingleLine: false, AlwaysBreakBeforeMultilineStrings: true, AllowAllParametersOfDeclarationOnNextLine: true, AlignConsecutiveAssignments: true, AlignConsecutiveBitFields: true, AlignConsecutiveDeclarations: true, AlignConsecutiveMacros: true, ColumnLimit: 100, IndentWidth: 4 }",
+  "editor.formatOnSave": true,
+  "[c]": {
+    "editor.defaultFormatter": "ms-vscode.cpptools"
+  },
+  "[cpp]": {
+    "editor.defaultFormatter": "ms-vscode.cpptools"
+  },
   "github.copilot.advanced": {}
 }

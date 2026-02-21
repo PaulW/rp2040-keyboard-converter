@@ -43,7 +43,7 @@ echo -e "${BLUE}========================================${NC}"
 echo ""
 
 # Check 1: Blocking Operations
-echo -e "${BLUE}[1/16] Checking for blocking operations...${NC}"
+echo -e "${BLUE}[1/17] Checking for blocking operations...${NC}"
 BLOCKING_CALLS=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "sleep_ms\(|sleep_us\(|busy_wait_us\(|busy_wait_ms\(" src/ 2>/dev/null || true)
 
 if [ -n "$BLOCKING_CALLS" ]; then
@@ -79,7 +79,7 @@ fi
 echo ""
 
 # Check 2: Multicore API Usage
-echo -e "${BLUE}[2/16] Checking for multicore API usage...${NC}"
+echo -e "${BLUE}[2/17] Checking for multicore API usage...${NC}"
 MULTICORE_USAGE=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "multicore_launch_core1|multicore_fifo_push_blocking|multicore_fifo_pop_blocking|multicore_fifo_drain|multicore_reset_core1|multicore_lockout" src/ 2>/dev/null || true)
 
 if [ -n "$MULTICORE_USAGE" ]; then
@@ -98,7 +98,7 @@ fi
 echo ""
 
 # Check 3: printf in IRQ Context
-echo -e "${BLUE}[3/16] Checking for printf in IRQ context...${NC}"
+echo -e "${BLUE}[3/17] Checking for printf in IRQ context...${NC}"
 # This is a heuristic check - finds functions with __isr attribute and checks for printf
 PRINTF_IN_ISR=""
 
@@ -135,7 +135,7 @@ fi
 echo ""
 
 # Check 4: ringbuf_reset() Usage
-echo -e "${BLUE}[4/16] Checking ringbuf_reset() usage...${NC}"
+echo -e "${BLUE}[4/17] Checking ringbuf_reset() usage...${NC}"
 # Exclude the ringbuf library itself (contains function definition)
 RINGBUF_RESET=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" --exclude-dir="ringbuf" "ringbuf_reset" src/ 2>/dev/null | grep -v "^src/common/lib/ringbuf\.[ch]:" || true)
 
@@ -160,7 +160,7 @@ if [ -n "$RINGBUF_RESET" ]; then
         echo ""
         echo -e "${YELLOW}Architecture rule: Only call ringbuf_reset() with IRQs disabled${NC}"
         echo "  - Never call during normal operation"
-        echo "  - Only during initialization or state machine resets"
+        echo "  - Only during initialisation or state machine resets"
         echo "  - Must verify IRQs are disabled first"
         echo "  - Add '// LINT:ALLOW ringbuf_reset' comment to suppress this warning"
         echo ""
@@ -174,7 +174,7 @@ fi
 echo ""
 
 # Check 5: docs-internal in Repository
-echo -e "${BLUE}[5/16] Checking for docs-internal/ files in repository...${NC}"
+echo -e "${BLUE}[5/17] Checking for docs-internal/ files in repository...${NC}"
 DOCS_INTERNAL=$(git ls-files | grep "^docs-internal/" 2>/dev/null || true)
 
 if [ -n "$DOCS_INTERNAL" ]; then
@@ -193,7 +193,7 @@ fi
 echo ""
 
 # Check 6: Flash Execution (check for missing copy_to_ram)
-echo -e "${BLUE}[6/16] Checking for copy_to_ram configuration...${NC}"
+echo -e "${BLUE}[6/17] Checking for copy_to_ram configuration...${NC}"
 COPY_TO_RAM=$(grep -R --exclude-dir=".git" --exclude-dir="build" --exclude-dir="external" --exclude-dir="docs-internal" "pico_set_binary_type.*copy_to_ram" . 2>/dev/null || true)
 
 if [ -z "$COPY_TO_RAM" ]; then
@@ -210,7 +210,7 @@ fi
 echo ""
 
 # Check 7: Volatile Usage on IRQ-Shared Variables
-echo -e "${BLUE}[7/16] Checking for IRQ-shared variables...${NC}"
+echo -e "${BLUE}[7/17] Checking for IRQ-shared variables...${NC}"
 
 VOLATILE_ISSUES=""
 BARRIER_ISSUES=""
@@ -391,7 +391,7 @@ fi
 echo ""
 
 # Check 8: Tab Characters
-echo -e "${BLUE}[8/16] Checking for tab characters...${NC}"
+echo -e "${BLUE}[8/17] Checking for tab characters...${NC}"
 TAB_USAGE=$(grep -R -E --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" $'^\t|[^\t]\t' src/ 2>/dev/null || true)
 
 if [ -n "$TAB_USAGE" ]; then
@@ -411,7 +411,7 @@ fi
 echo ""
 
 # Check 9: Header Guards in .h Files
-echo -e "${BLUE}[9/16] Checking header guards...${NC}"
+echo -e "${BLUE}[9/17] Checking header guards...${NC}"
 MISSING_GUARDS=""
 
 while IFS= read -r header; do
@@ -430,7 +430,7 @@ if [ -n "$MISSING_GUARDS" ]; then
     echo ""
     echo -e "$MISSING_GUARDS"
     echo ""
-    echo -e "${YELLOW}Code organization rule: All .h files need include guards${NC}"
+    echo -e "${YELLOW}Code organisation rule: All .h files need include guards${NC}"
     echo "  - Format: #ifndef FILENAME_H / #define FILENAME_H"
     echo "  - Prevents multiple inclusion errors"
     echo ""
@@ -441,7 +441,7 @@ fi
 echo ""
 
 # Check 10: File Headers (GPL License)
-echo -e "${BLUE}[10/16] Checking file headers...${NC}"
+echo -e "${BLUE}[10/17] Checking file headers...${NC}"
 MISSING_HEADERS=""
 MIT_LICENSED_FILES=(
     "src/common/lib/usb_descriptors.c"
@@ -487,7 +487,7 @@ fi
 echo ""
 
 # Check 11: Naming Conventions (camelCase detection)
-echo -e "${BLUE}[11/16] Checking naming conventions...${NC}"
+echo -e "${BLUE}[11/17] Checking naming conventions...${NC}"
 CAMEL_CASE=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "^[a-z]+[A-Z][a-zA-Z]*\s*\(|^static\s+[a-z]+[A-Z][a-zA-Z]*\s+[a-z]" src/ 2>/dev/null | grep -v "typedef" | head -20 || true)
 
 if [ -n "$CAMEL_CASE" ]; then
@@ -507,7 +507,7 @@ fi
 echo ""
 
 # Check 12: Include Order (comprehensive check)
-echo -e "${BLUE}[12/16] Checking include order...${NC}"
+echo -e "${BLUE}[12/17] Checking include order...${NC}"
 WRONG_INCLUDE_ORDER=""
 GROUPING_ISSUES=""
 
@@ -611,7 +611,7 @@ fi
 echo ""
 
 # Check 13: Missing __isr Attribute
-echo -e "${BLUE}[13/16] Checking interrupt handler attributes...${NC}"
+echo -e "${BLUE}[13/17] Checking interrupt handler attributes...${NC}"
 MISSING_ISR=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "void.*_irq_handler\s*\(|void.*_interrupt_handler\s*\(|void.*_isr\s*\(" src/ 2>/dev/null | grep -v "__isr" | grep -v "\.h:" || true)
 
 if [ -n "$MISSING_ISR" ]; then
@@ -621,7 +621,7 @@ if [ -n "$MISSING_ISR" ]; then
     echo ""
     echo -e "${YELLOW}Naming convention: IRQ handlers should use __isr attribute${NC}"
     echo "  - void __isr keyboard_irq_handler(void);"
-    echo "  - Helps compiler optimize for interrupt context"
+    echo "  - Helps compiler optimise for interrupt context"
     echo ""
     WARNINGS=$((WARNINGS + 1))
 else
@@ -631,7 +631,7 @@ echo ""
 
 # Check 14: _Static_assert for Compile-Time Validation
 # NOTE: This is an advisory-only check that doesn't affect pass/fail status
-echo -e "${BLUE}[14/16] Checking for compile-time validation...${NC}"
+echo -e "${BLUE}[14/17] Checking for compile-time validation...${NC}"
 STATIC_ASSERT_COUNT=$(grep -R "${EXCLUDE_DIRS[@]}" --exclude="*.md" -c "_Static_assert\|#error" src/ 2>/dev/null | grep -vc ":0$" || true)
 
 if [ "$STATIC_ASSERT_COUNT" -gt 0 ]; then
@@ -644,7 +644,7 @@ fi
 echo ""
 
 # Check 15: Protocol Setup Consistency - Ring Buffer Reset
-echo -e "${BLUE}[15/16] Checking protocol setup consistency (ring buffer)...${NC}"
+echo -e "${BLUE}[15/17] Checking protocol setup consistency (ring buffer)...${NC}"
 MISSING_RINGBUF_RESET=""
 
 while IFS= read -r protocol_file; do
@@ -675,36 +675,115 @@ else
 fi
 echo ""
 
-# Check 16: Protocol Setup Consistency - IRQ Priority
-echo -e "${BLUE}[16/16] Checking protocol setup consistency (IRQ priority)...${NC}"
-MISSING_IRQ_PRIORITY=""
+# Check 16: Protocol Setup Consistency - PIO IRQ Dispatcher Usage
+echo -e "${BLUE}[16/17] Checking protocol setup consistency (PIO IRQ dispatcher)...${NC}"
+MISSING_DISPATCHER=""
+DIRECT_IRQ_SETUP=""
 
+# Check keyboard interface files
 while IFS= read -r protocol_file; do
     protocol_name=$(basename "$(dirname "$protocol_file")")
     
-    # Check if this file has keyboard_interface_setup function
-    if grep -q "keyboard_interface_setup" "$protocol_file"; then
-        # Check if irq_set_priority() is called in the file
-        if ! grep -q "irq_set_priority" "$protocol_file"; then
-            MISSING_IRQ_PRIORITY="${MISSING_IRQ_PRIORITY}${protocol_name}: Missing irq_set_priority() in keyboard_interface_setup\n"
+    # Check if this file has keyboard_interface_setup or mouse_interface_setup function
+    if grep -q "keyboard_interface_setup\|mouse_interface_setup" "$protocol_file"; then
+        # Check if they use the centralised PIO IRQ dispatcher
+        if ! grep -q "pio_irq_dispatcher_init" "$protocol_file"; then
+            MISSING_DISPATCHER="${MISSING_DISPATCHER}${protocol_name}: Missing pio_irq_dispatcher_init() call\n"
+        fi
+        
+        # ERROR: Check if they still use old direct IRQ setup pattern
+        if grep -q "irq_set_priority" "$protocol_file"; then
+            DIRECT_IRQ_SETUP="${DIRECT_IRQ_SETUP}${protocol_name}: Uses deprecated irq_set_priority() directly\n"
         fi
     fi
-done < <(find src/protocols/ -name "keyboard_interface.c" 2>/dev/null)
+done < <(find src/protocols/ -name "keyboard_interface.c" -o -name "mouse_interface.c" 2>/dev/null)
 
-if [ -n "$MISSING_IRQ_PRIORITY" ]; then
-    echo -e "${YELLOW}WARNING: Protocol setup missing IRQ priority configuration:${NC}"
+# Report errors first (critical)
+if [ -n "$DIRECT_IRQ_SETUP" ]; then
+    echo -e "${RED}ERROR: Protocols using deprecated direct IRQ setup:${NC}"
     echo ""
-    echo -e "$MISSING_IRQ_PRIORITY"
+    echo -e "$DIRECT_IRQ_SETUP"
     echo ""
-    echo -e "${YELLOW}Setup pattern: All protocols must set IRQ priority to 0 (highest)${NC}"
-    echo "  - Ensures minimal keyboard event latency"
-    echo "  - SDK default is 0x80 (medium priority)"
-    echo "  - Should be irq_set_priority(pio_irq, 0)"
-    echo "  - See docs/development/protocol-implementation.md"
+    echo -e "${RED}Required pattern: Use centralised PIO IRQ dispatcher${NC}"
+    echo "  - Call pio_irq_dispatcher_init(pio_engine.pio) in setup"
+    echo "  - Call pio_irq_register_callback(&handler_function)"
+    echo "  - Do NOT call irq_set_priority() directly in protocols"
+    echo "  - IRQ priority is centrally managed in pio_helper.c"
+    echo "  - See src/common/lib/pio_helper.h for API documentation"
+    echo ""
+    ERRORS=$((ERRORS + 1))
+fi
+
+# Report warnings (missing dispatcher usage)
+if [ -n "$MISSING_DISPATCHER" ]; then
+    echo -e "${YELLOW}WARNING: Protocol setup missing PIO IRQ dispatcher:${NC}"
+    echo ""
+    echo -e "$MISSING_DISPATCHER"
+    echo ""
+    echo -e "${YELLOW}Setup pattern: All protocols must use PIO IRQ dispatcher${NC}"
+    echo "  - Ensures proper IRQ multiplexing for multi-device support"
+    echo "  - Centralises IRQ priority management (priority 0)"
+    echo "  - Should call pio_irq_dispatcher_init() before callback registration"
+    echo "  - See src/common/lib/pio_helper.h for documentation"
     echo ""
     WARNINGS=$((WARNINGS + 1))
+fi
+
+# Success message if all checks pass
+if [ -z "$DIRECT_IRQ_SETUP" ] && [ -z "$MISSING_DISPATCHER" ]; then
+    echo -e "${GREEN}✓ All protocols use centralised PIO IRQ dispatcher${NC}"
+fi
+echo ""
+
+# Check 17: Indentation Consistency (4-space, not 2-space)
+echo -e "${BLUE}[17/17] Checking indentation consistency (4-space required)...${NC}"
+
+# Use awk to check for 2-space indentation, respecting clang-format blocks
+INDENT_VIOLATIONS=""
+
+while IFS= read -r file; do
+    # Count lines with 2-space indentation
+    # Skip clang-format off/on blocks and block comments
+    result=$(awk '
+        /clang-format off/ { disabled=1; next }
+        /clang-format on/  { disabled=0; next }
+        disabled { next }
+        /\/\*/ && !/\*\// { in_comment=1; next }
+        in_comment && /\*\// { in_comment=0; next }
+        in_comment { next }
+        # Check for 2-space indentation at first level only
+        # Pattern matches lines starting with exactly 2 spaces followed by non-space
+        # This detects files using 2-space base indentation (most common issue)
+        # Avoids false positives from alignment (6, 10, 14... spaces for continuation)
+        /^  [^ \t]/ {
+            count++
+        }
+        END { 
+            if (count > 0) 
+                printf "%s: %d lines with 2-space indentation\n", FILENAME, count 
+        }
+    ' "$file")
+    
+    if [ -n "$result" ]; then
+        INDENT_VIOLATIONS="${INDENT_VIOLATIONS}${result}\n"
+    fi
+done < <(find src/ -type f \( -name "*.c" -o -name "*.h" \) -not -path "*/external/*" -not -path "*/build/*" 2>/dev/null)
+
+if [ -n "$INDENT_VIOLATIONS" ]; then
+    echo -e "${RED}ERROR: Files with 2-space indentation detected!${NC}"
+    echo ""
+    echo -e "$INDENT_VIOLATIONS" | head -10
+    VIOLATION_COUNT=$(echo -e "$INDENT_VIOLATIONS" | grep -c .)
+    [ "$VIOLATION_COUNT" -gt 10 ] && echo "... and $((VIOLATION_COUNT - 10)) more files"
+    echo ""
+    echo -e "${YELLOW}Code formatting rule: Use 4-space indentation, not 2-space${NC}"
+    echo "  - Maintains consistency across codebase"
+    echo "  - clang-format off/on blocks are excluded from this check"
+    echo "  - See docs/development/code-standards.md for indentation standards"
+    echo ""
+    ERRORS=$((ERRORS + 1))
 else
-    echo -e "${GREEN}✓ All protocols configure IRQ priority in setup${NC}"
+    echo -e "${GREEN}✓ All files use 4-space indentation consistently${NC}"
 fi
 echo ""
 

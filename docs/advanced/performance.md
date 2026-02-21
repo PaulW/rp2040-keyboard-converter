@@ -6,7 +6,7 @@ These performance characteristics are based on the RP2040 hardware specification
 
 ## Design Characteristics
 
-The design prioritizes deterministic, low-latency operation through hardware acceleration and non-blocking architecture. Deterministic timing means the converter behaves identically across executions—no variable delays from caching, no race conditions from multicore synchronization.
+The design prioritises deterministic, low-latency operation through hardware acceleration and non-blocking architecture. Deterministic timing means the converter behaves identically across executions—no variable delays from caching, no race conditions from multicore synchronisation.
 
 ---
 
@@ -18,9 +18,9 @@ Each key press flows through distinct stages that operate without blocking each 
 
 2. **Interrupt Handler** - When a complete byte arrives, the PIO triggers an interrupt. The handler extracts the scancode and writes it to the ring buffer—a minimal operation taking only a few CPU cycles.
 
-3. **Ring Buffer** - The [32-byte FIFO](../../src/common/lib/ringbuf.c) (defined as `RINGBUF_SIZE` in [ringbuf.h](../../src/common/lib/ringbuf.h)) bridges interrupt context and main loop. Its size provides sufficient capacity for multi-byte scancode sequences arriving back-to-back whilst remaining small enough to stay in L1 cache.
+3. **Ring Buffer** - The [32-byte FIFO](../../src/common/lib/ringbuf.c) (defined as `RINGBUF_SIZE` in [ringbuf.h](../../src/common/lib/ringbuf.h)) bridges interrupt context and main loop. Its size provides sufficient capacity for multibyte scancode sequences arriving back-to-back whilst remaining small enough to stay in L1 cache.
 
-4. **Scancode Decoder** - The main loop retrieves scancodes from the buffer and reconstructs complete key events. Some protocols use multi-byte sequences (E0 prefixes, F0 break codes, the eleven-byte Pause key), so the decoder maintains state across multiple reads.
+4. **Scancode Decoder** - The main loop retrieves scancodes from the buffer and reconstructs complete key events. Some protocols use multibyte sequences (E0 prefixes, F0 break codes, the eleven-byte Pause key), so the decoder maintains state across multiple reads.
 
 5. **Keymap Translation** - Complete scancodes translate to USB HID keycodes via keyboard-specific lookup tables. Command Mode detection also happens here, intercepting special key combinations before they reach USB.
 
@@ -58,7 +58,7 @@ The USB polling interval represents the primary throughput bottleneck—not the 
 
 ---
 
-## Resource Utilization
+## Resource Utilisation
 
 The converter's resource usage is deliberately conservative to ensure reliable operation and leave headroom for future features:
 
@@ -74,7 +74,7 @@ These limits provide comfortable margins whilst preventing configurations that a
 
 The 32-byte ring buffer stays in cache throughout operation. Global variables store protocol state, HID report buffers, and configuration values. The stack handles function call depth and local variables. The heap remains minimal—the code favours stack allocation to avoid fragmentation and memory leaks.
 
-### CPU Utilization
+### CPU Utilisation
 
 The non-blocking architecture keeps the CPU idle between keyboard events. PIO hardware handles protocol timing autonomously, so the CPU only wakes for complete scancodes.
 
@@ -135,7 +135,7 @@ Whilst the converter hasn't been measured with hardware timing equipment, the ar
 1. **Keyboard protocol transmission:** Inherent to the protocol (1-2 milliseconds for AT/PS2 11-bit frame at 10 kHz)
 2. **PIO to IRQ:** Hardware interrupt latency on RP2040
 3. **Ring buffer transfer:** Interrupt handler writes, main loop reads (sub-microsecond operation)
-4. **Scancode processing:** State machine handles multi-byte sequences (microseconds)
+4. **Scancode processing:** State machine handles multibyte sequences (microseconds)
 5. **Keymap lookup:** Array index operation (nanoseconds)
 6. **HID report assembly:** Struct manipulation (nanoseconds)
 7. **USB polling wait:** Host queries device every 8ms (average 4ms wait)
@@ -149,9 +149,9 @@ The converter's architecture ensures **deterministic timing**—latency remains 
 - **SRAM execution:** Every instruction takes the same time, regardless of cache state
 - **Non-blocking operations:** No variable delays from sleep calls or busy-waiting
 - **PIO hardware timing:** Protocol handling happens at fixed clock rates
-- **Single-core design:** No inter-core synchronization overhead or race conditions
+- **Single-core design:** No inter-core synchronisation overhead or race conditions
 
-This determinism makes the converter's behaviour predictable and repeatable, which is valuable for debugging and optimization.
+This determinism makes the converter's behaviour predictable and repeatable, which is valuable for debugging and optimisation.
 
 ---
 
@@ -169,23 +169,23 @@ The converter provides substantial headroom above human input speeds. The 6KRO (
 
 ---
 
-## Optimization Opportunities
+## Optimisation Opportunities
 
-The current implementation prioritizes correctness and determinism over raw performance. Several optimization opportunities exist for future development:
+The current implementation prioritises correctness and determinism over raw performance. Several optimisation opportunities exist for future development:
 
-### Potential Optimizations
+### Potential Optimisations
 
 1. **NKRO (N-Key Rollover):** Switch from boot protocol (6KRO) to NKRO HID descriptor for unlimited simultaneous keys. Requires host driver support.
 
 2. **USB polling interval:** Could negotiate faster polling (1ms minimum for full-speed USB) with compatible hosts. Requires USB descriptor changes and host compatibility testing.
 
-3. **PIO program efficiency:** Some PIO programs could be optimized for fewer instructions or faster execution. Current implementations prioritize readability and maintainability.
+3. **PIO program efficiency:** Some PIO programs could be optimised for fewer instructions or faster execution. Current implementations prioritise readability and maintainability.
 
-4. **Scancode processor:** Could use lookup tables instead of state machines for protocols with simpler multi-byte sequences. Trade-off between code size and execution speed.
+4. **Scancode processor:** Could use lookup tables instead of state machines for protocols with simpler multibyte sequences. Trade-off between code size and execution speed.
 
-5. **Ring buffer size tuning:** Could reduce to 16 bytes (still ample for burst handling) to improve cache utilization. Requires testing with worst-case multi-byte sequences.
+5. **Ring buffer size tuning:** Could reduce to 16 bytes (still ample for burst handling) to improve cache utilisation. Requires testing with worst-case multibyte sequences.
 
-These optimizations aren't currently implemented because the converter already meets performance requirements with comfortable margins. Premature optimization would add complexity without practical benefit for keyboard conversion use cases.
+These optimisations aren't currently implemented because the converter already meets performance requirements with comfortable margins. Premature optimisation would add complexity without practical benefit for keyboard conversion use cases.
 
 ---
 
@@ -215,14 +215,14 @@ For those wanting to measure actual hardware performance:
 - Test with multiple keyboard models—protocol timing varies between manufacturers
 - Test with different USB hosts—some hosts have higher polling latency than others
 - Test under load—measure latency during fast typing, not just single keypresses
-- Test multi-byte sequences—extended keys (E0 prefix) and Pause key (11 bytes) have different timing
+- Test multibyte sequences—extended keys (E0 prefix) and Pause key (11 bytes) have different timing
 
 ---
 
 ## Related Documentation
 
 - [Architecture](architecture.md) - System architecture and design principles
-- [Build System](build-system.md) - Build configuration and optimization
+- [Build System](build-system.md) - Build configuration and optimisation
 - [Testing](testing.md) - Hardware testing and validation procedures
 - [Protocol Documentation](../protocols/README.md) - Protocol timing specifications
 - [Code Standards](../development/code-standards.md) - Non-blocking requirements

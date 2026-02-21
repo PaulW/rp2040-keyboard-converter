@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -41,33 +41,21 @@
  */
 
 // clang-format on
+
 /* Define Keyboard Layers */
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
-    KEYMAP_XT(         /* Base Layer (NumLock On)
-                        * MacOS maps keys oddly, GRAVE and NUBS are swapped over when coupled with British-PC
-                        * Layout.          Likewise, NUHS and BSLS appear to match. TODO: Have these as a config
-                        * option to swap.
-                        */
+    KEYMAP_XT(              /* Layer 0: Base Layer
+                             */
               // clang-format off
     F1,    F2,        ESC,   1,     2,     3,     4,     5,     6,     7,     8,     9,     0,     MINS,  EQL,   BSPC,  NLCK,         SLCK, \
     F3,    F4,        TAB,   Q,     W,     E,     R,     T,     Y,     U,     I,     O,     P,     LBRC,  RBRC,  ENT,   P7,    P8,    P9,    PMNS, \
     F5,    F6,        LCTL,  A,     S,     D,     F,     G,     H,     J,     K,     L,     SCLN,  QUOT,  BSLS,         P4,    P5,    P6,          \
     F7,    F8,        LSFT,  NUBS,  Z,     X,     C,     V,     B,     N,     M,     COMM,  DOT,   SLSH,  RSFT,  PSCR,  P1,    P2,    P3,    PPLS, \
-    FN,    LGUI,      LALT,                                     SPC,                                      CAPS,         P0,           PDOT  // clang-format on
+    MO_1,  LGUI,      LALT,                                     SPC,                                      CAPS,         P0,           PDOT  // clang-format on
               ),
-    KEYMAP_XT(      /* Numlock Off (MacOS Compatibility Layer) */
-              // clang-format off
-    TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS, \
-    TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS, \
-    TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,  TRNS,  TRNS, \
-    TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS, \
-    TRNS,  TRNS,      TRNS,                                     TRNS,                                     TRNS,         TRNS,         TRNS  // clang-format on
-              ),
-};
-
-/* Define Action Layers */
-const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS] = {
-    KEYMAP_XT(      /* Function Key Pressed */
+    KEYMAP_XT(      /* Layer 1: Function Layer (activated by MO_1)
+                     * Provides F9-F12, media controls, arrow key navigation, and application key
+                     */
               // clang-format off
     F9,    F10,       TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS, \
     F11,   F12,       TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS, \
@@ -76,3 +64,6 @@ const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS] = {
     TRNS,  TRNS,      TRNS,                                     TRNS,                                     APP,          TRNS,         TRNS  // clang-format on
               ),
 };
+
+/* Layer count - automatically calculated from keymap_map array size */
+const uint8_t keymap_layer_count = sizeof(keymap_map) / sizeof(keymap_map[0]);

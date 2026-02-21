@@ -2,7 +2,7 @@
 
 Scancode Set 1 is the scancode design used by IBM PC and PC/XT keyboards. The designation "XT scancode set" derives from its use in the PC/XT keyboard. Set 1 continues to be used by keyboards operating in XT compatibility mode or implementing XT protocol support.
 
-The encoding scheme: each key generates a make code when pressed and a break code when released. Break codes use the make code with bit 7 set (adding 0x80). Extended keys require multi-byte sequences using E0 and E1 prefixes to encode keys not present on the original XT keyboard layout. Set 1 has been in use for over 40 years across multiple keyboard generations.
+The encoding scheme: each key generates a make code when pressed and a break code when released. Break codes use the make code with bit 7 set (adding 0x80). Extended keys require multibyte sequences using E0 and E1 prefixes to encode keys not present on the original XT keyboard layout. Set 1 has been in use for over 40 years across multiple keyboard generations.
 
 ## Encoding Scheme
 
@@ -97,6 +97,42 @@ Set 1 Print Screen sequences include "fake shift" codes:
 
 Modern converters should **filter out** these fake shift codes to prevent spurious Shift events.
 
+### Self-Test Code Collision
+
+Set 1 has a collision between self-test codes and valid scancodes. The self-test passed code `0xAA` is identical to the Left Shift break code (`0x2A | 0x80 = 0xAA`). This creates a potential for misinterpreting keyboard reset events as key releases.
+
+**Protocol Layer Filtering:**
+
+The collision is mitigated by protocol-layer filtering during keyboard initialisation. The protocol layer (XT, AT/PS2) consumes self-test codes before they reach the scancode processor:
+
+- **XT Protocol**: Filters `0xAA` (BAT_PASSED) and `0xFC` (BAT_FAILED) whilst in `UNINITIALISED` state—only after receiving `0xAA` does it transition to `INITIALISED` and begin forwarding scancodes to the ring buffer (see [`src/protocols/xt/keyboard_interface.c`](../../src/protocols/xt/keyboard_interface.c) lines 176-183)
+- **AT/PS2 Protocol**: Expects `0xAA` (BAT_PASSED) in `INIT_AWAIT_SELFTEST` state—any other byte triggers a reset sequence; only after successful self-test does it transition to `INIT_READ_ID_1` and eventually `INITIALISED` (see [`src/protocols/at-ps2/keyboard_interface.c`](../../src/protocols/at-ps2/keyboard_interface.c) lines 278-298)
+- Once `INITIALISED`, all codes are forwarded unchanged to the scancode layer via the ring buffer—no protocol-layer filtering
+
+**Scancode Layer Behaviour:**
+
+The Set 1 scancode processor ([`src/scancodes/set1/scancode.c`](../../src/scancodes/set1/scancode.c)) does **not** filter self-test codes. It performs a range check (`if (code <= 0xD3)`) that processes all valid scancodes, including `0xAA`:
+
+Since `0xAA` (170 decimal) is less than `0xD3` (211 decimal), it would be processed as a normal Left Shift break code if received post-initialisation. The scancode processor comment explicitly notes: *"Self-test codes (0xAA) are handled by protocol layer during initialisation"* (line 113).
+
+The only special handling of `0xAA` in the scancode layer occurs in the E0-prefixed state, where it's filtered as a "fake shift" sequence for Print Screen (not because it's a self-test code):
+
+```c
+case E0:
+    switch (code) {
+        case 0x2A:
+        case 0xAA:  // Filtered as fake shift, NOT as self-test code
+        case 0x36:
+        case 0xB6:
+            // ignore fake shift
+            state = INIT;
+            break;
+```
+
+**Why Protocol-Layer Filtering Suffices:**
+
+Protocol-layer filtering during initialisation is the sole mitigation for self-test code collisions. Post-initialisation, keyboards should not spontaneously send `0xAA` during normal operation. If hot-plugging occurs (not a supported scenario), the `0xAA` would indeed be misinterpreted as Left Shift break.
+
 ## State Machine
 
 Set 1 requires a **5-state** state machine to handle all sequences:
@@ -109,8 +145,8 @@ Set 1 requires a **5-state** state machine to handle all sequences:
       ├─[E0]──► E0 ──[code]───────┤
       │                           │
       ├─[E1]──► E1 ──[1D]──► E1_1D ──[45]──► E1_1D_45 ──[E1]──► E1_PAUSE ──[9D]──► E1_PAUSE_9D ──[C5]───┐
-      │                                                                                                      │
-      └─[code]─────────────────────────────────────────────────────────────────────────────────────────────┘
+      │                                                                                                 │
+      └─[code]──────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### State Descriptions
@@ -148,13 +184,13 @@ The keyspace is limited to 128 make codes (7-bit), which becomes a problem for m
 
 | Code | Description |
 |------|-------------|
-| `0xAA` | Self-test passed (BAT - Basic Assurance Test) |
+| `0xAA` | Self-test passed (BAT - Basic Assurance Test) [⚠️ Collision](#self-test-code-collision) |
 | `0xE0` | Extended key prefix |
 | `0xE1` | Pause/Break prefix |
 | `0xEE` | Echo response (not used in XT) |
 | `0xF0` | Reserved |
 | `0xFA` | ACK (not used in XT) |
-| `0xFC` | Self-test failed |
+| `0xFC` | Self-test failed [⚠️ Collision](#self-test-code-collision) |
 | `0xFE` | Resend (not used in XT) |
 | `0xFF` | Error/Buffer overflow |
 
@@ -232,11 +268,11 @@ E0-prefixed keys require translation to their logical key codes:
 1. **XT Protocol**: Unidirectional, no host-to-keyboard commands
 2. **No LED Control**: XT keyboards have built-in LED logic, not host-controlled
 3. **No Typematic Control**: Key repeat rate is keyboard-internal
-4. **Self-Test Only**: `0xAA` is sent on power-up, `0xFC` on failure
+4. **Self-Test Code Handling**: Protocol-layer filtering during initialisation prevents self-test code collision (see [Self-Test Code Collision](#self-test-code-collision))
 
 ## Performance Characteristics
 
-- **Average bytes per keystroke**: 1.5 (single-byte scancodes, with multi-byte sequences for extended keys)
+- **Average bytes per keystroke**: 1.5 (single-byte scancodes, with multibyte sequences for extended keys)
 - **State machine complexity**: Medium (5 states)
 - **Processing overhead**: Low (simple bit manipulation)
 - **Memory requirements**: ~256 bytes for E0 translation table
