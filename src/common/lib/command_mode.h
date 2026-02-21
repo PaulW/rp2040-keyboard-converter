@@ -54,7 +54,7 @@
  * - Compact layouts: Control + Alt (e.g., KC_LCTRL + KC_LALT)
  * - Terminal keyboards: Both controls (e.g., KC_LCTRL + KC_RCTRL)
  *
- * See keyboards/README.md for detailed override documentation.
+ * See docs/keyboards/README.md for detailed override documentation.
  *
  * User Experience:
  * 1. Press and hold ONLY the two configured command keys (default: both shifts, no other keys)

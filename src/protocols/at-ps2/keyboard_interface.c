@@ -251,12 +251,14 @@ static void keyboard_event_processor(uint8_t data_byte) {
                                              // visibility on Cortex-M0+
                     LOG_DEBUG("Waiting for Keyboard ID...\n");
                     keyboard_state = INIT_READ_ID_1;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
                     break;
                 default:
                     // Unexpected response during initialisation - could be failed BAT (0xFC)
                     // or other power-on state requiring explicit reset command
                     LOG_DEBUG("Asking Keyboard to Reset\n");
                     keyboard_state = INIT_AWAIT_ACK;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
                     keyboard_command_handler(ATPS2_CMD_RESET);
             }
             break;
@@ -265,6 +267,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
                 case ATPS2_RESP_ACK:
                     LOG_DEBUG("ACK Received after Reset\n");
                     keyboard_state = INIT_AWAIT_SELFTEST;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
                     break;
                 default:
                     LOG_DEBUG("Unknown ACK Response (0x%02X).  Asking again to Reset...\n",
@@ -281,11 +284,13 @@ static void keyboard_event_processor(uint8_t data_byte) {
                     // Proceed to keyboard identification phase for terminal keyboard detection
                     LOG_DEBUG("Waiting for Keyboard ID...\n");
                     keyboard_state = INIT_READ_ID_1;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
                     break;
                 default:
                     LOG_DEBUG("Self-Test invalid response (0x%02X).  Asking again to Reset...\n",
                               data_byte);
                     keyboard_state = INIT_AWAIT_ACK;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
                     keyboard_command_handler(ATPS2_CMD_RESET);
             }
             break;
@@ -303,6 +308,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
                     keyboard_id &= ATPS2_KEYBOARD_ID_LOW_MASK;
                     keyboard_id |= (uint16_t)data_byte << 8;
                     keyboard_state = INIT_READ_ID_2;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
             }
             break;
         case INIT_READ_ID_2:
@@ -327,9 +333,11 @@ static void keyboard_event_processor(uint8_t data_byte) {
                 LOG_DEBUG("Setting all Keys to Make/Break\n");
                 keyboard_command_handler(ATPS2_KEYBOARD_CMD_SET_ALL_MAKEBREAK);
                 keyboard_state = INIT_SETUP;
+                __dmb();  // Memory barrier - ensure state write visible to main loop
             } else {
                 LOG_DEBUG("Keyboard Initialised!\n");
                 keyboard_state = INITIALISED;
+                __dmb();  // Memory barrier - ensure state write visible to main loop
             }
 #else
             // Using legacy per-set file - check compile-time CODESET
@@ -340,9 +348,11 @@ static void keyboard_event_processor(uint8_t data_byte) {
                 LOG_DEBUG("Setting all Keys to Make/Break\n");
                 keyboard_command_handler(ATPS2_KEYBOARD_CMD_SET_ALL_MAKEBREAK);
                 keyboard_state = INIT_SETUP;
+                __dmb();  // Memory barrier - ensure state write visible to main loop
             } else {
                 LOG_DEBUG("Keyboard Initialised!\n");
                 keyboard_state = INITIALISED;
+                __dmb();  // Memory barrier - ensure state write visible to main loop
             }
 #endif
             break;
@@ -352,12 +362,14 @@ static void keyboard_event_processor(uint8_t data_byte) {
                 case ATPS2_RESP_ACK:
                     LOG_DEBUG("Keyboard Initialised!\n");
                     keyboard_state = INITIALISED;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
                     break;
                 default:
                     LOG_DEBUG("Unknown Response (0x%02X).  Continuing...\n", data_byte);
                     keyboard_id = ATPS2_KEYBOARD_ID_UNKNOWN;
                     LOG_DEBUG("Keyboard Initialised!\n");
                     keyboard_state = INITIALISED;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
             }
             break;
 
@@ -365,7 +377,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
         case SET_LOCK_LEDS:
             // Process LED command sequence responses (0xED command followed by LED bitmap)
             switch (data_byte) {
-                case 0xFA:
+                case ATPS2_RESP_ACK:
                     if (lock_leds.value != keyboard_lock_leds) {
                         keyboard_lock_leds =
                             lock_leds.value;  // LINT:ALLOW barrier - volatile provides atomic
@@ -376,6 +388,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
                     } else {
                         // LED command sequence completed successfully - return to normal operation
                         keyboard_state = INITIALISED;
+                        __dmb();  // Memory barrier - ensure state write visible to main loop
                     }
                     break;
                 default:
@@ -383,6 +396,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
                     keyboard_lock_leds = lock_leds.value;  // LINT:ALLOW barrier - volatile provides
                                                            // atomic visibility on Cortex-M0+
                     keyboard_state = INITIALISED;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
             }
             break;
 
@@ -471,7 +485,8 @@ static void __isr keyboard_input_event_handler(void) {
                 // Historical fix preserved for reference - indicates keyboard connection event
                 LOG_DEBUG("Likely Keyboard Connect Event detected.\n");
                 keyboard_state = UNINITIALISED;
-                id_retry       = false;
+                __dmb();  // Memory barrier - ensure state write visible to main loop
+                id_retry = false;
                 __dmb();  // Memory barrier - ensure volatile write completes
                 pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
             }
@@ -481,7 +496,8 @@ static void __isr keyboard_input_event_handler(void) {
         }
         // Frame validation failed - restart protocol state machine for clean recovery
         keyboard_state = UNINITIALISED;
-        id_retry       = false;
+        __dmb();  // Memory barrier - ensure state write visible to main loop
+        id_retry = false;
         __dmb();  // Memory barrier - ensure volatile write completes
         pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
         return;
@@ -540,12 +556,14 @@ static void __isr keyboard_input_event_handler(void) {
 void keyboard_interface_task() {
     static uint8_t detect_stall_count = 0;
 
+    __dmb();  // Memory barrier - ensure we see latest state from IRQ
     if (keyboard_state == INITIALISED) {
         // Normal operation: process scan codes and manage LED synchronisation
         // LED state changes and terminal keyboard features handled here
         detect_stall_count = 0;  // Clear timeout counter - keyboard is operational
         if (lock_leds.value != keyboard_lock_leds) {
             keyboard_state = SET_LOCK_LEDS;
+            __dmb();  // Memory barrier - ensure state write visible to IRQ
             keyboard_command_handler(ATPS2_KEYBOARD_CMD_SET_LEDS);
         } else {
             if (!ringbuf_is_empty() && tud_hid_ready()) {
@@ -721,6 +739,8 @@ void keyboard_interface_setup(uint data_pin) {
     if (!pio_irq_register_callback(&keyboard_input_event_handler)) {
         LOG_ERROR("AT/PS2 Keyboard: Failed to register IRQ callback\n");
         // Release PIO resources before returning
+        pio_sm_set_enabled(pio_engine.pio, (uint)pio_engine.sm, false);
+        pio_sm_clear_fifos(pio_engine.pio, (uint)pio_engine.sm);
         pio_sm_unclaim(pio_engine.pio, pio_engine.sm);
         pio_remove_program(pio_engine.pio, &pio_interface_program, pio_engine.offset);
         pio_engine.pio    = NULL;

@@ -196,7 +196,7 @@ Pressing 'S' toggles the shift-override feature on or off for keyboards with non
 2. Press the **'S'** key
 3. The converter immediately toggles the shift-override state
 4. The LED flashes briefly to confirm, and Command Mode exits
-5. UART shows: `"Shift-override enabled"` or `"Shift-override disabled"`
+5. UART shows: `"Shift-Override enabled"` or `"Shift-Override disabled"`
 
 **What shift-override does**:
 
@@ -206,7 +206,7 @@ When shift-override is **enabled**, the converter remaps shifted keys to match t
 
 **Keyboard compatibility**:
 
-Shift-override only works if the keyboard's firmware defines shifted character mappings. Check your keyboard's documentation in `src/keyboards/` to see if it supports shift-override. If the keyboard doesn't define custom shift mappings, pressing 'S' displays a warning message and the setting is not changed.
+Shift-Override only works if the keyboard's firmware defines shifted character mappings. Check your keyboard's documentation in `src/keyboards/` to see if it supports shift-override. If the keyboard doesn't define custom shift mappings, pressing 'S' displays a warning message and the setting is not changed.
 
 The shift-override state persists across reboots and is stored in flash memory. However:
 - If you flash firmware for a different keyboard (different make/model/protocol), the state automatically resets to the disabled state.
@@ -253,7 +253,7 @@ Whilst Command Mode is active, the converter suppresses normal HID reports to pr
 
 The suppression logic checks the Command Mode state before generating HID reports. If Command Mode is active, regular keystrokes are dropped—though the converter still receives them and processes their scancodes, it just doesn't forward them to the USB host.
 
-Modifier keys used for activation (like the shifts) are treated specially. Whilst you're holding both shifts to activate Command Mode, the converter stops reporting them as pressed to the host. This prevents applications from interpreting the prolonged shift hold as a shift key stuck down.
+Modifier keys used for activation (like the shifts) are treated specially. Whilst you're holding both shifts to activate Command Mode, the converter will still report them as pressed to the host for the duration of `SHIFT_HOLD_WAIT`, it will then send an empty keyboard report to the host on transition to Command Mode active. This prevents applications from interpreting the prolonged shift hold as a shift key stuck down.
 
 ### LED Feedback
 

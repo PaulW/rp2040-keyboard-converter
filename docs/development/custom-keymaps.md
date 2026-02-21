@@ -308,9 +308,11 @@ If a key doesn't work as expected, the UART debug output is your friend. Enable 
 
 ## Multi-Layer Keymaps
 
-The converter supports multi-layer keymaps (similar to QMK firmware), but many keyboards don't need this—single-layer keymaps are usually sufficient. If you're just remapping keys, you can skip this section entirely.
+The converter supports multi-layer keymaps (similar to QMK firmware), but if you're only remapping a few keys a single-layer keymap may be enough for that goal. If you're just remapping keys, you can skip this section entirely.
 
-Layers are useful for things like media controls, alternative key functions, or special modes that you access via a function key. The converter supports up to 8 layers (0-7), with Layer 0 being the base layer that's always active.
+Layers are useful for things like media controls, alternative key functions, or special modes that you access via a function key. The converter supports up to 8 layers (0-7, defined by `KEYMAP_MAX_LAYERS = 8` in [`src/common/lib/keymaps.h`](../../src/common/lib/keymaps.h)), with Layer 0 being the base layer that's always active.
+
+**Layer switching limitation:** Layer-switching keycodes (MO, TG, TO, OSL) are currently only defined for layers 1-3 in [`src/common/lib/hid_keycodes.h`](../../src/common/lib/hid_keycodes.h). Whilst you can define up to 8 layers in your keymap, you can only directly switch to layers 1-3 using the keycode macros described below. If you need layers 4-7, you would need to extend the keycode definitions in `hid_keycodes.h`, though three switchable layers (plus base layer 0) is typically sufficient for most use cases.
 
 ### How Layers Work
 
@@ -371,7 +373,7 @@ There are four types of layer operations, each with a different behaviour:
 **One-Shot (OSL)** - Layer activates for next keypress only  
 `OSL_1`, `OSL_2`, `OSL_3` activate the layer for a single keypress, then automatically deactivate. Press the one-shot key, then press another key—that key uses the upper layer, then you're back to the base layer. Useful for accessing symbols or special characters without holding a modifier.
 
-The keycodes follow a pattern: the operation type (MO, TG, TO, OSL) followed by an underscore and the layer number. You can only directly switch to Layers 1-3 using these keycodes, but the system supports up to Layer 7 for more complex configurations.
+These keycodes follow a pattern: the operation type (MO, TG, TO, OSL) followed by an underscore and the layer number. The current implementation only defines keycodes for layers 1-3 (stored in the 0xF0-0xFF keycode range in `hid_keycodes.h`). Accessing layers 4-7 would require extending these definitions by adding `KC_MO_4` through `KC_MO_7` and corresponding macros, though most use cases are well served by three switchable layers plus the base layer.
 
 ### Practical Example: Media Control Layer
 
@@ -417,7 +419,7 @@ The keys set to `TRNS` behave exactly as they do in Layer 0. You don't need to r
 
 ### When Should You Use Layers?
 
-Many keyboards don't need them, I'll grant you. A single-layer keymap where you've remapped a few keys is sufficient for the majority of use cases. But layers are useful when:
+If you're only remapping a few keys, a single-layer keymap may be enough. Layers are useful when:
 
 - **Media controls** - You want volume, playback, and mute accessible without a separate media keyboard
 - **Function key extensions** - Your keyboard lacks F13-F24 and you want them available on an upper layer

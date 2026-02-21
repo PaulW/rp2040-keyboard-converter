@@ -153,6 +153,8 @@
  * - v1: Initial version (log_level only)
  * - v2: Added shift_override_enabled, keyboard_id (for smart persistence across firmware updates)
  * - v3: Added layer_state, layers_hash (for layer state persistence with validation)
+ *        Note: layer_state/layers_hash inserted before flags in structure layout,
+ *        requiring manual preservation of shift_override_enabled during v2→v3 migration
  *
  * When adding fields:
  * 1. Add field to struct
@@ -349,7 +351,7 @@ void config_set_shift_override_enabled(bool enabled);
  * Example:
  * ```c
  * if (config_get_shift_override_enabled()) {
- *     printf("Shift-override active\n");
+ *     LOG_INFO("Shift-Override active\n");
  * }
  * ```
  */

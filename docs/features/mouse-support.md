@@ -111,7 +111,7 @@ Complete lack of movement despite successful initialisation usually indicates in
 
 ### Scroll Wheel Not Working
 
-Connect debug UART during power-on to see the detected mouse type. If scroll wheel isn't detected during initialisation, the mouse may not support the required protocol extensions.
+Connect debug UART during power-on to see the detected mouse type. If the scroll wheel isn't detected during initialisation, the mouse may not support the required protocol extensions.
 
 Try a different mouse to rule out mouse-specific protocol compatibility issues.
 

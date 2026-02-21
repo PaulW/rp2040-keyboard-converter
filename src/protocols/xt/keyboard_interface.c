@@ -175,9 +175,11 @@ static void keyboard_event_processor(uint8_t data_byte) {
             if (data_byte == XT_RESP_BAT_PASSED) {
                 LOG_DEBUG("Keyboard Self-Test Passed\n");
                 keyboard_state = INITIALISED;
+                __dmb();  // Memory barrier - ensure state write visible to main loop
             } else {
                 LOG_ERROR("Keyboard Self-Test Failed: 0x%02X\n", data_byte);
                 keyboard_state = UNINITIALISED;
+                __dmb();  // Memory barrier - ensure state write visible to main loop
                 pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
             }
             break;
@@ -260,6 +262,7 @@ static void __isr keyboard_input_event_handler(void) {
     if (start_bit != 1) {
         LOG_ERROR("Start Bit Validation Failed: start_bit=%i\n", start_bit);
         keyboard_state = UNINITIALISED;
+        __dmb();  // Memory barrier - ensure state write visible to main loop
         pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
         return;
     }
@@ -328,6 +331,7 @@ static void __isr keyboard_input_event_handler(void) {
 void keyboard_interface_task() {
     static uint8_t detect_stall_count = 0;
 
+    __dmb();  // Memory barrier - ensure we see latest state from IRQ
     if (keyboard_state == INITIALISED) {
         detect_stall_count = 0;  // Clear detection counter - keyboard is operational
         if (!ringbuf_is_empty() && tud_hid_ready()) {
@@ -473,6 +477,8 @@ void keyboard_interface_setup(uint data_pin) {
     if (!pio_irq_register_callback(&keyboard_input_event_handler)) {
         LOG_ERROR("XT Keyboard: Failed to register IRQ callback\n");
         // Release PIO resources before returning
+        pio_sm_set_enabled(pio_engine.pio, (uint)pio_engine.sm, false);
+        pio_sm_clear_fifos(pio_engine.pio, (uint)pio_engine.sm);
         pio_sm_unclaim(pio_engine.pio, pio_engine.sm);
         pio_remove_program(pio_engine.pio, &keyboard_interface_program, pio_engine.offset);
         pio_engine.pio    = NULL;

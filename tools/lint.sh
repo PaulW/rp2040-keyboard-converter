@@ -751,7 +751,13 @@ while IFS= read -r file; do
         /\/\*/ && !/\*\// { in_comment=1; next }
         in_comment && /\*\// { in_comment=0; next }
         in_comment { next }
-        /^  [^ \t]/ { count++ }
+        # Check for 2-space indentation at first level only
+        # Pattern matches lines starting with exactly 2 spaces followed by non-space
+        # This detects files using 2-space base indentation (most common issue)
+        # Avoids false positives from alignment (6, 10, 14... spaces for continuation)
+        /^  [^ \t]/ {
+            count++
+        }
         END { 
             if (count > 0) 
                 printf "%s: %d lines with 2-space indentation\n", FILENAME, count 

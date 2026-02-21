@@ -161,6 +161,7 @@ void mouse_event_processor(uint8_t data_byte) {
                     // If we hit this, then either the self test failed, or we have an error.
                     LOG_ERROR("Asking Mouse to Reset\n");
                     mouse_state = INIT_AWAIT_ACK;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
                     mouse_command_handler(ATPS2_CMD_RESET);
             }
             break;
@@ -169,6 +170,7 @@ void mouse_event_processor(uint8_t data_byte) {
                 case ATPS2_RESP_ACK:  // Acknowledged
                     LOG_INFO("ACK Received after Reset\n");
                     mouse_state = INIT_AWAIT_SELFTEST;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
                     break;
                 default:
                     LOG_DEBUG("Unknown ACK Response (0x%02X).  Asking again to Reset...\n",
@@ -183,11 +185,13 @@ void mouse_event_processor(uint8_t data_byte) {
                     LOG_INFO("Detecting Mouse Type\n");
                     mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;  // Reset Mouse ID
                     mouse_state = INIT_AWAIT_ID;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
                     break;
                 default:
                     LOG_DEBUG("Self-Test invalid response (0x%02X).  Asking again to Reset...\n",
                               data_byte);
                     mouse_state = INIT_AWAIT_ACK;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
                     mouse_command_handler(ATPS2_CMD_RESET);
             }
             break;
@@ -201,12 +205,14 @@ void mouse_event_processor(uint8_t data_byte) {
                         mouse_id                   = ATPS2_MOUSE_ID_STANDARD;
                         mouse_type_detect_sequence = 0;
                         mouse_state                = INIT_DETECT_MOUSE_TYPE;
+                        __dmb();  // Memory barrier - ensure state write visible to main loop
                         mouse_command_handler(ATPS2_MOUSE_CMD_SET_SAMPLE_RATE);
                     } else {
                         LOG_INFO("Mouse Type: Standard PS/2 Mouse\n");
                         mouse_max_packets     = ATPS2_MOUSE_PACKET_STANDARD_SIZE;
                         mouse_config_sequence = 0;
                         mouse_state           = INIT_SET_CONFIG;
+                        __dmb();  // Memory barrier - ensure state write visible to main loop
                         mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
                     }
                     break;
@@ -214,12 +220,14 @@ void mouse_event_processor(uint8_t data_byte) {
                     if (mouse_id == ATPS2_MOUSE_ID_STANDARD) {
                         mouse_id    = ATPS2_MOUSE_ID_INTELLIMOUSE;
                         mouse_state = INIT_DETECT_MOUSE_TYPE;
+                        __dmb();  // Memory barrier - ensure state write visible to main loop
                         mouse_command_handler(ATPS2_MOUSE_CMD_SET_SAMPLE_RATE);
                     } else {
                         LOG_INFO("Mouse Type: Mouse with Scroll Wheel\n");
                         mouse_max_packets     = ATPS2_MOUSE_PACKET_EXTENDED_SIZE;
                         mouse_config_sequence = 0;
                         mouse_state           = INIT_SET_CONFIG;
+                        __dmb();  // Memory barrier - ensure state write visible to main loop
                         mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
                     }
                     break;
@@ -229,11 +237,13 @@ void mouse_event_processor(uint8_t data_byte) {
                     mouse_id              = ATPS2_MOUSE_ID_INTELLIMOUSE_EXPLORER;
                     mouse_config_sequence = 0;
                     mouse_state           = INIT_SET_CONFIG;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
                     mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
                     break;
                 default:
                     LOG_ERROR("Unknown Mouse Type (0x%02X), Asking again to Reset...\n", data_byte);
                     mouse_state = INIT_AWAIT_ACK;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
                     mouse_command_handler(ATPS2_CMD_RESET);
                     break;
             }
@@ -275,6 +285,7 @@ void mouse_event_processor(uint8_t data_byte) {
                             // Re-request Mouse ID
                             mouse_type_detect_sequence = 0;
                             mouse_state                = INIT_AWAIT_ID;
+                            __dmb();  // Memory barrier - ensure state write visible to main loop
                             mouse_command_handler(ATPS2_CMD_GET_ID);
                             break;
                     }
@@ -286,6 +297,7 @@ void mouse_event_processor(uint8_t data_byte) {
                     mouse_max_packets          = ATPS2_MOUSE_PACKET_STANDARD_SIZE;
                     mouse_config_sequence      = 0;
                     mouse_state                = INIT_SET_CONFIG;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
                     mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
             }
             break;
@@ -302,7 +314,8 @@ void mouse_event_processor(uint8_t data_byte) {
                 if (mouse_config_sequence == sizeof(config_sequence) / sizeof(config_sequence[0])) {
                     mouse_config_sequence = 0;
                     mouse_state           = INITIALISED;
-                    data_loop             = 0;  // Reset packet alignment on initialisation
+                    __dmb();        // Memory barrier - ensure state write visible to main loop
+                    data_loop = 0;  // Reset packet alignment on initialisation
                     // Clear extended-mouse fields in case mouse type changed
                     buttons[BUTTON_BACKWARD] = 0;
                     buttons[BUTTON_FORWARD]  = 0;
@@ -405,7 +418,8 @@ static void __isr mouse_input_event_handler(void) {
     if (start_bit != 0) {
         LOG_ERROR("Start Bit Validation Failed: start_bit=%i\n", start_bit);
         mouse_state = UNINITIALISED;
-        mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;
+        __dmb();  // Memory barrier - ensure state write visible to main loop
+        mouse_id = ATPS2_MOUSE_ID_UNKNOWN;
         pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
         return;
     }
@@ -414,7 +428,8 @@ static void __isr mouse_input_event_handler(void) {
     if (stop_bit != 1) {
         LOG_ERROR("Stop Bit Validation Failed: stop_bit=%i\n", stop_bit);
         mouse_state = UNINITIALISED;
-        mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;
+        __dmb();  // Memory barrier - ensure state write visible to main loop
+        mouse_id = ATPS2_MOUSE_ID_UNKNOWN;
         pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
         return;
     }
@@ -424,7 +439,8 @@ static void __isr mouse_input_event_handler(void) {
         LOG_ERROR("Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check,
                   parity_bit);
         mouse_state = UNINITIALISED;
-        mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;
+        __dmb();  // Memory barrier - ensure state write visible to main loop
+        mouse_id = ATPS2_MOUSE_ID_UNKNOWN;
         pio_restart(pio_engine.pio, pio_engine.sm, pio_engine.offset);
         mouse_command_handler(ATPS2_CMD_RESEND);  // Request Resend (after restart so it transmits)
         return;
@@ -451,6 +467,7 @@ void mouse_interface_task() {
     // Here we handle Timeout events. If we don't receive responses from an attached Mouse with a
     // set period of time for any condition other than INITIALISED, we will then perform an
     // appropriate action.
+    __dmb();  // Memory barrier - ensure we see latest state from IRQ
     if (mouse_state != INITIALISED) {
         // If we are in an uninitialised state, we will send a reset command to the Mouse.
         static uint32_t detect_ms = 0;
@@ -525,12 +542,15 @@ void mouse_interface_setup(uint data_pin) {
 
     // Register mouse event handler with the dispatcher
     if (!pio_irq_register_callback(&mouse_input_event_handler)) {
+        LOG_ERROR("AT/PS2 Mouse: Failed to register IRQ callback\n");
+        // Release PIO resources before returning
+        pio_sm_set_enabled(pio_engine.pio, (uint)pio_engine.sm, false);
+        pio_sm_clear_fifos(pio_engine.pio, (uint)pio_engine.sm);
         pio_sm_unclaim(pio_engine.pio, pio_engine.sm);
         pio_remove_program(pio_engine.pio, &pio_interface_program, pio_engine.offset);
         pio_engine.pio    = NULL;
         pio_engine.sm     = -1;
         pio_engine.offset = -1;
-        LOG_ERROR("AT/PS2 Mouse: Failed to register IRQ callback\n");
         return;
     }
 

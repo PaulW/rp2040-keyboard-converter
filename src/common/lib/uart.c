@@ -347,9 +347,9 @@ static inline void report_drop_stats(void) {
  * - Called from both enqueue functions and DMA completion handler
  *
  * @note This function must be called with interrupts enabled
- * @note The q_tail index will be advanced by dma_handler() upon completion
+ * @note The q_tail index will be advanced by uart_dma_complete_handler() upon completion
  */
-static void start_next_dma_if_needed() {
+static void start_next_dma_if_needed(void) {
     // Check hardware busy as well as our flag to avoid races
     if (queue_empty() || dma_active || dma_channel_is_busy(uart_dma_chan)) {
         return;
@@ -368,7 +368,7 @@ static void start_next_dma_if_needed() {
 
     dma_channel_set_read_addr(uart_dma_chan, entry->buf, false);
     dma_channel_set_trans_count(uart_dma_chan, len, true);
-    // q_tail will be advanced in dma_handler() once this transfer completes
+    // q_tail will be advanced in uart_dma_complete_handler() once this transfer completes
 }
 
 /**
@@ -385,7 +385,7 @@ static void start_next_dma_if_needed() {
  * Handler Priority: Low (configured in init_uart_dma)
  * Execution Context: Interrupt (keep minimal and fast)
  */
-static void __isr dma_handler() {
+static void __isr uart_dma_complete_handler(void) {  // NOLINT(bugprone-reserved-identifier)
     uint32_t mask = 1U << uart_dma_chan;
     if (dma_hw->ints0 & mask) {
         dma_hw->ints0 = mask;  // clear IRQ flag
@@ -651,7 +651,7 @@ static stdio_driver_t dma_stdio_driver = {
  *
  * 3. **Interrupt System Setup**:
  *    - Enables DMA completion interrupts for allocated channel
- *    - Registers dma_handler() as exclusive interrupt handler
+ *    - Registers uart_dma_complete_handler() as exclusive interrupt handler
  *    - Sets low priority to avoid interfering with real-time code
  *    - Enables interrupt in NVIC for DMA_IRQ_0
  *
@@ -724,9 +724,9 @@ void init_uart_dma() {
     uint32_t mask = 1U << uart_dma_chan;
     dma_hw->ints0 = mask;
 
-    irq_set_exclusive_handler(DMA_IRQ_0, &dma_handler);  // Set our handler function
-    irq_set_enabled(DMA_IRQ_0, true);                    // Enable the interrupt
-    irq_set_priority(DMA_IRQ_0, 0xC0);                   // Low priority (0=highest, 255=lowest)
+    irq_set_exclusive_handler(DMA_IRQ_0, &uart_dma_complete_handler);  // Set our handler function
+    irq_set_enabled(DMA_IRQ_0, true);                                  // Enable the interrupt
+    irq_set_priority(DMA_IRQ_0, 0xC0);  // Low priority (0=highest, 255=lowest)
 
     // Register this implementation as the system stdio driver
     // This replaces the standard Pico SDK UART stdio functionality

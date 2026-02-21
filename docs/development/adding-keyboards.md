@@ -200,12 +200,16 @@ const uint8_t keymap_layer_count = sizeof(keymap_map) / sizeof(keymap_map[0]);
 
 The `keymap_layer_count` variable is automatically calculated using `sizeof` to determine how many layers are defined in `keymap_map`. This eliminates manual maintenance and prevents the layer count from drifting out of sync with the actual number of layers defined. The calculation must appear **after** the `keymap_map` definition so the compiler knows the array's size.
 
-Layer keycodes:
+**Layer limits:** The firmware supports up to 8 layers (`KEYMAP_MAX_LAYERS = 8` in [`src/common/lib/keymaps.h`](../../src/common/lib/keymaps.h)), but layer-switching keycodes are currently only defined for layers 1–3 in [`src/common/lib/hid_keycodes.h`](../../src/common/lib/hid_keycodes.h). This means you can define up to 8 layers in your keymap, but can only directly switch to layers 1–3 using the keycode macros below.
+
+Layer keycodes (layers 1–3 only):
 - **MO_1, MO_2, MO_3**: Momentary layer switch whilst held
 - **TG_1, TG_2, TG_3**: Toggle layer on/off
 - **TO_1, TO_2, TO_3**: Switch to layer permanently
 - **OSL_1, OSL_2, OSL_3**: One-shot layer (next key only)
 - **TRNS**: Transparent—passes through to lower layer
+
+**Using layers 4–7:** If you need additional layers beyond layer 3, you would need to extend the keycode definitions in `hid_keycodes.h` (adding `KC_MO_4` through `KC_MO_7`, etc.) and update the corresponding macros and static assertions. However, three switchable layers (plus the base layer 0) is typically sufficient for most use cases—one for functions, one for navigation, and one for media or gaming.
 
 **NumLock Handling:** If you need consistent navigation on the numpad across hosts, consider adding a function layer that maps the numpad positions to HOME/UP/PGUP and similar keys rather than creating a dedicated NumLock layer.
 
@@ -281,14 +285,13 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
 ```
 
 **Runtime validation:**
-The converter automatically detects configuration errors at runtime. If you define a shift-override array for a layer that doesn't exist in your keymap, an error is logged to UART when that layer is accessed:
+The firmware performs a simple presence check at boot time and when toggling shift-override via Command Mode:
 
-```text
-[ERR] Shift-override array entry [1] exists but keyboard only defines Layer 0!
-[ERR] Fix keyboard.c: Either add Layer 1 to keymap_map or remove shift-override entry [1]
-```
+- **Presence check**: Verifies that `keymap_shift_override_layers` is defined (not NULL)
+- **Boot-time**: If shift-override is enabled in persistent config but the array is missing, the feature is automatically disabled with log messages: `[WARN] Shift-Override enabled in config but keyboard doesn't define shift mappings` and `[INFO] Disabling shift-override`
+- **Command Mode toggle**: If user attempts to enable shift-override (via `S` key) but the array is missing, command rejected: `[WARN] Shift-Override not available`
 
-This prevents undefined behaviour from stale or incorrect shift-override definitions.
+There's no per-layer validation—the firmware only checks whether the array exists. You're responsible for ensuring shift-override entries correspond to defined layers (layers that exist in `keymap_map`).
 
 **When to use shift-override:**
 - Terminal keyboards with non-standard legends (IBM 327x, 3270, 522x series)
@@ -301,7 +304,7 @@ This prevents undefined behaviour from stale or incorrect shift-override definit
 
 **Enabling shift-override:**
 
-Shift-override is **disabled by default** even if your keyboard defines the array. Users must explicitly enable it through Command Mode:
+Shift-Override is **disabled by default** even if your keyboard defines the array. Users must explicitly enable it through Command Mode:
 
 1. Hold both shifts for 3 seconds (enter Command Mode)
 2. Press 'S' to toggle shift-override on/off

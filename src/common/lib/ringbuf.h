@@ -59,9 +59,8 @@
  * - Memory barriers ensure correctness with minimal overhead (+1 cycle)
  *
  * Overflow Handling:
- * - Defensive check in ringbuf_put() logs error if called when full
- * - Simple logging - no counters or statistics tracking
- * - Data discarded when buffer full (IRQ cannot block)
+ * - No internal bounds check — caller MUST call ringbuf_is_full() before ringbuf_put()
+ * - Data is silently discarded in the caller when buffer is full (IRQ cannot block)
  *
  * Usage Pattern:
  * ```c

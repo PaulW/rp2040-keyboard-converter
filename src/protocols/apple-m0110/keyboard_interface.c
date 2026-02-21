@@ -223,6 +223,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
                               data_byte);
                 }
                 keyboard_state = INITIALISED;
+                __dmb();  // Memory barrier - ensure state write visible to main loop
                 keyboard_command_handler(M0110_CMD_INQUIRY);
                 last_command_time = board_millis();
                 __dmb();  // Memory barrier - ensure volatile write is visible to main loop
@@ -474,6 +475,8 @@ void keyboard_interface_setup(uint data_pin) {
     if (!pio_irq_register_callback(&keyboard_input_event_handler)) {
         LOG_ERROR("Apple M0110 Keyboard: Failed to register IRQ callback\n");
         // Release PIO resources before returning
+        pio_sm_set_enabled(pio_engine.pio, (uint)pio_engine.sm, false);
+        pio_sm_clear_fifos(pio_engine.pio, (uint)pio_engine.sm);
         pio_sm_unclaim(pio_engine.pio, pio_engine.sm);
         pio_remove_program(pio_engine.pio, &keyboard_interface_program, pio_engine.offset);
         pio_engine.pio    = NULL;

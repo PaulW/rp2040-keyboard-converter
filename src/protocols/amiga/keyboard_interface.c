@@ -182,6 +182,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
     // Transition to INITIALISED on first byte received
     if (keyboard_state == UNINITIALISED) {
         keyboard_state = INITIALISED;
+        __dmb();  // Memory barrier - ensure state write visible to main loop
         LOG_INFO("Amiga keyboard initialised\n");
     }
 
@@ -387,6 +388,14 @@ void keyboard_interface_setup(uint data_pin) {
     // Register keyboard event handler with the dispatcher
     if (!pio_irq_register_callback(&keyboard_input_event_handler)) {
         LOG_ERROR("Amiga Keyboard: Failed to register IRQ callback\n");
+        // Release PIO resources before returning
+        pio_sm_set_enabled(pio_engine.pio, (uint)pio_engine.sm, false);
+        pio_sm_clear_fifos(pio_engine.pio, (uint)pio_engine.sm);
+        pio_sm_unclaim(pio_engine.pio, pio_engine.sm);
+        pio_remove_program(pio_engine.pio, &keyboard_interface_program, pio_engine.offset);
+        pio_engine.pio    = NULL;
+        pio_engine.sm     = -1;
+        pio_engine.offset = -1;
         return;
     }
 

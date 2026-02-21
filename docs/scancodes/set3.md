@@ -221,7 +221,7 @@ Set 3 supports all AT/PS2 commands:
 
 ## Key Layout
 
-Set 3 organises scancodes more logically than Sets 1 or 2:
+Set 3 groups scancodes by key ranges, as shown below:
 
 ### Function Keys (0x01-0x0E)
 ```

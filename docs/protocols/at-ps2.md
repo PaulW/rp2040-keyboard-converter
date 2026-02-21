@@ -541,28 +541,33 @@ LEDs: Update to reflect new state
 7. Begin processing scancodes from keyboard
 ```
 
-**Graceful Handling of Hot-Plug** (Not Recommended, but possible):
+**Hot-Plug Behavior** (Not Recommended):
 
-Whilst hot-swapping keyboards can cause state machine issues, the converter provides defense-in-depth protection:
+Whilst hot-swapping keyboards is not recommended and can cause state machine issues, understanding how the converter handles unexpected codes may be helpful for debugging:
 
-**Protocol Layer Filtering:**
-- During initialisation (UNINITIALISED, INIT_AWAIT_SELFTEST states), the protocol layer filters self-test codes (0xAA, 0xFC)
-- Once INITIALISED, all codes pass through to the scancode layer
+**Protocol Layer Behavior:**
+- **During initialisation** (UNINITIALISED, INIT_AWAIT_SELFTEST states): The protocol layer expects 0xAA (BAT_PASSED) or triggers reset on any other byte (including 0xFC for failed BAT)
+- **Once INITIALISED**: All received bytes are forwarded unchanged to the scancode processor via the ring buffer—no protocol-layer filtering of 0xAA, 0xFC, or any other codes
 
-**Scancode Layer Defense-in-Depth:**
-- Provides additional filtering for post-initialisation scenarios (hot-plug, unstable connections)
-- Set 1 explicitly blacklists 0xAA/0xFC to prevent collision with valid scancodes (see [Set 1 Self-Test Code Collision](../scancodes/set1.md#self-test-code-collision))
-- Set 2/3 log these codes as potential re-plug events but don't process them as key events
+**Scancode Layer Behavior:**
+- **Set 1**: When in the E0-prefixed state, codes 0x2A, 0xAA, 0x36, and 0xB6 are ignored as "fake shift" sequences (see [Set 1 Self-Test Code Collision](../scancodes/set1.md#self-test-code-collision)). This is NOT a universal blacklist—0xAA is only handled specially when E0-prefixed. In INIT state, codes > 0xD3 log generically as `!INIT!` but are not processed as key events
+- **Set 2/3**: Codes 0xAA and 0xFC fall through to the default unmapped-code handler. In INIT state, any code ≥ 0x80 logs generically as `LOG_DEBUG("!INIT! (0x%02X)\n", code)`. This is not intentional "re-plug" detection—it's simply the generic logging for unmapped or out-of-range scancodes
 
-**What This Doesn't Provide:**
-- No active hot-swap detection (monitoring for unexpected 0xAA to trigger re-initialisation)
-- No automatic scancode processor state reset on detection
-- No re-running of full initialisation sequence
+**What This Implementation Doesn't Provide:**
+- No active hot-swap detection or monitoring for unexpected 0xAA
+- No automatic re-initialisation sequence on detection of device reset
+- No automatic scancode processor state reset
+- No clearing of partial multi-byte sequences
 
-**Graceful detection approach (if implemented):**
-- Monitor for unexpected 0xAA (indicates device reset/reconnection)
-- On detection: Re-run initialisation sequence
-- Clear scancode processor state (discard any partial multi-byte sequences)
+**Hypothetical Graceful Detection Approach:**
+
+If hot-swap detection were to be implemented, it might work as follows:
+- Monitor for unexpected 0xAA in post-initialisation scancode stream
+- On detection: Trigger re-initialisation sequence from protocol layer
+- Clear scancode processor state (discard any partial E0/E1/F0 sequences)
+- Re-run full keyboard initialisation (ID request, configuration, LED sync)
+
+This is not currently implemented—the converter simply forwards codes unchanged once INITIALISED.
 
 ### Keyboard Device IDs
 

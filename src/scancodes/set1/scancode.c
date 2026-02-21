@@ -41,7 +41,7 @@
  * - Used for special keys (Windows/GUI keys, application key)
  * - Used for multimedia keys (power, sleep, wake)
  */
-static const uint8_t e0_code_translation[64] = {
+static const uint8_t e0_code_translation[128] = {
     [0x1C] = 0x6F,  // Keypad Enter
     [0x1D] = 0x7A,  // Right Control
     [0x35] = 0x7F,  // Keypad Slash (/)
@@ -143,6 +143,7 @@ void process_scancode(uint8_t code) {
                     break;
                 default:  // Handle normal key event
                     if (code <= 0xD3) {
+                        // 0xAA (170 decimal) <= 0xD3 (211 decimal) - treated as normal break code
                         handle_keyboard_report(code & 0x7F, code < 0x80);
                     } else {
                         LOG_DEBUG("!INIT! (0x%02X)\n", code);
@@ -153,7 +154,7 @@ void process_scancode(uint8_t code) {
         case E0:  // E0-Prefixed
             switch (code) {
                 case 0x2A:
-                case 0xAA:
+                case 0xAA:  // Filtered as fake shift, NOT as self-test code
                 case 0x36:
                 case 0xB6:
                     // ignore fake shift

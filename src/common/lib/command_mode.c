@@ -41,7 +41,7 @@
 
 #ifdef CONVERTER_LEDS
 // External flag from led_helper.c to control LED colors during log level selection
-extern volatile bool log_level_selection_mode;
+extern bool log_level_selection_mode;
 #endif
 
 /**
@@ -53,18 +53,18 @@ extern volatile bool log_level_selection_mode;
  *          └─> IDLE (normal operation)
  *
  *   SHIFT_HOLD_WAIT ──┬─> COMMAND_ACTIVE (held 3 seconds with only shifts)
- *                      ├─> IDLE (shifts released before 3s)
- *                      └─> IDLE (any other key pressed - abort)
+ *                     ├─> IDLE (shifts released before 3s)
+ *                     └─> IDLE (any other key pressed - abort)
  *
  *   COMMAND_ACTIVE ──┬─> Bootloader (command 'B' executed - device resets)
- *                     ├─> LOG_LEVEL_SELECT (command 'D' for debug level)
- *                     ├─> IDLE (command 'F' for factory reset)
- *                     └─> IDLE (3 second timeout)
+ *                    ├─> LOG_LEVEL_SELECT (command 'D' for debug level)
+ *                    ├─> IDLE (command 'F' for factory reset)
+ *                    └─> IDLE (3 second timeout)
  *
  *   LOG_LEVEL_SELECT ──┬─> IDLE (key '1' = ERROR level)
- *                       ├─> IDLE (key '2' = INFO level)
- *                       ├─> IDLE (key '3' = DEBUG level)
- *                       └─> IDLE (3 second timeout)
+ *                      ├─> IDLE (key '2' = INFO level)
+ *                      ├─> IDLE (key '3' = DEBUG level)
+ *                      └─> IDLE (3 second timeout)
  *
  * HID Report Behavior:
  * - IDLE: Normal HID reports sent to host
@@ -368,7 +368,7 @@ static void handle_shift_hold_wait_timeout(uint32_t now_ms) {
 #endif
         LOG_INFO("Command mode active! Press:\n");
         LOG_INFO("  B = Bootloader     D = Log level    F = Factory reset\n");
-        LOG_INFO("  L = LED brightness S = Shift-override\n");
+        LOG_INFO("  L = LED brightness S = Shift-Override\n");
         LOG_INFO("Or wait 3s to cancel\n");
     }
 }
@@ -589,8 +589,8 @@ static bool command_handle_factory_reset(void) {
     // Flush UART before reboot
     uart_dma_flush();
 
-    // Reboot device using watchdog (cleanest reboot method)
-    // Parameters: delay_ms=0 (immediate), scratch0=0, scratch1=0 (no custom values)
+    // Reboot device using watchdog (clean reset path)
+    // Parameters are passed as zeros to trigger an immediate reboot via the ROM reset path.
     watchdog_reboot(0, 0, 0);
 
     // Never returns
@@ -633,9 +633,9 @@ static bool command_handle_shift_override_toggle(void) {
     // Only allow toggle if keyboard defines shift-override arrays
     if (keymap_shift_override_layers == NULL) {
         LOG_WARN(
-            "Shift-override not available (keyboard doesn't define custom shift "
+            "Shift-Override not available (keyboard doesn't define custom shift "
             "mappings)\n");
-        command_mode_exit("Shift-override not available");
+        command_mode_exit("Shift-Override not available");
         return false;
     }
 
@@ -644,7 +644,7 @@ static bool command_handle_shift_override_toggle(void) {
     config_set_shift_override_enabled(new_value);
     config_save();  // Persist to flash
 
-    command_mode_exit(new_value ? "Shift-override enabled" : "Shift-override disabled");
+    command_mode_exit(new_value ? "Shift-Override enabled" : "Shift-Override disabled");
     return false;
 }
 

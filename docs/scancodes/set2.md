@@ -166,7 +166,7 @@ Your state machine grows to 9 states to handle all the possible sequences. Every
 | `0xFE` | Resend request |
 | `0xFF` | Error/Buffer overflow |
 
-**Self-Test Codes (`0xAA`, `0xFC`):** These keyboard initialisation codes are filtered by the protocol layer during initialisation. The scancode processor does not filter these codes, so post‑initialisation filtering relies on the protocol layer. Unlike Set 1, Set 2 has no collision issue since break codes use the F0 prefix. See [Set 1 Self-Test Code Collision](set1.md#self-test-code-collision) for comparison.
+**Self-Test Codes (`0xAA`, `0xFC`):** These keyboard initialisation codes are filtered by the protocol layer during initialisation. The scancode processor does not filter these codes, so post‑initialisation filtering relies on the protocol layer. Unlike Set 1, Set 2 has no collision issue, since break codes use the F0 prefix. See [Set 1 Self-Test Code Collision](set1.md#self-test-code-collision) for comparison.
 
 ## Example Sequences
 

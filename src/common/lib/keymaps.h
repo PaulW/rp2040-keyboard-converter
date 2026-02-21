@@ -28,10 +28,10 @@
 #define KEYMAP_COLS       16
 #define KEYMAP_MAX_LAYERS 8
 
-// Shift-override array size: Each layer's shift-override array must be exactly this size
+// Shift-Override array size: Each layer's shift-override array must be exactly this size
 #define SHIFT_OVERRIDE_ARRAY_SIZE 256
 
-// Shift-override flag: Set bit 7 in keymap_shift_override_layers[] to suppress shift modifier
+// Shift-Override flag: Set bit 7 in keymap_shift_override_layers[] to suppress shift modifier
 #define SUPPRESS_SHIFT 0x80
 
 /**

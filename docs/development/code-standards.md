@@ -30,15 +30,17 @@ The firmware runs in a constrained environment with tight timing requirements. C
 
 ## Code Formatting
 
-### Automated Formatting with clang-format
+### Formatting Guidelines
 
-The project uses clang-format based on Google style with customisations for readability and consistency. The formatting configuration is:
+The project defines formatting guidelines based on clang-format style (Google style with customisations) for code review consistency. This configuration is documented in `.coderabbit.yaml` and used by automated PR reviews to assess code style:
 
 ```text
 { BasedOnStyle: Google, ReflowComments: true, UseTab: Never, AllowShortIfStatementsOnASingleLine: false, AllowShortFunctionsOnASingleLine: false, AlwaysBreakBeforeMultilineStrings: true, AllowAllParametersOfDeclarationOnNextLine: true, AlignConsecutiveAssignments: true, AlignConsecutiveBitFields: true, AlignConsecutiveDeclarations: true, AlignConsecutiveMacros: true, ColumnLimit: 100, IndentWidth: 4 }
 ```
 
-**Key formatting rules:**
+**Important:** There is no `.clang-format` file in the repository, and clang-format is not run during CI or build processes. The configuration above serves as a guideline for manual code review and editor formatting only.
+
+**Key formatting guidelines:**
 - **IndentWidth: 4** - Four spaces per indentation level
 - **UseTab: Never** - Spaces only, no tab characters
 - **ColumnLimit: 100** - Target line length (can exceed for alignment)
@@ -46,7 +48,9 @@ The project uses clang-format based on Google style with customisations for read
 - **AllowShortIfStatementsOnASingleLine: false** - Always use braces and multiple lines
 - **AllowShortFunctionsOnASingleLine: false** - Function bodies always on separate lines
 
-If using VSCode, copy `.vscode.example/settings.json` to `.vscode/settings.json` to enable automatic formatting on save.
+**Indentation Enforcement:** The 4-space indentation rule and tab prohibition are enforced by [`tools/lint.sh`](../../tools/lint.sh), which validates all source files before commits. Code between `// clang-format off` and `// clang-format on` markers is exempt from indentation checks to allow hand-formatted tables or aligned data structures.
+
+**Editor Support (Optional):** If using VSCode, copy `.vscode.example/settings.json` to `.vscode/settings.json` to enable editor-level formatting on save for convenience. This is not required and does not affect project-level enforcement.
 
 ### Indentation and Spacing
 

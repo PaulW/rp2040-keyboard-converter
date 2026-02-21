@@ -14,7 +14,7 @@ The interface reports up to 6 simultaneous regular keys plus all 8 modifiers (bo
 
 The converter provides low-latency keyboard conversion with minimal processing overhead. The non-blocking architecture ensures responsive keystroke handling without dropped inputs.
 
-The converter can handle simultaneous keyboard and mouse conversion if you have an AT/PS2 mouse to connect. LED indicators (Caps Lock, Num Lock, Scroll Lock) synchronise properly with the host OS, so the keyboard's lock LEDs update when you press the lock keys—assuming your keyboard protocol supports LED control.
+When built with mouse support, the converter can handle simultaneous keyboard and mouse conversion if you have an AT/PS2 mouse to connect. LED indicators (Caps Lock, Num Lock, Scroll Lock) synchronise properly with the host OS, so the keyboard's lock LEDs update when you press the lock keys—assuming your keyboard protocol supports LED control.
 
 **See:** [USB HID Guide](usb-hid.md) for complete technical details about report formats, timing, and USB polling
 
@@ -72,11 +72,11 @@ LED indicators provide visual feedback about converter status, including operati
 - Power indication
 - Error states and protocol issues
 
-The status LED shows different colours depending on what's happening. Solid green means everything's working normally. Solid orange appears briefly during startup whilst firmware initialises. Alternating green and blue indicates Command Mode is active and waiting for you to press a command key. Solid magenta means bootloader mode (firmware flash mode). These patterns make it easy to tell what's going on without needing to connect debug tools.
+The status LED shows different colours depending on what's happening. Solid green means everything's working normally. Solid orange (`CONVERTER_LEDS_STATUS_NOT_READY_COLOR`) appears whenever the converter is not ready—typically during startup whilst firmware initialises, or if the keyboard/mouse is uninitialised. Alternating green and blue indicates Command Mode is active and waiting for you to press a command key. Solid magenta means bootloader mode (firmware flash mode). These patterns make it easy to tell what's going on without needing to connect debug tools.
 
 **Keyboard Lock Indicators:**
 
-For keyboard lock indicators (Caps Lock, Num Lock, Scroll Lock), the converter handles synchronisation automatically. When a lock key is pressed, the host OS sends LED states back through the HID protocol. The converter forwards these states to the keyboard using the appropriate LED command format for the protocol—AT/PS2 keyboards receive the 0xED command, Amiga keyboards use handshake timing variations, whilst XT and M0110 keyboards don't support LED control (unidirectional protocols).
+For keyboard lock indicators (Caps Lock, Num Lock, Scroll Lock), the converter handles synchronisation automatically. When a lock key is pressed, the host OS sends LED states back through the HID protocol. The converter forwards these states to the keyboard using the appropriate LED command format for the protocol. AT/PS2 keyboards receive the standard 0xED LED command followed by a bitmap. Amiga keyboards have special handling for CAPS LOCK only (bit 7 of the CAPS LOCK scancode represents the LED state). XT and Apple M0110 keyboards do not support LED control—both use unidirectional protocols with no host-to-keyboard commands. See the protocol implementations in `src/protocols/` and respective protocol documentation for detailed behaviour.
 
 **Optional WS2812 RGB LED:**
 - Status indicator (Command Mode)
@@ -94,7 +94,7 @@ WS2812 RGB LEDs (NeoPixels) can be added for enhanced visual feedback. These con
 
 Mouse support allows connection of a mouse alongside the keyboard, providing complete period-accurate input hardware. The mouse operates independently from the keyboard using separate GPIO pins and a separate PIO state machine, preventing any signal interference.
 
-AT/PS2 protocol mice are currently supported, covering mid-1980s through early 2000s devices that follow the standard packet formats. The converter handles standard 3-byte packets (buttons, X movement, Y movement) and extended 4-byte packets for mice with scroll wheels (IntelliMouse protocol). Scroll wheel detection occurs automatically during initialisation.
+AT/PS2 protocol mice that follow the standard packet formats are currently supported. The converter handles standard 3-byte packets (buttons, X movement, Y movement) and extended 4-byte packets for mice with scroll wheels (IntelliMouse protocol). Scroll wheel detection occurs automatically during initialisation.
 
 Mouse support is protocol-agnostic and works with any keyboard protocol. An AT/PS2 mouse can be paired with XT, Amiga, or M0110 keyboards because the mouse uses dedicated hardware lines (CLOCK and DATA separate from keyboard lines), allowing parallel operation without coordination. Press keys whilst moving the mouse, scroll whilst holding modifier keys, click whilst typing—everything works as expected because the signals never cross paths.
 
@@ -124,14 +124,14 @@ Keyboard layers provide a way to access multiple sets of key functions from the 
 The converter supports up to 8 layers (numbered 0-7). Layer 0 is always active as the base layer, and upper layers overlay on top. Keys can be transparent in upper layers, falling through to lower active layers until a keycode is found, so you only need to define the keys that actually change.
 
 **Layer activation methods:**
-- **Momentary (MO)**: Active whilst held, like a traditional Fn key
-- **Toggle (TG)**: Stays on until toggled off again (persists across reboots)
-- **Switch To (TO)**: Permanently switches to that layer (persists across reboots)
-- **One-Shot (OSL)**: Activates for exactly one keypress
+- **Momentary (MO)**: Active whilst held, like a traditional Fn key (does not persist)
+- **Toggle (TG)**: Stays on until toggled off again (persists across reboots via `config_set_layer_state()` and `config_save()`)
+- **Switch To (TO)**: Permanently switches to that layer (persists across reboots via `config_set_layer_state()` and `config_save()`)
+- **One-Shot (OSL)**: Activates for exactly one keypress (does not persist)
 
-Practical use cases include adding media controls (volume, playback) to keyboards that lack dedicated keys, accessing function keys F13-F24 on compact keyboards, providing numpad navigation for macOS (which doesn't use NumLock), or switching between QWERTY and alternative layouts like Dvorak or Colemak.
+Practical use cases include adding media controls (volume, playback) to keyboards that lack dedicated keys, accessing function keys F13-F24 on compact keyboards, providing numpad navigation on keyboards without a NumLock key, or switching between QWERTY and alternative layouts like Dvorak or Colemak.
 
-The layer system is entirely optional. If your keyboard has all the keys you need, and you're not planning to remap anything, a single-layer keymap is perfectly adequate. Layers add flexibility without requiring hardware modifications.
+The layer system is entirely optional. If you do not use any layer-switch keycodes (MO, TG, TO, OSL), a single-layer keymap will work as expected. Layers add flexibility without requiring hardware modifications.
 
 **See:** [Keyboard Layers Guide](layers.md) for concepts and practical examples, or [Custom Keymaps Guide](../development/custom-keymaps.md) for implementation details
 

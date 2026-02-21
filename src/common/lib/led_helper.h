@@ -71,7 +71,7 @@ extern converter_state_union converter;
  * - Only accessed from main task context (command mode processing)
  * - No synchronisation needed
  */
-extern volatile bool cmd_mode_led_green;
+extern bool cmd_mode_led_green;
 
 /**
  * @brief Log Level Selection Mode Flag
@@ -84,7 +84,7 @@ extern volatile bool cmd_mode_led_green;
  * - Only accessed from main task context (command mode processing)
  * - No synchronisation needed
  */
-extern volatile bool log_level_selection_mode;
+extern bool log_level_selection_mode;
 #endif
 
 // Forward declaration for inline function below

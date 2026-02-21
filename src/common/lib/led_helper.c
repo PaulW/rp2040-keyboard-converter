@@ -42,10 +42,10 @@ static volatile uint32_t last_led_update_time_us = 0;
 static volatile bool led_update_pending = false;
 
 // Track which LED color to display during command mode (green or blue/pink)
-volatile bool cmd_mode_led_green = true;
+bool cmd_mode_led_green = true;
 
 // Track if we're in log level selection mode (changes LED colors to GREEN/PINK)
-volatile bool log_level_selection_mode = false;
+bool log_level_selection_mode = false;
 
 // Command mode LED colors
 #define CMD_MODE_LED_GREEN 0x00FF00 /**< Green LED for command mode phase 1 */

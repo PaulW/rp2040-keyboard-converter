@@ -73,24 +73,24 @@ Amiga systems used various physical connectors across different models.
 
 The A1000 used a 4-position modular connector (RJ-10, 4P4C):
 
-Pin | Signal | Description
-----|--------|-------------
- 1  | +5V    | Power supply (+5 volts)
- 2  | CLOCK  | Keyboard Clock (output from keyboard)
- 3  | DATA   | Keyboard Data (bidirectional)
- 4  | GND    | Ground reference (0V)
+| Pin | Signal | Description |
+|-----|--------|-------------|
+|  1  | +5V    | Power supply (+5 volts) |
+|  2  | CLOCK  | Keyboard Clock (output from keyboard) |
+|  3  | DATA   | Keyboard Data (bidirectional) |
+|  4  | GND    | Ground reference (0V) |
 
 **A2000, A3000 - DIN-5 Connector (180° Configuration)**
 
 These models used a 5-pin DIN connector (180° configuration):
 
-Pin | Signal | Description
-----|--------|-------------
- 1  | CLOCK  | Keyboard Clock (output from keyboard)
- 2  | DATA   | Keyboard Data (bidirectional)
- 3  | NC     | Not Connected
- 4  | GND    | Ground reference (0V)
- 5  | +5V    | Power supply (+5 volts)
+| Pin | Signal | Description |
+|-----|--------|-------------|
+|  1  | CLOCK  | Keyboard Clock (output from keyboard) |
+|  2  | DATA   | Keyboard Data (bidirectional) |
+|  3  | NC     | Not Connected |
+|  4  | GND    | Ground reference (0V) |
+|  5  | +5V    | Power supply (+5 volts) |
 
 **Note**: Some very early Amiga 2000 keyboards may have a different pinout.
 
@@ -98,26 +98,26 @@ Pin | Signal | Description
 
 The A4000T uses a 5-pin DIN connector:
 
-Pin | Signal | Description
-----|--------|-------------
- 1  | CLOCK  | Keyboard Clock (output from keyboard)
- 2  | DATA   | Keyboard Data (bidirectional)
- 3  | NC     | Not Connected
- 4  | GND    | Ground reference (0V)
- 5  | +5V    | Power supply (+5 volts)
+| Pin | Signal | Description |
+|-----|--------|-------------|
+|  1  | CLOCK  | Keyboard Clock (output from keyboard) |
+|  2  | DATA   | Keyboard Data (bidirectional) |
+|  3  | NC     | Not Connected |
+|  4  | GND    | Ground reference (0V) |
+|  5  | +5V    | Power supply (+5 volts) |
 
 **A4000 - 6-Pin Mini-DIN Connector**
 
 The A4000 uses a 6-pin mini-DIN connector (similar to PS/2 style):
 
-Pin | Signal | Description
-----|--------|-------------
- 1  | I/O    | Input/Output (function varies by configuration)
- 2  | NC     | Not Connected
- 3  | GND    | Ground reference (0V)
- 4  | +5V    | Power supply (+5 volts, 100mA)
- 5  | CLOCK  | Keyboard Clock (output from keyboard)
- 6  | NC     | Not Connected
+| Pin | Signal | Description |
+|-----|--------|-------------|
+|  1  | I/O    | Input/Output (function varies by configuration) |
+|  2  | NC     | Not Connected |
+|  3  | GND    | Ground reference (0V) |
+|  4  | +5V    | Power supply (+5 volts, 100mA) |
+|  5  | CLOCK  | Keyboard Clock (output from keyboard) |
+|  6  | NC     | Not Connected |
 
 **Note**: The A4000 and A4000T are not covered in the official Commodore Hardware Manual specification, so protocol compatibility cannot be guaranteed.
 
@@ -127,16 +127,16 @@ Pin | Signal | Description
 
 The A500 used an internal 8-pin header connector:
 
-Pin | Signal    | Description
-----|-----------|-------------
- 1  | CLOCK       | Keyboard Clock (output from keyboard)
- 2  | DATA      | Keyboard Data (bidirectional)
- 3  | RESET     | Reset signal
- 4  | VCC       | Power supply (+5 volts)
- 5  | KEY       | Keying pin (no connection)
- 6  | GND       | Ground reference (0V)
- 7  | Power LED | Power LED signal
- 8  | Drive LED | Drive LED signal
+| Pin | Signal    | Description |
+|-----|-----------|------------- |
+|  1  | CLOCK       | Keyboard Clock (output from keyboard) |
+|  2  | DATA      | Keyboard Data (bidirectional) |
+|  3  | RESET     | Reset signal |
+|  4  | VCC       | Power supply (+5 volts) |
+|  5  | KEY       | Keying pin (no connection) |
+|  6  | GND       | Ground reference (0V) |
+|  7  | Power LED | Power LED signal |
+|  8  | Drive LED | Drive LED signal |
 
 **Note**: LED signals on the A500 connector are optional and not required for basic keyboard operation. The protocol itself does not define LED control; if present, these are system-specific implementations.
 
@@ -613,7 +613,7 @@ Amiga keyboards handle CAPS LOCK with unique behavior requiring sophisticated sy
 The converter must keep keyboard LED state and USB HID state synchronised, especially after reboot:
 
 | Keyboard LED | USB HID | Converter Action | Reason |
-|--------------|---------|------------------|---------|
+|--------------|---------|------------------|--------|
 | OFF | OFF | **SKIP** toggle | Already synchronised |
 | OFF | ON | **SEND** toggle | Need to turn USB OFF |
 | ON | OFF | **SEND** toggle | Need to turn USB ON |
@@ -621,7 +621,7 @@ The converter must keep keyboard LED state and USB HID state synchronised, espec
 
 **Implementation Strategy**:
 
-The converter implements smart synchronisation by comparing keyboard LED state against USB HID state. Only when states differ does it queue a press+release toggle sequence. A 125ms hold time between press and release ensures MacOS compatibility.
+The converter implements smart synchronisation by comparing keyboard LED state against USB HID state. Only when states differ does it queue a press+release toggle sequence. A 125ms hold time between press and release ensures macOS compatibility.
 
 **Synchronisation Logic**:
 ```c

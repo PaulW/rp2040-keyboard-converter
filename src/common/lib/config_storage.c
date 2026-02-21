@@ -285,86 +285,120 @@ static void init_factory_defaults(config_data_t* cfg) {
     cfg->flags.dirty = 1;                  // Mark as needing save
 }
 
-// --- Public API Implementation ---
-
-bool config_init(void) {
-    if (g_initialised) {
-        LOG_WARN("Config already initialised\n");
-        return true;
-    }
-
-    LOG_INFO("Initialising configuration system...\n");
-
-    // Read both copies from flash
+/**
+ * @brief Load and select best flash config copy
+ *
+ * Reads both flash copies, validates them, and selects the best source:
+ * - Both valid: Use newest (highest sequence number)
+ * - One valid: Use that one
+ * - Both corrupt: Return NULL
+ *
+ * @return Pointer to selected flash copy, or NULL if both corrupt
+ */
+static const config_data_t* load_and_select_flash_copy(void) {
     const config_data_t* copy_a = read_flash_config(0);
     const config_data_t* copy_b = read_flash_config(1);
 
     bool a_valid = validate_config(copy_a);
     bool b_valid = validate_config(copy_b);
 
-    const config_data_t* source = NULL;
-
     if (a_valid && b_valid) {
         // Both valid - use newest (highest sequence number)
-        source = (copy_a->sequence > copy_b->sequence) ? copy_a : copy_b;
+        const config_data_t* source = (copy_a->sequence > copy_b->sequence) ? copy_a : copy_b;
         LOG_INFO("Config loaded: Using copy %s (seq=%u)\n", (source == copy_a) ? "A" : "B",
                  (unsigned int)source->sequence);
+        return source;
     } else if (a_valid) {
-        source = copy_a;
         LOG_WARN("Config loaded: Copy B corrupt, using copy A (seq=%u)\n",
-                 (unsigned int)source->sequence);
+                 (unsigned int)copy_a->sequence);
+        return copy_a;
     } else if (b_valid) {
-        source = copy_b;
         LOG_WARN("Config loaded: Copy A corrupt, using copy B (seq=%u)\n",
-                 (unsigned int)source->sequence);
-    } else {
-        // Both corrupt - use factory defaults
-        LOG_WARN("Config corrupt: Using factory defaults\n");
-        init_factory_defaults(&g_config);
-        g_initialised = true;
-        config_save();  // Save fresh config
-        return false;
+                 (unsigned int)copy_b->sequence);
+        return copy_b;
     }
 
+    return NULL;  // Both corrupt
+}
+
+/**
+ * @brief Migrate config from flash source to g_config
+ *
+ * Handles version upgrades and size-based migration:
+ * - Starts with factory defaults
+ * - Overlays data from source based on version size
+ * - Marks dirty if version upgraded
+ *
+ * @param source Flash config source to migrate from
+ * @return true if migration successful, false if invalid version/size
+ */
+static bool migrate_config_from_source(const config_data_t* source) {
     // Start with factory defaults
     init_factory_defaults(&g_config);
 
-    // Overlay data from flash (size-based migration)
-    if (source->version <= CONFIG_VERSION_CURRENT) {
-        size_t copy_size = get_config_size_for_version(source->version);
-
-        if (copy_size > 0 && copy_size <= sizeof(config_data_t)) {
-            // Copy whatever fits from old version
-            memcpy(&g_config, source, copy_size);
-
-            // Update version if upgraded
-            if (source->version < CONFIG_VERSION_CURRENT) {
-                LOG_INFO("Config upgraded: v%d → v%d\n", source->version, CONFIG_VERSION_CURRENT);
-                g_config.version     = CONFIG_VERSION_CURRENT;
-                g_config.flags.dirty = 1;  // Mark for save
-            } else {
-                g_config.flags.dirty = 0;  // In sync with flash
-            }
-        } else {
-            LOG_ERROR("Invalid config size for v%d, using defaults\n", source->version);
-            init_factory_defaults(&g_config);
-            g_initialised = true;
-            config_save();
-            return false;
-        }
-    } else {
-        // Config from future version - use defaults with warning
+    // Check version compatibility
+    if (source->version > CONFIG_VERSION_CURRENT) {
         LOG_ERROR("Config from future version %d (current: %d), using defaults\n", source->version,
                   CONFIG_VERSION_CURRENT);
-        init_factory_defaults(&g_config);
-        g_initialised = true;
-        config_save();
         return false;
     }
 
-    g_initialised = true;
+    // Get size for source version
+    size_t copy_size = get_config_size_for_version(source->version);
 
-    // Smart persistence: Check if keyboard configuration changed
+    if (copy_size == 0 || copy_size > sizeof(config_data_t)) {
+        LOG_ERROR("Invalid config size for v%d, using defaults\n", source->version);
+        return false;
+    }
+
+    // Copy whatever fits from old version
+    memcpy(&g_config, source, copy_size);
+
+    // Special handling for v2→v3 migration: Preserve shift_override_enabled flag
+    // In v2, flags byte was at offset 18 (after keyboard_id)
+    // In v3, layer_state/layers_hash inserted before flags, moving it to offset 23
+    // The size-based copy only copies up to offset 18, so manually restore the flag
+    if (source->version == 2) {
+        // Read flags byte from v2 layout (offset 18)
+        const uint8_t* source_bytes  = (const uint8_t*)source;
+        uint8_t        v2_flags_byte = source_bytes[offsetof(config_data_t, layer_state)];
+        // Extract shift_override_enabled bit (bit 1) and preserve it
+        g_config.flags.shift_override_enabled = (v2_flags_byte >> 1) & 0x01;
+        LOG_DEBUG("v2→v3 migration: Preserved shift_override_enabled=%d\n",
+                  g_config.flags.shift_override_enabled);
+    }
+
+    // Update version if upgraded
+    if (source->version < CONFIG_VERSION_CURRENT) {
+        LOG_INFO("Config upgraded: v%d → v%d\n", source->version, CONFIG_VERSION_CURRENT);
+        g_config.version     = CONFIG_VERSION_CURRENT;
+        g_config.flags.dirty = 1;  // Mark for save
+    } else {
+        g_config.flags.dirty = 0;  // In sync with flash
+    }
+
+    return true;
+}
+
+/**
+ * @brief Handle factory fallback case
+ *
+ * Called when both flash copies are corrupt or migration fails.
+ * Initialises factory defaults, marks initialised, and saves.
+ */
+static void handle_factory_fallback(void) {
+    init_factory_defaults(&g_config);
+    g_initialised = true;
+    config_save();
+}
+
+/**
+ * @brief Apply keyboard persistence checks
+ *
+ * Smart persistence: If keyboard configuration changed (different keyboard_id),
+ * reset shift-override and layer state to defaults.
+ */
+static void apply_keyboard_persistence_checks(void) {
     uint32_t current_keyboard_id = get_keyboard_id();
     if (g_config.keyboard_id != current_keyboard_id) {
         LOG_INFO("Keyboard config changed (0x%08X → 0x%08X)\n", (unsigned int)g_config.keyboard_id,
@@ -377,15 +411,56 @@ bool config_init(void) {
             LAYERS_HASH_SENTINEL;  // First boot sentinel (will be recomputed by keylayers_init())
         g_config.flags.dirty = 1;  // Mark for save
     }
+}
 
-    // Sanity check: Validate shift-override availability
-    // If config says enabled but keyboard doesn't define shift-override arrays, disable it
+/**
+ * @brief Validate shift-override availability
+ *
+ * Sanity check: If config says enabled but keyboard doesn't define shift-override
+ * arrays, disable it and mark dirty for save.
+ */
+static void validate_shift_override(void) {
     if (g_config.flags.shift_override_enabled && keymap_shift_override_layers == NULL) {
-        LOG_WARN("Shift-override enabled in config but keyboard doesn't define shift mappings\n");
+        LOG_WARN("Shift-Override enabled in config but keyboard doesn't define shift mappings\n");
         LOG_INFO("Disabling shift-override (keymap_shift_override_layers not defined)\n");
         g_config.flags.shift_override_enabled = 0;
         g_config.flags.dirty                  = 1;  // Mark for save
     }
+}
+
+// --- Public API Implementation ---
+
+bool config_init(void) {
+    if (g_initialised) {
+        LOG_WARN("Config already initialised\n");
+        return true;
+    }
+
+    LOG_INFO("Initialising configuration system...\n");
+
+    // Phase 1: Load and select best flash copy
+    const config_data_t* source = load_and_select_flash_copy();
+    if (source == NULL) {
+        // Both corrupt - use factory defaults
+        LOG_WARN("Config corrupt: Using factory defaults\n");
+        handle_factory_fallback();
+        return false;
+    }
+
+    // Phase 2: Migrate config from source
+    if (!migrate_config_from_source(source)) {
+        // Migration failed (future version or invalid size)
+        handle_factory_fallback();
+        return false;
+    }
+
+    g_initialised = true;
+
+    // Phase 3: Apply keyboard persistence checks
+    apply_keyboard_persistence_checks();
+
+    // Phase 4: Validate shift-override availability
+    validate_shift_override();
 
     // Save if upgraded or keyboard changed
     if (g_config.flags.dirty) {
@@ -453,7 +528,7 @@ void config_set_shift_override_enabled(bool enabled) {
     if (current != enabled) {
         g_config.flags.shift_override_enabled = enabled ? 1 : 0;
         g_config.flags.dirty                  = 1;
-        LOG_DEBUG("Shift-override %s (pending save)\n", enabled ? "enabled" : "disabled");
+        LOG_DEBUG("Shift-Override %s (pending save)\n", enabled ? "enabled" : "disabled");
     }
 }
 

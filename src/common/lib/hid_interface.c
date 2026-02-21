@@ -133,9 +133,10 @@ static inline bool hid_send_report(uint8_t instance, uint8_t report_id, void con
         const char* prefix = result ? "[SENT-HID-REPORT]" : "[FAILED-HID-REPORT]";
         size_t offset = (size_t)snprintf(buffer, sizeof(buffer), "%s %02X ", prefix, report_id);
 
-        const uint8_t* p = (const uint8_t*)report;
+        const uint8_t* report_ptr = (const uint8_t*)report;
         for (uint16_t i = 0; i < len && offset < sizeof(buffer) - 4; i++) {
-            offset += (size_t)snprintf(buffer + offset, sizeof(buffer) - offset, "%02X ", *p++);
+            offset +=
+                (size_t)snprintf(buffer + offset, sizeof(buffer) - offset, "%02X ", *report_ptr++);
         }
 
         // Log at appropriate level based on result
@@ -203,22 +204,22 @@ static bool hid_keyboard_add_key(uint8_t key) {
     // Duplicate prevention approach to fix issue #19:
     // Single loop checks all 6 slots for duplicates whilst tracking first empty slot
     // Only adds key if: (1) not already present AND (2) empty slot available
-    uint8_t validSlot = UINT8_MAX;  // Invalid slot sentinel
+    uint8_t valid_slot = UINT8_MAX;  // Invalid slot sentinel
     for (uint8_t i = 0; i < 6; i++) {
         // Check for duplicate (already in report) - early return for performance
         if (keyboard_report.keycode[i] == key) {
             return false;  // Key already present, don't add again
         }
         // Remember first available slot (but don't use it yet!)
-        // Only check if we haven't found a slot yet (validSlot == UINT8_MAX)
-        if (keyboard_report.keycode[i] == 0 && validSlot == UINT8_MAX) {
-            validSlot = i;
+        // Only check if we haven't found a slot yet (valid_slot == UINT8_MAX)
+        if (keyboard_report.keycode[i] == 0 && valid_slot == UINT8_MAX) {
+            valid_slot = i;
         }
     }
 
     // If we found an empty slot and key wasn't already present, add it
-    if (validSlot < 6) {  // 0xFF > 6, so this checks if valid slot was found
-        keyboard_report.keycode[validSlot] = key;
+    if (valid_slot < 6) {  // 0xFF > 6, so this checks if valid slot was found
+        keyboard_report.keycode[valid_slot] = key;
         return true;
     }
 
@@ -331,7 +332,7 @@ void handle_keyboard_report(uint8_t rawcode, bool make) {
     if (IS_KEY(code) || IS_MOD(code)) {
         bool report_modified = false;
 
-        // Shift-override: temporarily remove shift modifiers if suppression requested
+        // Shift-Override: temporarily remove shift modifiers if suppression requested
         uint8_t saved_modifiers = 0;
         if (suppress_shift) {
             saved_modifiers = keyboard_report.modifier;
@@ -404,7 +405,7 @@ void handle_keyboard_report(uint8_t rawcode, bool make) {
  * - Bit 7: Right GUI (0xE7)
  *
  * Use Case:
- * - Shift-override system (keyboards with non-standard shift legends)
+ * - Shift-Override system (keyboards with non-standard shift legends)
  * - Some keyboards have non-standard shift characters (terminal, vintage, international)
  * - E.g., key has '6' legend but sends scancode for '7'
  *

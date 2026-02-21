@@ -103,36 +103,35 @@ Set 1 has a collision between self-test codes and valid scancodes. The self-test
 
 **Protocol Layer Filtering:**
 
-The protocol layer (XT, AT/PS2) filters self-test codes (`0xAA`, `0xFC`) during keyboard initialisation:
-- **XT Protocol**: Filters `0xAA` whilst in `UNINITIALISED` state
-- **AT/PS2 Protocol**: Filters `0xAA` and `0xFC` whilst in `UNINITIALISED` and `INIT_AWAIT_SELFTEST` states
-- Once `INITIALISED`, all codes pass through to the scancode layer
+The collision is mitigated by protocol-layer filtering during keyboard initialisation. The protocol layer (XT, AT/PS2) consumes self-test codes before they reach the scancode processor:
 
-**Defense-in-Depth at Scancode Layer:**
+- **XT Protocol**: Filters `0xAA` (BAT_PASSED) and `0xFC` (BAT_FAILED) whilst in `UNINITIALISED` state—only after receiving `0xAA` does it transition to `INITIALISED` and begin forwarding scancodes to the ring buffer (see [`src/protocols/xt/keyboard_interface.c`](../../src/protocols/xt/keyboard_interface.c) lines 176-183)
+- **AT/PS2 Protocol**: Expects `0xAA` (BAT_PASSED) in `INIT_AWAIT_SELFTEST` state—any other byte triggers a reset sequence; only after successful self-test does it transition to `INIT_READ_ID_1` and eventually `INITIALISED` (see [`src/protocols/at-ps2/keyboard_interface.c`](../../src/protocols/at-ps2/keyboard_interface.c) lines 278-298)
+- Once `INITIALISED`, all codes are forwarded unchanged to the scancode layer via the ring buffer—no protocol-layer filtering
 
-Whilst protocol filtering handles normal initialisation, keyboards can send self-test codes post-initialisation during hot-plug events or unstable connections. The scancode processor provides defense-in-depth by explicitly filtering these codes:
+**Scancode Layer Behavior:**
+
+The Set 1 scancode processor ([`src/scancodes/set1/scancode.c`](../../src/scancodes/set1/scancode.c)) does **not** filter self-test codes. It performs a range check (`if (code <= 0xD3)`) that processes all valid scancodes, including `0xAA`:
+
+Since `0xAA` (170 decimal) is less than `0xD3` (211 decimal), it would be processed as a normal Left Shift break code if received post-initialisation. The scancode processor comment explicitly notes: *"Self-test codes (0xAA) are handled by protocol layer during initialisation"* (line 113).
+
+The only special handling of `0xAA` in the scancode layer occurs in the E0-prefixed state, where it's filtered as a "fake shift" sequence for Print Screen (not because it's a self-test code):
 
 ```c
-// Set 1 scancode processor (simplified)
-if (code == 0xAA || code == 0xFC) {
-    // Filter self-test codes (0xAA overlaps with Left Shift break 0x2A | 0x80)
-    LOG_DEBUG("!INIT! (0x%02X)\n", code);
-} else if (code <= 0xD3) {
-    // Valid make (0x01-0x53) or break (0x81-0xD3) codes
-    handle_keyboard_report(code & 0x7F, code < 0x80);
-} else {
-    // Invalid codes above 0xD3
-    LOG_DEBUG("!INIT! (0x%02X)\n", code);
-}
+case E0:
+    switch (code) {
+        case 0x2A:
+        case 0xAA:  // Filtered as fake shift, NOT as self-test code
+        case 0x36:
+        case 0xB6:
+            // ignore fake shift
+            state = INIT;
+            break;
 ```
 
-This follows the IBM BIOS strategy of "throwing away invalid codes" (IBM PC AT BIOS listing, keyboard interrupt handler K2S routine, lines 132-164).
+**Why Protocol-Layer Filtering Suffices:**
 
-**Why This Matters:**
-
-Without scancode-layer filtering, hot-plugging a keyboard would send `0xAA`, which the scancode processor would interpret as Left Shift break (`0x2A & 0x7F = 0x2A`, with bit 7 indicating release). This would create a spurious Shift key release event.
-
-TMK's implementation handles Set 2/3 self-test codes with intentional fall-through (comment: "replug or unstable connection probably"), but Set 1 requires explicit blacklisting due to the collision.
+Protocol-layer filtering during initialisation is the sole mitigation for self-test code collisions. Post-initialisation, keyboards should not spontaneously send `0xAA` during normal operation. If hot-plugging occurs (not a supported scenario), the `0xAA` would indeed be misinterpreted as Left Shift break.
 
 ## State Machine
 
@@ -146,8 +145,8 @@ Set 1 requires a **5-state** state machine to handle all sequences:
       ├─[E0]──► E0 ──[code]───────┤
       │                           │
       ├─[E1]──► E1 ──[1D]──► E1_1D ──[45]──► E1_1D_45 ──[E1]──► E1_PAUSE ──[9D]──► E1_PAUSE_9D ──[C5]───┐
-      │                                                                                                      │
-      └─[code]─────────────────────────────────────────────────────────────────────────────────────────────┘
+      │                                                                                                 │
+      └─[code]──────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### State Descriptions
@@ -269,7 +268,7 @@ E0-prefixed keys require translation to their logical key codes:
 1. **XT Protocol**: Unidirectional, no host-to-keyboard commands
 2. **No LED Control**: XT keyboards have built-in LED logic, not host-controlled
 3. **No Typematic Control**: Key repeat rate is keyboard-internal
-4. **Self-Test Code Handling**: Defense-in-depth filtering at both protocol and scancode layers (see [Self-Test Code Collision](#self-test-code-collision))
+4. **Self-Test Code Handling**: Protocol-layer filtering during initialisation prevents self-test code collision (see [Self-Test Code Collision](#self-test-code-collision))
 
 ## Performance Characteristics
 

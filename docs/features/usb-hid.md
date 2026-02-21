@@ -81,7 +81,7 @@ Common examples:
 - `0x1D` = Z
 - `0x00` = No key (empty slot)
 
-When fewer than 6 keys are pressed, the remaining slots contain 0x00. When you press a 7th regular key whilst 6 are already held, the oldest keycode drops out of the report—though this situation rarely occurs in practice.
+When fewer than 6 keys are pressed, the remaining slots contain 0x00. When you press a 7th regular key whilst 6 are already held, the converter keeps the existing report and ignores the additional key until a slot is freed.
 
 ### Example Report
 

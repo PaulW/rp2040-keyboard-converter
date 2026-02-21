@@ -69,7 +69,9 @@
  * If it's in SRAM range (0x20000000-0x20042000), the check passes.
  *
  * The function is marked __attribute__((noinline)) to ensure the return address
- * check is meaningful (inlining would make it check the caller's location instead).
+ * reflects the immediate call site. If inlined into the caller (e.g., main()),
+ * __builtin_return_address(0) would instead yield the caller's own return
+ * address (the CRT startup context), not the location of the call within main().
  *
  * @note Panics with descriptive message if executing from Flash
  * @note Only compiled when RUN_FROM_RAM_CHECK is defined

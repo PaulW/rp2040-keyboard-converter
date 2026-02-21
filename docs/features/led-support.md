@@ -80,9 +80,9 @@ For a single status LED, make these three connections:
 | **GND** | Ground rail | Black wire | Common ground with RP2040 |
 | **DIN** | RP2040 GPIO 29 | Yellow/data wire | Default data pin (configurable in [`config.h`](../../src/config.h)) |
 
-**Power notes**: WS2812 LEDs are specified for 5V operation but work reliably at 3.3V with reduced maximum brightness. Since the converter uses gamma-corrected brightness control (typically running at 10-50% brightness), 3.3V provides plenty of light whilst simplifying the wiring. If you need maximum brightness, connect VCC to VSYS (5V from USB) instead—just ensure your USB power supply can handle it.
+**Power notes**: WS2812 LEDs are specified for 5V operation but work reliably at 3.3V with reduced maximum brightness. Since the converter uses gamma-corrected brightness control, 3.3V provides plenty of light whilst simplifying the wiring. If you need maximum brightness, connect VCC to VSYS (5V from USB) instead—just ensure your USB power supply can handle it, and also ensure that you connect your DATA line to an available Level Shifter to correctly handle the 3.3V to 5V transition.
 
-**Signal level**: The RP2040's 3.3V GPIO output works with most WS2812 variants. The LED's data input threshold is typically 0.7 × VCC, so at 3.3V that's 2.31V—well within the RP2040's 3.3V HIGH output. If you experience intermittent behavior or color glitches, try adding a 220-470Ω resistor in series with the data line for signal protection.
+**Signal level**: The RP2040's 3.3V GPIO output works with most WS2812 variants. The LED's data input threshold is 0.7 × VCC per the WS2812B specification, so at 3.3V that's 2.31V—well within the RP2040's 3.3V HIGH output. If you experience intermittent behavior or color glitches, try adding a 220-470Ω resistor in series with the data line for signal protection.
 
 #### Four LED Configuration (Status + Lock Indicators)
 
@@ -109,7 +109,7 @@ To enable lock indicator LEDs, you need exactly 4 LEDs total and must enable `CO
 - **LED 3**: Caps Lock indicator  
 - **LED 4**: Scroll Lock indicator
 
-**Current draw considerations**: Each WS2812 LED can draw up to 60mA at full white brightness (all three RGB elements at maximum). With gamma correction and typical brightness levels (10-50%), actual current is usually 3-15mA per LED. For the single LED configuration, draw is 3-15mA typical. For four LEDs at moderate brightness, draw is 12-60mA total—well within USB's 500mA budget. Only at maximum brightness (rarely needed) would you approach the theoretical 240mA maximum.
+**Current draw considerations**: Each WS2812 LED can draw up to 60mA at full white brightness (all three RGB elements at maximum). With gamma correction and typical brightness levels (10-50%), actual current is 3-15mA per LED at moderate brightness. For the single LED configuration, draw is 3-15mA typical. For four LEDs at moderate brightness, draw is 12-60mA total—well within USB's 500mA budget. Only at maximum brightness (rarely needed) would you approach the theoretical 240mA maximum.
 
 **Important**: The firmware expects either 1 or 4 LEDs depending on the `CONVERTER_LOCK_LEDS` setting. If you wire 4 LEDs but don't enable `CONVERTER_LOCK_LEDS`, only the first LED will function. If you enable `CONVERTER_LOCK_LEDS` but wire only 1 LED, the lock indicators won't display (the firmware will try to send data to LEDs 2-4, but nothing will happen visually).
 
@@ -174,14 +174,14 @@ The firmware needs to know which GPIO pin connects to your WS2812 LEDs and what 
 ```
 
 **LED Type Selection**: Different WS2812 variants use different color orders. The converter supports 6 types (defined in [`src/common/lib/types.h`](../../src/common/lib/types.h)):
-- `LED_GRB` - Most common WS2812/WS2812B chips (Green-Red-Blue order)
+- `LED_GRB` - WS2812/WS2812B chips use Green-Red-Blue order
 - `LED_RGB` - Alternative chips (Red-Green-Blue order)  
 - `LED_BGR` - Blue-Green-Red order
 - `LED_RBG` - Red-Blue-Green order
 - `LED_GBR` - Green-Blue-Red order
 - `LED_BRG` - Blue-Red-Green order
 
-If your LEDs show wrong colors (e.g., red appears green), try changing `CONVERTER_LEDS_TYPE` to a different color order. `LED_GRB` works for most standard WS2812/WS2812B LEDs.
+If your LEDs show wrong colors (e.g., red appears green), try changing `CONVERTER_LEDS_TYPE` to a different color order. `LED_GRB` is correct for WS2812/WS2812B LEDs.
 
 Change these values if you're using a different GPIO pin or LED type. Remember to rebuild and flash the firmware after changing configuration. See [`building-firmware.md`](../getting-started/building-firmware.md) for build instructions.
 
@@ -258,7 +258,7 @@ If either check fails, the LED system marks the update as "pending" and the main
 
 The actual CPU cost of preparing an LED update is tiny: about 300 nanoseconds per LED. This includes looking up the brightness multiplier, extracting RGB components, scaling them, and reordering to GRB format.
 
-At 10µs per main loop iteration, 300ns is 3% CPU utilisation. The PIO handles the actual transmission (30µs per LED) in parallel whilst the CPU processes keyboard data.
+The preparation cost remains negligible compared to main-loop time, and the PIO handles the actual transmission (30µs per LED) in parallel whilst the CPU processes keyboard data.
 
 The converter's non-blocking LED design ensures status indicators never interfere with keyboard operation, even when updating 4 LEDs simultaneously. You get visual feedback without sacrificing responsiveness.
 
@@ -458,7 +458,7 @@ If WS2812 LEDs don't light up or show incorrect colors:
 
 If WS2812 LEDs display unexpected colors:
 
-**Check LED type configuration** - Different WS2812 variants use different color orders. The converter supports 6 types (LED_GRB, LED_RGB, LED_BGR, LED_RBG, LED_GBR, LED_BRG) configured via `CONVERTER_LEDS_TYPE` in [`src/config.h`](../../src/config.h). Most standard WS2812/WS2812B chips use `LED_GRB`. If your red appears green, try changing to `LED_RGB` or another color order variant.
+**Check LED type configuration** - Different WS2812 variants use different color orders. The converter supports 6 types (LED_GRB, LED_RGB, LED_BGR, LED_RBG, LED_GBR, LED_BRG) configured via `CONVERTER_LEDS_TYPE` in [`src/config.h`](../../src/config.h). WS2812/WS2812B chips use `LED_GRB`. If your red appears green, try changing to `LED_RGB` or another color order variant.
 
 **Verify power supply** - Insufficient power can cause color shifting, especially at higher brightness.
 

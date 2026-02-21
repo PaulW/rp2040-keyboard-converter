@@ -37,6 +37,21 @@ _Static_assert(KEYMAP_ROWS <= 16 && KEYMAP_COLS <= 16,
 /**
  * @brief Scans lower layers for layer modifiers only
  *
+ * IMPORTANT: Layer modifier precedence only applies within the transparent fall-through chain.
+ * The search honors IS_LAYER_KEY modifiers ONLY whilst traversing KC_TRNS entries. When a
+ * non-TRNS regular key (e.g., KC_B, KC_A) is encountered on an intermediate lower layer, the
+ * search stops immediately, and any IS_LAYER_KEY modifiers in further-lower layers are ignored.
+ *
+ * Example:
+ *   Layer 3 active: KC_A (regular key, triggers this scan)
+ *   Layer 2: KC_TRNS (transparent, search continues)
+ *   Layer 1: MO_4 (layer modifier, would be returned - honoured through KC_TRNS chain)
+ *
+ * But if Layer 2 had KC_B instead:
+ *   Layer 3 active: KC_A (regular key, triggers this scan)
+ *   Layer 2: KC_B (non-TRNS regular key, search STOPS here)
+ *   Layer 1: MO_4 (layer modifier, IGNORED - not reached because Layer 2 stopped search)
+ *
  * Safety feature: Layer modifiers in lower layers take precedence over regular keys
  * in higher layers. This prevents accidentally overriding layer navigation keys.
  *
@@ -171,6 +186,52 @@ static uint8_t keymap_search_layers(uint8_t row, uint8_t col, uint8_t* source_la
 }
 
 /**
+ * @brief Applies per-layer shift-override mapping to a keycode.
+ *
+ * Keyboards with non-standard shift legends (terminal, vintage, international layouts)
+ * define per-layer shift-override arrays. This function looks up the override for the
+ * given keycode on the specified layer and applies it if present.
+ *
+ * The SUPPRESS_SHIFT flag (bit 7) signals whether to suppress the shift modifier:
+ *   - Without flag: Keep shift modifier (e.g., Shift+6 → Shift+7)
+ *   - With flag: Suppress shift (e.g., SUPPRESS_SHIFT|KC_QUOT sends unshifted quote)
+ *
+ * @param key_code        The original keycode to potentially override
+ * @param source_layer    The layer the keycode came from
+ * @param suppress_shift  Output parameter set to true if shift should be suppressed
+ * @return                The possibly-modified keycode (original if no override)
+ */
+static uint8_t apply_shift_override(uint8_t key_code, uint8_t source_layer, bool* suppress_shift) {
+    // Safety: key_code is uint8_t (0-255), guaranteeing valid index into 256-element arrays
+    _Static_assert(SHIFT_OVERRIDE_ARRAY_SIZE == 256,
+                   "SHIFT_OVERRIDE_ARRAY_SIZE must be 256 to match uint8_t keycode range");
+
+    // Get the shift-override array for this layer (NULL if layer has no overrides)
+    const uint8_t* shift_overrides = keymap_shift_override_layers[source_layer];
+    if (shift_overrides == NULL) {
+        return key_code;  // No shift-override defined for this layer
+    }
+
+    // Look up the override for this keycode
+    uint8_t override = shift_overrides[key_code];
+    if (override == 0) {
+        return key_code;  // No override for this keycode (zero means no-op)
+    }
+
+    // Check if SUPPRESS_SHIFT flag is set
+    if (override & SUPPRESS_SHIFT) {
+        key_code = override & ~SUPPRESS_SHIFT;  // Clear flag to get actual keycode
+        if (suppress_shift != NULL) {
+            *suppress_shift = true;
+        }
+    } else {
+        key_code = override;  // Keep shift modifier
+    }
+
+    return key_code;
+}
+
+/**
  * @brief Retrieves the key value at the specified position in the keymap.
  *
  * Main keymap lookup function. Handles:
@@ -218,40 +279,11 @@ uint8_t keymap_get_key_val(uint8_t pos, bool make, bool* suppress_shift) {
         keylayers_consume_oneshot();
     }
 
-    // Shift-override support (per-layer)
-    // Keyboards with non-standard shift legends (terminal, vintage, international layouts, etc.)
-    // can define per-layer shift-override arrays via keymap_shift_override_layers[].
-    // Each layer can have its own shift behavior mapping.
-    // SUPPRESS_SHIFT flag (bit 7) signals whether to suppress shift modifier:
-    //   - Without flag: Keep shift modifier (e.g., Shift+6 → Shift+7)
-    //   - With flag: Suppress shift (e.g., SUPPRESS_SHIFT|KC_QUOT means send unshifted quote)
-    // Only keyboards with non-standard legends define these arrays (weak symbols)
-    // User must explicitly enable shift-override via config (disabled by default)
-    //
-    // Safety: key_code is uint8_t (0-255), guaranteeing valid index into 256-element arrays
-    _Static_assert(SHIFT_OVERRIDE_ARRAY_SIZE == 256,
-                   "SHIFT_OVERRIDE_ARRAY_SIZE must be 256 to match uint8_t keycode range");
-
+    // Apply shift-override if keyboard defines it, user enabled it, shift is pressed,
+    // and source layer is within valid range
     if (keymap_shift_override_layers != NULL && config_get_shift_override_enabled() &&
         hid_is_shift_pressed() && source_layer < KEYMAP_MAX_LAYERS) {
-        const uint8_t* shift_overrides = keymap_shift_override_layers[source_layer];
-
-        // Apply shift-override if this layer has overrides defined
-        if (shift_overrides != NULL) {
-            uint8_t override = shift_overrides[key_code];
-            if (override != 0) {
-                // Check if SUPPRESS_SHIFT flag is set
-                if (override & SUPPRESS_SHIFT) {
-                    key_code = override & ~SUPPRESS_SHIFT;  // Clear flag to get actual keycode
-                    if (suppress_shift != NULL) {
-                        *suppress_shift = true;
-                    }
-                } else {
-                    key_code = override;  // Keep shift modifier
-                }
-            }
-        }
-        // Note: NULL shift_overrides for a layer is valid - no shift-override for that layer
+        key_code = apply_shift_override(key_code, source_layer, suppress_shift);
     }
 
     return key_code;

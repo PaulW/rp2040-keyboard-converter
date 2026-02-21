@@ -573,7 +573,7 @@ Once you're familiar with the process, here's the condensed version:
 - **L** = LED brightness adjustment
 - **D** = Debug log level selection
 - **F** = Factory reset
-- **S** = Shift-override toggle
+- **S** = Shift-Override toggle
 
 ---
 

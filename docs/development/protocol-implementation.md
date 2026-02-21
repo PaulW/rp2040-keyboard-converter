@@ -82,7 +82,7 @@ All protocol implementations declare this as a static variable with explicit ini
 static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
 ```
 
-The struct members use `int` types (not `uint`) to match the SDK allocation functions' return types. The SDK's `pio_claim_unused_sm()` and `pio_add_program()` both return `int` values that can be -1 for errors or non-negative for success. When passing these values to SDK usage functions that expect `uint` parameters, the implicit conversion is safe because we've validated the allocation succeeded (non-negative values).
+The struct stores `sm` and `offset` as signed values so the project can use `-1` as a clear sentinel for "unallocated/invalid". Protocol code must validate allocation succeeded before passing these values to Pico SDK helpers that take `uint` parameters.
 
 ### 5. Why Atomic Allocation?
 
@@ -165,7 +165,7 @@ The dispatcher manages IRQ priority (set to 0x00 - highest priority) and provide
 Register your protocol's interrupt handler as a callback with the PIO IRQ dispatcher. The handler will be called when the PIO raises an interrupt (typically when it receives a complete scancode).
 
 ```c
-pio_irq_register_callback(pio_engine.pio, &keyboard_input_event_handler);
+pio_irq_register_callback(&keyboard_input_event_handler);
 ```
 
 The dispatcher supports up to 4 callbacks total (global registry) and only one PIO instance per session. Multiple protocols can share a single PIO (e.g., AT/PS2 keyboard + mouse), and handlers are called sequentially from the shared dispatcher.
@@ -379,7 +379,7 @@ If you skip steps or reorder them, you risk initialisation failures, race condit
 **Problem:** Protocol uses deprecated direct IRQ setup (`irq_set_exclusive_handler()` + `irq_set_priority()`), causing conflicts when multiple devices share a PIO instance  
 **Solution:** Always use centralised PIO IRQ dispatcher:
   1. Call `pio_irq_dispatcher_init(pio_engine.pio)` before registering handlers
-  2. Call `pio_irq_register_callback(pio_engine.pio, &handler)` to register protocol handler
+  2. Call `pio_irq_register_callback(&handler)` to register protocol handler
   3. Never call `irq_set_priority()` directly in protocol code (managed centrally)
 
 ### Wrong error message protocol name

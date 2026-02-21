@@ -39,7 +39,7 @@ Analysis of the converter's performance based on RP2040 specifications and desig
 - Benchmarking methodology
 
 **Read this if you're:**
-- Optimsing performance
+- Optimising performance
 - Understanding latency sources
 - Troubleshooting throughput issues
 - Comparing converter performance to specifications
