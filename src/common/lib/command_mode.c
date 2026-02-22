@@ -290,10 +290,8 @@ static inline bool command_keys_pressed(const hid_keyboard_report_t* keyboard_re
  * @note Called from command_mode_process when 'B' is detected
  */
 static void command_execute_bootloader(void) {
-    LOG_INFO("Bootloader command received\n");
+    LOG_INFO("Bootloader command received, initiating bootloader...\n");
 
-    // Initiate Bootloader
-    LOG_INFO("Initiate Bootloader\n");
 #ifdef CONVERTER_LEDS
     // Clear all LED states so only the Status LED (magenta) is lit
     lock_leds.value          = 0;  // Clear all lock LED states (Num/Caps/Scroll)
@@ -444,12 +442,12 @@ static void update_command_mode_leds(uint32_t now_ms) {
 static void update_brightness_rainbow(uint32_t now_ms) {
     // Update rainbow hue every 50ms for smooth cycling (faster than command mode toggle)
     const uint32_t RAINBOW_CYCLE_MS = 50;
-    const uint16_t rainbow_hue_step = 6;    // Hue increment per update (6° = 3s cycle at 50ms)
-    const uint16_t rainbow_hue_max  = 360;  // Full colour wheel in degrees
+    const uint16_t RAINBOW_HUE_STEP = 6;    // Hue increment per update (6° = 3s cycle at 50ms)
+    const uint16_t RAINBOW_HUE_MAX  = 360;  // Full colour wheel in degrees
 
     if (now_ms - cmd_mode.last_led_toggle_ms >= RAINBOW_CYCLE_MS) {
         // Increment hue for rainbow effect and wrap at maximum
-        brightness_rainbow_hue = (brightness_rainbow_hue + rainbow_hue_step) % rainbow_hue_max;
+        brightness_rainbow_hue = (brightness_rainbow_hue + RAINBOW_HUE_STEP) % RAINBOW_HUE_MAX;
 
         // Convert HSV to RGB (full saturation and brightness for vivid colours)
         uint32_t rainbow_colour = hsv_to_rgb(brightness_rainbow_hue, 255, 255);
@@ -614,7 +612,9 @@ static bool command_handle_brightness_select(void) {
     LOG_INFO("LED brightness selection: Press +/- to adjust (%u-%u), current=%u\n",
              WS2812_BRIGHTNESS_MIN, WS2812_BRIGHTNESS_MAX, brightness_original_value);
 #else
-    LOG_WARN("LED brightness control not available (CONVERTER_LEDS not defined)\n");
+    command_mode_exit(
+        "LED brightness control not available (CONVERTER_LEDS not defined)\n"
+        "Returning to idle");
 #endif
     return false;
 }
