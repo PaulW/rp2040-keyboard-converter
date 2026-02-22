@@ -173,7 +173,7 @@ This process is fast enough to be imperceptible during boot. The converter is re
 Once configuration is loaded at boot, all settings live in a structure in RAM. Code throughout the firmware accesses configuration via the API:
 
 ```c
-// Access settings via API - zero overhead (inline pointer return)
+// Access settings via API - Direct RAM access via inline pointer return
 const config_data_t *cfg = config_get();
 uint8_t current_level = cfg->log_level;
 uint8_t brightness = cfg->led_brightness;
@@ -315,7 +315,7 @@ The SDK provides [`flash_safe_execute()`](https://www.raspberrypi.com/documentat
 
 **Boot time overhead**: Negligible—reads and validates configuration from flash once at startup.
 
-**Runtime overhead**: Zero. Direct RAM access via inline pointer return.
+**Runtime overhead**: Direct RAM access via inline pointer return, with no function-call indirection.
 
 **Save time**: Brief blocking flash write. Ring buffer protects against data loss during save.
 

@@ -324,7 +324,8 @@ static inline void report_drop_stats(void) {
             start_next_dma_if_needed();
 
             // Update last_reported only on successful enqueue
-            stats_last_reported = current_drops;  // LINT:ALLOW barrier (not IRQ-shared)
+            stats_last_reported =
+                current_drops;  // LINT:ALLOW non-volatile - write-once, main loop only
 
             // Don't increment stats_enqueued here - it's for normal messages
             // Stats messages are meta-data about the queue, not user data

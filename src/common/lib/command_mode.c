@@ -39,11 +39,6 @@
 #include "ws2812/ws2812.h"
 #endif
 
-#ifdef CONVERTER_LEDS
-// External flag from led_helper.c to control LED colours during log level selection
-extern bool log_level_selection_mode;
-#endif
-
 /**
  * @brief Command Mode State Machine States
  *
@@ -59,12 +54,18 @@ extern bool log_level_selection_mode;
  *   COMMAND_ACTIVE ──┬─> Bootloader (command 'B' executed - device resets)
  *                    ├─> LOG_LEVEL_SELECT (command 'D' for debug level)
  *                    ├─> IDLE (command 'F' for factory reset)
+ *                    ├─> BRIGHTNESS_SELECT (command 'L' for LED brightness)
+ *                    ├─> IDLE (command 'S' for shift-override toggle)
  *                    └─> IDLE (3 second timeout)
  *
  *   LOG_LEVEL_SELECT ──┬─> IDLE (key '1' = ERROR level)
  *                      ├─> IDLE (key '2' = INFO level)
  *                      ├─> IDLE (key '3' = DEBUG level)
  *                      └─> IDLE (3 second timeout)
+ *
+ *
+ *   BRIGHTNESS_SELECT ──┬─> IDLE (3 second timeout, saves if changed)
+ *                       └─> (stays in BRIGHTNESS_SELECT on +/- keys, resets timeout)
  *
  * HID Report Behaviour:
  * - IDLE: Normal HID reports sent to host

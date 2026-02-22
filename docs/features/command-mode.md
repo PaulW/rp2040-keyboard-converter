@@ -320,7 +320,7 @@ The same timeout applies to command submenus. After pressing 'D' or 'L', if you 
 
 ### Invalid Key Handling
 
-If you press a key that isn't a valid command (for example, pressing 'X' instead of 'B', 'D', 'F', or 'L'), Command Mode simply ignores it. The timeout continues running, so if you press the wrong key, you can just press the correct one within the 3-second window.
+If you press a key that isn't a valid command (for example, pressing 'X' instead of 'B', 'D', 'F', 'L' or 'S'), Command Mode simply ignores it. The timeout continues running, so if you press the wrong key, you can just press the correct one within the 3-second window.
 
 In submenus, the same logic applies. Pressing a key that isn't a valid option (pressing '4' for log level when only '1', '2', '3' are valid) gets ignored.
 
