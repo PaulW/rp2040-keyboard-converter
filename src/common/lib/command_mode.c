@@ -282,6 +282,22 @@ static inline bool command_keys_pressed(const hid_keyboard_report_t* keyboard_re
     return true;
 }
 
+#ifdef CONVERTER_LEDS
+/**
+ * @brief Reset all LED states and set status LED for reboot/bootloader
+ *
+ * Clears lock LED states, disables the command mode LED, sets the firmware
+ * flash indicator (magenta status LED), and triggers an LED update. Called
+ * immediately before any operation that reboots or re-flashes the device.
+ */
+static void reset_leds_for_reboot(void) {
+    lock_leds.value          = 0;  // Clear all lock LED states (Num/Caps/Scroll)
+    converter.state.cmd_mode = 0;  // Clear command mode flag
+    converter.state.fw_flash = 1;  // Set Status LED to magenta (firmware flash indicator)
+    update_converter_status();
+}
+#endif
+
 /**
  * @brief Executes bootloader entry command
  *
@@ -299,13 +315,7 @@ static void command_execute_bootloader(void) {
     LOG_INFO("Bootloader command received, initiating bootloader...\n");
 
 #ifdef CONVERTER_LEDS
-    // Clear all LED states so only the Status LED (magenta) is lit
-    lock_leds.value          = 0;  // Clear all lock LED states (Num/Caps/Scroll)
-    converter.state.cmd_mode = 0;  // Clear command mode flag
-
-    // Set Status LED to magenta to indicate Bootloader Mode
-    converter.state.fw_flash = 1;
-    update_converter_status();
+    reset_leds_for_reboot();
 #endif
     // Flush all pending UART messages before bootloader transition
     uart_dma_flush();
@@ -577,11 +587,7 @@ static bool command_handle_factory_reset(void) {
     LOG_INFO("Factory reset complete - rebooting device...\n");
 
 #ifdef CONVERTER_LEDS
-    // Clear all LED states
-    lock_leds.value          = 0;
-    converter.state.cmd_mode = 0;
-    converter.state.fw_flash = 1;  // Set status LED to indicate reboot
-    update_converter_status();
+    reset_leds_for_reboot();
 #endif
 
     // Flush UART before reboot
@@ -614,9 +620,7 @@ static bool command_handle_brightness_select(void) {
     LOG_INFO("LED brightness selection: Press +/- to adjust (%u-%u), current=%u\n",
              WS2812_BRIGHTNESS_MIN, WS2812_BRIGHTNESS_MAX, brightness_original_value);
 #else
-    command_mode_exit(
-        "LED brightness control not available (CONVERTER_LEDS not defined)\n"
-        "Returning to idle");
+    command_mode_exit("LED brightness control not available (CONVERTER_LEDS not defined)");
 #endif
     return false;
 }
