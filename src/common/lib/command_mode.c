@@ -108,6 +108,11 @@ static uint8_t  brightness_original_value = 0; /**< Original brightness for sele
 static uint16_t brightness_rainbow_hue = 0; /**< Current rainbow hue (0-359) for visual feedback */
 #endif
 
+/** HID modifier keycode range and index mask */
+#define HID_MODIFIER_KEYCODE_MIN KC_LCTRL
+#define HID_MODIFIER_KEYCODE_MAX KC_RGUI
+#define HID_MODIFIER_INDEX_MASK  0x7u
+
 /** Command mode timing constants (milliseconds) */
 #define CMD_MODE_HOLD_TIME_MS  3000 /**< Time to hold command keys to enter command mode */
 #define CMD_MODE_TIMEOUT_MS    3000 /**< Timeout for command mode states before returning to idle */
@@ -195,9 +200,13 @@ static uint16_t brightness_rainbow_hue = 0; /**< Current rainbow hue (0-359) for
  * only work for modifier keys. If regular keys are needed, the detection logic
  * must be completely redesigned to check the keycode array instead.
  */
-_Static_assert(CMD_MODE_KEY1 >= 0xE0 && CMD_MODE_KEY1 <= 0xE7,
+
+_Static_assert(CMD_MODE_KEY1 >= HID_MODIFIER_KEYCODE_MIN &&
+                   CMD_MODE_KEY1 <= HID_MODIFIER_KEYCODE_MAX,
                "CMD_MODE_KEY1 must be a HID modifier key (0xE0-0xE7)");
-_Static_assert(CMD_MODE_KEY2 >= 0xE0 && CMD_MODE_KEY2 <= 0xE7,
+
+_Static_assert(CMD_MODE_KEY2 >= HID_MODIFIER_KEYCODE_MIN &&
+                   CMD_MODE_KEY2 <= HID_MODIFIER_KEYCODE_MAX,
                "CMD_MODE_KEY2 must be a HID modifier key (0xE0-0xE7)");
 
 /**
