@@ -113,6 +113,12 @@ static uint16_t brightness_rainbow_hue = 0; /**< Current rainbow hue (0-359) for
 #define CMD_MODE_TIMEOUT_MS    3000 /**< Timeout for command mode states before returning to idle */
 #define CMD_MODE_LED_TOGGLE_MS 100  /**< LED toggle interval in command mode */
 
+#ifdef CONVERTER_LEDS
+#define CMD_MODE_RAINBOW_CYCLE_MS 50  /**< Rainbow hue update interval in brightness select */
+#define CMD_MODE_RAINBOW_HUE_STEP 6   /**< Hue increment per update (6° = 3s cycle at 50ms) */
+#define CMD_MODE_RAINBOW_HUE_MAX  360 /**< Full colour wheel in degrees */
+#endif
+
 /**
  * @brief Command Mode Activation Key Configuration
  *
@@ -440,14 +446,10 @@ static void update_command_mode_leds(uint32_t now_ms) {
  * @param now_ms Current timestamp in milliseconds
  */
 static void update_brightness_rainbow(uint32_t now_ms) {
-    // Update rainbow hue every 50ms for smooth cycling (faster than command mode toggle)
-    const uint32_t RAINBOW_CYCLE_MS = 50;
-    const uint16_t RAINBOW_HUE_STEP = 6;    // Hue increment per update (6° = 3s cycle at 50ms)
-    const uint16_t RAINBOW_HUE_MAX  = 360;  // Full colour wheel in degrees
-
-    if (now_ms - cmd_mode.last_led_toggle_ms >= RAINBOW_CYCLE_MS) {
+    if (now_ms - cmd_mode.last_led_toggle_ms >= CMD_MODE_RAINBOW_CYCLE_MS) {
         // Increment hue for rainbow effect and wrap at maximum
-        brightness_rainbow_hue = (brightness_rainbow_hue + RAINBOW_HUE_STEP) % RAINBOW_HUE_MAX;
+        brightness_rainbow_hue =
+            (brightness_rainbow_hue + CMD_MODE_RAINBOW_HUE_STEP) % CMD_MODE_RAINBOW_HUE_MAX;
 
         // Convert HSV to RGB (full saturation and brightness for vivid colours)
         uint32_t rainbow_colour = hsv_to_rgb(brightness_rainbow_hue, 255, 255);
