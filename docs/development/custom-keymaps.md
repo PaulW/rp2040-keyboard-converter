@@ -316,7 +316,7 @@ Layers are useful for things like media controls, alternative key functions, or 
 
 ### How Layers Work
 
-The layer system uses a priority-based activation model with a bitmap tracking which layers are active. Layer 0 is the base layer and always sits at the bottom. When you activate upper layers (via MO, TG, or TO keycodes), the converter maintains a bitmap of which layers are currently active. The **highest active layer** in that bitmap becomes your starting point for keymap lookups.
+The layer system uses a priority-based activation model, with a bitmap tracking which layers are active. Layer 0 is the base layer and always sits at the bottom. When you activate upper layers (via MO, TG, or TO keycodes), the converter maintains a bitmap of which layers are currently active. The **highest active layer** in that bitmap becomes your starting point for keymap lookups.
 
 Here's the key bit: when you press a key, the lookup starts at the highest active layer. If that layer has `TRNS` (transparent) at that position, the lookup falls through to the **next lower active layer** in the bitmap—it skips any layers that aren't currently active. This continues checking active layers downward until it finds a non-transparent keycode or reaches Layer 0 (which is always active).
 

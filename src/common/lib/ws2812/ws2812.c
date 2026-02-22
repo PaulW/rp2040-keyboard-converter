@@ -117,7 +117,7 @@ enum {
  * @note Compiler may optimise away unused table entries if brightness is compile-time constant
  */
 #ifdef CONVERTER_LEDS
-static const uint8_t BRIGHTNESS_LUT[11] = {
+static const uint8_t BRIGHTNESS_LUT[WS2812_BRIGHTNESS_MAX + 1] = {
     0,    // Index 0: Unused (brightness levels start at 1)
     2,    // Level 1: Very dim    (  0.8% electrical = ~10% perceived)
     5,    // Level 2: Quite dim   (  2.0% electrical = ~20% perceived)

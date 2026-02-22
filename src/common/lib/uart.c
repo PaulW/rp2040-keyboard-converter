@@ -373,7 +373,8 @@ static void start_next_dma_if_needed(void) {
     }
 
     // Mark active before arming to avoid a window where producers see it as idle
-    dma_active = true;  // LINT:ALLOW barrier - read-side protected in IRQ handler (line 395)
+    dma_active =
+        true;  // LINT:ALLOW non-volatile - read-side protected in uart_dma_complete_handler()
 
     dma_channel_set_read_addr(uart_dma_chan, entry->buf, false);
     dma_channel_set_trans_count(uart_dma_chan, len, true);

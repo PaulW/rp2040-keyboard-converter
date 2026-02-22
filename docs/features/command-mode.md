@@ -144,7 +144,7 @@ For more details on the logging system and how to connect a UART adapter, see th
 
 ### 'F' - Factory Reset
 
-Pressing 'F' wipes all saved configuration settings and restores factory defaults. This affects settings stored in flash memory—specifically log level and LED brightness.
+Pressing 'F' wipes all saved configuration settings and restores factory defaults. This affects settings stored in flash memory, including log level, LED brightness, and shift-override state.
 
 **How to use it**:
 

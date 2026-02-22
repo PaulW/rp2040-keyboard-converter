@@ -1,6 +1,6 @@
 # Amiga Protocol
 
-The Amiga keyboard protocol is a bidirectional serial protocol used in Commodore Amiga computers. Unlike simpler unidirectional protocols like the IBM XT, every byte the Amiga keyboard sends requires a handshake response from the host. If it doesn't receive one within 143ms, the keyboard enters a resynchronisation mode to recover, which ensures the keyboard and host stay in sync even if communication temporarily breaks down.
+The Amiga keyboard protocol is a bidirectional serial protocol used in Commodore Amiga computers. Unlike simpler unidirectional protocols, every byte the Amiga keyboard sends requires a handshake response from the host. If it doesn't receive one within 143ms, the keyboard enters a resynchronisation mode to recover, which ensures the keyboard and host stay in sync even if communication temporarily breaks down.
 
 The protocol uses bit rotation—instead of transmitting bits in the usual 0-7 order, it sends them as 6-5-4-3-2-1-0-7. This means bit 7 (which indicates whether a key is pressed or released) is transmitted last. According to the Commodore Hardware Reference Manual, this design reduces problems from lost synchronisation.
 
@@ -159,7 +159,7 @@ Whilst the protocol is identical, different physical connectors may require adap
 
 **Logic Levels (Active-Low)**:
 
-```
+```text
 HIGH (Logic 0 / Idle):
 - Voltage: 4.5V to 5.5V
 - Interpretation: No action, idle state
@@ -173,7 +173,7 @@ Pull-Up: Both CLOCK and DATA lines have pull-up resistors (4.7kΩ typical)
 
 **Signal Characteristics**:
 
-```
+```text
 Type: Open-Drain (or Open-Collector)
 Pull-Up Location: Host motherboard (not in keyboard)
 Idle State: Both CLOCK and DATA HIGH (pulled up)
@@ -182,7 +182,7 @@ Active State: Keyboard or host pulls line LOW (sinks current)
 
 **Power Requirements**:
 
-```
+```text
 Voltage: +5V ±5% (4.75V to 5.25V)
 Current: 30-80mA typical (varies by keyboard model)
 Startup: May draw up to 150mA during power-on initialisation
@@ -217,7 +217,7 @@ The active-low open-drain architecture provides good noise immunity:
 
 **Recommended Protection**:
 
-```
+```text
 - Series resistors: 100Ω on CLOCK and DATA (limit current, protect against shorts)
 - ESD protection: Transient voltage suppressors (TVS diodes) on signal lines
 - Power filtering: 0.1µF ceramic + 10µF electrolytic capacitors near keyboard
@@ -237,7 +237,7 @@ Each byte transmission consists of **8 bits transmitted in rotated order** with 
 >
 > **Note**: For consistency across our project, we use **CLOCK** and **DATA** instead of the original KCLK/KDAT naming.
 
-```
+```text
 Timing Diagram (One Bit Period ~60µs):
 
          Setup      Data Low    Data High
@@ -256,7 +256,7 @@ Total bit period: 60µs (as specified in hardware manual)
 
 **Bit Transmission Sequence**:
 
-```
+```text
 For byte value 0x3C (00111100 binary):
 Bit positions:    7  6  5  4  3  2  1  0
 Bit values:       0  0  1  1  1  1  0  0
@@ -280,7 +280,7 @@ Total: 480µs per byte
 
 **Complete 8-Bit Transmission**:
 
-```
+```text
 Normal Byte Transmission (Keyboard → Host):
 
       ___   ___   ___   ___   ___   ___   ___   ___   _______
@@ -303,7 +303,7 @@ Timing per bit:
 
 **Handshake Response (Host → Keyboard)**:
 
-```
+```text
 Host Acknowledgment After Receiving Byte:
 
       __________________________________________________
@@ -326,7 +326,7 @@ Handshake Requirements:
 
 **Power-Up Synchronisation Sequence**:
 
-```
+```text
 Keyboard Power-On (Finding Sync):
 
       ___     ___     ___     ___     ___     ___
@@ -356,7 +356,7 @@ Result: Keyboard and host now synchronised, normal operation begins
 
 **Complete Transaction Example (Key Press)**:
 
-```
+```text
 Example: "B" Key Pressed (Scancode 0x35 = 00110101 binary)
 
 Transmitted order after rotation: 01101010
@@ -384,7 +384,7 @@ DATA                    \__________/
 
 After transmitting all 8 bits, the keyboard **immediately** waits for host acknowledgment:
 
-```
+```text
 Complete Transaction Timing:
 
 Keyboard transmits 8 bits (480µs)
@@ -458,7 +458,7 @@ Noise or glitches that corrupt data bits but don't prevent the host from sending
 
 **Complete Power-Up Sequence**:
 
-```
+```text
 Step 1: Power-On Self-Test
 - Keyboard receives +5V power from host
 - Internal microcontroller boots and initialises
@@ -513,7 +513,7 @@ If self-test fails, the keyboard enters an error state and blinks the CAPS LOCK 
 
 ### Scan Code Transmission
 
-```
+```text
 Normal Operation Loop:
 
 1. Keyboard scans key matrix (continuous polling)
@@ -534,7 +534,7 @@ Normal Operation Loop:
 
 ### Scan Code Format
 
-```
+```text
 Bit Layout:
 7  6  5  4  3  2  1  0
 |  |              |
@@ -564,7 +564,7 @@ The Amiga uses a **custom scan code set** based on the physical keyboard matrix 
 
 **Matrix Organisation**:
 
-```
+```text
 Structure: 6 rows × 16 columns = 96 possible key positions
 Encoding: Column (bits 6-4) | Row (bits 3-2) | Always 0 (bits 1-0)
 Range: 0x00 to 0x67 (104 possible codes, not all used)
@@ -572,7 +572,7 @@ Range: 0x00 to 0x67 (104 possible codes, not all used)
 
 **Standard Keycode Format**:
 
-```
+```text
 Make Code (Key Press):
   Bit 7: 0 (pressed)
   Bits 6-0: Key identification
@@ -624,6 +624,7 @@ The converter must keep keyboard LED state and USB HID state synchronised, espec
 The converter implements smart synchronisation by comparing keyboard LED state against USB HID state. Only when states differ does it queue a press+release toggle sequence. A 125ms hold time between press and release ensures macOS compatibility.
 
 **Synchronisation Logic**:
+
 ```c
 // Extract from keyboard_interface.c (lines 266-292)
 bool kbd_led_on = (data_byte & AMIGA_BREAK_BIT_MASK) == 0;  // Bit 7=0 means LED ON

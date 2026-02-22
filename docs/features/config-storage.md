@@ -304,7 +304,7 @@ The implementation uses the Pico SDK's flash APIs ([`flash_range_erase`](https:/
 One quirk: you can't execute code from flash whilst writing to flash. The Pico SDK places `flash_range_erase()` and `flash_range_program()` into RAM at build time via linker attributes (e.g., `__no_inline_not_in_flash_func()`), but does not automatically handle all flash safety constraints. Application code must ensure:
 
 - **Interrupts disabled**: Flash operations require interrupts disabled to prevent execution from flash during writes
-- **The other core not executing from flash**: In multi-core systems, Core 1 must be halted or executing from RAM
+- **The other core not executing from flash**: In multicore systems, Core 1 must be halted or executing from RAM
 - **Source data in RAM**: The buffer passed to `flash_range_program()` must reside in RAM, not flash
 
 The SDK provides [`flash_safe_execute()`](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_flash) to assist with interrupt management, but application code is still responsible for these constraints. This firmware is single-core only and runs entirely from RAM (`pico_set_binary_type(copy_to_ram)`), satisfying all requirements.

@@ -613,8 +613,8 @@ static bool command_handle_brightness_select(void) {
     brightness_original_value = ws2812_get_brightness();
     brightness_rainbow_hue    = 0;  // Start rainbow cycle at red
 
-    LOG_INFO("LED brightness selection: Press +/- to adjust (0-10), current=%u\n",
-             brightness_original_value);
+    LOG_INFO("LED brightness selection: Press +/- to adjust (%u-%u), current=%u\n",
+             WS2812_BRIGHTNESS_MIN, CMD_MODE_BRIGHTNESS_MAX, brightness_original_value);
 #else
     LOG_WARN("LED brightness control not available (CONVERTER_LEDS not defined)\n");
 #endif
