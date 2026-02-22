@@ -712,17 +712,18 @@ void init_uart_dma(void) {
     gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);  // UART_TX_PIN defined in config.h
 
     // Allocate and configure DMA channel for UART transmission
-    uart_dma_chan        = dma_claim_unused_channel(true);  // Claim any available DMA channel
-    dma_channel_config c = dma_channel_get_default_config(uart_dma_chan);
+    uart_dma_chan              = dma_claim_unused_channel(true);  // Claim any available DMA channel
+    dma_channel_config dma_cfg = dma_channel_get_default_config(uart_dma_chan);
 
     // Configure DMA transfer parameters
-    channel_config_set_transfer_data_size(&c, DMA_SIZE_8);  // 8-bit transfers (char data)
-    channel_config_set_read_increment(&c, true);            // Increment source (queue buffer)
-    channel_config_set_write_increment(&c, false);  // Fixed destination (UART data register)
-    channel_config_set_dreq(&c, uart_get_dreq(UART_ID, true));  // Use UART TX data request signal
+    channel_config_set_transfer_data_size(&dma_cfg, DMA_SIZE_8);  // 8-bit transfers (char data)
+    channel_config_set_read_increment(&dma_cfg, true);            // Increment source (queue buffer)
+    channel_config_set_write_increment(&dma_cfg, false);  // Fixed destination (UART data register)
+    channel_config_set_dreq(&dma_cfg,
+                            uart_get_dreq(UART_ID, true));  // Use UART TX data request signal
 
     // Configure the DMA channel with settings
-    dma_channel_configure(uart_dma_chan, &c,
+    dma_channel_configure(uart_dma_chan, &dma_cfg,
                           &uart_get_hw(UART_ID)->dr,  // Destination: UART data register (FIFO)
                           NULL, 0, false);            // Source and count set per transfer
 

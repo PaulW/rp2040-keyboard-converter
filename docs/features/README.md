@@ -119,7 +119,7 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
 
 **[Keyboard Layers Guide](layers.md)**
 
-Keyboard layers provide a way to access multiple sets of key functions from the same physical keys. Think of them as transparent overlays—activate a layer and the keys do different things. This is particularly useful for compact keyboards or when adding modern conveniences like media controls to vintage hardware that lacks dedicated keys.
+Keyboard layers provide a way to access multiple sets of key functions from the same physical keys. Think of them as transparent overlays—activate a layer and the keys do different things. Use cases include compact keyboards or adding media controls to hardware that lacks dedicated keys.
 
 The converter supports up to 8 layers (numbered 0-7). Layer 0 is always active as the base layer, and upper layers overlay on top. Keys can be transparent in upper layers, falling through to lower active layers until a keycode is found, so you only need to define the keys that actually change.
 

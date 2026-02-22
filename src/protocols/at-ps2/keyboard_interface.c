@@ -387,6 +387,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
                         keyboard_lock_leds =
                             lock_leds.value;  // LINT:ALLOW barrier - volatile provides atomic
                                               // visibility on Cortex-M0+
+                        __dmb();              // Ensure IRQ write visible before main-loop read
                         keyboard_command_handler((uint8_t)((lock_leds.keys.capsLock << 2) |
                                                            (lock_leds.keys.numLock << 1) |
                                                            lock_leds.keys.scrollLock));

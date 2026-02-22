@@ -181,7 +181,7 @@ Just a WS2812B LED (or 'NeoPixel') and 3 jumper wires. Cost is around £2-8 depe
 
 ### Wiring It Up
 
-The WS2812B is rated from 3.5V but will operate from the RP2040's 3.3V rail in practice. Running below the rated minimum may cause slight colour shift (particularly in the blue channel) compared to devices powered at the rated voltage.
+The WS2812B is rated from 3.5V, but will operate from the RP2040's 3.3V rail in practice. Running below the rated minimum may cause slight colour shift (particularly in the blue channel) compared to devices powered at the rated voltage.
 
 **LED Pinout** (typical WS2812B):
 ```

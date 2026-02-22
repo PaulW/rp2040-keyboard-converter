@@ -65,7 +65,7 @@ When you press a key on your keyboard, here's an example journey it takes before
        ▼
 ┌──────────────────────────┐
 │   TinyUSB Stack          │  USB communication with host
-│   (USB Callbacks)        │  10ms polling interval
+│   (USB Callbacks)        │  8ms polling interval
 └──────┬───────────────────┘
        │
        ▼

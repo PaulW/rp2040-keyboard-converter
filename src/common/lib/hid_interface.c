@@ -275,6 +275,58 @@ static bool hid_keyboard_del_key(uint8_t key) {
 }
 
 /**
+ * @brief Apply shift-suppression to the current keyboard report
+ *
+ * If suppress is true, saves the current modifier byte into *saved_modifiers and
+ * clears the shift bits (Left Shift bit 1, Right Shift bit 5) from
+ * keyboard_report.modifier so that the key event is delivered without shift held.
+ *
+ * @param suppress        Whether to apply suppression
+ * @param saved_modifiers Caller-supplied storage for the saved modifier byte
+ */
+static void apply_shift_suppression(bool suppress, uint8_t* saved_modifiers) {
+    if (suppress) {
+        *saved_modifiers = keyboard_report.modifier;
+        keyboard_report.modifier &= ~SHIFT_MODIFIER_MASK;  // Clear bits 1 (LShift) and 5 (RShift)
+    }
+}
+
+/**
+ * @brief Restore modifier byte after shift-suppression
+ *
+ * If suppress is true, writes saved_modifiers back to keyboard_report.modifier,
+ * restoring the physical shift state that was cleared by apply_shift_suppression().
+ *
+ * @param suppress        Whether suppression was applied
+ * @param saved_modifiers The byte previously saved by apply_shift_suppression()
+ */
+static void restore_shift_suppression(bool suppress, uint8_t saved_modifiers) {
+    if (suppress) {
+        keyboard_report.modifier = saved_modifiers;
+    }
+}
+
+/**
+ * @brief Evaluate command-mode processing for the current key event
+ *
+ * Builds a temporary copy of keyboard_report with the original modifiers (undoing
+ * any active shift-suppression) so command_mode_process() can observe the real
+ * physical shift state, then returns whether normal report processing is allowed.
+ *
+ * @param suppress_shift  Whether shift-suppression is active for this event
+ * @param saved_modifiers The original modifier byte saved before suppression
+ * @return true  Normal HID report processing should continue
+ * @return false Command mode consumed the event; caller must suppress the report
+ */
+static bool evaluate_command_mode(bool suppress_shift, uint8_t saved_modifiers) {
+    hid_keyboard_report_t cmd_report = keyboard_report;
+    if (suppress_shift) {
+        cmd_report.modifier = saved_modifiers;
+    }
+    return command_mode_process(&cmd_report);
+}
+
+/**
  * @brief Handles input reports for keyboard and consumer control devices
  *
  * This is the main entry point for processing translated scan codes and sending
@@ -330,15 +382,11 @@ void handle_keyboard_report(uint8_t rawcode, bool make) {
     uint8_t code           = keymap_get_key_val(rawcode, make, &suppress_shift);
 
     if (IS_KEY(code) || IS_MOD(code)) {
-        bool report_modified = false;
-
-        // Shift-Override: temporarily remove shift modifiers if suppression requested
+        bool    report_modified = false;
         uint8_t saved_modifiers = 0;
-        if (suppress_shift) {
-            saved_modifiers = keyboard_report.modifier;
-            keyboard_report.modifier &=
-                ~SHIFT_MODIFIER_MASK;  // Clear bits 1 (Left Shift) and 5 (Right Shift)
-        }
+
+        // Shift-Override: temporarily remove shift modifiers while mutating/sending
+        apply_shift_suppression(suppress_shift, &saved_modifiers);
 
         if (make) {
             report_modified = hid_keyboard_add_key(code);
@@ -346,34 +394,24 @@ void handle_keyboard_report(uint8_t rawcode, bool make) {
             report_modified = hid_keyboard_del_key(code);
         }
 
-        // Process command mode state machine
-        // Returns false if keyboard report should be suppressed (command mode active)
-        // Note: Pass copy with original modifiers so command mode can detect shift state
-        hid_keyboard_report_t cmd_report = keyboard_report;
-        if (suppress_shift) {
-            cmd_report.modifier = saved_modifiers;
-        }
-        bool allow_normal_processing = command_mode_process(&cmd_report);
+        // Process command mode; pass a copy with original modifiers so command mode
+        // can observe the real physical shift state regardless of suppression
+        bool allow_normal_processing = evaluate_command_mode(suppress_shift, saved_modifiers);
 
         if (!allow_normal_processing) {
-            // Command mode is active, suppress normal keyboard reports
-            // Restore shift modifiers before returning (if they were suppressed)
-            if (suppress_shift) {
-                keyboard_report.modifier = saved_modifiers;
-            }
+            // Command mode is active — suppress normal keyboard report
+            restore_shift_suppression(suppress_shift, saved_modifiers);
             return;
         }
 
         if (report_modified) {
-            // Send report with automatic logging (with shift still suppressed if needed)
+            // Send report with shift still suppressed as required by shift-override
             hid_send_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &keyboard_report,
                             sizeof(keyboard_report));
         }
 
-        // Restore shift modifiers after sending report (to reflect physical key state)
-        if (suppress_shift) {
-            keyboard_report.modifier = saved_modifiers;
-        }
+        // Restore shift modifiers after send to reflect physical key state
+        restore_shift_suppression(suppress_shift, saved_modifiers);
     } else if (IS_CONSUMER(code)) {
         uint16_t usage;
         if (make) {

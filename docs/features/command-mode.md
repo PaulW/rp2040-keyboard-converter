@@ -304,7 +304,7 @@ The activation keys must be HID modifiers (Shift, Control, Alt, GUI) because of 
 
 Modifiers are handled in the first byte of the HID report and can all be detected simultaneously. Regular keys go into the six key slots and require more complex logic to detect specific combinations. Using modifiers for activation simplifies the detection code and makes it more reliable.
 
-Additionally, modifier combinations are less likely to conflict with application shortcuts. Holding two shifts rarely triggers any application behaviour, whilst holding two regular keys might activate application-specific features.
+Additionally, modifier combinations avoid sending printable characters or common shortcut sequences, reducing the chance of unintended application actions when entering Command Mode.
 
 ---
 

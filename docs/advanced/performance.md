@@ -20,7 +20,7 @@ Each key press flows through distinct stages that operate without blocking each 
 
 3. **Ring Buffer** - The [32-byte FIFO](../../src/common/lib/ringbuf.c) (defined as `RINGBUF_SIZE` in [ringbuf.h](../../src/common/lib/ringbuf.h)) bridges interrupt context and main loop. Its size provides sufficient capacity for multibyte scancode sequences arriving back-to-back whilst keeping the working set tiny for fast SRAM access.
 
-4. **Scancode Decoder** - The main loop retrieves scancodes from the buffer and reconstructs complete key events. Some protocols use multibyte sequences (E0 prefixes, F0 break codes, the eleven-byte Pause key), so the decoder maintains state across multiple reads.
+4. **Scancode Decoder** - The main loop retrieves scancodes from the buffer and reconstructs complete key events. Some protocols use multibyte sequences (E0 prefixes, F0 break codes, the eight-byte Pause key), so the decoder maintains state across multiple reads.
 
 5. **Keymap Translation** - Complete scancodes translate to USB HID keycodes via keyboard-specific lookup tables. Command Mode detection also happens here, intercepting special key combinations before they reach USB.
 

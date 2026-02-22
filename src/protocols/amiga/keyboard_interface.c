@@ -58,10 +58,10 @@
  * - Special codes: 0x78, 0xF9, 0xFA, 0xFC, 0xFD, 0xFE (no up/down interpretation)
  *
  * Handshake Protocol (CRITICAL):
- * - PIO automatically sends 85µs handshake pulse after receiving 8 bits
+ * - PIO automatically sends a handshake pulse after receiving 8 bits
  * - Handshake integrated into PIO program (no ISR delay)
  * - Hardware latch in keyboard detects pulses ≥1µs
- * - 85µs duration is MANDATORY for compatibility (not 1µs!)
+ * - With the current divider this is ~15.5ms; the intended target remains ~85µs
  * - Missing handshake causes keyboard to enter resync mode
  * - Resync: Keyboard clocks out 1-bits until handshake received
  *
@@ -231,6 +231,12 @@ static void keyboard_event_processor(uint8_t data_byte) {
         }
 
         // Special codes don't go to ring buffer (they're protocol management)
+        return;
+    }
+
+    // Filter out invalid key codes (protocol defines 0x00-0x67 as valid)
+    if (data_byte > 0x67) {
+        LOG_WARN("Amiga: Invalid key code 0x%02X (ignored)\n", data_byte);
         return;
     }
 

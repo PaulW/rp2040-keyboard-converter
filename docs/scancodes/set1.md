@@ -106,14 +106,14 @@ Set 1 has a collision between self-test codes and valid scancodes. The self-test
 The collision is mitigated by protocol-layer filtering during keyboard initialisation. The protocol layer (XT, AT/PS2) consumes self-test codes before they reach the scancode processor:
 
 - **XT Protocol**: Filters `0xAA` (BAT_PASSED) and `0xFC` (BAT_FAILED) whilst in `UNINITIALISED` state—only after receiving `0xAA` does it transition to `INITIALISED` and begin forwarding scancodes to the ring buffer (see [`src/protocols/xt/keyboard_interface.c`](../../src/protocols/xt/keyboard_interface.c) lines 176-183)
-- **AT/PS2 Protocol**: Expects `0xAA` (BAT_PASSED) in `INIT_AWAIT_SELFTEST` state—any other byte triggers a reset sequence; only after successful self-test does it transition to `INIT_READ_ID_1` and eventually `INITIALISED` (see [`src/protocols/at-ps2/keyboard_interface.c`](../../src/protocols/at-ps2/keyboard_interface.c) lines 278-298)
+- **AT/PS2 Protocol**: Expects `0xAA` (BAT_PASSED) in `INIT_AWAIT_SELFTEST` state—any other byte triggers a reset sequence; only after successful self-test does it transition to `INIT_READ_ID_1` and eventually `INITIALISED` (see [`src/protocols/at-ps2/keyboard_interface.c`](../../src/protocols/at-ps2/keyboard_interface.c) lines 283-303)
 - Once `INITIALISED`, all codes are forwarded unchanged to the scancode layer via the ring buffer—no protocol-layer filtering
 
 **Scancode Layer Behaviour:**
 
 The Set 1 scancode processor ([`src/scancodes/set1/scancode.c`](../../src/scancodes/set1/scancode.c)) does **not** filter self-test codes. It performs a range check (`if (code <= 0xD3)`) that processes all valid scancodes, including `0xAA`:
 
-Since `0xAA` (170 decimal) is less than `0xD3` (211 decimal), it would be processed as a normal Left Shift break code if received post-initialisation. The scancode processor comment explicitly notes: *"Self-test codes (0xAA) are handled by protocol layer during initialisation"* (line 113).
+Since `0xAA` (170 decimal) is less than `0xD3` (211 decimal), it would be processed as a normal Left Shift break code if received post-initialisation. The scancode processor comment explicitly notes: *"Self-test codes (0xAA) are handled by protocol layer during initialisation"* (line 117).
 
 The only special handling of `0xAA` in the scancode layer occurs in the E0-prefixed state, where it's filtered as a "fake shift" sequence for Print Screen (not because it's a self-test code):
 

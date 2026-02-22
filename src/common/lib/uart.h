@@ -78,11 +78,12 @@
  * - Behaviour when queue full depends on selected policy
  *
  * Thread Safety:
- * All functions are designed to be safely called from any execution context:
+ * Logging/stdio output functions are designed to be safely called from any execution context:
  * - Main application loop
  * - Interrupt service routines (including PIO interrupts) via LOG_* macros only
  * - DMA completion handlers
  * - USB callback functions
+ * (init_uart_dma() and uart_dma_flush() are main-thread only; see warnings below)
  *
  * The implementation uses lock-free algorithms with atomic compare-and-swap
  * operations to ensure thread safety without explicit synchronisation primitives.

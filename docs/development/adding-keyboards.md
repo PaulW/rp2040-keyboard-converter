@@ -209,7 +209,7 @@ Layer keycodes (layers 1–3 only):
 - **OSL_1, OSL_2, OSL_3**: One-shot layer (next key only)
 - **TRNS**: Transparent—passes through to lower layer
 
-**Using layers 4–7:** If you need additional layers beyond layer 3, you would need to extend the keycode definitions in `hid_keycodes.h` (adding `KC_MO_4` through `KC_MO_7`, etc.) and update the corresponding macros and static assertions. However, three switchable layers (plus the base layer 0) is typically sufficient for most use cases—one for functions, one for navigation, and one for media or gaming.
+**Using layers 4–7:** If you need additional layers beyond layer 3, you would need to extend the keycode definitions in `hid_keycodes.h` (adding `KC_MO_4` through `KC_MO_7`, etc.) and update the corresponding macros and static assertions. The default keycode set provides three switchable layers plus the base layer 0; allocate them to functions, navigation, or media/gaming as needed.
 
 **NumLock Handling:** If you need consistent navigation on the numpad across hosts, consider adding a function layer that maps the numpad positions to HOME/UP/PGUP and similar keys rather than creating a dedicated NumLock layer.
 
