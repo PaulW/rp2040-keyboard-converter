@@ -333,7 +333,7 @@ To handle multiple concurrent log messages (e.g., protocol events happening whil
 
 **Main code calls LOG_INFO()** → Message formatted and written to ring buffer → DMA reads from ring buffer → Bytes transmitted over UART
 
-The ring buffer is 16,384 bytes (16KB: 64 message slots × 256 bytes per message), implemented in [`uart.c`](../../src/common/lib/uart.c). If log messages accumulate faster than UART can transmit them (rare, only at debug level during intense activity), new messages overwrite the oldest unread messages. This prevents memory exhaustion whilst ensuring recent messages are preserved.
+The ring buffer is 16,384 bytes (16KB: 64 message slots × 256 bytes per message), implemented in [`uart.c`](../../src/common/lib/uart.c). If log messages accumulate faster than the UART can transmit them (rare, only at debug level during intense activity), new messages overwrite the oldest unread messages. This prevents memory exhaustion whilst ensuring recent messages are preserved.
 
 ### Performance Impact
 

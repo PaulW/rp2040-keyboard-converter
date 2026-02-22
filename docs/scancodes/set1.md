@@ -2,7 +2,7 @@
 
 Scancode Set 1 is the scancode design used by IBM PC and PC/XT keyboards. The designation "XT scancode set" derives from its use in the PC/XT keyboard. Set 1 continues to be used by keyboards operating in XT compatibility mode or implementing XT protocol support.
 
-The encoding scheme: each key generates a make code when pressed and a break code when released. Break codes use the make code with bit 7 set (adding 0x80). Extended keys require multibyte sequences using E0 and E1 prefixes to encode keys not present on the original XT keyboard layout. Set 1 has been in use for over 40 years across multiple keyboard generations.
+The encoding scheme: each key generates a make code when pressed and a break code when released. Break codes use the make code with bit 7 set (adding 0x80). Extended keys require multibyte sequences using E0 and E1 prefixes to encode keys not present on the original XT keyboard layout. Set 1 has been in use since the original IBM PC/XT era and remains supported in XT compatibility modes.
 
 ## Encoding Scheme
 
@@ -58,7 +58,7 @@ The Pause/Break key uses a special 6-byte sequence:
 | **Break** (Ctrl+Pause) | `E0 46 E0 C6` |
 | **Alternate Pause** | `E0 45` (some keyboards) |
 
-**Important**: 
+**Important**:
 - Pause sends the entire sequence on press only, with no separate release event
 - Break (Ctrl+Pause) uses E0 46 sequence
 - Some keyboards may send E0 45 as an alternate Pause encoding
@@ -241,7 +241,7 @@ switch (state) {
     
     case E0:
         // Filter fake shifts: 2A, AA, 36, B6
-        if (code != 0x2A && code != 0xAA && 
+        if (code != 0x2A && code != 0xAA &&
             code != 0x36 && code != 0xB6) {
             bool is_release = (code & 0x80) != 0;
             uint8_t key = translate_e0_key(code & 0x7F);
@@ -272,7 +272,7 @@ E0-prefixed keys require translation to their logical key codes:
 
 ## Performance Characteristics
 
-- **Average bytes per keystroke**: 1.5 (single-byte scancodes, with multibyte sequences for extended keys)
+- **Bytes per key action**: 1 byte per make/break event; 2 bytes for a standard press+release pair. Extended sequences are longer.
 - **State machine complexity**: Medium (5 states)
 - **Processing overhead**: Low (simple bit manipulation)
 - **Memory requirements**: ~256 bytes for E0 translation table

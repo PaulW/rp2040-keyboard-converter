@@ -45,7 +45,8 @@
  * - Bit rate: ~17 kbit/sec (keyboard-controlled)
  * - Bit period: ~60µs (20µs setup + 20µs CLOCK low + 20µs CLOCK high)
  * - Handshake requirement: Computer must pulse DATA low within 1µs of byte completion
- * - Handshake duration: MUST be 85µs (critical for compatibility with all keyboards)
+ * - Handshake duration: ~15.5ms with the current divider; this remains within the keyboard
+ * tolerance window, but note the intended target is 85µs
  * - Timeout: 143ms without handshake triggers keyboard resync mode
  * - PIO sampling: 20µs interval for reliable signal detection
  *

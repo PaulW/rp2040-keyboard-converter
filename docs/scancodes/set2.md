@@ -2,7 +2,7 @@
 
 Scancode Set 2 was introduced with the IBM PC/AT and is used by PS/2 keyboards and many USB keyboards that internally use PS/2-style scancodes.
 
-Set 2 differs from Set 1 in encoding: break codes use an F0 prefix rather than a high-bit flag (bit 7), allowing the full 8-bit range for make codes. The F0 prefix encoding requires a 9-state processing state machine compared to Set 1's 5-state machine. Certain sequences such as Pause/Break use longer multibyte sequences in Set 2 than in Set 1. Set 2 supports bidirectional communication—the host can send commands to the keyboard for LED control, typematic (key repeat) configuration, and scancode set selection.
+Set 2 differs from Set 1 in encoding: break codes use an F0 prefix rather than a high-bit flag (bit 7), allowing the full 8-bit range for make codes. The F0 prefix encoding requires a 9-state processing state machine compared to Set 1's 5-state machine. Certain sequences such as Pause/Break use longer multibyte sequences in Set 2 than in Set 1. Set 2 supports bidirectional communication; this converter uses host command `0xED` to control keyboard LEDs (see [`src/protocols/at-ps2/keyboard_interface.c`](../../src/protocols/at-ps2/keyboard_interface.c)). The scancode set in use is determined from the keyboard ID returned during initialisation rather than by sending a scancode set selection command.
 
 ## Encoding Scheme
 
@@ -56,7 +56,7 @@ The Pause/Break key uses a complex sequence in Set 2:
 | **Break** (Ctrl+Pause) | `E0 7E E0 F0 7E` |
 | **Unicomp Pause** | `E0 77 E0 F0 77` (Unicomp New Model M variant) |
 
-**Important**: 
+**Important**:
 - Pause sends the full 8-byte sequence on press only
 - No separate release event for Pause
 - Break (Ctrl+Pause) is a different 4-byte sequence (E0 7E)

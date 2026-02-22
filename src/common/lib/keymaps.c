@@ -279,6 +279,10 @@ uint8_t keymap_get_key_val(uint8_t pos, bool make, bool* suppress_shift) {
         keylayers_consume_oneshot();
     }
 
+    if (key_code == KC_NO) {
+        return KC_NO;
+    }
+
     // Apply shift-override if keyboard defines it, user enabled it, shift is pressed,
     // and source layer is within valid range
     if (keymap_shift_override_layers != NULL && config_get_shift_override_enabled() &&

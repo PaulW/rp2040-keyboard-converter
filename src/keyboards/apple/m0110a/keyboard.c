@@ -36,7 +36,7 @@
  * |--------------------------------------- -----------------| |-----------|Ent|
  * | Optn|    Mac|           Space           |  \|Lft|Rig|Dwn| |      0|  .|   |
  * `---------------------------------------------------------' `---------------'
- * 
+ *
  * *Shf: Both Shift Keys on the M0110A return the same raw keycode, so we only
  *       define the association from the LEFT Shift position.
  */
@@ -57,7 +57,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
 };
 
 /* Layer count - automatically calculated from keymap_map array size */
-const uint8_t keymap_layer_count = sizeof(keymap_map) / sizeof(keymap_map[0]);
+const uint8_t keymap_layer_count = (uint8_t)(sizeof(keymap_map) / sizeof(keymap_map[0]));
 
 /*
  * Key mapping notes for Apple M0110A:

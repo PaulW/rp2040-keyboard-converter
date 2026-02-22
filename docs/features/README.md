@@ -55,7 +55,7 @@ Configuration settings persist across reboots using the flash storage system. LE
 
 The implementation uses a dual-copy redundancy system for data integrity. Two copies (A and B) are stored, each with CRC validation to detect corruption. Writes alternate between the copies for wear leveling, which extends flash life to about 10,000 write cycles per location before degradation. That's plenty for configuration updates that happen occasionally rather than continuously.
 
-Currently stored settings include your log level (ERROR, INFO, or DEBUG), LED brightness level (0-10 scale), protocol initialisation parameters, and timing thresholds. The storage system's extensible too, so future features like custom key mappings, macros, or debounce timing adjustments can slot right in without architectural changes.
+Currently stored settings include your log level (ERROR, INFO, or DEBUG), LED brightness level (0-10 scale), protocol initialisation parameters, and timing thresholds.
 
 **See:** [Configuration Storage Guide](config-storage.md) for technical details about flash allocation and redundancy
 
@@ -72,7 +72,7 @@ LED indicators provide visual feedback about converter status, including operati
 - Power indication
 - Error states and protocol issues
 
-The status LED shows different colours depending on what's happening. Solid green means everything's working normally. Solid orange (`CONVERTER_LEDS_STATUS_NOT_READY_COLOR`) appears whenever the converter is not ready—during startup whilst firmware initialises, or if the keyboard/mouse is uninitialised. Alternating green and blue indicates Command Mode is active and waiting for you to press a command key. Solid magenta means bootloader mode (firmware flash mode). These patterns make it easy to tell what's going on without needing to connect debug tools.
+The status LED shows different colours depending on what's happening. Solid green means everything's working normally. Solid orange (`CONVERTER_LEDS_STATUS_NOT_READY_COLOUR`) appears whenever the converter is not ready—during startup whilst firmware initialises, or if the keyboard/mouse is uninitialised. Alternating green and blue indicates Command Mode is active and waiting for you to press a command key. Solid magenta means bootloader mode (firmware flash mode). These patterns make it easy to tell what's going on without needing to connect debug tools.
 
 **Keyboard Lock Indicators:**
 

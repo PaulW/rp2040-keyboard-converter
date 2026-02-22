@@ -192,13 +192,13 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 
 **What it detects:**
 1. **Blocking operations:** `sleep_ms()`, `sleep_us()`, `busy_wait_ms()`, `busy_wait_us()`
-2. **Multicore APIs:** `multicore_*`, `core1_*` functions (forbidden)
+2. **Multicore APIs:** `multicore_launch_core1`, `multicore_fifo_push_blocking`, `multicore_fifo_pop_blocking`, `multicore_fifo_drain`, `multicore_reset_core1`, `multicore_lockout` (forbidden — single-core architecture)
 3. **printf in IRQ:** `printf()` calls in files containing `__isr` (use `LOG_*` macros)
 4. **Ring buffer reset annotation:** `ringbuf_reset()` calls without required `// LINT:ALLOW ringbuf_reset` annotation (linter verifies annotation presence, not runtime IRQ protection)
 5. **docs-internal exposure:** Ensures private docs never leak into repository
 6. **Flash execution:** Missing `copy_to_ram` configuration in CMakeLists.txt
 7. **IRQ variable safety:** Missing `volatile` or `__dmb()` barriers for IRQ-shared variables
-8. **Tab characters:** Enforces spaces-only indentation (4 spaces)
+8. **Tab characters:** Enforces no tab characters in source files (tabs are forbidden; use spaces)
 9. **Header guards:** Missing `#ifndef`/`#define` guards in .h files
 10. **File headers:** Missing GPL or MIT licence headers
 11. **Naming conventions:** Detects camelCase (expects snake_case)
@@ -207,7 +207,7 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 14. **Compile-time validation:** Advisory check for `_Static_assert` and `#error`
 15. **Protocol ring buffer setup:** Missing `ringbuf_reset()` in keyboard protocol initialisation
 16. **Protocol PIO IRQ dispatcher:** Missing centralised `pio_irq_dispatcher_init()` or deprecated direct `irq_set_priority()` usage
-17. **Indentation consistency:** Enforces 4-space indentation, detects 2-space violations
+17. **Indentation consistency:** Enforces 4-space indentation width; detects files using 2-space base indentation
 
 **Run before every commit:**
 ```bash

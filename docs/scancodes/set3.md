@@ -2,7 +2,7 @@
 
 Scancode Set 3 is what IBM designed for terminal keyboards—a clean-sheet design that represents what happens when you build a scancode set from scratch without worrying about backward compatibility. It's logical and consistent—every key has a single-byte make code, break codes are just F0 followed by the make code, and there are no extended prefixes cluttering things up.
 
-The state machine is refreshingly simple: just two states versus Set 2's nine. The Pause key is finally treated like a normal key instead of requiring a bizarre multibyte sequence. No fake shifts to filter out, no special cases to handle. It's genuinely elegant.
+The state machine has two states (INIT and F0), compared with nine in Set 2. Pause/Break uses the standard make/break sequence rather than a multibyte sequence. Set 3 does not use fake shift sequences or other special-case prefixes.
 
 However, Set 3 sees limited use. It's found on 122-key terminal keyboards and some industrial equipment. Standard desktop keyboards continue to use Set 2, so Set 3 remains a niche option despite being well-designed.
 
@@ -43,7 +43,7 @@ All keys, including those that require E0 in Sets 1 and 2, have direct single-by
 
 ### Pause/Break Key
 
-Set 3's treatment of Pause/Break demonstrates its cleaner design philosophy. Where Sets 1 and 2 require special multibyte sequences (6 and 8 bytes respectively), Set 3 treats Pause/Break as an ordinary key with standard make and break codes. This eliminates the special-case logic required in other scancode sets.
+Set 3 treats Pause/Break as an ordinary key with standard make and break codes. Sets 1 and 2 use multibyte sequences (6 and 8 bytes respectively), so Set 3 avoids that special-case handling.
 
 Even Pause/Break is simplified:
 

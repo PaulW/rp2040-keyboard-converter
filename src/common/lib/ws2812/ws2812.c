@@ -266,7 +266,7 @@ static inline uint32_t ws2812_set_colour(uint32_t led_colour) {
     // - All colour components are multiplied by 0 → LED is off
     // - This is intentional: level 0 = LEDs off, level 1 = dimmest visible setting
 #ifdef CONVERTER_LEDS
-    if (g_led_brightness <= 10) {
+    if (g_led_brightness <= WS2812_BRIGHTNESS_MAX) {
         const uint8_t multiplier = BRIGHTNESS_LUT[g_led_brightness];
 
         // Scale each colour component by multiplier, normalise back to 8-bit range
@@ -282,7 +282,8 @@ static inline uint32_t ws2812_set_colour(uint32_t led_colour) {
         b = (uint8_t)((b * multiplier) / 255);
     }
 #endif
-    // If g_led_brightness > 10, use original colours unchanged (shouldn't happen, but safe fallback)
+    // If g_led_brightness > 10, use original colours unchanged (shouldn't happen, but safe
+    // fallback)
 
 #ifdef CONVERTER_LEDS_TYPE
     // Apply colour order based on LED chip variant
@@ -418,8 +419,8 @@ void ws2812_setup(uint led_pin) {
 #ifdef CONVERTER_LEDS
 void ws2812_set_brightness(uint8_t level) {
     // Clamp to valid range [0-10]
-    if (level > 10) {
-        level = 10;
+    if (level > WS2812_BRIGHTNESS_MAX) {
+        level = WS2812_BRIGHTNESS_MAX;
     }
 
     g_led_brightness = level;

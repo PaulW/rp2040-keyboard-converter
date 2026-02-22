@@ -153,7 +153,7 @@ Terminal keyboards may use specialised connectors with different pinouts from st
 
 **Power Requirements:**
 - **Voltage**: +5V ±5% (4.75V to 5.25V)
-- **Current**: 
+- **Current**:
   - Keyboard: 50-150mA typical (peak may reach 275mA during startup)
   - Mouse: 10-100mA typical
   - Combined: < 300mA total (well within USB 500mA limit)

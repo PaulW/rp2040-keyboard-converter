@@ -181,7 +181,7 @@ Just a WS2812B LED (or 'NeoPixel') and 3 jumper wires. Cost is around £2-8 depe
 
 ### Wiring It Up
 
-The WS2812B is 3.3V tolerant, so you can wire it straight to the RP2040.
+The WS2812B is rated from 3.5V but will operate from the RP2040's 3.3V rail in practice. Running below the rated minimum may cause slight colour shift (particularly in the blue channel) compared to devices powered at the rated voltage.
 
 **LED Pinout** (typical WS2812B):
 ```
@@ -204,7 +204,7 @@ DIN ─┤     X     ├─ DOUT
 | **GND** | Power Rail **Lower** | Black | Common ground |
 | **DIN** (Data In) | RP2040 **`GPIO 29`** | Any colour | Default data pin |
 
-**A couple of things to note**: 
+**A couple of things to note**:
 - Use the **DIN** (Data In) pin, not DOUT (Data Out). You'd only use DOUT if you're chaining multiple LEDs together.
 - The default GPIO is pin 29 (defined in [`src/config.h`](../../src/config.h))
 - If you're using an LED strip, connect to the first LED's DIN pin

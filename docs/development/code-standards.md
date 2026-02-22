@@ -167,13 +167,13 @@ Use Doxygen-style comments for functions, especially in header files:
 ```c
 /**
  * @brief Processes a single scancode from the ring buffer.
- * 
+ *
  * Handles multibyte sequences (E0/F0 prefixes) and assembles complete
  * scancode events. Updates internal state machine for sequence tracking.
- * 
+ *
  * @param scancode Raw scancode byte from ring buffer
  * @return true if a complete scancode event is ready, false otherwise
- * 
+ *
  * @note Must be called from main loop context only
  * @note Non-blocking—returns immediately regardless of scancode state
  */
@@ -211,7 +211,7 @@ Always document the threading context for functions and data structures:
 ```c
 /**
  * @brief Command Mode State Structure
- * 
+ *
  * Threading Model:
  * - Only accessed from main task context (via command_mode_process)
  * - No interrupt access, no synchronisation needed
@@ -233,7 +233,7 @@ Document measured timing and performance where relevant:
  * - LOG_LEVEL >= DEBUG + success: TinyUSB send + hex dump + UART (~16µs)
  * - Any level + failure: TinyUSB send attempt + hex dump + UART (~16µs)
  */
-static inline bool hid_send_report(uint8_t instance, uint8_t report_id, 
+static inline bool hid_send_report(uint8_t instance, uint8_t report_id,
                                    void const* report, uint16_t len);
 ```
 
@@ -244,10 +244,10 @@ For state machines, document transitions clearly:
 ```c
 /**
  * State Transitions:
- * 
+ *
  *   IDLE ──┬─> SHIFT_HOLD_WAIT (only both shifts pressed, no other keys)
  *          └─> IDLE (normal operation)
- * 
+ *
  *   SHIFT_HOLD_WAIT ──┬─> COMMAND_ACTIVE (held 3 seconds with only shifts)
  *                      ├─> IDLE (shifts released before 3s)
  *                      └─> IDLE (any other key pressed - abort)
@@ -551,7 +551,7 @@ Use `_Static_assert` or `#error` for compile-time checks:
 
 ```c
 // Verify buffer size is power of 2 (required for efficient masking)
-_Static_assert((RINGBUF_SIZE & (RINGBUF_SIZE - 1)) == 0, 
+_Static_assert((RINGBUF_SIZE & (RINGBUF_SIZE - 1)) == 0,
                "RINGBUF_SIZE must be power of 2");
 
 // Enforce SRAM execution requirement

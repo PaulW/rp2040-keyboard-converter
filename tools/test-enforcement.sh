@@ -323,8 +323,10 @@ test_lint_empty_check() {
 test_lint_pio_irq_dispatcher_correct() {
     mkdir -p src/protocols/test-protocol
     cat > src/protocols/test-protocol/keyboard_interface.c << 'EOF'
+// SPDX-License-Identifier: GPL-2.0-or-later
 #include "pico/stdlib.h"
 #include "pio_helper.h"
+#include "ringbuf.h"
 
 static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
 
@@ -333,8 +335,8 @@ static void __isr keyboard_input_event_handler(void) {
 }
 
 void keyboard_interface_setup(uint data_pin) {
+    ringbuf_reset(); // LINT:ALLOW ringbuf_reset
     pio_engine = claim_pio_and_sm(&test_program);
-    
     // Correct pattern: Use PIO IRQ dispatcher
     pio_irq_dispatcher_init(pio_engine.pio);
     pio_irq_register_callback(&keyboard_input_event_handler);
@@ -398,6 +400,43 @@ EOF
     rm -rf src/protocols/test-protocol-incomplete
 }
 
+# Test 19: Lint Script - Trailing Whitespace
+test_lint_trailing_whitespace() {
+    # Source file with trailing whitespace
+    cat > src/test_trailing.c << 'EOF'
+#include <stdint.h>   
+
+void some_function(void) {   
+    uint8_t x = 0;  
+}
+EOF
+
+    run_test "Lint detects trailing whitespace in source files" "./tools/lint.sh" "fail"
+    rm -f src/test_trailing.c
+
+    # Markdown file with single trailing space (should be flagged)
+    printf '# Test\n\nSome text \n\nMore text\n' > src/test_trailing.md
+    run_test "Lint detects single trailing space in markdown" "./tools/lint.sh" "fail"
+    rm -f src/test_trailing.md
+
+    # Markdown file with double trailing spaces only (intentional hard line break - should pass)
+    printf '# Test\n\nSome text  \n\nMore text\n' > src/test_hardbreak.md
+    run_test "Lint allows double trailing spaces in markdown (hard line break)" "./tools/lint.sh" "pass"
+    rm -f src/test_hardbreak.md
+
+    # Clean file - verify no false positives
+    cat > src/test_no_trailing.c << 'EOF'
+#include <stdint.h>
+
+void some_function(void) {
+    uint8_t x = 0;
+}
+EOF
+
+    run_test "Lint accepts file with no trailing whitespace" "./tools/lint.sh" "pass"
+    rm -f src/test_no_trailing.c
+}
+
 # Main test execution
 main() {
     setup_test_env
@@ -413,6 +452,7 @@ main() {
     test_lint_pio_irq_dispatcher_correct
     test_lint_pio_irq_direct_setup
     test_lint_pio_irq_missing_dispatcher
+    test_lint_trailing_whitespace
     
     echo -e "${BLUE}======================================== ${NC}"
     echo -e "${BLUE}Git Hook Tests${NC}"

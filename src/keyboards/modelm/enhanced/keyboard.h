@@ -44,7 +44,7 @@
  * +: Special codes sequence
  * ~: Remaps to alternate code (83-02)
  * ±: ISO Hash Key uses same code as ANSI Backslash
- * 
+ *
  * 61 is ISO 102-key Backslash Key
  */
 

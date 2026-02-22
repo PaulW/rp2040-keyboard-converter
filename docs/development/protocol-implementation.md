@@ -97,7 +97,7 @@ if (sm < 0) return;
 int offset = pio_add_program(pio, &program);  // Step 3: Load program
 ```
 
-This created opportunities for partial failures and duplicated error handling across all protocols. The atomic approach is cleaner:
+This created opportunities for partial failures and duplicated error handling across all protocols. The atomic approach reduces error handling to a single NULL check and avoids partial allocations:
 
 ```c
 // Current pattern
@@ -257,7 +257,7 @@ if (pio_engine.pio == NULL) {
 }
 ```
 
-The `pio_engine_t` struct contains either complete working resources (PIO instance, SM number, program offset) or NULL to indicate complete failure. This pattern:
+The `pio_engine_t` struct always exists; `pio_engine.pio == NULL` (with `sm`/`offset` set to -1) indicates complete failure. This pattern:
 - Handles PIO selection (pio0 vs pio1) automatically with fallback
 - Eliminates partial allocation failures (no allocated SM without program space)
 - Provides clean single-point error handling (one NULL check covers all failure cases)

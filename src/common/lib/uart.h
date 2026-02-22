@@ -30,7 +30,7 @@
  * - **Configurable queue policies**: DROP, WAIT_FIXED, or WAIT_EXP behaviour when queue full
  * - **Large message queue**: 64-entry buffer handles initialisation bursts without loss
  * - **DMA-driven transmission**: Minimal CPU overhead during log output
- * - **stdio integration**: Works transparently with printf(), puts(), etc.
+ * - **stdio integration**: Works transparently with printf(), puts(), etc. in non-IRQ contexts
  * - **Thread-safe multi-producer**: Lock-free atomic operations prevent races
  * - **IRQ-aware policies**: Never blocks in interrupt context
  * - **Low priority**: Designed to not interfere with PIO or USB operations
@@ -80,7 +80,7 @@
  * Thread Safety:
  * All functions are designed to be safely called from any execution context:
  * - Main application loop
- * - Interrupt service routines (including PIO interrupts)
+ * - Interrupt service routines (including PIO interrupts) via LOG_* macros only
  * - DMA completion handlers
  * - USB callback functions
  *
@@ -93,7 +93,8 @@
  * - **WAIT_FIXED Policy**: Polls continuously until space or timeout (IRQ-aware)
  * - **WAIT_EXP Policy**: Progressive delays: 1µs → 2µs → 4µs → ... → 1024µs (IRQ-aware)
  *
- * @note All policies automatically fall back to DROP behaviour in IRQ context
+ * @note All policies automatically fall back to DROP behaviour in IRQ context; avoid printf/puts
+ * in IRQs and use LOG_* instead
  * @note Only init_uart_dma() is exposed - this is a stdio replacement system
  */
 

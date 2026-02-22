@@ -25,7 +25,7 @@
 // clang-format off
 
 /* Commodore Amiga 500/2000 Keyboard Layout
- * 
+ *
  * ,---. ,------------------------. ,------------------------.
  * |Esc| |F1  |F2  |F3  |F4  |F5  | |F6  |F7  |F8  |F9  |F10 |
  * `---' `------------------------' `------------------------'
@@ -58,7 +58,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
 };
 
 /* Layer count - automatically calculated from keymap_map array size */
-const uint8_t keymap_layer_count = sizeof(keymap_map) / sizeof(keymap_map[0]);
+const uint8_t keymap_layer_count = (uint8_t)(sizeof(keymap_map) / sizeof(keymap_map[0]));
 
 /*
  * Key mapping notes for Commodore Amiga 500/2000:

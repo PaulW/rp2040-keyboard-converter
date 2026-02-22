@@ -125,6 +125,11 @@ static uint keyboard_data_pin; /**< GPIO pin for DATA line (CLOCK = DATA + 1) */
 static volatile uint8_t keyboard_lock_leds = 0;     /**< Current LED state (Caps/Num/Scroll Lock) */
 static volatile bool    id_retry           = false; /**< Flag indicating ID read retry attempt */
 
+/* Initialisation timeout policy */
+#define ATPS2_INIT_CHECK_MS       200U
+#define ATPS2_ID_RETRY_LIMIT      2U
+#define ATPS2_DETECT_MAX_ATTEMPTS 5U
+
 /**
  * @brief Stop Bit Compliance Detection
  *
@@ -583,14 +588,14 @@ void keyboard_interface_task() {
     } else {
         // Initialisation timeout management and keyboard detection logic
         static uint32_t detect_ms = 0;
-        if (board_millis() - detect_ms > 200) {
+        if (board_millis() - detect_ms > ATPS2_INIT_CHECK_MS) {
             detect_ms = board_millis();
             if (gpio_get(keyboard_data_pin + 1) == 1) {
                 // Monitor initialisation progress when keyboard detected (CLOCK line high)
                 detect_stall_count++;  // Increment timeout counter for initialisation state
                 switch (keyboard_state) {
                     case INIT_READ_ID_1 ... INIT_SETUP:
-                        if (detect_stall_count > 2) {
+                        if (detect_stall_count > ATPS2_ID_RETRY_LIMIT) {
                             // Initialisation timeout detected during ID read or setup phase
                             __dmb();  // Memory barrier - ensure we see latest volatile value
                             if (!id_retry) {
@@ -626,7 +631,7 @@ void keyboard_interface_task() {
                         }
                         break;
                     case SET_LOCK_LEDS:
-                        if (detect_stall_count > 2) {
+                        if (detect_stall_count > ATPS2_ID_RETRY_LIMIT) {
                             // LED command timeout - continue without LED synchronisation
                             LOG_DEBUG("Timeout whilst setting keyboard lock LEDs, continuing.\n");
                             keyboard_state     = INITIALISED;
@@ -634,7 +639,7 @@ void keyboard_interface_task() {
                         }
                         break;
                     default:
-                        if (detect_stall_count < 5) {
+                        if (detect_stall_count < ATPS2_DETECT_MAX_ATTEMPTS) {
                             LOG_DEBUG("Keyboard detected, awaiting ACK (%i/5 attempts)\n",
                                       detect_stall_count);
                         } else {

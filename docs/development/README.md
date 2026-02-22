@@ -12,7 +12,7 @@ Start by reviewing the [Code Standards](code-standards.md) documentation—this 
 
 Next, review the [Advanced Topics guide](../advanced/README.md) to understand how PIO state machines handle protocol timing, how the ring buffer coordinates interrupt and main loop contexts, and why code executes from SRAM rather than flash. This architectural overview connects the individual rules to the overall system design, helping you understand the "why" behind each constraint.
 
-Finally, familiarise yourself with the [Protocol Documentation](../protocols/README.md) to see how different keyboard interfaces work—AT/PS2's bidirectional communication, XT's simple unidirectional signaling, Amiga's handshake protocol, and the M0110's variable timing. Understanding these protocols helps you write code that works correctly across the hardware diversity that computing presents.
+Finally, familiarise yourself with the [Protocol Documentation](../protocols/README.md) and the `src/protocols/` directory to understand the supported interfaces and their timing constraints. That context helps you write code that behaves correctly across the hardware diversity that computing presents.
 
 The contribution process follows standard Git workflows with careful attention to quality. Fork the repository and clone it locally, then create a feature branch using conventional commit prefixes (`git checkout -b feat/my-feature`). Make your changes following the code standards detailed below, ensuring every function has clear comments and variable names explain their purpose. Before committing, run [`./tools/lint.sh`](../../tools/lint.sh) to catch architecture violations—the script must pass with zero errors and zero warnings, or continuous integration will reject your pull request.
 

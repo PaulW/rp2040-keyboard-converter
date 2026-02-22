@@ -108,9 +108,10 @@ static uint16_t brightness_rainbow_hue = 0; /**< Current rainbow hue (0-359) for
 #endif
 
 /** Command mode timing constants (milliseconds) */
-#define CMD_MODE_HOLD_TIME_MS  3000 /**< Time to hold command keys to enter command mode */
-#define CMD_MODE_TIMEOUT_MS    3000 /**< Timeout for command mode states before returning to idle */
-#define CMD_MODE_LED_TOGGLE_MS 100  /**< LED toggle interval in command mode */
+#define CMD_MODE_HOLD_TIME_MS   3000 /**< Time to hold command keys to enter command mode */
+#define CMD_MODE_TIMEOUT_MS     3000 /**< Timeout for command mode states before returning to idle */
+#define CMD_MODE_LED_TOGGLE_MS  100  /**< LED toggle interval in command mode */
+#define CMD_MODE_BRIGHTNESS_MAX 10   /**< Maximum LED brightness step */
 
 /**
  * @brief Command Mode Activation Key Configuration
@@ -760,7 +761,7 @@ static bool process_brightness_select(const hid_keyboard_report_t* keyboard_repo
     // KC_EQUAL is the physical '=' key which produces '+' when shifted
     if (is_key_pressed(keyboard_report, KC_EQUAL) || is_key_pressed(keyboard_report, KC_KP_PLUS)) {
         uint8_t current = ws2812_get_brightness();
-        if (current < 10) {
+        if (current < CMD_MODE_BRIGHTNESS_MAX) {
             uint8_t new_brightness = current + 1;
             ws2812_set_brightness(new_brightness);
             config_set_led_brightness(new_brightness);

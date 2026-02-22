@@ -18,7 +18,7 @@ This script checks source code against the architectural rules defined in `.gith
 
 ### What It Checks
 
-The script runs through seventeen different checks, each targeting a specific architectural rule:
+The script runs through eighteen different checks, each targeting a specific architectural rule:
 
 1. **Blocking Operations** - Detects `sleep_ms()`, `sleep_us()`, `busy_wait_us()`, `busy_wait_ms()`
    - ❌ **Fails**: Any blocking call found in src/
@@ -104,6 +104,13 @@ The script runs through seventeen different checks, each targeting a specific ar
    - 📝 **Note**: clang-format off/on blocks are excluded from this check
    - 🔧 **Reference**: See [Code Standards](../docs/development/code-standards.md#formatting-and-style) for indentation rules
 
+1. **Trailing Whitespace** - Detects lines ending with spaces
+   - ❌ **Fails**: Any `.c` or `.h` file in `src/` with any trailing whitespace
+   - ❌ **Fails**: Any `.md` file in `docs/`, `tools/`, `src/`, or root with a single trailing space
+   - 💡 **Fix**: Configure your editor to strip trailing whitespace on save, or run `sed -i 's/[[:space:]]*$//' <file>`
+   - 📝 **Note**: Trailing whitespace causes noisy diffs and editor warnings
+   - 📝 **Note**: Double trailing spaces in Markdown files are intentionally allowed — they produce a hard line break (`<br>`)
+
 ### Integration
 
 - **Pre-commit**: Recommended to run before committing
@@ -117,10 +124,10 @@ The script runs through seventeen different checks, each targeting a specific ar
 RP2040 Architecture Lint Checks
 ========================================
 
-[1/17] Checking for blocking operations...
+[1/18] Checking for blocking operations...
 ✓ No blocking operations found
 
-[2/17] Checking for multicore API usage...
+[2/18] Checking for multicore API usage...
 ✓ No multicore API usage found
 
 ...

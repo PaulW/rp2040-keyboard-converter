@@ -234,7 +234,7 @@ Each byte transmission consists of **8 bits transmitted in rotated order** with 
 > **From Official Specification** *(using Commodore's original signal names CLOCK/DATA)*:  
 > "The keyboard processor sets the DATA line about **20 microseconds** before it pulls CLOCK low. CLOCK stays low for about **20 microseconds**, then goes high again. The processor waits another **20 microseconds** before changing DATA. Therefore, the bit rate during transmission is about **60 microseconds per bit**, or 17 kbits/sec."  
 > — *Amiga Hardware Reference Manual, Appendix H*
-> 
+>
 > **Note**: For consistency across our project, we use **CLOCK** and **DATA** instead of the original KCLK/KDAT naming.
 
 ```

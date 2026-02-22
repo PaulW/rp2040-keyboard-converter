@@ -102,9 +102,9 @@ This header defines any keyboard-specific overrides or constants. The simplest i
 #ifndef KEYBOARD_H
 #define KEYBOARD_H
 
-// Apple M0110A only has one shift key—both physical Shift keys send the same 
-// scancode (0x71). The default Command Mode activation uses Left Shift + Right 
-// Shift, which obviously won't work here. So we override it to use Shift + 
+// Apple M0110A only has one shift key—both physical Shift keys send the same
+// scancode (0x71). The default Command Mode activation uses Left Shift + Right
+// Shift, which obviously won't work here. So we override it to use Shift +
 // Option (Alt) instead.
 #define CMD_MODE_KEY1 KC_LSHIFT
 #define CMD_MODE_KEY2 KC_LALT

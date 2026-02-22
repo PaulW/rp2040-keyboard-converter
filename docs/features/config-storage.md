@@ -12,7 +12,7 @@ The RP2040 doesn't have dedicated EEPROM like some microcontrollers, but it does
 
 However, flash has some quirks we need to handle carefully. Flash cells wear out after many write cycles (manufacturer specifications vary by chip). Flash must be erased in relatively large blocks (4KB sectors on the RP2040) before writing new data. And if power is lost partway through a write operation, the data might end up corrupted.
 
-The configuration storage system addresses all these concerns whilst keeping the implementation simple and robust.
+The configuration storage system addresses these concerns through dual-copy storage, CRC validation, and a fixed flash allocation.
 
 ---
 
@@ -205,7 +205,7 @@ To persist the change, the system must write the configuration to flash. This ha
 
 **Step 6**: Re-enable interrupts and mark the operation complete.
 
-The entire save operation is a blocking flash write—fast enough to feel instant, but slow enough that writes are explicit rather than automatic on every setting change.
+The entire save operation is a blocking flash write; it runs only on explicit saves rather than on every setting change.
 
 ### Blocking vs Non-Blocking
 

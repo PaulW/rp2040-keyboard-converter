@@ -195,7 +195,7 @@ Pressing 'S' toggles the shift-override feature on or off for keyboards with non
 1. Activate Command Mode (both shifts, 3 seconds)
 2. Press the **'S'** key
 3. The converter immediately toggles the shift-override state
-4. The LED flashes briefly to confirm, and Command Mode exits
+4. Command Mode exits and the status LED returns to its normal state
 5. UART shows: `"Shift-Override enabled"` or `"Shift-Override disabled"`
 
 **What shift-override does**:

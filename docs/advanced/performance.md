@@ -18,7 +18,7 @@ Each key press flows through distinct stages that operate without blocking each 
 
 2. **Interrupt Handler** - When a complete byte arrives, the PIO triggers an interrupt. The handler extracts the scancode and writes it to the ring buffer—a minimal operation taking only a few CPU cycles.
 
-3. **Ring Buffer** - The [32-byte FIFO](../../src/common/lib/ringbuf.c) (defined as `RINGBUF_SIZE` in [ringbuf.h](../../src/common/lib/ringbuf.h)) bridges interrupt context and main loop. Its size provides sufficient capacity for multibyte scancode sequences arriving back-to-back whilst remaining small enough to stay in L1 cache.
+3. **Ring Buffer** - The [32-byte FIFO](../../src/common/lib/ringbuf.c) (defined as `RINGBUF_SIZE` in [ringbuf.h](../../src/common/lib/ringbuf.h)) bridges interrupt context and main loop. Its size provides sufficient capacity for multibyte scancode sequences arriving back-to-back whilst keeping the working set tiny for fast SRAM access.
 
 4. **Scancode Decoder** - The main loop retrieves scancodes from the buffer and reconstructs complete key events. Some protocols use multibyte sequences (E0 prefixes, F0 break codes, the eleven-byte Pause key), so the decoder maintains state across multiple reads.
 

@@ -66,4 +66,4 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
 };
 
 /* Layer count - automatically calculated from keymap_map array size */
-const uint8_t keymap_layer_count = sizeof(keymap_map) / sizeof(keymap_map[0]);
+const uint8_t keymap_layer_count = (uint8_t)(sizeof(keymap_map) / sizeof(keymap_map[0]));

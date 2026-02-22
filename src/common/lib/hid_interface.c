@@ -112,16 +112,16 @@ static hid_mouse_report_t    mouse_report;
 static inline bool hid_send_report(uint8_t instance, uint8_t report_id, void const* report,
                                    uint16_t len) {
     // Check if endpoint is ready before attempting to send
-    if (!tud_hid_n_ready(instance)) {
+    bool ready = tud_hid_n_ready(instance);
+    if (!ready) {
         LOG_DEBUG("HID endpoint not ready (instance=%u, report_id=0x%02X)\n", instance, report_id);
-        return false;
     }
 
     // Check if we should build hex dump (DEBUG enabled or might fail)
     bool should_log = (log_get_level() >= (log_level_t)LOG_LEVEL_DEBUG);
 
     // Send via TinyUSB first
-    bool result = tud_hid_n_report(instance, report_id, report, len);
+    bool result = ready && tud_hid_n_report(instance, report_id, report, len);
 
     // Build hex dump if DEBUG enabled OR transmission failed
     // This ensures we only construct the report once, even if both conditions true

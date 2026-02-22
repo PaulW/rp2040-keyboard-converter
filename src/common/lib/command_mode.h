@@ -109,18 +109,20 @@ void command_mode_init(void);
  * Performance Optimisation:
  * - Early exit when state is IDLE
  * - Only checks time when in active states
- * - LED updates only occur when in COMMAND_ACTIVE state
+ * - LED updates occur in COMMAND_ACTIVE and BRIGHTNESS_SELECT states
  * - Inlined LED logic to reduce call overhead
  *
  * Responsibilities:
  * - Checks for SHIFT_HOLD_WAIT → COMMAND_ACTIVE transition (3 second timer)
  * - Sends empty HID report when entering COMMAND_ACTIVE state
  * - Handles COMMAND_ACTIVE timeout (3 second auto-exit)
- * - Updates LED flashing (Green/Blue alternating every 100ms)
+ * - Updates LED flashing (Green/Blue alternating every 100ms) in COMMAND_ACTIVE
+ * - Updates brightness rainbow animation in BRIGHTNESS_SELECT
  *
  * LED Update Frequency:
  * - Should be called regularly from the main loop
- * - LED updates occur every 100ms when in COMMAND_ACTIVE state
+ * - LED updates occur every 100ms in COMMAND_ACTIVE and use the brightness animation cadence in
+ * BRIGHTNESS_SELECT
  * - Non-blocking: returns immediately if no update needed
  *
  * @note Called from main loop (main.c) continuously

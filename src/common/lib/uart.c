@@ -121,6 +121,14 @@
 #define UART_ID uart0
 
 /**
+ * @brief Backoff tuning (microseconds)
+ *
+ * Values for backoff retries in timing logic
+ */
+#define UART_DMA_BACKOFF_MIN_US 1U
+#define UART_DMA_BACKOFF_MAX_US 1024U
+
+/**
  * @brief Performance and Buffer Configuration
  *
  * These parameters are defined in config.h and tuned for optimal performance
@@ -454,15 +462,15 @@ static inline bool wait_for_queue_space(void) {
     if (in_irq()) {
         return !queue_full();
     }
-    int delay_us = 1;
+    int delay_us = UART_DMA_BACKOFF_MIN_US;
     int waited   = 0;
     while (queue_full() && waited < UART_DMA_WAIT_US) {
         sleep_us(delay_us);  // LINT:ALLOW blocking - UART debug logging only, IRQ-protected
                              // yields CPU for PIO/interrupts
         waited += delay_us;
         delay_us <<= 1;  // double delay
-        if (delay_us > 1024)
-            delay_us = 1024;  // cap step size
+        if (delay_us > UART_DMA_BACKOFF_MAX_US)
+            delay_us = UART_DMA_BACKOFF_MAX_US;  // cap step size
     }
     return !queue_full();
 

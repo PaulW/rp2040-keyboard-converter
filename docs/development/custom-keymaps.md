@@ -362,7 +362,7 @@ Notice the `MO_1` key in the base layer—that's a momentary layer switch. When 
 There are four types of layer operations, each with a different behaviour:
 
 **Momentary (MO)** - Layer active only whilst held  
-`MO_1`, `MO_2`, `MO_3` activate Layers 1-3 temporarily. Release the key and the layer deactivates. This is the most common type—useful for Function layers or media control layers.
+`MO_1`, `MO_2`, `MO_3` activate Layers 1-3 temporarily. Release the key and the layer deactivates. This is well-suited for Function layers or media control layers where the alternative mapping is only needed whilst holding the key.
 
 **Toggle (TG)** - Layer stays active until toggled again  
 `TG_1`, `TG_2`, `TG_3` toggle Layers 1-3 on or off. Press once to activate, press again to deactivate. Useful for modes you want to stay in without holding a key (like a gaming layer or alternative layout).
@@ -413,7 +413,7 @@ The keys set to `TRNS` behave exactly as they do in Layer 0. You don't need to r
 
 **Toggle layers persist across reboots** - If you toggle a layer on with TG_1, it stays active even after power cycling the converter. The system validates the saved layer state against the current firmware—if you flash different layer definitions (add/remove layers) or switch keyboards, it automatically resets to Layer 0 for safety. TO layers also persist the same way.
 
-**One-shot layers are consumed on next key press** - When you activate a one-shot layer (OSL_1), it remains active until you press another key. The `keylayers_consume_oneshot()` function (defined in `src/common/lib/keylayers.c`) is invoked from `keymaps.c` when any non-layer key is pressed, immediately deactivating the one-shot layer after that single keypress. There's no time-based timeout—the layer stays active until you use it.
+**One-shot layers are consumed on the next key press** - When you activate a one-shot layer (OSL_1), it remains active until you press another key. The `keylayers_consume_oneshot()` function (defined in `src/common/lib/keylayers.c`) is invoked from `keymaps.c` when any non-layer key is pressed, immediately deactivating the one-shot layer after that single keypress. There's no time-based timeout—the layer stays active until you use it.
 
 **Layer keycodes are internal-only** - MO, TG, TO, and OSL keycodes never get sent to your computer. They're processed internally by the converter to manage layer state. When you release a momentary layer key, it doesn't send a keypress—it just changes the active layer.
 

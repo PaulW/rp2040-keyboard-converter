@@ -57,7 +57,7 @@ First, locate the buttons on your RP2040 board. Where they are depends on which 
 
 ### Waveshare RP2040-Zero
 
-- **BOOT button**: Small button labeled "BOOT" or "B" 
+- **BOOT button**: Small button labeled "BOOT" or "B"
 - **RESET button**: Small button labeled "RESET" or "R"
 - Located on the back of the board
 
