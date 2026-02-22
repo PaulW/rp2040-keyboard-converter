@@ -190,7 +190,9 @@ static uint16_t brightness_rainbow_hue = 0; /**< Current rainbow hue (0-359) for
  * @note Only works for modifier keys (0xE0-0xE7)
  * @note If CMD_MODE_KEY1/KEY2 are changed to non-modifiers, this logic must be updated
  */
-#define CMD_MODE_KEYS_MASK ((1 << (CMD_MODE_KEY1 & 0x7)) | (1 << (CMD_MODE_KEY2 & 0x7)))
+#define CMD_MODE_KEYS_MASK                              \
+    ((1 << (CMD_MODE_KEY1 & HID_MODIFIER_INDEX_MASK)) | \
+     (1 << (CMD_MODE_KEY2 & HID_MODIFIER_INDEX_MASK)))
 
 /**
  * @brief Compile-time validation of command mode activation keys
@@ -643,8 +645,17 @@ static bool command_handle_brightness_select(void) {
  * @return false to suppress keyboard report
  */
 static bool command_handle_shift_override_toggle(void) {
-    // Only allow toggle if keyboard defines shift-override arrays
-    if (keymap_shift_override_layers == NULL) {
+    // Only allow toggle if keyboard defines at least one shift-override layer entry.
+    // keymap_shift_override_layers is an array (not a pointer) so comparing it to
+    // NULL is meaningless; instead scan for any non-NULL element.
+    bool has_override = false;
+    for (int i = 0; i < KEYMAP_MAX_LAYERS; i++) {
+        if (keymap_shift_override_layers[i] != NULL) {
+            has_override = true;
+            break;
+        }
+    }
+    if (!has_override) {
         LOG_WARN(
             "Shift-Override not available (keyboard doesn't define custom shift "
             "mappings)\n");
