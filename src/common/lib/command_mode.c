@@ -772,6 +772,27 @@ static bool process_log_level_select(const hid_keyboard_report_t* keyboard_repor
 
 #ifdef CONVERTER_LEDS
 /**
+ * @brief Adjust LED brightness by one step in the given direction
+ *
+ * @param direction +1 to increase, -1 to decrease
+ * @return true if brightness was changed, false if at limit
+ */
+static bool adjust_brightness(int8_t direction) {
+    uint8_t current = ws2812_get_brightness();
+    if ((direction > 0 && current >= WS2812_BRIGHTNESS_MAX) ||
+        (direction < 0 && current <= WS2812_BRIGHTNESS_MIN)) {
+        return false;
+    }
+    uint8_t new_brightness = (uint8_t)(current + direction);
+    ws2812_set_brightness(new_brightness);
+    config_set_led_brightness(new_brightness);
+    LOG_INFO("LED brightness %s to %u\n", direction > 0 ? "increased" : "decreased",
+             new_brightness);
+    cmd_mode.state_start_time_ms = to_ms_since_boot(get_absolute_time());
+    return true;
+}
+
+/**
  * @brief Process keyboard input in BRIGHTNESS_SELECT state
  *
  * Waits for user to press +/- to adjust LED brightness.
@@ -784,31 +805,13 @@ static bool process_brightness_select(const hid_keyboard_report_t* keyboard_repo
     // Wait for user to press + or - to adjust brightness
     // KC_EQUAL is the physical '=' key which produces '+' when shifted
     if (is_key_pressed(keyboard_report, KC_EQUAL) || is_key_pressed(keyboard_report, KC_KP_PLUS)) {
-        uint8_t current = ws2812_get_brightness();
-        if (current < WS2812_BRIGHTNESS_MAX) {
-            uint8_t new_brightness = current + 1;
-            ws2812_set_brightness(new_brightness);
-            config_set_led_brightness(new_brightness);
-            LOG_INFO("LED brightness increased to %u\n", new_brightness);
-
-            // Reset timeout on brightness change
-            cmd_mode.state_start_time_ms = to_ms_since_boot(get_absolute_time());
-        }
+        adjust_brightness(+1);
         return false;
     }
 
     // '-' key
     if (is_key_pressed(keyboard_report, KC_MINUS) || is_key_pressed(keyboard_report, KC_KP_MINUS)) {
-        uint8_t current = ws2812_get_brightness();
-        if (current > WS2812_BRIGHTNESS_MIN) {
-            uint8_t new_brightness = current - 1;
-            ws2812_set_brightness(new_brightness);
-            config_set_led_brightness(new_brightness);
-            LOG_INFO("LED brightness decreased to %u\n", new_brightness);
-
-            // Reset timeout on brightness change
-            cmd_mode.state_start_time_ms = to_ms_since_boot(get_absolute_time());
-        }
+        adjust_brightness(-1);
         return false;
     }
 
@@ -836,6 +839,9 @@ bool command_mode_process(const hid_keyboard_report_t* keyboard_report) {
         case CMD_MODE_BRIGHTNESS_SELECT:
             return process_brightness_select(keyboard_report);
 #endif
+
+        default:
+            break;  // Corrupted state — fall through to default return
     }
 
     // Should never reach here, but default to normal processing
