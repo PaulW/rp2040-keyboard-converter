@@ -296,7 +296,8 @@ static bool hid_keyboard_del_key(uint8_t key) {
 static void apply_shift_suppression(bool suppress, uint8_t* saved_modifiers) {
     if (suppress) {
         *saved_modifiers = keyboard_report.modifier;
-        keyboard_report.modifier &= ~SHIFT_MODIFIER_MASK;  // Clear bits 1 (LShift) and 5 (RShift)
+        keyboard_report.modifier &=
+            (uint8_t)~SHIFT_MODIFIER_MASK;  // Clear bits 1 (LShift) and 5 (RShift)
     }
 }
 
@@ -422,12 +423,7 @@ void handle_keyboard_report(uint8_t rawcode, bool make) {
         // Restore shift modifiers after send to reflect physical key state
         restore_shift_suppression(suppress_shift, saved_modifiers);
     } else if (IS_CONSUMER(code)) {
-        uint16_t usage;
-        if (make) {
-            usage = CODE_TO_CONSUMER(code);
-        } else {
-            usage = 0;
-        }
+        uint16_t usage = make ? CODE_TO_CONSUMER(code) : 0;
 
         // Send consumer control report with automatic logging
         hid_send_report(ITF_NUM_CONSUMER_CONTROL, REPORT_ID_CONSUMER_CONTROL, &usage,
@@ -638,15 +634,17 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type,
                            uint8_t const* buffer, uint16_t bufsize) {
     // Ignore non-keyboard instances
-    if (instance != ITF_NUM_KEYBOARD)
+    if (instance != ITF_NUM_KEYBOARD) {
         return;
+    }
 
     if (report_type == HID_REPORT_TYPE_OUTPUT) {
         // Set keyboard LED e.g Capslock, Numlock etc...
         if (report_id == REPORT_ID_KEYBOARD) {
             // bufsize should be (at least) 1
-            if (bufsize == 0)
+            if (bufsize == 0) {
                 return;
+            }
             set_lock_values_from_hid(buffer[0]);
         }
     }
