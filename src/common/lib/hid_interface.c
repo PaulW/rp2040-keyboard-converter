@@ -33,6 +33,11 @@
 #include "log.h"
 #include "usb_descriptors.h"
 
+// --- Configuration Constants ---
+
+/** HID Report Max Log Buffer Size */
+#define HID_REPORT_LOG_BUFFER_SIZE 128
+
 /**
  * @brief HID Interface Usage Pages
  *
@@ -96,7 +101,7 @@ static hid_mouse_report_t    mouse_report;
  *
  * Memory Overhead:
  * - Zero heap allocation (stack-only buffer)
- * - 128-byte stack buffer only allocated when logging needed
+ * - HID_REPORT_LOG_BUFFER_SIZE-byte stack buffer only allocated when logging needed
  * - Buffer immediately freed when function returns
  *
  * @param instance    The HID interface instance number
@@ -129,7 +134,7 @@ static inline bool hid_send_report(uint8_t instance, uint8_t report_id, void con
         // Build formatted hex dump: Report ID + data bytes (matches USB wire format)
         // Maximum HID report size is typically small (keyboard=8, mouse=5, consumer=2)
         // Buffer: prefix (32) + report ID (3) + hex bytes (len * 3) + null terminator
-        char        buffer[128];
+        char        buffer[HID_REPORT_LOG_BUFFER_SIZE];
         const char* prefix = result ? "[SENT-HID-REPORT]" : "[FAILED-HID-REPORT]";
         size_t offset = (size_t)snprintf(buffer, sizeof(buffer), "%s %02X ", prefix, report_id);
 
