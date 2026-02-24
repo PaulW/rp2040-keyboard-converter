@@ -362,6 +362,11 @@ static void command_mode_exit(const char* reason) {
 #endif
     // Restore normal LED operation
     update_converter_status();
+    // Flush any keys accumulated in keyboard_report during command mode (e.g. the
+    // command selection key that was suppressed) and tell the host all keys are
+    // released.  Without this, leftover keys in keyboard_report produce spurious
+    // events once normal processing resumes.
+    send_empty_keyboard_report();
 }
 
 void command_mode_init(void) {
@@ -526,7 +531,8 @@ void command_mode_task(void) {
 
         case CMD_MODE_IDLE:  // Unreachable: handled by early-exit guard above
         default:             // Corrupted state or future enum values
-            return;          // Safe fallback
+            cmd_mode.state = CMD_MODE_IDLE;
+            return;  // Safe fallback
     }
 }
 

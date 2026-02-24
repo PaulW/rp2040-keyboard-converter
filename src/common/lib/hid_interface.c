@@ -471,16 +471,20 @@ bool hid_is_shift_pressed(void) {
  * - reserved: 0x00
  * - keycode[0-5]: all 0x00 (no keys pressed)
  *
- * @note Called from command mode when entering COMMAND_ACTIVE state
- * @note Does not modify the internal keyboard_report state
+ * @note Called from command mode on COMMAND_ACTIVE entry and on any exit path
+ * @note Resets internal keyboard_report state to match the empty report sent to the host.
+ *       Without this, activation keys (e.g. both shift keys) remain in keyboard_report
+ *       after command mode and cause spurious events or accidental SHIFT_HOLD_WAIT re-entry.
  */
 void send_empty_keyboard_report(void) {
-    hid_keyboard_report_t empty_report = {
-        .modifier = 0, .reserved = 0, .keycode = {0, 0, 0, 0, 0, 0}};
+    // Zero the internal report so it matches what we're telling the host.
+    // Any keys tracked during command mode (activation shifts, command keys)
+    // are discarded here to prevent spurious reports after command mode exits.
+    keyboard_report = (hid_keyboard_report_t){0};
 
-    // Send empty report with automatic logging
-    if (hid_send_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &empty_report,
-                        sizeof(empty_report))) {
+    // Send the zeroed report with automatic logging
+    if (hid_send_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &keyboard_report,
+                        sizeof(keyboard_report))) {
         LOG_INFO("Sent empty keyboard report (all keys released)\n");
     }
 }

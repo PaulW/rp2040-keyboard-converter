@@ -214,10 +214,12 @@
 // 0xFF reserved for future OSL(4)
 
 // Convenience macros for keymaps (layers 1-3)
-// Note: No compile-time validation. For MO(4+), IS_LAYER_KEY() passes and
-// keylayers_process_key() rejects the out-of-range target at runtime.
-// MO(0) produces 0xEF (below IS_LAYER_KEY threshold), so it is not caught
-// by runtime bounds checks — it silently becomes an unrecognised IS_SPECIAL code.
+// Note: No compile-time validation.
+// MO(0) produces 0xEF (below IS_LAYER_KEY threshold) — silently ignored as an
+// unrecognised IS_SPECIAL code; never reaches keylayers_process_key().
+// MO(4) produces 0xF3 (GET_LAYER_TARGET=4) — rejected at runtime by keylayers_process_key().
+// MO(5+) wraps into TG/TO/OSL/MO space (e.g. MO(5)=TG(1), MO(9)=TO(1)) and
+// silently executes as a DIFFERENT layer operation; not rejected at runtime.
 // Stick to n: 1-3.
 #define MO(n)  (KC_LAYER_MO_BASE + ((n) - 1))   // n: 1-3 (Momentary)
 #define TG(n)  (KC_LAYER_TG_BASE + ((n) - 1))   // n: 1-3 (Toggle)
