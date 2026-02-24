@@ -111,7 +111,7 @@ static uint16_t brightness_rainbow_hue = 0; /**< Current rainbow hue (0-359) for
 /** HID modifier keycode range and index mask */
 #define HID_MODIFIER_KEYCODE_MIN KC_LCTRL
 #define HID_MODIFIER_KEYCODE_MAX KC_RGUI
-#define HID_MODIFIER_INDEX_MASK  0x7u
+#define HID_MODIFIER_INDEX_MASK  0x7U
 
 /** Command mode timing constants (milliseconds) */
 #define CMD_MODE_HOLD_TIME_MS  3000 /**< Time to hold command keys to enter command mode */
@@ -518,9 +518,9 @@ void command_mode_task(void) {
             return;
 #endif
 
-        case CMD_MODE_IDLE:
-        default:
-            return;  // Should not reach here, but safe fallback
+        case CMD_MODE_IDLE:  // Unreachable: handled by early-exit guard above
+        default:             // Corrupted state or future enum values
+            return;          // Safe fallback
     }
 }
 
@@ -840,10 +840,7 @@ bool command_mode_process(const hid_keyboard_report_t* keyboard_report) {
             return process_brightness_select(keyboard_report);
 #endif
 
-        default:
-            break;  // Corrupted state — fall through to default return
+        default:          // Corrupted state or future enum values
+            return true;  // Safe fallback
     }
-
-    // Should never reach here, but default to normal processing
-    return true;
 }

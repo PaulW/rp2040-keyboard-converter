@@ -435,6 +435,10 @@ _Static_assert(KC_NO == 0 && KC_RGUI <= 0xFF, "hid_keyboard_usage_page values mu
 
 /* HID Consumer Usage Page (0x0C) */
 enum hid_consumer_usage_page {
+    /* Display Brightness Controls */
+    BRIGHTNESS_INCREMENT = 0x006F,  // 0x006F /* Keyboard Brightness Increment */
+    BRIGHTNESS_DECREMENT = 0x0070,  // 0x0070 /* Keyboard Brightness Decrement */
+
     /* Media Controls */
     MEDIA_PLAY         = 0x00B0,  // 0x00B0 /* Keyboard Play */
     MEDIA_PAUSE        = 0x00B1,  // 0x00B1 /* Keyboard Pause */
@@ -471,15 +475,11 @@ enum hid_consumer_usage_page {
     APPCONTROL_STOP      = 0x0226,  // 0x0226 /* Keyboard Stop */
     APPCONTROL_REFRESH   = 0x0227,  // 0x0227 /* Keyboard Refresh */
     APPCONTROL_BOOKMARKS = 0x022A,  // 0x022A /* Keyboard Bookmarks */
-
-    /* Display Brightness Controls */
-    BRIGHTNESS_INCREMENT = 0x006F,  // 0x006F /* Keyboard Brightness Increment */
-    BRIGHTNESS_DECREMENT = 0x0070,  // 0x0070 /* Keyboard Brightness Decrement */
 };
 /* Enumerators have type int (C11 §6.7.2.2p3).  These values are used as
  * uint16_t HID consumer usage IDs, so assert they fit to turn the implicit
  * narrowing into a compile-time guarantee. */
-_Static_assert(MEDIA_PLAY >= 0 && APPCONTROL_BOOKMARKS <= 0xFFFF,
+_Static_assert(BRIGHTNESS_INCREMENT >= 0 && APPCONTROL_BOOKMARKS <= 0xFFFF,
                "hid_consumer_usage_page values must fit in uint16_t");
 
 /* Internal Special Codes
