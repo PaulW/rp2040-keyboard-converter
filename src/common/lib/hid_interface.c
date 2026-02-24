@@ -204,8 +204,10 @@ static bool hid_keyboard_add_key(uint8_t key) {
     // Duplicate prevention approach to fix issue #19:
     // Single loop checks all 6 slots for duplicates whilst tracking first empty slot
     // Only adds key if: (1) not already present AND (2) empty slot available
+    const uint8_t keycode_slots =
+        (uint8_t)(sizeof(keyboard_report.keycode) / sizeof(keyboard_report.keycode[0]));
     uint8_t valid_slot = UINT8_MAX;  // Invalid slot sentinel
-    for (uint8_t i = 0; i < 6; i++) {
+    for (uint8_t i = 0; i < keycode_slots; i++) {
         // Check for duplicate (already in report) - early return for performance
         if (keyboard_report.keycode[i] == key) {
             return false;  // Key already present, don't add again
@@ -218,7 +220,7 @@ static bool hid_keyboard_add_key(uint8_t key) {
     }
 
     // If we found an empty slot and key wasn't already present, add it
-    if (valid_slot < 6) {  // 0xFF > 6, so this checks if valid slot was found
+    if (valid_slot < keycode_slots) {  // 0xFF > slots, so this checks if valid slot was found
         keyboard_report.keycode[valid_slot] = key;
         return true;
     }
@@ -265,7 +267,9 @@ static bool hid_keyboard_del_key(uint8_t key) {
         return false;
     }
 
-    for (size_t i = 0; i < 6; i++) {
+    const size_t keycode_slots =
+        sizeof(keyboard_report.keycode) / sizeof(keyboard_report.keycode[0]);
+    for (size_t i = 0; i < keycode_slots; i++) {
         if (keyboard_report.keycode[i] == key) {
             keyboard_report.keycode[i] = 0;
             return true;
