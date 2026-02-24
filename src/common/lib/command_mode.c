@@ -695,7 +695,7 @@ static bool process_command_active(const hid_keyboard_report_t* keyboard_report)
     }
 
     if (is_key_pressed(keyboard_report, KC_F)) {
-        return command_handle_factory_reset();  // Never returns
+        return command_handle_factory_reset();  // Watchdog fires shortly after return
     }
 
     if (is_key_pressed(keyboard_report, KC_L)) {

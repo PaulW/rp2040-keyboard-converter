@@ -155,14 +155,14 @@
 /* Display Brightness Controls */
 #define KC_BRTI KC_BRIGHTNESS_INC
 #define KC_BRTD KC_BRIGHTNESS_DEC
-/* Jump to bootloader */
-#define KC_BTLD KC_SPECIAL_BOOT
 /* Transparent */
 #define KC_TRANSPARENT 0xD1
 #define KC_TRNS        KC_TRANSPARENT
 /* Special Macro Keys */
 #define KC_SPECIAL_BOOT 0xD2
 #define KC_BOOT         KC_SPECIAL_BOOT
+/* Jump to bootloader */
+#define KC_BTLD KC_SPECIAL_BOOT
 
 /* ============================================================================
  * INTERNAL LAYER SWITCHING KEYCODES (0xF0-0xFF range)
