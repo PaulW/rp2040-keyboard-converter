@@ -119,9 +119,11 @@ static uint16_t brightness_rainbow_hue = 0; /**< Current rainbow hue (0-359) for
 #define CMD_MODE_LED_TOGGLE_MS 100  /**< LED toggle interval in command mode */
 
 #ifdef CONVERTER_LEDS
-#define CMD_MODE_RAINBOW_CYCLE_MS 50  /**< Rainbow hue update interval in brightness select */
-#define CMD_MODE_RAINBOW_HUE_STEP 6   /**< Hue increment per update (6° = 3s cycle at 50ms) */
-#define CMD_MODE_RAINBOW_HUE_MAX  360 /**< Full colour wheel in degrees */
+#define CMD_MODE_RAINBOW_CYCLE_MS   50  /**< Rainbow hue update interval in brightness select */
+#define CMD_MODE_RAINBOW_HUE_STEP   6   /**< Hue increment per update (6° = 3s cycle at 50ms) */
+#define CMD_MODE_RAINBOW_HUE_MAX    360 /**< Full colour wheel in degrees */
+#define CMD_MODE_RAINBOW_SATURATION 255 /**< Full saturation for rainbow feedback */
+#define CMD_MODE_RAINBOW_VALUE      255 /**< Full value/brightness for rainbow feedback */
 #endif
 
 /**
@@ -322,7 +324,7 @@ static void reset_leds_for_reboot(void) {
  * @note This function never returns (device resets via reset_usb_boot)
  * @note Called from command_mode_process when 'B' is detected
  */
-static void command_execute_bootloader(void) {
+static void __attribute__((noreturn)) command_execute_bootloader(void) {
     LOG_INFO("Bootloader command received, initiating bootloader...\n");
 
 #ifdef CONVERTER_LEDS
@@ -473,8 +475,8 @@ static void update_brightness_rainbow(uint32_t now_ms) {
             (brightness_rainbow_hue + CMD_MODE_RAINBOW_HUE_STEP) % CMD_MODE_RAINBOW_HUE_MAX;
 
         // Convert HSV to RGB (full saturation and brightness for vivid colours)
-        uint32_t rainbow_colour = hsv_to_rgb(brightness_rainbow_hue, 255, 255);
-
+        uint32_t rainbow_colour =
+            hsv_to_rgb(brightness_rainbow_hue, CMD_MODE_RAINBOW_SATURATION, CMD_MODE_RAINBOW_VALUE);
         // Set the status LED directly (bypass normal LED helper logic)
         ws2812_show(rainbow_colour);
 
@@ -590,7 +592,7 @@ static bool command_handle_log_level_select(void) {
  *
  * Performs factory reset and reboots device. Never returns.
  *
- * @return false to suppress keyboard report (never actually returns)
+ * @return false to suppress keyboard report (watchdog fires shortly after return)
  */
 static bool command_handle_factory_reset(void) {
     LOG_WARN("Factory reset requested - restoring default configuration\n");
@@ -604,11 +606,10 @@ static bool command_handle_factory_reset(void) {
     // Flush UART before reboot
     uart_dma_flush();
 
-    // Reboot device using watchdog (clean reset path)
-    // Parameters are passed as zeros to trigger an immediate reboot via the ROM reset path.
+    // Reboot device using watchdog (clean reset path).
+    // watchdog_reboot() is not noreturn — it returns after arming the watchdog,
+    // which then fires and resets the device. return false suppresses the HID report.
     watchdog_reboot(0, 0, 0);
-
-    // Never returns
     return false;
 }
 
@@ -663,8 +664,7 @@ static bool command_handle_shift_override_toggle(void) {
         return false;
     }
 
-    bool current   = config_get_shift_override_enabled();
-    bool new_value = !current;
+    bool new_value = !config_get_shift_override_enabled();
     config_set_shift_override_enabled(new_value);
     config_save();  // Persist to flash
 
@@ -687,8 +687,7 @@ static bool process_command_active(const hid_keyboard_report_t* keyboard_report)
 
     // Dispatch to command handlers
     if (is_key_pressed(keyboard_report, KC_B)) {
-        command_execute_bootloader();  // Never returns
-        return false;
+        command_execute_bootloader();  // Never returns - __attribute__((noreturn))
     }
 
     if (is_key_pressed(keyboard_report, KC_D)) {
