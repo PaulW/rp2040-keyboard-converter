@@ -775,13 +775,12 @@ static bool process_log_level_select(const hid_keyboard_report_t* keyboard_repor
  * @brief Adjust LED brightness by one step in the given direction
  *
  * @param direction +1 to increase, -1 to decrease
- * @return true if brightness was changed, false if at limit
  */
-static bool adjust_brightness(int8_t direction) {
+static void adjust_brightness(int8_t direction) {
     uint8_t current = ws2812_get_brightness();
     if ((direction > 0 && current >= WS2812_BRIGHTNESS_MAX) ||
         (direction < 0 && current <= WS2812_BRIGHTNESS_MIN)) {
-        return false;
+        return;
     }
     uint8_t new_brightness = (uint8_t)(current + direction);
     ws2812_set_brightness(new_brightness);
@@ -789,7 +788,6 @@ static bool adjust_brightness(int8_t direction) {
     LOG_INFO("LED brightness %s to %u\n", direction > 0 ? "increased" : "decreased",
              new_brightness);
     cmd_mode.state_start_time_ms = to_ms_since_boot(get_absolute_time());
-    return true;
 }
 
 /**
@@ -802,17 +800,14 @@ static bool adjust_brightness(int8_t direction) {
  * @return false to suppress all keyboard reports
  */
 static bool process_brightness_select(const hid_keyboard_report_t* keyboard_report) {
-    // Wait for user to press + or - to adjust brightness
     // KC_EQUAL is the physical '=' key which produces '+' when shifted
-    if (is_key_pressed(keyboard_report, KC_EQUAL) || is_key_pressed(keyboard_report, KC_KP_PLUS)) {
-        adjust_brightness(+1);
-        return false;
-    }
+    bool increase =
+        is_key_pressed(keyboard_report, KC_EQUAL) || is_key_pressed(keyboard_report, KC_KP_PLUS);
+    bool decrease =
+        is_key_pressed(keyboard_report, KC_MINUS) || is_key_pressed(keyboard_report, KC_KP_MINUS);
 
-    // '-' key
-    if (is_key_pressed(keyboard_report, KC_MINUS) || is_key_pressed(keyboard_report, KC_KP_MINUS)) {
-        adjust_brightness(-1);
-        return false;
+    if (increase || decrease) {
+        adjust_brightness(increase ? +1 : -1);
     }
 
     // Suppress ALL keyboard reports whilst in brightness selection mode

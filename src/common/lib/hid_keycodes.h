@@ -25,6 +25,9 @@
 #define IS_KEY(code) (KC_A <= (code) && (code) <= KC_EXSEL)
 #define IS_MOD(code) (KC_LCTRL <= (code) && (code) <= KC_RGUI)
 
+/* IS_SPECIAL range: 0xA5-0xC8 = internal_special_codes enum; 0xC9-0xD0 and 0xD3-0xDF are
+ * reserved/unassigned; 0xD1=KC_TRANSPARENT and 0xD2=KC_SPECIAL_BOOT are intentionally present.
+ * Do not reuse codepoints in 0xA5-0xDF or 0xE8-0xEF without updating this macro. */
 #define IS_SPECIAL(code)  ((0xA5 <= (code) && (code) <= 0xDF) || (0xE8 <= (code) && (code) <= 0xEF))
 #define IS_SYSTEM(code)   (KC_PWR <= (code) && (code) <= KC_WAKE)
 #define IS_CONSUMER(code) (KC_MPLY <= (code) && (code) <= KC_BRTD)
