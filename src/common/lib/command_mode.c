@@ -396,7 +396,11 @@ static void handle_shift_hold_wait_timeout(uint32_t now_ms) {
 #endif
         LOG_INFO("Command mode active! Press:\n");
         LOG_INFO("  B = Bootloader     D = Log level    F = Factory reset\n");
+#ifdef CONVERTER_LEDS
         LOG_INFO("  L = LED brightness S = Shift-Override\n");
+#else
+        LOG_INFO("  S = Shift-Override\n");
+#endif
         LOG_INFO("Or wait 3s to cancel\n");
     }
 }
@@ -590,7 +594,7 @@ static bool command_handle_log_level_select(void) {
 /**
  * @brief Handle factory reset command (KC_F)
  *
- * Performs factory reset and reboots device. Never returns.
+ * Performs factory reset and reboots device. Returns after arming the watchdog.
  *
  * @return false to suppress keyboard report (watchdog fires shortly after return)
  */
@@ -834,7 +838,8 @@ bool command_mode_process(const hid_keyboard_report_t* keyboard_report) {
             return process_brightness_select(keyboard_report);
 #endif
 
-        default:          // Corrupted state or future enum values
+        default:  // Corrupted state or future enum values
+            cmd_mode.state = CMD_MODE_IDLE;
             return true;  // Safe fallback
     }
 }
