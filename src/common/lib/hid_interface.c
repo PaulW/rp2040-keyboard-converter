@@ -35,8 +35,24 @@
 
 // --- Configuration Constants ---
 
-/** HID Report Max Log Buffer Size */
+/**
+ * @brief Maximum buffer size for HID report logging
+ *
+ * This defines the size of the stack buffer used to construct hex dumps of HID reports for logging
+ * purposes.
+ */
 #define HID_REPORT_LOG_BUFFER_SIZE 128
+
+/**
+ * @brief Shift modifier bit mask
+ *
+ * HID modifier byte layout (bit positions):
+ * - Bit 1: Left Shift  (KC_LSHIFT = 0xE1)
+ * - Bit 5: Right Shift (KC_RSHIFT = 0xE5)
+ *
+ * This mask is used to check or clear shift modifier states in keyboard reports.
+ */
+#define SHIFT_MODIFIER_MASK ((uint8_t)((1u << 1) | (1u << 5)))
 
 /**
  * @brief HID Interface Usage Pages
@@ -48,17 +64,6 @@ enum {
     USAGE_PAGE_KEYBOARD = 0x0, /**< Standard keyboard usage page */
     USAGE_PAGE_CONSUMER = 0xC, /**< Consumer control usage page (multimedia keys) */
 };
-
-/**
- * @brief Shift modifier bit mask
- *
- * HID modifier byte layout (bit positions):
- * - Bit 1: Left Shift  (KC_LSHIFT = 0xE1)
- * - Bit 5: Right Shift (KC_RSHIFT = 0xE5)
- *
- * This mask is used to check or clear shift modifier states in keyboard reports.
- */
-static const uint8_t SHIFT_MODIFIER_MASK = (1 << 1) | (1 << 5);
 
 /**
  * @brief HID Report Structures
@@ -76,35 +81,63 @@ static hid_keyboard_report_t keyboard_report;
 static hid_mouse_report_t    mouse_report;
 
 /**
+ * @brief Dispatches log messages for a HID report send outcome
+ *
+ * Emits the appropriate LOG_DEBUG or LOG_ERROR message(s) for a given outcome.
+ * The caller is responsible for building the hex dump buffer and deciding whether
+ * to invoke this function — it is only called when logging is needed.
+ *
+ * - Success (result=true):           LOG_DEBUG with hex dump
+ * - Endpoint not ready (!ready):     LOG_ERROR — report dropped, hex dump always emitted
+ * - TinyUSB failure (ready, !result): LOG_ERROR — send failed, hex dump always emitted
+ *
+ * @param result    Return value from tud_hid_n_report() (true = queued successfully)
+ * @param ready     Return value from tud_hid_n_ready() (true = endpoint was ready)
+ * @param instance  HID interface instance number (for error messages)
+ * @param report_id HID report ID (for error messages)
+ * @param hex_buf   Pre-built, null-terminated hex dump string of the report
+ * @param len       Size of the original report data in bytes (for error messages)
+ *
+ * @note Main loop only — not IRQ-safe
+ * @note Only called when logging is required; guard logic lives in hid_send_report()
+ */
+static void log_hid_report_outcome(bool result, bool ready, uint8_t instance, uint8_t report_id,
+                                   const char* hex_buf, uint16_t len) {
+    if (result) {
+        LOG_DEBUG("%s\n", hex_buf);
+    } else if (!ready) {
+        // Endpoint not ready — report dropped; diagnostic hex dump always produced
+        LOG_ERROR("HID report dropped, endpoint not ready (instance=%u, report_id=0x%02X)\n",
+                  instance, report_id);
+        LOG_ERROR("%s\n", hex_buf);
+    } else {
+        LOG_ERROR("HID Report Send Failed (instance=%u, report_id=0x%02X, len=%u)\n", instance,
+                  report_id, len);
+        LOG_ERROR("%s\n", hex_buf);
+    }
+}
+
+/**
  * @brief Sends a HID report with automatic logging.
  *
- * This wrapper function logs the report contents when DEBUG enabled or on failure.
- * Using this function ensures all HID reports are consistently logged without
- * performance overhead (single function call vs separate log + send).
+ * Wrapper around tud_hid_n_report() that consistently logs report contents
+ * on failure or when DEBUG logging is enabled, with zero overhead otherwise.
  *
- * The function builds a formatted hex dump of the report (matching USB wire format
- * with Report ID first) only when needed:
- * - Always when DEBUG logging enabled (log level >= LOG_LEVEL_DEBUG)
- * - Always when transmission fails (for error diagnostics)
- * - Never otherwise (zero overhead in production with DEBUG disabled)
- *
- * This optimised approach constructs the hex dump only once, even if both
- * DEBUG is enabled AND transmission fails. The appropriate log level (DEBUG
- * or ERROR) is chosen based on the final transmission result.
+ * Owns the guard decision and hex dump construction; delegates log dispatch
+ * to log_hid_report_outcome() so the two responsibilities stay separate:
+ * - This function: send attempt, should-log guard, buffer construction
+ * - log_hid_report_outcome(): log level selection and message formatting
  *
  * Performance Characteristics:
  * - LOG_LEVEL < DEBUG + success: Only TinyUSB send (~1.6µs, near-zero overhead)
  * - LOG_LEVEL >= DEBUG + success: TinyUSB send + hex dump + UART (~16µs)
- * - Any level + genuine TinyUSB failure: send attempt + hex dump + UART (~16µs)
- * - Endpoint not ready (any log level): ERROR + failure hex dump (dropped report)
- * - Endpoint ready + DEBUG enabled: DEBUG hex dump for successful sends
+ * - Any level + send failure: send attempt + hex dump + UART (~16µs)
  * - Inline function allows compiler to optimise based on call site
  * - Single hex dump construction (not duplicated if DEBUG enabled AND failure)
  *
  * Memory Overhead:
  * - Zero heap allocation (stack-only buffer)
- * - HID_REPORT_LOG_BUFFER_SIZE-byte stack buffer only allocated when needed:
- *   DEBUG enabled, OR a genuine TinyUSB send failure occurred
+ * - HID_REPORT_LOG_BUFFER_SIZE-byte stack buffer only allocated when logging needed
  * - Buffer immediately freed when function returns
  *
  * @param instance    The HID interface instance number
@@ -113,11 +146,10 @@ static hid_mouse_report_t    mouse_report;
  * @param len         Size of the report data in bytes
  * @return true if report was successfully queued for transmission, false on error
  *
- * @note This function should be used instead of calling tud_hid_n_report() directly
- * @note All send failures (endpoint not ready or TinyUSB error) are always logged at ERROR with hex
- * dump
+ * @note Use instead of calling tud_hid_n_report() directly
+ * @note All send failures are always logged at ERROR with hex dump
  * @note Successful sends are only hex-dumped when DEBUG logging is enabled
- * @note Hex dump only generated once (not duplicated on DEBUG+failure)
+ * @note Hex dump built at most once per call (not duplicated on DEBUG+failure)
  */
 static inline bool hid_send_report(uint8_t instance, uint8_t report_id, void const* report,
                                    uint16_t len) {
@@ -125,12 +157,10 @@ static inline bool hid_send_report(uint8_t instance, uint8_t report_id, void con
     bool ready  = tud_hid_n_ready(instance);
     bool result = ready && tud_hid_n_report(instance, report_id, report, len);
 
-    // Any send failure (endpoint not ready or TinyUSB error) produces an ERROR with hex dump.
-    // Successful sends are hex-dumped only when DEBUG logging is enabled.
     bool should_log  = (log_get_level() >= (log_level_t)LOG_LEVEL_DEBUG);
     bool send_failed = !result;
 
-    // Build hex dump if DEBUG enabled OR any send failure occurred.
+    // Build hex dump and dispatch logging only when needed
     if (should_log || send_failed) {
         // Build formatted hex dump: Report ID + data bytes (matches USB wire format)
         // Maximum HID report size is typically small (keyboard=8, mouse=5, consumer=2)
@@ -145,19 +175,7 @@ static inline bool hid_send_report(uint8_t instance, uint8_t report_id, void con
                 (size_t)snprintf(buffer + offset, sizeof(buffer) - offset, "%02X ", *report_ptr++);
         }
 
-        // Log at appropriate level based on outcome
-        if (result) {
-            LOG_DEBUG("%s\n", buffer);
-        } else if (!ready) {
-            // Endpoint not ready — report dropped; diagnostic hex dump always produced
-            LOG_ERROR("HID report dropped, endpoint not ready (instance=%u, report_id=0x%02X)\n",
-                      instance, report_id);
-            LOG_ERROR("%s\n", buffer);
-        } else {
-            LOG_ERROR("HID Report Send Failed (instance=%u, report_id=0x%02X, len=%u)\n", instance,
-                      report_id, len);
-            LOG_ERROR("%s\n", buffer);
-        }
+        log_hid_report_outcome(result, ready, instance, report_id, buffer, len);
     }
 
     return result;
