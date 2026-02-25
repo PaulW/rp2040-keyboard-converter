@@ -483,20 +483,24 @@ bool hid_is_shift_pressed(void) {
  * - keycode[0-5]: all 0x00 (no keys pressed)
  *
  * @note Called from command mode on COMMAND_ACTIVE entry and on any exit path
- * @note Resets internal keyboard_report state to match the empty report sent to the host.
- *       Without this, activation keys (e.g. both shift keys) remain in keyboard_report
- *       after command mode and cause spurious events or accidental SHIFT_HOLD_WAIT re-entry.
+ * @note Only resets internal keyboard_report state on successful transmission.
+ *       If the send fails, keyboard_report is left unchanged so host and firmware
+ *       state remain consistent — no spurious break events are generated.
  */
 void send_empty_keyboard_report(void) {
-    // Zero the internal report so it matches what we're telling the host.
-    // Any keys tracked during command mode (activation shifts, command keys)
-    // are discarded here to prevent spurious reports after command mode exits.
-    keyboard_report = (hid_keyboard_report_t){0};
+    // Prepare a local zeroed report to send without touching keyboard_report yet.
+    // keyboard_report is only cleared once the host has been told all keys are released,
+    // keeping host and firmware state consistent on send failure.
+    hid_keyboard_report_t zero_report = {0};
 
-    // Send the zeroed report with automatic logging
-    if (hid_send_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &keyboard_report,
-                        sizeof(keyboard_report))) {
+    if (hid_send_report(ITF_NUM_KEYBOARD, REPORT_ID_KEYBOARD, &zero_report, sizeof(zero_report))) {
+        // Host acknowledged — now safe to discard tracked keys from firmware state
+        keyboard_report = zero_report;
         LOG_INFO("Sent empty keyboard report (all keys released)\n");
+    } else {
+        // Send failed; hid_send_report() has already logged the error + hex dump.
+        // Leave keyboard_report unchanged to avoid diverging host/firmware state.
+        LOG_ERROR("Failed to send empty keyboard report; firmware state unchanged\n");
     }
 }
 
