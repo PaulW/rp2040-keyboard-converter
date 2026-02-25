@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -24,13 +24,36 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define KEYMAP_ROWS 8
-#define KEYMAP_COLS 16
+#define KEYMAP_ROWS       8
+#define KEYMAP_COLS       16
+#define KEYMAP_MAX_LAYERS 8
 
-uint8_t keymap_get_key_val(uint8_t pos, bool make);
-bool keymap_is_action_key_pressed(void);
+// Shift-Override array size: Each layer's shift-override array must be exactly this size
+#define SHIFT_OVERRIDE_ARRAY_SIZE 256
+
+// Shift-Override flag: Set bit 7 in keymap_shift_override_layers[] to suppress shift modifier
+#define SUPPRESS_SHIFT 0x80
+
+/**
+ * @brief Retrieve key value at specified position in keymap
+ *
+ * Main keymap lookup function. Handles layer fallthrough, layer modifiers,
+ * and per-layer shift-override. Coordinates with layer system for proper
+ * key resolution across active layers.
+ *
+ * @param pos            Key position (upper nibble = row, lower nibble = col)
+ * @param make           true if key pressed, false if released
+ * @param suppress_shift Output parameter for shift suppression (can be NULL)
+ * @return HID keycode to send, or KC_NO if consumed by layer operation
+ */
+uint8_t keymap_get_key_val(uint8_t pos, bool make, bool* suppress_shift);
 
 extern const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS];
-extern const uint8_t keymap_actions[][KEYMAP_ROWS][KEYMAP_COLS];
+
+// Optional: Per-layer shift-override arrays (weak symbol, keyboards can override)
+// Array of pointers to SHIFT_OVERRIDE_ARRAY_SIZE-byte shift-override arrays, one per layer
+// NULL entries mean no shift-override for that layer
+// Note: Runtime validation checks for invalid layer access and array bounds
+extern const uint8_t* const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] __attribute__((weak));
 
 #endif /* KEYMAPS_H */

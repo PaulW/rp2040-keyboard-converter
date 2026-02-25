@@ -25,11 +25,11 @@ Bits 6-0: Key code (0x00-0x67)
 - Left Shift (0x60) pressed: `0x60`
 - Left Shift (0x60) released: `0xE0`
 
-### CAPS LOCK Special Behavior
+### CAPS LOCK Special Behaviour
 
-The Amiga CAPS LOCK key (scancode 0x62) has unique behavior that differs from all other keyboard protocols:
+The Amiga CAPS LOCK key (scancode 0x62) has unique behaviour that differs from all other keyboard protocols:
 
-**Keyboard Behavior**:
+**Keyboard Behaviour**:
 1. **Only sends on press** (never on release)
 2. Keyboard maintains internal LED state
 3. LED toggles on each press
@@ -40,7 +40,7 @@ The Amiga CAPS LOCK key (scancode 0x62) has unique behavior that differs from al
 **Our Implementation**:
 - **CAPS LOCK handling is done in the protocol layer** (`keyboard_interface.c`), NOT in this scancode processor
 - Protocol layer detects CAPS LOCK by key code (0x62)
-- **Smart synchronization**: Compares keyboard LED state (from bit 7) with USB HID CAPS LOCK state
+- **Smart synchronisation**: Compares keyboard LED state (from bit 7) with USB HID CAPS LOCK state
 - **Only toggles if states differ**: Prevents unnecessary HID events and handles desync gracefully
 - Generates press+release pair with configurable hold time (default 125ms, set via `CAPS_LOCK_TOGGLE_TIME_MS` in `config.h`)
 - This scancode processor receives normal make/break codes and processes them uniformly
@@ -49,7 +49,7 @@ The Amiga CAPS LOCK key (scancode 0x62) has unique behavior that differs from al
 
 The Amiga keyboard maintains its own CAPS LOCK LED state internally. The computer cannot control Amiga keyboard LEDs (unlike PC keyboards with LED control commands). By sending the LED state instead of press/release, the keyboard ensures the computer knows the current LED state after each toggle.
 
-USB HID CAPS LOCK is a **toggle key**: each press+release cycle toggles the state. The protocol layer implements smart synchronization that only sends toggle events when keyboard LED and USB HID states differ, handling scenarios like:
+USB HID CAPS LOCK is a **toggle key**: each press+release cycle toggles the state. The protocol layer implements smart synchronisation that only sends toggle events when keyboard LED and USB HID states differ, handling scenarios like:
 - Normal operation (both states match)
 - Desync after converter reboot (keyboard powered, USB reset)
 - Rapid presses before USB completes toggle
@@ -71,12 +71,12 @@ User presses CAPS LOCK (second time):
   Result: Both keyboard LED and USB CAPS are OFF ✓
 
 Reboot scenario (keyboard stays powered):
-  Before: LED ON, USB ON (synchronized)
+  Before: LED ON, USB ON (synchronised)
   After reboot: LED ON (unchanged), USB OFF (reset)
   User presses CAPS LOCK:
     Keyboard: Toggles LED ON→OFF, sends 0xE2 (bit 7=1, "LED now OFF")
     Protocol: Check states - LED=OFF, USB=OFF → Same, skip toggle!
-    Result: Both OFF, automatically resynchronized ✓
+    Result: Both OFF, automatically resynchronised ✓
 ```
 
 ## Key Code Range
@@ -128,7 +128,7 @@ Raw bits    De-rotate        Extract         Keymap
 4. Special case: CAPS LOCK (0x62)
    - Generate press+release pair (ignore bit 7)
    - USB HID toggles on each press+release cycle
-   - Keeps keyboard LED and USB CAPS LOCK synchronized
+   - Keeps keyboard LED and USB CAPS LOCK synchronised
 5. Normal keys: Pass to HID layer with make/break flag
 
 **Output**: Calls `handle_keyboard_report(key_code, make)` for HID processing
@@ -156,27 +156,27 @@ Amiga keyboards have independent matrix positions for all modifiers:
 | Right Alt | `0x65` | `0xE5` | Independent matrix position |
 | Left Amiga | `0x66` | `0xE6` | Maps to Left Windows/Command |
 | Right Amiga | `0x67` | `0xE7` | Maps to Right Windows/Command |
-| CAPS LOCK | `0x62` or `0xE2` | None | Special behavior (see above) |
+| CAPS LOCK | `0x62` or `0xE2` | None | Special behaviour (see above) |
 
 ## Comparison with Other Protocols
 
 ### vs. PC/XT (Set 1)
 - **Simpler**: No E0/E1 prefix codes
 - **Simpler**: No fake shifts
-- **Different**: CAPS LOCK special behavior
+- **Different**: CAPS LOCK special behaviour
 - **Similar**: Basic make/break with bit 7 flag
 
 ### vs. Apple M0110
 - **Similar**: Simple make/break encoding
-- **Similar**: No multi-byte sequences
+- **Similar**: No multibyte sequences
 - **Different**: M0110 uses bits 6-1 for keycode, bit 0 always 1
-- **Different**: CAPS LOCK behavior (M0110 is normal key)
+- **Different**: CAPS LOCK behaviour (M0110 is normal key)
 
 ### vs. PS/2 (Set 2)
-- **Simpler**: No multi-byte sequences
+- **Simpler**: No multibyte sequences
 - **Simpler**: No typematic control
 - **Different**: Make code = base, break code = base + 0x80 (vs. PS/2 F0 prefix)
-- **Different**: CAPS LOCK special behavior
+- **Different**: CAPS LOCK special behaviour
 
 ## Testing Considerations
 

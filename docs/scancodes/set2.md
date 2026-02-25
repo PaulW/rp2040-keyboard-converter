@@ -2,7 +2,7 @@
 
 Scancode Set 2 was introduced with the IBM PC/AT and is used by PS/2 keyboards and many USB keyboards that internally use PS/2-style scancodes.
 
-Set 2 differs from Set 1 in encoding: break codes use an F0 prefix rather than a high-bit flag (bit 7), allowing the full 8-bit range for make codes. The F0 prefix encoding requires a 9-state processing state machine compared to Set 1's 5-state machine. Certain sequences such as Pause/Break use longer multi-byte sequences in Set 2 than in Set 1. Set 2 supports bidirectional communication—the host can send commands to the keyboard for LED control, typematic (key repeat) configuration, and scancode set selection.
+Set 2 differs from Set 1 in encoding: break codes use an F0 prefix rather than a high-bit flag (bit 7), allowing the full 8-bit range for make codes. The F0 prefix encoding requires a 9-state processing state machine compared to Set 1's 5-state machine. Certain sequences such as Pause/Break use longer multibyte sequences in Set 2 than in Set 1. Set 2 supports bidirectional communication; this converter uses host command `0xED` to control keyboard LEDs (see [`src/protocols/at-ps2/keyboard_interface.c`](../../src/protocols/at-ps2/keyboard_interface.c)). The scancode set in use is determined from the keyboard ID returned during initialisation rather than by sending a scancode set selection command.
 
 ## Encoding Scheme
 
@@ -29,7 +29,7 @@ This scheme provides:
 
 The IBM Enhanced Keyboard (introduced with the IBM AT) added keys not present on the original keyboard. Set 2 uses the E0 prefix byte to encode these extended keys in a separate namespace from existing scancodes. Extended keys use three bytes for a complete press/release cycle: E0 (prefix), scancode (press), and F0 + scancode (release).
 
-Extended keys use a multi-byte sequence:
+Extended keys use a multibyte sequence:
 
 | Event | Encoding | Example (Right Control = 0x14) |
 |-------|----------|--------------------------------|
@@ -56,7 +56,7 @@ The Pause/Break key uses a complex sequence in Set 2:
 | **Break** (Ctrl+Pause) | `E0 7E E0 F0 7E` |
 | **Unicomp Pause** | `E0 77 E0 F0 77` (Unicomp New Model M variant) |
 
-**Important**: 
+**Important**:
 - Pause sends the full 8-byte sequence on press only
 - No separate release event for Pause
 - Break (Ctrl+Pause) is a different 4-byte sequence (E0 7E)
@@ -165,6 +165,8 @@ Your state machine grows to 9 states to handle all the possible sequences. Every
 | `0xFD` | Internal failure |
 | `0xFE` | Resend request |
 | `0xFF` | Error/Buffer overflow |
+
+**Self-Test Codes (`0xAA`, `0xFC`):** These keyboard initialisation codes are filtered by the protocol layer during initialisation. The scancode processor does not filter these codes, so post‑initialisation filtering relies on the protocol layer. Unlike Set 1, Set 2 has no collision issue, since break codes use the F0 prefix. See [Set 1 Self-Test Code Collision](set1.md#self-test-code-collision) for comparison.
 
 ## Example Sequences
 

@@ -153,7 +153,7 @@ This is another good option if you can find one:
 - **Chip**: TXB0104 with automatic direction sensing
 - **Speed**: 100 Mbps data rate
 - **Slightly more compact** than BSS138 modules
-- **Availability**: More specialized, works just as well
+- **Availability**: More specialised, works just as well
 
 **Important notes:**
 - Both sides need their voltage references (LV=3.3V, HV=5V)
@@ -235,9 +235,9 @@ The converter supports WS2812B addressable RGB LEDs for visual feedback. This is
 
 ### What the LED Shows
 
-**Status Colors:**
+**Status Colours:**
 - **🟢 Green**: Everything's working, converter's ready
-- **🟠 Orange**: Waiting for keyboard initialization
+- **🟠 Orange**: Waiting for keyboard initialisation
 - **🟣 Magenta**: Bootloader mode (ready for firmware flashing)
 - **💚💙 Flashing Green/Blue**: Command Mode active
 - **💚💖 Flashing Green/Pink**: Log level selection mode  
@@ -326,7 +326,7 @@ Get yourself an assorted kit with different lengths—you're looking at £5-10 f
 - **Black**: Ground
 - **Yellow**: Clock signals
 - **Green**: Data signals
-- **Other colors**: Whatever else you need
+- **Other colours**: Whatever else you need
 
 **Wire types you'll want:**
 - **Male-to-Male**: Breadboard-to-breadboard connections

@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * Portions of this specific file are licensed under the GPLv2 License.
  * The Ringbuffer has been adapted and based upon the tinyusb repository
@@ -33,29 +33,24 @@
 static uint8_t buf[RINGBUF_SIZE];
 
 // Ring buffer structure (exposed via extern in header for inline functions)
-ringbuf_t rbuf = {
-    .buffer = buf,
-    .head = 0,
-    .tail = 0,
-    .size_mask = RINGBUF_SIZE - 1
-};
+ringbuf_t rbuf = {.buffer = buf, .head = 0, .tail = 0, .size_mask = RINGBUF_SIZE - 1};
 
 /**
  * @brief Resets the ring buffer to empty state.
- * 
+ *
  * Clears all buffered data by resetting head and tail pointers to zero.
  * This operation is NOT thread-safe and should only be called when:
- * - During initialization (before IRQ is enabled)
+ * - During initialisation (before IRQ is enabled)
  * - When keyboard state machine enters reset/error state
  * - When IRQs are temporarily disabled
- * 
- * WARNING: Do not call this function while IRQ handlers may be active,
- * as it modifies both head and tail pointers without synchronization.
- * 
+ *
+ * WARNING: Do not call this function whilst IRQ handlers may be active,
+ * as it modifies both head and tail pointers without synchronisation.
+ *
  * @note All buffered scancodes will be discarded
  * @note Does not modify the buffer contents, only the pointers
  */
 void ringbuf_reset(void) {
-  rbuf.head = 0;
-  rbuf.tail = 0;
+    rbuf.head = 0;
+    rbuf.tail = 0;
 }

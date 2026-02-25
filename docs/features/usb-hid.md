@@ -31,7 +31,7 @@ The converter uses USB HID Boot Protocol for the keyboard and mouse interfaces. 
 
 Boot Protocol is a simplified HID format specifically designed to work in environments where full HID drivers aren't available. When your computer is first powering on and showing BIOS/UEFI screens, it needs basic keyboard input before any operating system has loaded. Boot Protocol makes this possible.
 
-The format is intentionally simple and standardized. Every USB-capable system knows how to interpret Boot Protocol reports without requiring custom drivers or configuration. This means the converter works identically on Windows, macOS, Linux, FreeBSD, Chrome OS, and even in firmware setup screens.
+The format is intentionally simple and standardised. Every USB-capable system knows how to interpret Boot Protocol reports without requiring custom drivers or configuration. This means the converter works identically on Windows, macOS, Linux, FreeBSD, Chrome OS, and even in firmware setup screens.
 
 ### Trade-offs
 
@@ -81,11 +81,11 @@ Common examples:
 - `0x1D` = Z
 - `0x00` = No key (empty slot)
 
-When fewer than 6 keys are pressed, the remaining slots contain 0x00. When you press a 7th regular key while 6 are already held, the oldest keycode drops out of the report—though this situation rarely occurs in practice.
+When fewer than 6 keys are pressed, the remaining slots contain 0x00. When you press a 7th regular key whilst 6 are already held, the converter keeps the existing report and ignores the additional key until a slot is freed.
 
 ### Example Report
 
-Here's what the report looks like when pressing A+B while holding Left Shift:
+Here's what the report looks like when pressing A+B whilst holding Left Shift:
 
 ```
 Byte:    0    1    2    3    4    5    6    7
@@ -114,7 +114,7 @@ The converter processes keystrokes through several stages, from receiving the or
 |-------|--------------|  
 | **Protocol reception** | PIO hardware captures signal, interrupt fires, byte goes into ring buffer |
 | **Main loop pickup** | Main loop polls ring buffer and retrieves byte |
-| **Scancode processing** | State machine handles multi-byte sequences (E0/F0 prefixes, special keys) |
+| **Scancode processing** | State machine handles multibyte sequences (E0/F0 prefixes, special keys) |
 | **Keymap translation** | Convert protocol-specific scancode to USB HID keycode |
 | **USB transmission** | Build HID report, call TinyUSB stack, transmit to host |
 
@@ -215,7 +215,7 @@ The converter sends mouse reports at the same 125 Hz rate as keyboard reports (e
 
 ## LED Control: Host-to-Device Communication
 
-USB HID isn't just one-way. While most communication flows from the converter to the host (sending keystroke and mouse reports), the host can also send reports back to control keyboard LEDs (handled by [`tud_hid_set_report_cb()`](../../src/common/lib/hid_interface.c)).
+USB HID isn't just one-way. Whilst most communication flows from the converter to the host (sending keystroke and mouse reports), the host can also send reports back to control keyboard LEDs (handled by [`tud_hid_set_report_cb()`](../../src/common/lib/hid_interface.c)).
 
 ### LED Status Reports
 
@@ -258,7 +258,7 @@ Here's how data flows through the entire system (implemented across multiple mod
    [Ring Buffer]
         ↓ Temporary storage (32 bytes)
    [Scancode Processor]
-        ↓ Handle multi-byte sequences and state machine
+        ↓ Handle multibyte sequences and state machine
    [Keymap Translation]
         ↓ Convert scancode to USB HID keycode
    [HID Report Builder]
@@ -315,7 +315,7 @@ The converter doesn't do anything platform-specific or proprietary. If a system 
 
 ## Troubleshooting
 
-### Computer Doesn't Recognize the Converter
+### Computer Doesn't Recognise the Converter
 
 If your computer shows no response when you plug in the converter, check these possibilities:
 
@@ -327,7 +327,7 @@ If your computer shows no response when you plug in the converter, check these p
 
 **Power**: Check that the RP2040's power LED illuminates when connected. No LED means no power, indicating a cable or port problem.
 
-### Converter Recognized But Keys Don't Work
+### Converter Recognised But Keys Don't Work
 
 If the converter appears in your system's device list (Device Manager on Windows, System Information on macOS, `lsusb` on Linux) but typing produces no output, this indicates a wiring or configuration issue rather than a USB problem.
 
@@ -347,7 +347,7 @@ If most keys produce the correct output but specific keys are wrong or non-funct
 
 **Variant keyboards**: Some keyboard models that look identical have different internal controllers with different scancode mappings. Verify you have the exact right firmware variant for your specific keyboard.
 
-**Protocol documentation**: Check the protocol documentation for your keyboard to see if it has any known quirks or special handling requirements. Some keyboards require special initialization sequences or have non-standard key assignments.
+**Protocol documentation**: Check the protocol documentation for your keyboard to see if it has any known quirks or special handling requirements. Some keyboards require special initialisation sequences or have non-standard key assignments.
 
 **Scancode logs**: Connect via UART and watch what scancodes your keyboard actually sends when you press the problem keys. Compare these to the expected scancodes documented for your keyboard model.
 
@@ -359,7 +359,7 @@ If keys randomly repeat, stick, or produce spurious inputs, this usually indicat
 
 **Capacitors**: Add 0.1μF ceramic capacitors between each signal line and ground, positioned close to the level shifter. These capacitors filter out high-frequency noise.
 
-**Wire routing**: Don't run signal wires parallel to power wires. Keep them separated or cross at right angles to minimize coupling.
+**Wire routing**: Don't run signal wires parallel to power wires. Keep them separated or cross at right angles to minimise coupling.
 
 **Grounding**: Verify all ground connections are solid. Poor grounding is a common source of noise issues. The RP2040, level shifter, and keyboard must all share a common ground.
 

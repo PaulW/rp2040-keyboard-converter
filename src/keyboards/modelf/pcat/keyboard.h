@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -37,7 +37,7 @@
  * |-------| |-----------------------------------------------------------| |-----------|---|
  * | 01| 09| | 11  |   | -19 |             29            | -39 |   |  58 | |-68| 70| 71|-78|
  * `-------' `-----'   `---------------------------------------'   `-----' `---------------'
- * 
+ *
  *  -: Hidden Keys (not used in standard UK Layout)
  *  ~: Remaps to alternate code (83-02, 84-7F)
  */

@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -44,7 +44,7 @@
  * +: Special codes sequence
  * ~: Remaps to alternate code (83-02)
  * ±: ISO Hash Key uses same code as ANSI Backslash
- * 
+ *
  * 61 is ISO 102-key Backslash Key
  */
 

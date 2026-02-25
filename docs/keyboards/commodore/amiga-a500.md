@@ -114,11 +114,11 @@ Commodore Amiga 500/2000 Keyboard Layout
 
 ---
 
-## Customization
+## Customisation
 
 ### Modifying Key Layout
 
-To customize the key layout, edit the keymap in [`keyboard.c`](../../../src/keyboards/amiga/a500/keyboard.c). Available keycodes are defined in [`hid_keycodes.h`](../../../src/common/lib/hid_keycodes.h).
+To customise the key layout, edit the keymap in [`keyboard.c`](../../../src/keyboards/amiga/a500/keyboard.c). Available keycodes are defined in [`hid_keycodes.h`](../../../src/common/lib/hid_keycodes.h).
 
 ### Command Mode Keys
 
@@ -187,7 +187,7 @@ The Amiga keyboards were produced for the A500, A500+, A2000, and A3000 models. 
 
 First thing to check is your wiring—make sure the DATA and CLOCK pins match what's in [`config.h`](../../../src/config.h), which by default is DATA on GPIO2 and CLOCK on GPIO3. Check you have stable 5V power too—use an external supply rather than relying on the Pico's VBUS directly if you can. Make sure you have the correct connector for your specific Amiga model, and check the cable for broken wires with a continuity tester.
 
-Amiga keyboards need a power cycle to initialize properly, so if you've just plugged it in, give it a power cycle. If you're using an A500, A500+, A2000, or A3000 keyboard, it should work fine. The A1000 isn't compatible—it's got a completely different layout. If you're using one of the untested models like the A2000 or A3000 and running into issues, let me know so I can investigate.
+Amiga keyboards need a power cycle to initialise properly, so if you've just plugged it in, give it a power cycle. If you're using an A500, A500+, A2000, or A3000 keyboard, it should work fine. The A1000 isn't compatible—it's got a completely different layout. If you're using one of the untested models like the A2000 or A3000 and running into issues, let me know so I can investigate.
 
 ### Keys Not Registering
 

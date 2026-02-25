@@ -33,7 +33,7 @@ cd rp2040-keyboard-converter
 
 The `--recurse-submodules` is important—it pulls in the Pico SDK submodule which is required for building.
 
-If you've already cloned without submodules, you can initialize them afterwards:
+If you've already cloned without submodules, you can initialise them afterwards:
 
 ```bash
 git submodule update --init --recursive
@@ -216,9 +216,9 @@ See [Adding Keyboards](adding-keyboards.md) for a detailed guide that walks thro
 
 ### Adding a New Protocol
 
-If you're adding support for a new keyboard protocol, this is more involved. You'll create a new directory under [`src/protocols/`](../../src/protocols/)`<name>/` and write a PIO program (`.pio` file) that handles the protocol timing. Then implement the interrupt handler to extract scancodes and write them to the ring buffer. You'll also need to implement the protocol state machine for things like initialisation, LED commands, and error recovery. If the protocol uses multi-byte scancode sequences, you'll need to add a scancode processor for that. Finally, document the protocol with timing diagrams and implementation notes so others can understand how it works.
+If you're adding support for a new keyboard protocol, this is more involved. You'll create a new directory under [`src/protocols/`](../../src/protocols/)`<name>/` and write a PIO program (`.pio` file) that handles the protocol timing. Then implement the interrupt handler to extract scancodes and write them to the ring buffer. You'll also need to implement the protocol state machine for things like initialisation, LED commands, and error recovery. If the protocol uses multibyte scancode sequences, you'll need to add a scancode processor for that. Finally, document the protocol with timing diagrams and implementation notes so others can understand how it works.
 
-**Protocol Setup Pattern:** All protocol implementations follow a standard 13-step initialization sequence. The [Protocol Implementation Guide](protocol-implementation.md) documents this pattern in detail, explaining why each step matters and how they work together. Following this pattern ensures consistency, proper resource allocation, and correct error handling across all protocols.
+**Protocol Setup Pattern:** All protocol implementations follow a standard 13-step initialisation sequence. The [Protocol Implementation Guide](protocol-implementation.md) documents this pattern in detail, explaining why each step matters and how they work together. Following this pattern ensures consistency, proper resource allocation, and correct error handling across all protocols.
 
 Have a look at [`at-ps2/`](../../src/protocols/at-ps2/) or [`xt/`](../../src/protocols/xt/) for examples of how protocols are structured—they'll give you a sense of what's involved.
 
@@ -246,7 +246,7 @@ But don't be afraid to ask questions even if you think it might be obvious. I'd 
 
 A few notes about the project's direction that might help when you're making decisions about how to implement something.
 
-The architecture prioritizes performance over convenience. Low latency and deterministic behaviour matter more than code simplicity here. If a change makes the code simpler but adds latency or introduces blocking operations, it's probably not the right approach for this project—even if it would be fine in most other contexts.
+The architecture prioritises performance over convenience. Low latency and deterministic behaviour matter more than code simplicity here. If a change makes the code simpler but adds latency or introduces blocking operations, it's probably not the right approach for this project—even if it would be fine in most other contexts.
 
 Hardware testing really matters with timing-sensitive embedded firmware. It's genuinely hard to test without real hardware because microsecond timing differences can change behaviour. If you can test on the actual device, please do. Simulators and logic analysers are useful, but nothing quite replaces testing with the real keyboard.
 

@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -26,7 +26,7 @@
  * This array maps each hexadecimal value (0-255) to its corresponding parity bit for input from an
  * AT Keyboard. The parity bit is used for error checking in the keyboard data.
  *
- * The array is organized in a 16x16 grid, where each row represents a hexadecimal digit (0-F) and
+ * The array is organised in a 16x16 grid, where each row represents a hexadecimal digit (0-F) and
  * each column represents a parity bit (0 or 1). The value at each position in the grid represents
  * the parity bit for the corresponding hexadecimal value.
  *

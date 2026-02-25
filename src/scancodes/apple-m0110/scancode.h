@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -25,9 +25,9 @@
 
 /**
  * @brief Process Apple M0110 keyboard scancode.
- * 
+ *
  * @param code The scancode byte to process
  */
 void process_scancode(uint8_t code);
 
-#endif // APPLE_M0110_SCANCODE_H
+#endif  // APPLE_M0110_SCANCODE_H

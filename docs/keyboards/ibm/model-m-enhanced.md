@@ -142,15 +142,15 @@ When holding Right Alt (Fn modifier), additional functions are available for med
 
 ### Fn Modifier Key
 
-**Default Fn Key**: Right Alt (can be customized in [`keyboard.c`](../../../src/keyboards/modelm/enhanced/keyboard.c))
+**Default Fn Key**: Right Alt (can be customised in [`keyboard.c`](../../../src/keyboards/modelm/enhanced/keyboard.c))
 
 ---
 
-## Customization
+## Customisation
 
 ### Modifying Key Layout
 
-To customize the key layout, edit the keymap in [`keyboard.c`](../../../src/keyboards/modelm/enhanced/keyboard.c):
+To customise the key layout, edit the keymap in [`keyboard.c`](../../../src/keyboards/modelm/enhanced/keyboard.c):
 
 ```c
 // Example: Remap Caps Lock to Control
@@ -250,7 +250,7 @@ Example part numbers for this keyboard:
 1. **Check wiring**: Verify DATA/CLOCK pins match [`config.h`](../../../src/config.h)
 2. **Check power**: Ensure 5V is stable (use external power, not Pico VBUS directly)
 3. **Mini-DIN connector**: PS/2 connectors can have poor contacts - clean with contact cleaner
-4. **Power-on reset**: Some Model M keyboards require power cycle to initialize
+4. **Power-on reset**: Some Model M keyboards require power cycle to initialise
 
 ### Keys Not Registering
 
@@ -262,7 +262,7 @@ Example part numbers for this keyboard:
 
 ### LEDs Not Working
 
-1. **Normal behavior**: LEDs should respond to Caps/Num/Scroll Lock
+1. **Normal behaviour**: LEDs should respond to Caps/Num/Scroll Lock
 2. **LED failure**: Individual LEDs can fail over time
 3. **Controller issue**: LED control comes from keyboard controller, not converter
 

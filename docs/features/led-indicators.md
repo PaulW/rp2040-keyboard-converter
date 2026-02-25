@@ -121,8 +121,8 @@ In addition to the keyboard's lock indicator LEDs, you can optionally configure 
 **Configuration:** Define `CONVERTER_LEDS` and `LED_PIN` in your build configuration ([`src/config.h`](../../src/config.h)) to enable WS2812 support. You can configure up to 4 LEDs.
 
 **Status colours:**
-- **Green:** Converter initialized and ready
-- **Yellow:** Keyboard initializing
+- **Green:** Converter initialised and ready
+- **Yellow:** Keyboard initialising
 - **Red:** Error state (protocol error, keyboard not responding)
 - **Alternating Green/Blue:** Command Mode active (waiting for command key)
 - **Magenta:** Firmware update or factory reset in progress
@@ -165,7 +165,7 @@ If the Amiga keyboard's Caps Lock LED doesn't reflect the OS lock state:
 
 **Check handshake timing:** The LED's controlled by the handshake pulse duration. Use a logic analyser or oscilloscope to verify the DATA line pulse width matches the expected timing (85μs for short, ~1.2ms for long).
 
-**Verify protocol initialization:** The Amiga protocol's fairly sensitive to timing during initialization. If the handshake gets out of sync during the init sequence, the LED state might not track correctly. Try unplugging and replugging the converter to re-initialize.
+**Verify protocol initialisation:** The Amiga protocol's fairly sensitive to timing during initialisation. If the handshake gets out of sync during the init sequence, the LED state might not track correctly. Try unplugging and replugging the converter to re-initialise.
 
 **Test with known-good keyboard:** Some Amiga keyboards (particularly older ones) might have LED hardware issues. If possible, test with a different Amiga keyboard to rule out hardware problems.
 

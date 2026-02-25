@@ -223,7 +223,7 @@ If you see the file with a reasonable size, brilliant! Your firmware's built and
 
 ## Understanding Build Configuration
 
-The build system uses environment variables to customize the firmware. Let's break down what each one does:
+The build system uses environment variables to customise the firmware. Let's break down what each one does:
 
 ### The KEYBOARD Variable (Required)
 

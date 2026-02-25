@@ -1,7 +1,7 @@
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -24,8 +24,8 @@
 // ============================================================================
 // Command Mode Configuration
 // ============================================================================
-// Apple M0110A has only one shift key (both physical keys return the same 
-// scancode 0x71), so the default Command Mode activation (Left Shift + Right 
+// Apple M0110A has only one shift key (both physical keys return the same
+// scancode 0x71), so the default Command Mode activation (Left Shift + Right
 // Shift) won't work. Use Shift + Option (Alt) instead.
 //
 // Activation: Hold Left Shift + Left Alt for 3 seconds to enter Command Mode.
@@ -48,7 +48,7 @@
  * |--------------------------------------- -----------------| |-----------|Ent|
  * | Optn|    Mac|           Space           |  \|Lft|Rig|Dwn| |      0|  .|   |
  * `---------------------------------------------------------' `---------------'
- * 
+ *
  * Raw Codes (in hex):
  * ,---------------------------------------------------------. ,---------------.
  * | 65| 25| 27| 29| 2B| 2F| 2D| 35| 39| 33| 3B| 37| 31|   67| |*0F|*11|*1B|*05|
@@ -61,17 +61,17 @@
  * |---------------------------------------------------------| |-----------|   |
  * |   75|     6F|            63             | 55|+0D|+05|+11| |    +25|+03|   |
  * `---------------------------------------------------------' `---------------'
- * 
+ *
  * [+] Keypad keys: preceded by 0x79 on press/release
  * [*] Special keypad keys: preceded by 0x71/0xF1 + 0x79 on press/release
  * [~] Duplicate keys: Both Left and Right Shift return 0x71, so we only expect Left Shift to be defined.
- * 
+ *
  * Note: Arrow keys and some keypad keys share codes:
  * Left/Pad+:   0x79,0x0D / 0x71,0x79,0x0D
- * Right/Pad*:  0x79,0x05 / 0x71,0x79,0x05  
+ * Right/Pad*:  0x79,0x05 / 0x71,0x79,0x05
  * Up/Pad/:     0x79,0x1B / 0x71,0x79,0x1B
  * Down/Pad=:   0x79,0x11 / 0x71,0x79,0x11
- * 
+ *
  * Both Left and Right Shift Keys return 0x71, so we don't assign a second K71 key against right shift.
  */
 

@@ -1,0 +1,29 @@
+---
+# clang-format configuration for RP2040 Keyboard Converter
+# Based on Google style with project-specific customisations
+
+BasedOnStyle: Google
+
+# Comment formatting
+ReflowComments: true
+
+# Indentation
+IndentWidth: 4
+UseTab: Never
+
+# Line length
+ColumnLimit: 100
+
+# Function and statement formatting
+AllowShortIfStatementsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: false
+AllowAllParametersOfDeclarationOnNextLine: true
+
+# String handling
+AlwaysBreakBeforeMultilineStrings: true
+
+# Alignment - critical for embedded systems readability
+AlignConsecutiveAssignments: true
+AlignConsecutiveBitFields: true
+AlignConsecutiveDeclarations: true
+AlignConsecutiveMacros: true

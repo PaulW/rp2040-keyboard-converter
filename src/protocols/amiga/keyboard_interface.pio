@@ -89,7 +89,7 @@ static inline void keyboard_interface_program_init(PIO pio, uint sm, uint offset
     // Set both pins as inputs initially
     pio_sm_set_consecutive_pindirs(pio, sm, pin, 2, false);
     
-    // Initialize pins for PIO control
+    // Initialise pins for PIO control
     pio_gpio_init(pio, pin);       // DATA
     pio_gpio_init(pio, pin + 1);   // CLOCK
     
@@ -122,7 +122,7 @@ static inline void keyboard_interface_program_init(PIO pio, uint sm, uint offset
     // Enable RX FIFO not empty interrupt
     pio_set_irq0_source_enabled(pio, pis_sm0_rx_fifo_not_empty + sm, true);
     
-    // Initialize and start the state machine
+    // Initialise and start the state machine
     pio_sm_init(pio, sm, offset, &c);
     pio_sm_set_enabled(pio, sm, true);
 }
