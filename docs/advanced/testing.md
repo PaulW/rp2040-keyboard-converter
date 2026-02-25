@@ -222,19 +222,44 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 
 ### Static Analysis
 
-The converter doesn't currently use additional static analysis tools (like Clang-Tidy or Cppcheck), but these could be added for deeper analysis:
+The project uses [Clang-Tidy 14](https://releases.llvm.org/14.0.0/tools/clang/tools/extra/docs/clang-tidy/index.html) and [Cppcheck 2.19.0](https://cppcheck.sourceforge.io/) for language-level static analysis, configured to match the versions used by the CodeRabbit automated reviewer. Running the analyser locally lets you see and address any findings before they show up in a PR review.
 
-**Potential additions:**
-- **Clang-Tidy:** Catches modern C++ style issues and potential bugs
-- **Cppcheck:** Lightweight static analyzer for C code
-- **scan-build:** Clang Static Analyzer for deeper bug detection
+Both tools run inside the same Docker build container used for firmware builds, so they see the exact compiler flags, include paths, and generated PIO header files that the real build uses. This matters because PIO headers (`.pio.h` files generated from `.pio` programs) don't exist until after the build step — running analysis without building first causes spurious missing-file errors.
 
-These tools can detect issues like:
-- Use-after-free bugs
-- Memory leaks (though converter uses minimal dynamic allocation)
-- Null pointer dereferences
-- Integer overflow/underflow
-- Dead code and unreachable branches
+**Running the analyser:**
+
+```bash
+# Build + analyse in one step (recommended)
+docker compose run --rm -e KEYBOARD="modelf/pcat" analyser
+
+# With a different configuration
+docker compose run --rm -e KEYBOARD="modelm/enhanced" analyser
+```
+
+**What Clang-Tidy checks (`bugprone-*`, `clang-analyzer-*`, `cert-*`, `readability-*`):**
+- Potential logic errors and incorrect API usage
+- Null pointer dereferences, use-after-free, dead code
+- CERT C secure coding rules
+- Naming, clarity, and formatting issues
+
+**What Cppcheck checks:**
+- Performance and portability issues
+- Missing or unresolvable include paths
+
+**Suppressing a finding inline:**
+
+If a finding is a known false positive, suppress it with an inline comment rather than adjusting the global configuration:
+
+```c
+// clang-tidy suppression
+#define _TUSB_CONFIG_H_ // NOLINT(bugprone-reserved-identifier) -- required by TinyUSB
+
+// cppcheck suppression
+// cppcheck-suppress someCheckId
+some_code_here;
+```
+
+See [`tools/README.md`](../../tools/README.md) for full documentation of the analysis pipeline.
 
 ### Memory Safety
 

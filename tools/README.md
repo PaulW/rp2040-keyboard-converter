@@ -1,6 +1,11 @@
 # Development Tools
 
-The tools in this directory handle enforcement and testing for the RP2040 Keyboard Converter project. These catch architectural violations before they make it into the codebase—things like blocking operations or multicore API usage that would break the converter's timing requirements.
+The tools in this directory handle enforcement, static analysis, and testing for the RP2040 Keyboard Converter project:
+
+- **`lint.sh`** — fast pre-commit checks for architectural rule violations (blocking ops, IRQ safety, naming conventions, etc.)
+- **`analyse.sh`** — deeper language-level analysis via Clang-Tidy and Cppcheck, run inside Docker against fully-built artefacts
+- **`filter_compile_db.py`** / **`parse_compile_db.py`** — helper scripts used by `analyse.sh` to process the cmake compilation database
+- **`test-enforcement.sh`** — meta-testing suite for validating the lint checks themselves
 
 ## lint.sh
 
@@ -255,8 +260,127 @@ For regular development, just run the lint script before committing:
 ./tools/lint.sh && echo "✅ Ready to commit"
 ```
 
+For deeper language-level analysis, run the analyser after a build:
+
+```bash
+docker compose run --rm -e KEYBOARD="modelf/pcat" analyser
+```
+
+## analyse.sh
+
+This script runs [Clang-Tidy 14](https://releases.llvm.org/14.0.0/tools/clang/tools/extra/docs/clang-tidy/index.html) and [Cppcheck 2.19.0](https://cppcheck.sourceforge.io/) against the project's source files. Both tools are configured to match the versions used by the CodeRabbit automated reviewer, so you can reproduce and investigate any findings it raises before they appear in a PR review.
+
+The analyser is invoked via the `analyser` Docker Compose service, which runs a full firmware build first and then analyses the result. Because analysis runs against the completed build artefacts — including all generated PIO header files — there are no missing-file or linking errors that you'd otherwise see if analysis ran before the build.
+
+### Usage
+
+```bash
+# Build + analyse (recommended — uses fully built artefacts)
+docker compose run --rm -e KEYBOARD="modelf/pcat" analyser
+
+# With a different keyboard configuration
+docker compose run --rm -e KEYBOARD="modelm/enhanced" analyser
+
+# With mouse support included
+docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" analyser
+```
+
+`KEYBOARD` selects which keyboard configuration cmake uses when building. It defaults to `modelf/pcat` if not set, which exercises the AT/PS2 protocol, HID interface, scancode processing, and Command Mode — the most common code paths.
+
+### What It Checks
+
+**Clang-Tidy 14** runs a set of checks focused on correctness and readability for embedded C11 code. C++-specific and modernise checks are disabled. The active checks are configured in [`.clang-tidy`](../.clang-tidy) at the repository root and mirror what CodeRabbit runs. Categories include:
+
+- `bugprone-*` — potential logic errors, incorrect API usage, unsafe casts
+- `clang-analyzer-*` — deeper static analysis: null dereferences, use-after-free, dead code
+- `cert-*` — CERT C secure coding rules applicable to embedded systems
+- `readability-*` — naming, clarity, and formatting (magic numbers, magic name literals disabled)
+
+**Cppcheck 2.19.0** checks the same files for:
+
+- `performance` — inefficient patterns
+- `portability` — platform-specific assumptions
+- `missingInclude` — headers that can't be resolved
+
+Checks that fire on string-valued or date-valued defines (which can't be safely evaluated by cppcheck) are automatically filtered out by `parse_compile_db.py`.
+
+### How It Works
+
+The build step inside the container produces a `compile_commands.json` file alongside the normal firmware artefacts. This database records the exact compiler flags — includes, defines, architecture flags — for every source file. The analysis pipeline then uses it so both tools see exactly the same build context as the real compiler.
+
+Three helper scripts handle the database work:
+
+- **`filter_compile_db.py`** — strips out Pico SDK and generated entries, leaving only project source files
+- **`parse_compile_db.py`** — extracts include paths, defines, and the file list from the filtered database
+
+These are copied into the container during `docker compose build` and called by `analyse.sh` at runtime.
+
+### Output
+
+```
+========================================
+Static Analysis
+========================================
+
+[INFO] Using existing build directory: /usr/local/builder/build-tmp
+[ OK ] compile_commands.json found
+
+[INFO] Parsing compilation database (files, includes, defines)...
+  42 include dirs, 87 defines (5 skipped — complex values), 18 files
+
+----------------------------------------
+Clang-Tidy 14
+----------------------------------------
+...
+
+----------------------------------------
+Cppcheck 2.19.0
+----------------------------------------
+...
+
+========================================
+Analysis Summary
+========================================
+  clang-tidy           errors: 0   warnings: 3
+  cppcheck             errors: 0   warnings: 0
+
+RESULT: PASSED WITH WARNINGS — 3 warning(s)
+```
+
+Exit code 0 means passed (with or without warnings). Exit code 1 means at least one error was found.
+
+### Relationship to lint.sh
+
+These two tools are complementary, not overlapping:
+
+| | `lint.sh` | `analyse.sh` |
+|--|--|--|
+| **Purpose** | Architecture & project conventions | Language-level correctness |
+| **Speed** | Seconds | Minutes (full build required) |
+| **Needs Docker** | No | Yes |
+| **When to run** | Before every commit | When investigating findings |
+| **CI** | Required on every PR | On demand |
+
+Run `lint.sh` before committing. Run the analyser when you want to investigate a static-analysis warning or check your code matches what CodeRabbit would flag.
+
+## filter_compile_db.py
+
+```
+python3 tools/filter_compile_db.py <input_db> <output_db> <src_prefix>
+```
+
+Filters a CMake `compile_commands.json` to entries whose `file` path starts with `src_prefix`. Without this, analysis tools would follow entries for the thousands of Pico SDK files included in a cmake project. Called by `analyse.sh`; not normally run directly.
+
+## parse_compile_db.py
+
+```
+python3 tools/parse_compile_db.py <project_db> <files_out> <includes_out> <defines_out>
+```
+
+Parses the filtered compilation database and writes three output files: one source file path per line, one include directory per line, and one preprocessor define per line. Defines with string or date values (which would cause cppcheck to bail out) are filtered out automatically. Called by `analyse.sh`; not normally run directly.
+
 ## Contributing
 
-If you're adding new enforcement checks, start by adding the check logic to `lint.sh`. Then add corresponding test cases to `test-enforcement.sh` that verify the check detects violations correctly. Document the new check in this README and update `.github/PULL_REQUEST_TEMPLATE.md` with any relevant checklist items.
+If you're adding new lint checks, add the check logic to `lint.sh`, add corresponding test cases to `test-enforcement.sh` that verify the check detects violations correctly, document the new check in this README, and update `.github/PULL_REQUEST_TEMPLATE.md` with any relevant checklist items.
 
-For new standalone tools, create an executable shell script (`chmod +x tools/new-tool.sh`) and document its usage here. Follow the patterns used by existing tools—colour-coded output, meaningful exit codes (0 for success, 1 for failure), and clear error messages. If the tool should run in CI, update `.github/workflows/ci.yml` accordingly.
+For new standalone tools, create an executable shell script (`chmod +x tools/new-tool.sh`) and document its usage here. Follow the patterns used by existing tools — colour-coded output, meaningful exit codes (0 for success, 1 for failure), and clear error messages. If the tool should run in CI, update `.github/workflows/ci.yml` accordingly.

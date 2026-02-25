@@ -24,7 +24,8 @@
  */
 
 #ifndef _TUSB_CONFIG_H_
-#define _TUSB_CONFIG_H_
+#define _TUSB_CONFIG_H_  // NOLINT(bugprone-reserved-identifier) -- required by TinyUSB to locate
+                         // this config
 
 #ifdef __cplusplus
 extern "C" {

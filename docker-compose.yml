@@ -6,11 +6,34 @@ services:
       dockerfile: Dockerfile
       args:
         PICO_SDK_VERSION: "2.2.0"
+        CPPCHECK_VERSION: "2.19.0"
     user: "1001:1001"
     restart: never
     environment:
       - KEYBOARD
       - MOUSE
+    volumes:
+      - ./src:/usr/local/builder/src
+      - ./build:/usr/local/builder/build:rw
+
+  # Runs a full firmware build then immediately runs clang-tidy and cppcheck
+  # against the completed build artefacts (including all generated PIO headers).
+  # Uses the same image as builder — analysis tools are installed there.
+  # Usage: docker compose run --rm -e KEYBOARD="modelf/pcat" analyser
+  analyser:
+    image: tardis-io/rp2040-kbd-converter
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PICO_SDK_VERSION: "2.2.0"
+        CPPCHECK_VERSION: "2.19.0"
+    user: "1001:1001"
+    restart: never
+    environment:
+      - KEYBOARD
+      - MOUSE
+      - ANALYSE=1
     volumes:
       - ./src:/usr/local/builder/src
       - ./build:/usr/local/builder/build:rw
