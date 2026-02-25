@@ -95,13 +95,16 @@ static hid_mouse_report_t    mouse_report;
  * Performance Characteristics:
  * - LOG_LEVEL < DEBUG + success: Only TinyUSB send (~1.6µs, near-zero overhead)
  * - LOG_LEVEL >= DEBUG + success: TinyUSB send + hex dump + UART (~16µs)
- * - Any level + failure: TinyUSB send attempt + hex dump + UART (~16µs)
+ * - Any level + genuine TinyUSB failure: send attempt + hex dump + UART (~16µs)
+ * - Endpoint not ready + DEBUG disabled: only readiness check, no hex dump
+ * - Endpoint not ready + DEBUG enabled: hex dump at DEBUG level (expected condition)
  * - Inline function allows compiler to optimise based on call site
  * - Single hex dump construction (not duplicated if DEBUG enabled AND failure)
  *
  * Memory Overhead:
  * - Zero heap allocation (stack-only buffer)
- * - HID_REPORT_LOG_BUFFER_SIZE-byte stack buffer only allocated when logging needed
+ * - HID_REPORT_LOG_BUFFER_SIZE-byte stack buffer only allocated when needed:
+ *   DEBUG enabled, OR a genuine TinyUSB send failure occurred
  * - Buffer immediately freed when function returns
  *
  * @param instance    The HID interface instance number
@@ -111,26 +114,25 @@ static hid_mouse_report_t    mouse_report;
  * @return true if report was successfully queued for transmission, false on error
  *
  * @note This function should be used instead of calling tud_hid_n_report() directly
- * @note Failed transmissions are always logged regardless of log level
+ * @note Genuine TinyUSB send failures (endpoint ready but send failed) are always logged at ERROR
+ * @note Endpoint-not-ready drops are only logged at DEBUG (expected during USB polling gaps)
  * @note Hex dump only generated once (not duplicated on DEBUG+failure)
  */
 static inline bool hid_send_report(uint8_t instance, uint8_t report_id, void const* report,
                                    uint16_t len) {
-    // Check if endpoint is ready before attempting to send
-    bool ready = tud_hid_n_ready(instance);
-    if (!ready) {
-        LOG_DEBUG("HID endpoint not ready (instance=%u, report_id=0x%02X)\n", instance, report_id);
-    }
-
-    // Check if we should build hex dump (DEBUG enabled or might fail)
-    bool should_log = (log_get_level() >= (log_level_t)LOG_LEVEL_DEBUG);
-
-    // Send via TinyUSB first
+    // Check endpoint readiness and attempt to send
+    bool ready  = tud_hid_n_ready(instance);
     bool result = ready && tud_hid_n_report(instance, report_id, report, len);
 
-    // Build hex dump if DEBUG enabled OR transmission failed
-    // This ensures we only construct the report once, even if both conditions true
-    if (should_log || !result) {
+    // Discriminate: endpoint not ready (expected during USB polling gaps) from a genuine
+    // TinyUSB failure (ready was true but the send still failed — always an error).
+    bool should_log      = (log_get_level() >= (log_level_t)LOG_LEVEL_DEBUG);
+    bool genuine_failure = ready && !result;
+
+    // Build hex dump if DEBUG enabled OR a genuine TinyUSB send failure occurred.
+    // Endpoint-not-ready drops are only hex-dumped when DEBUG is enabled, avoiding
+    // unnecessary buffer construction and a duplicate log on the ERROR path.
+    if (should_log || genuine_failure) {
         // Build formatted hex dump: Report ID + data bytes (matches USB wire format)
         // Maximum HID report size is typically small (keyboard=8, mouse=5, consumer=2)
         // Buffer: prefix (32) + report ID (3) + hex bytes (len * 3) + null terminator
@@ -144,9 +146,13 @@ static inline bool hid_send_report(uint8_t instance, uint8_t report_id, void con
                 (size_t)snprintf(buffer + offset, sizeof(buffer) - offset, "%02X ", *report_ptr++);
         }
 
-        // Log at appropriate level based on result
+        // Log at appropriate level based on outcome
         if (result) {
             LOG_DEBUG("%s\n", buffer);
+        } else if (!ready) {
+            // Endpoint not ready — report silently dropped; expected during USB polling gaps
+            LOG_DEBUG("HID report dropped, endpoint not ready (instance=%u, report_id=0x%02X): %s\n",
+                      instance, report_id, buffer);
         } else {
             LOG_ERROR("HID Report Send Failed (instance=%u, report_id=0x%02X, len=%u)\n", instance,
                       report_id, len);
