@@ -114,8 +114,9 @@ static hid_mouse_report_t    mouse_report;
  * @return true if report was successfully queued for transmission, false on error
  *
  * @note This function should be used instead of calling tud_hid_n_report() directly
- * @note Genuine TinyUSB send failures (endpoint ready but send failed) are always logged at ERROR
- * @note Endpoint-not-ready drops are only logged at DEBUG (expected during USB polling gaps)
+ * @note All send failures (endpoint not ready or TinyUSB error) are always logged at ERROR with hex
+ * dump
+ * @note Successful sends are only hex-dumped when DEBUG logging is enabled
  * @note Hex dump only generated once (not duplicated on DEBUG+failure)
  */
 static inline bool hid_send_report(uint8_t instance, uint8_t report_id, void const* report,
@@ -124,15 +125,13 @@ static inline bool hid_send_report(uint8_t instance, uint8_t report_id, void con
     bool ready  = tud_hid_n_ready(instance);
     bool result = ready && tud_hid_n_report(instance, report_id, report, len);
 
-    // Discriminate: endpoint not ready (expected during USB polling gaps) from a genuine
-    // TinyUSB failure (ready was true but the send still failed — always an error).
-    bool should_log      = (log_get_level() >= (log_level_t)LOG_LEVEL_DEBUG);
-    bool genuine_failure = ready && !result;
+    // Any send failure (endpoint not ready or TinyUSB error) produces an ERROR with hex dump.
+    // Successful sends are hex-dumped only when DEBUG logging is enabled.
+    bool should_log  = (log_get_level() >= (log_level_t)LOG_LEVEL_DEBUG);
+    bool send_failed = !result;
 
-    // Build hex dump if DEBUG enabled OR a genuine TinyUSB send failure occurred.
-    // Endpoint-not-ready drops are only hex-dumped when DEBUG is enabled, avoiding
-    // unnecessary buffer construction and a duplicate log on the ERROR path.
-    if (should_log || genuine_failure) {
+    // Build hex dump if DEBUG enabled OR any send failure occurred.
+    if (should_log || send_failed) {
         // Build formatted hex dump: Report ID + data bytes (matches USB wire format)
         // Maximum HID report size is typically small (keyboard=8, mouse=5, consumer=2)
         // Buffer: prefix (32) + report ID (3) + hex bytes (len * 3) + null terminator
@@ -150,9 +149,10 @@ static inline bool hid_send_report(uint8_t instance, uint8_t report_id, void con
         if (result) {
             LOG_DEBUG("%s\n", buffer);
         } else if (!ready) {
-            // Endpoint not ready — report silently dropped; expected during USB polling gaps
-            LOG_DEBUG("HID report dropped, endpoint not ready (instance=%u, report_id=0x%02X): %s\n",
-                      instance, report_id, buffer);
+            // Endpoint not ready — report dropped; diagnostic hex dump always produced
+            LOG_ERROR("HID report dropped, endpoint not ready (instance=%u, report_id=0x%02X)\n",
+                      instance, report_id);
+            LOG_ERROR("%s\n", buffer);
         } else {
             LOG_ERROR("HID Report Send Failed (instance=%u, report_id=0x%02X, len=%u)\n", instance,
                       report_id, len);
