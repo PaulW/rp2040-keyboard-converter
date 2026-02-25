@@ -96,8 +96,8 @@ static hid_mouse_report_t    mouse_report;
  * - LOG_LEVEL < DEBUG + success: Only TinyUSB send (~1.6µs, near-zero overhead)
  * - LOG_LEVEL >= DEBUG + success: TinyUSB send + hex dump + UART (~16µs)
  * - Any level + genuine TinyUSB failure: send attempt + hex dump + UART (~16µs)
- * - Endpoint not ready + DEBUG disabled: only readiness check, no hex dump
- * - Endpoint not ready + DEBUG enabled: hex dump at DEBUG level (expected condition)
+ * - Endpoint not ready (any log level): ERROR + failure hex dump (dropped report)
+ * - Endpoint ready + DEBUG enabled: DEBUG hex dump for successful sends
  * - Inline function allows compiler to optimise based on call site
  * - Single hex dump construction (not duplicated if DEBUG enabled AND failure)
  *
