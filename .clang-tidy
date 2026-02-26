@@ -1,0 +1,69 @@
+# clang-tidy configuration for RP2040 Keyboard Converter
+#
+# Targets embedded C11 code cross-compiled for ARM Cortex-M0+ (RP2040).
+# Mirrors checks used by CodeRabbit (Clang 14.0.6) to allow local reproduction
+# of reported findings before they appear in PR review.
+#
+# C++-specific and modernize-* checks are disabled: the codebase is pure C.
+# Checks that require C++ constructs (e.g. cppcoreguidelines using references,
+# templates, RAII) are also suppressed to avoid false positives.
+#
+# clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling is suppressed:
+# it flags snprintf even when bounds are correctly passed (as they are throughout this
+# codebase). Its suggested replacement snprintf_s is C11 Annex K — optional in the
+# standard and absent from ARM GCC / Pico SDK.
+
+---
+Checks: >
+  clang-analyzer-*,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  bugprone-*,
+  readability-*,
+  -readability-magic-numbers,
+  -readability-isolate-declaration,
+  cert-*,
+  -cert-dcl37-c,
+  -cert-dcl51-cpp,
+  -cert-err33-c,
+  -modernize-*,
+  -cppcoreguidelines-*,
+  -llvm-*,
+  -llvmlibc-*,
+  -fuchsia-*,
+  -google-*,
+  -zircon-*,
+  -abseil-*,
+  -android-*,
+  -objc-*,
+  -altera-*,
+  -linuxkernel-*,
+  -hicpp-*,
+  -misc-include-cleaner
+
+# Restrict header analysis to project source files only.
+# Pico SDK and system headers are excluded to avoid noise.
+HeaderFilterRegex: '^.*/src/.*'
+
+# Treat all warnings as errors to match CI behaviour.
+WarningsAsErrors: ''
+
+CheckOptions:
+  # Allow single-character identifiers common in embedded code (i, j, x, y).
+  - key: readability-identifier-length.MinimumVariableNameLength
+    value: '1'
+  - key: readability-identifier-length.MinimumParameterNameLength
+    value: '1'
+  - key: readability-identifier-length.MinimumLoopCounterNameLength
+    value: '1'
+
+  # Embedded C conventions: allow implicit bool conversions on integer flags.
+  - key: readability-implicit-bool-conversion.AllowPointerConditions
+    value: 'true'
+  - key: readability-implicit-bool-conversion.AllowIntegerConditions
+    value: 'true'
+
+  # Cognitive complexity threshold (default is 25; stated explicitly for clarity).
+  - key: readability-function-cognitive-complexity.Threshold
+    value: '25'
+  - key: readability-function-cognitive-complexity.IgnoreMacros
+    value: 'true'

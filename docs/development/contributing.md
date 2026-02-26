@@ -100,6 +100,14 @@ Before committing, run the lint script:
 
 This checks for blocking operations, multicore usage, and documentation policy violations. It must pass with 0 errors and 0 warnings before you can submit a pull request.
 
+For deeper language-level analysis — catching things like potential null dereferences, CERT C rule violations, or portability issues — run the static analyser inside Docker after a build:
+
+```bash
+docker compose run --rm -e KEYBOARD="modelf/pcat" analyser
+```
+
+This runs Clang-Tidy and Cppcheck against the same build context the compiler uses, including all generated PIO headers. It's not required before every commit, but it's worth running if you're making significant changes to core logic or before submitting a PR. If CodeRabbit flags a potential null dereference or CERT C violation during review, running the analyser locally is a good way to get more detail on the same finding.
+
 ### Testing
 
 If you're modifying firmware code, test your changes on real hardware if possible. Timing-sensitive protocols can behave quite differently on actual hardware compared to simulation—microsecond timing matters here, and you'll only catch certain issues with the real thing.
@@ -186,7 +194,7 @@ The PR template will guide you through what information's needed, so don't worry
 
 ### PR Checklist
 
-Before submitting, run through these checks: Make sure `./tools/lint.sh` passes with 0 errors and 0 warnings—this is mandatory. Verify the code builds successfully using the Docker build with your configuration. If you've modified firmware, test it on real hardware if at all possible, and mention which hardware you used in the PR. Update any documentation if you've changed functionality—don't leave that for later, it's easy to forget. Check that your commit messages follow the conventional commit format. Finally, make sure you haven't included any unrelated changes—keep PRs focused on one thing.
+Before submitting, run through these checks: Make sure `./tools/lint.sh` passes with 0 errors and 0 warnings—this is mandatory. If you've made significant changes to core logic, run the static analyser (`docker compose run --rm -e KEYBOARD="modelf/pcat" analyser`) and address any errors it reports—warnings are advisory. Verify the code builds successfully using the Docker build with your configuration. If you've modified firmware, test it on real hardware if at all possible, and mention which hardware you used in the PR. Update any documentation if you've changed functionality—don't leave that for later, it's easy to forget. Check that your commit messages follow the conventional commit format. Finally, make sure you haven't included any unrelated changes—keep PRs focused on one thing.
 
 ### Code Review
 

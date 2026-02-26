@@ -9,7 +9,7 @@ mkdir -p ${APP_DIR}/build-tmp
 cd ${APP_DIR}/build-tmp
 echo "Cleaning old build/compile files (if any)..."
 rm -rf cmake_install.cmake CMakeCache.txt CMakeFiles elf2uf2 generated Makefile pico-sdk pioasm
-cmake ${APP_DIR}/src
+cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ${APP_DIR}/src
 cmake --build .
 
 # Build Analysis
@@ -103,10 +103,18 @@ if [ -f "${APP_DIR}/build/rp2040-converter.elf" ]; then
     echo "SDK Path: ${PICO_SDK_PATH}"
     
     echo ""
-    echo "========================================"
+    echo "========================================" 
     echo "Build Complete!"
     echo "========================================"
 else
     echo "ERROR: Build failed - rp2040-converter.elf not found"
     exit 1
+fi
+
+# ─── Optional static analysis ────────────────────────────────────────────
+# Run clang-tidy and cppcheck against the completed build when ANALYSE=1.
+# build-tmp already contains all generated artefacts (PIO headers and
+# compile_commands.json), so no separate cmake configure or build is needed.
+if [ "${ANALYSE:-0}" = "1" ]; then
+    EXISTING_BUILD_DIR="${APP_DIR}/build-tmp" bash "${APP_DIR}/analyse.sh"
 fi

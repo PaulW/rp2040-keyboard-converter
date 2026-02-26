@@ -237,12 +237,11 @@ reviews:
       
       - name: "Code formatting compliance"
         instructions: |
-          Verify code follows formatting standards:
+          Verify code follows the formatting standards defined in `.clang-format` (repo root):
           - 4 spaces per indentation level (no tabs)
-          - Line length ≤100 characters (except for aligned tables/structures in clang-format off blocks)
-          - Consecutive assignments, declarations, macros, and bitfields should be aligned
+          - Line length ≤100 characters (except aligned tables/structures in clang-format off blocks)
           - No short if statements or functions on single lines
-          - Check compliance with clang-format style: { BasedOnStyle: Google, ReflowComments: true, UseTab: Never, AllowShortIfStatementsOnASingleLine: false, AllowShortFunctionsOnASingleLine: false, AlwaysBreakBeforeMultilineStrings: true, AllowAllParametersOfDeclarationOnNextLine: true, AlignConsecutiveAssignments: true, AlignConsecutiveBitFields: true, AlignConsecutiveDeclarations: true, AlignConsecutiveMacros: true, ColumnLimit: 100, IndentWidth: 4 }
+          - Consecutive assignments, declarations, macros, and bitfields should be aligned
       
       - name: "Architecture constraints"
         instructions: |
@@ -343,9 +342,8 @@ reviews:
     languagetool:
       enabled: true
       level: "default"
-      # Disable some rules for technical documentation
       disabled_categories:
-        - "TYPOS"  # Technical terms may not be in dictionary
+        - "TYPOS"  # Technical terms (GPIO, PIO, IRQ, etc.) not in dictionary
     
     # GitHub Checks integration
     github-checks:
@@ -357,6 +355,10 @@ reviews:
       enabled: false
     fortitudeLint:
       enabled: false
+    stylelint:
+      enabled: false  # No CSS/web
+    psscriptanalyzer:
+      enabled: false  # No PowerShell
     tflint:
       enabled: false  # No Terraform
     ruff:
@@ -381,8 +383,8 @@ reviews:
       enabled: false
     pmd:
       enabled: false
-    semgrep:
-      enabled: false
+    opengrep:
+      enabled: true
     circleci:
       enabled: false
     clippy:
