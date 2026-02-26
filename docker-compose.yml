@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
+      args: &build_args
         PICO_SDK_VERSION: "2.2.0"
         CPPCHECK_VERSION: "2.19.0"
     user: "1001:1001"
@@ -25,9 +25,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        PICO_SDK_VERSION: "2.2.0"
-        CPPCHECK_VERSION: "2.19.0"
+      args: *build_args
     user: "1001:1001"
     restart: never
     environment:

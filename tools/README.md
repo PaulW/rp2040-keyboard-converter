@@ -124,7 +124,7 @@ The script runs through eighteen different checks, each targeting a specific arc
 
 ### Example Output
 
-```
+```text
 ========================================
 RP2040 Architecture Lint Checks
 ========================================
@@ -268,7 +268,7 @@ docker compose run --rm -e KEYBOARD="modelf/pcat" analyser
 
 ## analyse.sh
 
-This script runs [Clang-Tidy 14](https://releases.llvm.org/14.0.0/tools/clang/tools/extra/docs/clang-tidy/index.html) and [Cppcheck 2.19.0](https://cppcheck.sourceforge.io/) against the project's source files. Both tools are configured to match the versions used by the CodeRabbit automated reviewer, so you can reproduce and investigate any findings it raises before they appear in a PR review.
+This script runs the Debian Packaged version of [Clang 19.1.7](https://discourse.llvm.org/t/llvm-19-1-7-released/84062) and [Cppcheck 2.19.0](https://cppcheck.sourceforge.io/) against the project's source files. Both tools are configured to match the versions used by the CodeRabbit automated reviewer, so you can reproduce and investigate any findings it raises before they appear in a PR review.
 
 The analyser is invoked via the `analyser` Docker Compose service, which runs a full firmware build first and then analyses the result. Because analysis runs against the completed build artefacts — including all generated PIO header files — there are no missing-file or linking errors that you'd otherwise see if analysis ran before the build.
 
@@ -289,7 +289,7 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" analyser
 
 ### What It Checks
 
-**Clang-Tidy 14** runs a set of checks focused on correctness and readability for embedded C11 code. C++-specific and modernise checks are disabled. The active checks are configured in [`.clang-tidy`](../.clang-tidy) at the repository root and mirror what CodeRabbit runs. Categories include:
+**Clang-Tidy** runs a set of checks focused on correctness and readability for embedded C11 code. C++-specific and modernise checks are disabled. The active checks are configured in [`.clang-tidy`](../.clang-tidy) at the repository root and mirror what CodeRabbit runs. Categories include:
 
 - `bugprone-*` — potential logic errors, incorrect API usage, unsafe casts
 - `clang-analyzer-*` — deeper static analysis: null dereferences, use-after-free, dead code
@@ -317,7 +317,7 @@ These are copied into the container during `docker compose build` and called by 
 
 ### Output
 
-```
+```text
 ========================================
 Static Analysis
 ========================================
@@ -329,7 +329,7 @@ Static Analysis
   42 include dirs, 87 defines (5 skipped — complex values), 18 files
 
 ----------------------------------------
-Clang-Tidy 14
+Clang-Tidy
 ----------------------------------------
 ...
 
@@ -373,7 +373,7 @@ Filters a CMake `compile_commands.json` to entries whose `file` path starts with
 
 ## parse_compile_db.py
 
-```
+```bash
 python3 tools/parse_compile_db.py <project_db> <files_out> <includes_out> <defines_out>
 ```
 

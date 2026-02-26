@@ -106,7 +106,7 @@ For deeper language-level analysis — catching things like potential null deref
 docker compose run --rm -e KEYBOARD="modelf/pcat" analyser
 ```
 
-This runs Clang-Tidy and Cppcheck against the same build context the compiler uses, including all generated PIO headers. It's not required before every commit, but it's worth running if you're making significant changes to core logic or before submitting a PR. It's also the best way to investigate anything CodeRabbit raises during review — you'll see exactly the same findings locally.
+This runs Clang-Tidy and Cppcheck against the same build context the compiler uses, including all generated PIO headers. It's not required before every commit, but it's worth running if you're making significant changes to core logic or before submitting a PR. If CodeRabbit flags a potential null dereference or CERT C violation during review, running the analyser locally is a good way to get more detail on the same finding.
 
 ### Testing
 

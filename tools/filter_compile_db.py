@@ -31,7 +31,7 @@ def main() -> None:
 
     input_db, output_db, src_prefix = sys.argv[1], sys.argv[2], sys.argv[3]
 
-    with open(input_db) as f:
+    with open(input_db, encoding="utf-8") as f:
         db = json.load(f)
 
     filtered = [e for e in db if e["file"].startswith(src_prefix)]
@@ -45,7 +45,7 @@ def main() -> None:
         )
         sys.exit(1)
 
-    with open(output_db, "w") as f:
+    with open(output_db, "w", encoding="utf-8") as f:
         json.dump(filtered, f, indent=2)
 
 

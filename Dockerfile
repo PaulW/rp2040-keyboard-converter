@@ -16,24 +16,24 @@ RUN useradd --uid 1001 builder && \
 
 # ─── Static-analysis tools (clang-tidy, cppcheck) ────────────────────────────
 # Installed in the main image so analysis can run against fully-built artefacts
-# (including generated PIO headers).  Not invoked unless ANALYZE=1 is passed.
+# (including generated PIO headers).  Not invoked unless ANALYSE=1 is passed.
 # ------------------------------------------------------------------------------
 # CPPCHECK_VERSION: built from source to match the CodeRabbit version exactly.
 ARG CPPCHECK_VERSION=2.19.0
+
 RUN apt-get update && \
   DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    --no-install-recommends \
     clang \
     clang-tidy && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/* && \
-  ln -sf /usr/bin/clang-14 /usr/local/bin/clang && \
-  ln -sf /usr/bin/clang-tidy-14 /usr/local/bin/clang-tidy && \
   git clone --depth 1 --branch ${CPPCHECK_VERSION} \
     https://github.com/danmar/cppcheck.git /tmp/cppcheck-src && \
   cmake -S /tmp/cppcheck-src -B /tmp/cppcheck-build \
     -DCMAKE_BUILD_TYPE=Release \
     -DHAVE_RULES=OFF && \
-  cmake --build /tmp/cppcheck-build --parallel $(nproc) && \
+  cmake --build /tmp/cppcheck-build --parallel "$(nproc)" && \
   cmake --install /tmp/cppcheck-build && \
   rm -rf /tmp/cppcheck-src /tmp/cppcheck-build
 

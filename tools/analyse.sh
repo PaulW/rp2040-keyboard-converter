@@ -1,9 +1,10 @@
 #!/bin/bash
 #
 # Static Analysis Script for RP2040 Keyboard Converter
-# Runs Clang-Tidy 14 and Cppcheck 2.19.0 against project source files.
+# Runs Clang-Tidy (distro-specific version) and Cppcheck 2.19.0 against our
+# project source files.
 #
-# Produces output matching CodeRabbit automated review findings (Clang 14.0.6
+# Produces output similar to CodeRabbit automated review findings (Clang 14.0.6
 # and Cppcheck 2.19.0), allowing reproduction of reported issues locally before
 # they appear in PR review.
 #
@@ -115,9 +116,9 @@ python3 "${APP_DIR}/parse_compile_db.py" \
   "${PROJECT_DB}" "${DB_FILES}" "${DB_INCLUDES}" "${DB_DEFINES}"
 echo ""
 
-# ─── Clang-Tidy 14 ───────────────────────────────────────────────────────────
+# ─── Clang-Tidy ---───────────────────────────────────────────────────────────
 echo "----------------------------------------"
-echo "Clang-Tidy 14"
+echo "Clang-Tidy"
 echo "----------------------------------------"
 echo ""
 echo -e "${BLUE}[INFO]${NC} $(clang-tidy --version 2>&1 | head -1)"
@@ -160,14 +161,15 @@ CLANG_OUTPUT=$(mktemp)
 mapfile -t PROJECT_FILES < "${DB_FILES}"
 
 if [ "${#PROJECT_FILES[@]}" -eq 0 ]; then
-  echo -e "${YELLOW}[WARN]${NC} No source files found in compilation database"
+  echo -e "${RED}[FAIL]${NC} No source files found in compilation database"
+  exit 1
 else
   echo -e "${BLUE}[INFO]${NC} Analysing ${#PROJECT_FILES[@]} source files from compilation database..."
   for src_file in "${PROJECT_FILES[@]}"; do
     clang-tidy \
       --config-file="${APP_DIR}/.clang-tidy" \
       --header-filter="${APP_DIR}/src/.*" \
-      -p "${PROJECT_DB}" \
+      -p "${BUILD_DIR}" \
       ${ARM_GCC_INCLUDES} \
       "${src_file}" 2>&1 | tee -a "${CLANG_OUTPUT}" || true
   done
@@ -227,7 +229,7 @@ cppcheck \
 rm -f "${DB_FILES}" "${DB_INCLUDES}" "${DB_DEFINES}"
 
 CPPCHECK_ERRORS=$(grep -c '^error:' "${CPPCHECK_OUTPUT}" 2>/dev/null || true)
-CPPCHECK_WARNINGS=$(grep -c '^warning:' "${CPPCHECK_OUTPUT}" 2>/dev/null || true)
+CPPCHECK_WARNINGS=$(grep -Ec '^(warning|performance|portability):' "${CPPCHECK_OUTPUT}" 2>/dev/null || true)
 
 if [ "${CPPCHECK_ERRORS}" -gt 0 ]; then
   echo -e "${RED}[FAIL]${NC} cppcheck: ${CPPCHECK_ERRORS} error(s), ${CPPCHECK_WARNINGS} warning(s)"

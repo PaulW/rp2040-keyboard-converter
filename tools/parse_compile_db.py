@@ -61,7 +61,7 @@ def main() -> None:
 
     project_db, files_out, includes_out, defines_out = sys.argv[1:]
 
-    with open(project_db) as f:
+    with open(project_db, encoding="utf-8") as f:
         db = json.load(f)
 
     include_dirs: set[str] = set()
@@ -76,7 +76,7 @@ def main() -> None:
         cmd = entry.get("command", "") or " ".join(entry.get("arguments", []))
         # Strip escaped quotes that cmake sometimes emits around string values.
         cmd = cmd.replace('\\"', "")
-        for m in re.finditer(r"-I\s*(\S+)", cmd):
+        for m in re.finditer(r"-I(?!system\b)\s*(\S+)", cmd):
             include_dirs.add(m.group(1))
         for m in re.finditer(r"-isystem\s+(\S+)", cmd):
             include_dirs.add(m.group(1))
@@ -86,15 +86,15 @@ def main() -> None:
             if _is_safe_define(d):
                 defines.add(d)
 
-    with open(files_out, "w") as f:
+    with open(files_out, "w", encoding="utf-8") as f:
         for fp in sorted(files):
             f.write(fp + "\n")
 
-    with open(includes_out, "w") as f:
+    with open(includes_out, "w", encoding="utf-8") as f:
         for d in sorted(include_dirs):
             f.write(d + "\n")
 
-    with open(defines_out, "w") as f:
+    with open(defines_out, "w", encoding="utf-8") as f:
         for d in sorted(defines):
             f.write(d + "\n")
 

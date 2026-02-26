@@ -70,7 +70,7 @@ docker compose run --rm -e KEYBOARD="modelf/pcat" -e MOUSE="at-ps2" builder  # M
 
 ## Data Flow
 
-```
+```text
 PIO (CLK/DATA) → IRQ → Ring Buffer (32B) → Main Loop → Protocol → Scancode → Keymap → HID → USB
 ```
 
@@ -201,7 +201,7 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
 
 **Repo Structure:**
 
-```
+```text
 src/
   ├── common/      # Libraries, utilities
   ├── keyboards/   # Configurations, layouts
