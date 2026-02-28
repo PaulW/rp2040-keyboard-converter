@@ -25,6 +25,7 @@
 
 #include "scancode.h"
 
+#include "flow_tracker.h"
 #include "hid_interface.h"
 #include "log.h"
 
@@ -84,6 +85,7 @@ static const uint8_t code_71_translation[64] = {
  * @param code The scancode to process
  */
 void process_scancode(uint8_t code) {
+    FLOW_STEP(code);
     // clang-format off
     static enum {
         INIT,

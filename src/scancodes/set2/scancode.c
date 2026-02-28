@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 
+#include "flow_tracker.h"
 #include "hid_interface.h"
 #include "log.h"
 
@@ -415,6 +416,7 @@ static void handle_state_e1_f0_14_f0(uint8_t code) {
  * @note handle_keyboard_report() translates scan codes to HID keycodes via keymap lookup.
  */
 void process_scancode(uint8_t code) {
+    FLOW_STEP(code);
     switch (state) {
         case INIT:
             handle_state_init(code);

@@ -98,6 +98,7 @@
 #include "bsp/board.h"
 
 #include "config.h"
+#include "flow_tracker.h"
 #include "led_helper.h"
 #include "log.h"
 #include "pio_helper.h"
@@ -241,6 +242,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
     // CAPS LOCK (0x62/0xE2) is not special here - scancode processor handles it
     if (!ringbuf_is_full()) {
         ringbuf_put(data_byte);
+        isr_push_flow_token(__func__, data_byte);
     } else {
         LOG_WARN("Amiga: Ring buffer full, dropping key code 0x%02X\n", data_byte);
     }
@@ -459,7 +461,11 @@ void keyboard_interface_task() {
             // Process scan codes only when HID interface ready to prevent report queue overflow
             // HID ready check ensures reliable USB report transmission
 
-            uint8_t scancode = ringbuf_get();  // Retrieve next scan code from buffer
+            uint8_t   scancode = ringbuf_get();  // Retrieve next scan code from buffer
+            FlowToken flow_tok;
+            if (main_pop_flow_token(&flow_tok)) {
+                flow_start(&flow_tok);
+            }
 
             // Process through Amiga scancode processor
             // CAPS LOCK timing handled in scancode processor (not here)

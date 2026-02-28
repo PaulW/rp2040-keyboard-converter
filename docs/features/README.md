@@ -36,6 +36,8 @@ Command Mode provides access to special functions without requiring firmware ref
 - 🐛 **'D'**: Change log level (then press 1/2/3 for ERROR/INFO/DEBUG)
 - ⚙️ **'F'**: Factory reset (restore default configuration and reboot)
 - 💡 **'L'**: LED brightness (then press +/- to adjust, 0=off to 10=max)
+- ↕️ **'S'**: Toggle shift-override (keyboards with non-standard shift legends only)
+- 🔬 **'T'**: Toggle flow tracking *(developer builds only — requires `FLOW_TRACKING_ENABLED 1` and DEBUG log level)*
 
 **LED Feedback:**
 - Alternating green/blue - Command Mode active

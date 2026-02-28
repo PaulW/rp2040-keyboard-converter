@@ -33,6 +33,7 @@
 #include "command_mode.h"
 #include "config.h"
 #include "config_storage.h"
+#include "flow_tracker.h"
 #include "hid_interface.h"
 #include "keylayers.h"
 #include "log.h"
@@ -54,6 +55,7 @@
 int main(void) {
     hid_device_setup();
     init_uart_dma();
+    flow_tracker_init();  // Initialise flow tracker (no-op when FLOW_TRACKING_ENABLED=0)
     command_mode_init();  // Initialise command mode system
 
     // Load persistent configuration from flash

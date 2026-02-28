@@ -81,6 +81,7 @@
 #include "bsp/board.h"
 
 #include "common_interface.h"
+#include "flow_tracker.h"
 #include "led_helper.h"
 #include "log.h"
 #include "pio_helper.h"
@@ -419,6 +420,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
             // This ensures HID reports are sent from the correct context
             if (!ringbuf_is_full()) {
                 ringbuf_put(data_byte);
+                isr_push_flow_token(__func__, data_byte);
             }
     }
     update_keyboard_ready_led(keyboard_state == INITIALISED);
@@ -658,6 +660,13 @@ void keyboard_interface_task() {
             if (!ringbuf_is_empty() && tud_hid_ready()) {
                 // Process scan codes only when HID interface ready to prevent report queue overflow
                 uint8_t scancode = ringbuf_get();  // Retrieve next scan code from buffer
+
+                // Begin flow tracking for this scancode byte
+                FlowToken flow_tok;
+                if (main_pop_flow_token(&flow_tok)) {
+                    flow_start(&flow_tok);
+                }
+
 #if USING_SET123
                 process_scancode(scancode, g_scancode_config);
 #else

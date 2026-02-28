@@ -218,6 +218,45 @@ For details on implementing shift-override for a new keyboard, see the [Adding K
 
 ---
 
+### 'T' - Toggle Flow Tracking
+
+Pressing 'T' toggles pipeline flow tracking on or off. This command is only available when the firmware is compiled with `FLOW_TRACKING_ENABLED 1` in `config.h`—it is compiled out entirely in normal production builds and never appears in release firmware. When enabled, the converter instruments each stage of the keyboard processing pipeline, measuring microsecond-resolution latency from the moment the ISR fires through to USB HID report transmission. All trace output goes to the UART debug channel as `LOG_DEBUG` messages.
+
+**How to use it**:
+
+1. Build firmware with `FLOW_TRACKING_ENABLED 1` in `config.h`
+2. Set the log level to DEBUG using Command Mode 'D' → '3' (flow tracking requires it)
+3. Activate Command Mode (both shifts, 3 seconds)
+4. Press the **'T'** key
+5. Command Mode exits and UART shows: `"Flow tracking enabled"` or `"Flow tracking disabled"`
+
+**If DEBUG log level isn't active**:
+
+Flow tracking output uses `LOG_DEBUG`. Attempting to enable tracking when the log level is lower than DEBUG displays `"Flow tracking: set log level to DEBUG first (D→3)"` and returns without changing the state. You can't accidentally enable tracking silently when no terminal is connected.
+
+**What flow tracking shows**:
+
+Each keypress produces a trace like this in the UART output:
+
+```
+[FLOW] run=42
+  [0] time=1234567  func=keyboard_irq_handler     data=0x1C
+  [1] time=1234569  func=keyboard_interface_task  data=0x1C
+  [2] time=1234570  func=process_scancode         data=0x1C
+  [3] time=1234572  func=handle_keyboard_report   data=0x04
+  [4] time=1234573  func=keymap_get_key_val        data=0x04
+  [5] time=1234574  func=hid_keyboard_add_key     data=0x04
+  [6] time=1234575  func=hid_send_report          data=0x01
+```
+
+Timestamps are microseconds since boot (`timer_hw->timerawl`). Subtracting step `[0]`'s timestamp from the last step gives the end-to-end firmware latency for that keypress.
+
+Flow tracking state is not persisted to flash. It always starts disabled after power-up, even if it was active when the device was last running. This avoids filling the UART DMA queue on boot before you have a serial terminal connected.
+
+For full documentation including output format, pipeline coverage, and the concurrency model, see the [Flow Tracking guide](../advanced/flow-tracking.md).
+
+---
+
 ## How Command Mode Works Internally
 
 Understanding the implementation helps explain why Command Mode behaves the way it does and what limitations exist.

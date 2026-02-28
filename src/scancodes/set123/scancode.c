@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "flow_tracker.h"
 #include "hid_interface.h"
 #include "log.h"
 
@@ -638,6 +639,7 @@ static void handle_state_e1_f0_14_f0(uint8_t code, const scancode_config_t* conf
  * @note Main loop only.
  */
 void process_scancode(uint8_t code, const scancode_config_t* config) {
+    FLOW_STEP(code);
     switch (state) {
         case INIT:
             handle_state_init(code, config);

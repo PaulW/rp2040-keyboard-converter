@@ -84,6 +84,24 @@ Hardware testing procedures, code quality enforcement, and validation techniques
 - Contributing code changes
 - Setting up test equipment
 
+### [Flow Tracking](flow-tracking.md)
+
+Microsecond-resolution pipeline instrumentation for measuring end-to-end keypress latency. Compiled out entirely in production builds; enabled via `config.h` and toggled at runtime through Command Mode.
+
+**Covers:**
+- What flow tracking measures and why
+- Enabling the compile-time feature and activating at runtime
+- Reading and interpreting the UART trace output
+- Pipeline coverage (which protocols, scancode sets, and stages are instrumented)
+- Internal implementation (token queue, timing source, runtime enable flag)
+- Adding instrumentation to new protocols or scancode sets
+
+**Read this if you're:**
+- Measuring firmware latency
+- Debugging processing pipeline issues
+- Adding a new protocol and want to include instrumentation
+- Understanding the ISR-to-main-loop token queue design
+
 ---
 
 ## Quick Reference

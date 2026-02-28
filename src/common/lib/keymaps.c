@@ -24,6 +24,7 @@
 #include <stdio.h>
 
 #include "config_storage.h"
+#include "flow_tracker.h"
 #include "hid_interface.h"
 #include "hid_keycodes.h"
 #include "keylayers.h"
@@ -253,6 +254,7 @@ static uint8_t apply_shift_override(uint8_t key_code, uint8_t source_layer, bool
  * @return The HID keycode to send, or KC_NO if consumed by layer operation.
  */
 uint8_t keymap_get_key_val(uint8_t pos, bool make, bool* suppress_shift) {
+    FLOW_STEP(pos);
     // Initialise output parameter to default false to avoid leaking previous value
     if (suppress_shift != NULL) {
         *suppress_shift = false;

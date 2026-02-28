@@ -62,6 +62,7 @@
 
 #include "bsp/board.h"
 
+#include "flow_tracker.h"
 #include "led_helper.h"
 #include "log.h"
 #include "pio_helper.h"
@@ -234,6 +235,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
                     // Scan code or special response - queue for main task processing
                     if (!ringbuf_is_full()) {
                         ringbuf_put(data_byte);
+                        isr_push_flow_token(__func__, data_byte);
                     } else {
                         LOG_ERROR("Ring buffer full! Scancode 0x%02X lost\n", data_byte);
                     }
@@ -384,7 +386,11 @@ void keyboard_interface_task(void) {
 
             // Process buffered key data (only reached if keyboard is responding normally)
             if (!ringbuf_is_empty() && tud_hid_ready()) {
-                uint8_t scancode = ringbuf_get();
+                uint8_t   scancode = ringbuf_get();
+                FlowToken flow_tok;
+                if (main_pop_flow_token(&flow_tok)) {
+                    flow_start(&flow_tok);
+                }
                 LOG_DEBUG("Processing scancode: 0x%02X\n", scancode);
                 process_scancode(scancode);
             }

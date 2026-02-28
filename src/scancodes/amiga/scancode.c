@@ -85,7 +85,9 @@
 #include <stdbool.h>
 
 #include "pico/time.h"
+
 #include "config.h"
+#include "flow_tracker.h"
 #include "hid_interface.h"
 #include "keyboard_interface.h"
 #include "led_helper.h"
@@ -188,6 +190,7 @@ static struct {
  * @note Invalid key codes are logged but not processed (defensive programming)
  */
 void process_scancode(uint8_t code) {
+    FLOW_STEP(code);
     // Extract key code (bits 6-0) and make/break flag (bit 7)
     uint8_t key_code = code & AMIGA_KEYCODE_MASK;      // Remove bit 7
     bool    is_break = (code & AMIGA_BREAK_BIT) != 0;  // Check bit 7: 1 = break, 0 = make
