@@ -72,6 +72,8 @@ tusb_desc_device_t const desc_device = {.bLength         = sizeof(tusb_desc_devi
  * This function returns a pointer to the device descriptor.
  *
  * @return Pointer to the device descriptor.
+ *
+ * @note Main loop only — invoked from tud_task(), not from ISR context.
  */
 uint8_t const* tud_descriptor_device_cb(void) {
     return (uint8_t const*)&desc_device;
@@ -97,6 +99,8 @@ uint8_t const desc_hid_report_mouse[] = {TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID
  * @param instance The HID instance number.
  *
  * @return Pointer to the HID report descriptor.
+ *
+ * @note Main loop only — invoked from tud_task(), not from ISR context.
  */
 uint8_t const* tud_hid_descriptor_report_cb(uint8_t instance) {
     switch (instance) {
@@ -153,6 +157,8 @@ uint8_t const desc_configuration[] = {
  * @param index The configuration index.
  *
  * @return Pointer to the configuration descriptor.
+ *
+ * @note Main loop only — invoked from tud_task(), not from ISR context.
  */
 uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
     (void)index;  // for multiple configurations
@@ -175,7 +181,10 @@ char const* string_desc_arr[] = {
 
 // Persistent buffer returned to TinyUSB - must remain valid until next call (DMA transfer).
 // File-scope static rather than function-local to make the lifetime intent explicit.
-static uint16_t desc_str_buf[32];
+#define DESC_STR_BUF_WORDS 32U                       /**< Total words in string descriptor buffer */
+#define DESC_STR_MAX_CHARS (DESC_STR_BUF_WORDS - 1U) /**< Max chars: one word reserved for header \
+                                                      */
+static uint16_t desc_str_buf[DESC_STR_BUF_WORDS];
 
 /**
  * @brief Invoked when received GET STRING DESCRIPTOR request.
@@ -186,6 +195,8 @@ static uint16_t desc_str_buf[32];
  * @param langid The language ID.
  *
  * @return Pointer to the string descriptor.
+ *
+ * @note Main loop only — invoked from tud_task(), not from ISR context.
  *
  * clang-tidy: index (uint8_t, 0-based string index) and langid (uint16_t, 16-bit language ID) are
  * distinct types with distinct value domains; swapping would produce clearly wrong behaviour
@@ -223,12 +234,12 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
 
         // Cap at max char
         chr_count = (uint8_t)strlen(str);
-        if (chr_count > 31) {
-            chr_count = 31;
+        if (chr_count > DESC_STR_MAX_CHARS) {
+            chr_count = DESC_STR_MAX_CHARS;
         }
 
         // Clear buffer to remove stale data from previous calls
-        memset(&desc_str_buf[1], 0, 31 * sizeof(uint16_t));
+        memset(&desc_str_buf[1], 0, DESC_STR_MAX_CHARS * sizeof(uint16_t));
 
         // Convert ASCII string into UTF-16
         for (uint8_t i = 0; i < chr_count; i++) {

@@ -224,6 +224,24 @@ static void handle_hash_mismatch(uint32_t saved_hash, uint32_t current_hash) {
 }
 
 /**
+ * @brief Return the effective layer count, clamped to [1, KEYMAP_MAX_LAYERS].
+ *
+ * Reads the weak-linked keymap_layer_count symbol overrideable per keyboard and
+ * returns a value that is always valid for array indexing and shift operations:
+ * - Minimum of 1 (Layer 0 is always present)
+ * - Maximum of KEYMAP_MAX_LAYERS (prevents out-of-bounds access)
+ *
+ * @return Clamped layer count in the range [1, KEYMAP_MAX_LAYERS].
+ *
+ * @note Declared static inline so it compiles away to a constant when
+ *       keymap_layer_count is a compile-time constant.
+ */
+static inline uint8_t get_effective_layer_count(void) {
+    const uint8_t clamped = (keymap_layer_count == 0) ? 1 : keymap_layer_count;
+    return (clamped > KEYMAP_MAX_LAYERS) ? KEYMAP_MAX_LAYERS : clamped;
+}
+
+/**
  * @brief Validate and restore saved layer state
  *
  * @param saved_layer_state The layer state bitmap from config storage
@@ -231,10 +249,7 @@ static void handle_hash_mismatch(uint32_t saved_hash, uint32_t current_hash) {
 static void handle_valid_hash(uint8_t saved_layer_state) {
     // Validate no invalid layers are active
     // Clamp to valid layer range (layers 0 to keymap_layer_count-1)
-    // Defensive: Ensure at least 1 layer (Layer 0) is always valid, cap at KEYMAP_MAX_LAYERS
-    const uint8_t clamped_layer_count = (keymap_layer_count == 0) ? 1 : keymap_layer_count;
-    const uint8_t effective_layer_count =
-        (clamped_layer_count > KEYMAP_MAX_LAYERS) ? KEYMAP_MAX_LAYERS : clamped_layer_count;
+    const uint8_t effective_layer_count = get_effective_layer_count();
     // Use type-safe shift on uint32_t to avoid UB, then narrow to uint8_t
     const uint8_t valid_mask = (uint8_t)(((uint32_t)1 << effective_layer_count) - 1);
     if ((saved_layer_state & ~valid_mask) != 0) {
@@ -392,9 +407,7 @@ void keylayers_process_key(uint8_t code, bool make) {
     // Guard: Validate target_layer bounds to prevent buffer underflow and invalid operations
     // Lower bound: target_layer must not be 0 (Layer 0 is base, cannot be used with MO/TG)
     // Upper bound: target_layer must be < actual keymap layer count
-    const uint8_t clamped_layer_count = (keymap_layer_count == 0) ? 1 : keymap_layer_count;
-    const uint8_t max_layers =
-        (clamped_layer_count > KEYMAP_MAX_LAYERS) ? KEYMAP_MAX_LAYERS : clamped_layer_count;
+    const uint8_t max_layers = get_effective_layer_count();
     if (target_layer == 0 || target_layer >= max_layers) {
         return;  // Invalid layer (0 or exceeds keymap layer count)
     }

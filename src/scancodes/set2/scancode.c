@@ -168,6 +168,8 @@ static scancode_state_t state = INIT;
 
 /**
  * @brief INIT state — detect prefix bytes, special codes, or dispatch make code.
+ * @param code   Input scancode byte received from the ring buffer.
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_init(uint8_t code) {
@@ -201,6 +203,8 @@ static void handle_state_init(uint8_t code) {
 
 /**
  * @brief F0 state — byte following F0 break prefix.
+ * @param code   Input scancode byte received from the ring buffer.
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_f0(uint8_t code) {
@@ -223,6 +227,8 @@ static void handle_state_f0(uint8_t code) {
 
 /**
  * @brief E0 state — byte following E0 prefix: make code, fake shift, or start of E0 F0.
+ * @param code   Input scancode byte received from the ring buffer.
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_e0(uint8_t code) {
@@ -252,6 +258,8 @@ static void handle_state_e0(uint8_t code) {
  *
  * Fake shifts arriving via E0 F0 12 / E0 F0 59 are silently discarded.
  *
+ * @param code   Input scancode byte received from the ring buffer.
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_e0_f0(uint8_t code) {
@@ -278,6 +286,8 @@ static void handle_state_e0_f0(uint8_t code) {
  * Pause make:  E1 [14] 77
  * Pause break: E1 [F0] 14 F0 77
  *
+ * @param code   Input scancode byte received from the ring buffer.
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_e1(uint8_t code) {
@@ -299,6 +309,8 @@ static void handle_state_e1(uint8_t code) {
  *
  * Routes through the E0 translation table: 0x77 maps to IFACE_PAUSE (0x48).
  *
+ * @param code   Input scancode byte received from the ring buffer.
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_e1_14(uint8_t code) {
@@ -315,6 +327,8 @@ static void handle_state_e1_14(uint8_t code) {
 
 /**
  * @brief E1_F0 state — second byte of Pause break sequence (E1 F0 [14] F0 77).
+ * @param code   Input scancode byte received from the ring buffer.
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_e1_f0(uint8_t code) {
@@ -328,6 +342,8 @@ static void handle_state_e1_f0(uint8_t code) {
 
 /**
  * @brief E1_F0_14 state — third byte of Pause break sequence (E1 F0 14 [F0] 77).
+ * @param code   Input scancode byte received from the ring buffer.
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_e1_f0_14(uint8_t code) {
@@ -344,6 +360,8 @@ static void handle_state_e1_f0_14(uint8_t code) {
  *
  * Routes through the E0 translation table: 0x77 maps to IFACE_PAUSE (0x48).
  *
+ * @param code   Input scancode byte received from the ring buffer.
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_e1_f0_14_f0(uint8_t code) {

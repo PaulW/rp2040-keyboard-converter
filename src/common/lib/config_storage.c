@@ -88,7 +88,7 @@ static uint32_t get_keyboard_id(void) {
     for (int i = 0; i < (int)(sizeof(strings) / sizeof(strings[0])); i++) {
         const char* str = strings[i];
         while (*str) {
-            hash ^= (uint32_t)(*str++);
+            hash ^= (uint32_t)(uint8_t)(*str++);
             hash *= FNV_PRIME;
         }
         hash ^= 0xFF;  // Separator between strings

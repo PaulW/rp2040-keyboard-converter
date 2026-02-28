@@ -174,8 +174,8 @@ void process_scancode(uint8_t code) {
                     break;
                 default:  // Handle normal key event
                     if (code <= SC1_MAX_CODE) {
-                        // 0xAA (170 decimal) <= SC1_MAX_CODE (211 decimal) - treated as normal
-                        // break code
+                        // 0xAA (170 decimal) <= SC1_MAX_CODE (0xD8 / 216 decimal) - treated as
+                        // normal break code
                         handle_keyboard_report(code & SC1_MAKE_MASK, code < 0x80);
                     } else {
                         LOG_DEBUG("!INIT! (0x%02X)\n", code);

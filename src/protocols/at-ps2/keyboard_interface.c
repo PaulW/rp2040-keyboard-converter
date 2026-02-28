@@ -577,7 +577,9 @@ static void handle_init_detection(void) {
         // Monitor initialisation progress when keyboard detected (CLOCK line high)
         detect_stall_count++;  // Increment timeout counter for initialisation state
         switch (keyboard_state) {
-            case INIT_READ_ID_1 ... INIT_SETUP:
+            case INIT_READ_ID_1:
+            case INIT_READ_ID_2:
+            case INIT_SETUP:
                 if (detect_stall_count > ATPS2_ID_RETRY_LIMIT) {
                     // Initialisation timeout detected during ID read or setup phase
                     __dmb();  // Memory barrier - ensure we see latest volatile value

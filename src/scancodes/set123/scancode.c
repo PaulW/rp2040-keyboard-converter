@@ -300,7 +300,7 @@ static void process_normal_code(uint8_t code, const scancode_config_t* config) {
     // Set-specific special codes
     switch (config->set) {
         case SCANCODE_SET1:
-            // Set 1: Break = make | 0x80, valid break range 0x81-0xD3
+            // Set 1: Break = make | 0x80, valid break range 0x81-0xD8 (SC1_MAX_CODE)
             if (code <= SC1_MAX_CODE) {
                 handle_keyboard_report(code & SC1_MAKE_MASK, code < SC1_BREAK_BIT);
             } else {
@@ -391,6 +391,9 @@ static void process_break_code(uint8_t code, const scancode_config_t* config) {
 
 /**
  * @brief INIT state — detect prefix bytes or dispatch normal code.
+ * @param code     Raw scancode byte received from the ring buffer.
+ * @param config   Pointer to the active scancode configuration for the detected keyboard.
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_init(uint8_t code, const scancode_config_t* config) {
@@ -414,6 +417,9 @@ static void handle_state_init(uint8_t code, const scancode_config_t* config) {
  * codes); Set 2 E0-prefixed codes are always make here — the break path goes
  * via E0_F0.  Fake shifts are silently discarded.
  *
+ * @param code     Raw scancode byte received from the ring buffer.
+ * @param config   Pointer to the active scancode configuration for the detected keyboard.
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_e0(uint8_t code, const scancode_config_t* config) {
@@ -447,6 +453,9 @@ static void handle_state_e0(uint8_t code, const scancode_config_t* config) {
  *
  * Fake shifts that arrive here (e.g. E0 F0 12) are discarded.
  *
+ * @param code     Raw scancode byte received from the ring buffer.
+ * @param config   Pointer to the active scancode configuration for the detected keyboard.
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_e0_f0(uint8_t code, const scancode_config_t* config) {
@@ -472,6 +481,9 @@ static void handle_state_e0_f0(uint8_t code, const scancode_config_t* config) {
  * Set 2 Pause make:  E1 14 77   → expects 14 here, then 77 in E1_14.
  * Set 2 Pause break: E1 F0 14 F0 77 → expects F0 here, then routes via E1_F0.
  *
+ * @param code     Raw scancode byte received from the ring buffer.
+ * @param config   Pointer to the active scancode configuration for the detected keyboard.
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_e1(uint8_t code, const scancode_config_t* config) {
@@ -500,6 +512,9 @@ static void handle_state_e1(uint8_t code, const scancode_config_t* config) {
 
 /**
  * @brief E1_1D state — final byte of Set 1 Pause make sequence (E1 1D [45]).
+ * @param code     Raw scancode byte received from the ring buffer.
+ * @param config   Pointer to the active scancode configuration (unused; suppressed via (void)).
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_e1_1d(uint8_t code, const scancode_config_t* config) {
@@ -514,6 +529,9 @@ static void handle_state_e1_1d(uint8_t code, const scancode_config_t* config) {
 
 /**
  * @brief E1_9D state — final byte of Set 1 Pause break sequence (E1 9D [C5]).
+ * @param code     Raw scancode byte received from the ring buffer.
+ * @param config   Pointer to the active scancode configuration (unused; suppressed via (void)).
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_e1_9d(uint8_t code, const scancode_config_t* config) {
@@ -531,6 +549,9 @@ static void handle_state_e1_9d(uint8_t code, const scancode_config_t* config) {
  *
  * Routes through the E0 translation table: 0x77 maps to IFACE_PAUSE (0x48).
  *
+ * @param code     Raw scancode byte received from the ring buffer.
+ * @param config   Pointer to the active scancode configuration for the detected keyboard.
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_e1_14(uint8_t code, const scancode_config_t* config) {
@@ -547,6 +568,9 @@ static void handle_state_e1_14(uint8_t code, const scancode_config_t* config) {
 
 /**
  * @brief E1_F0 state — second byte of Set 2 Pause break sequence (E1 F0 [14] F0 77).
+ * @param code     Raw scancode byte received from the ring buffer.
+ * @param config   Pointer to the active scancode configuration (unused; suppressed via (void)).
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_e1_f0(uint8_t code, const scancode_config_t* config) {
@@ -561,6 +585,9 @@ static void handle_state_e1_f0(uint8_t code, const scancode_config_t* config) {
 
 /**
  * @brief E1_F0_14 state — third byte of Set 2 Pause break sequence (E1 F0 14 [F0] 77).
+ * @param code     Raw scancode byte received from the ring buffer.
+ * @param config   Pointer to the active scancode configuration (unused; suppressed via (void)).
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_e1_f0_14(uint8_t code, const scancode_config_t* config) {
@@ -578,6 +605,9 @@ static void handle_state_e1_f0_14(uint8_t code, const scancode_config_t* config)
  *
  * Routes through the E0 translation table: 0x77 maps to IFACE_PAUSE (0x48).
  *
+ * @param code     Raw scancode byte received from the ring buffer.
+ * @param config   Pointer to the active scancode configuration for the detected keyboard.
+ * @return void
  * @note Main loop only.
  */
 static void handle_state_e1_f0_14_f0(uint8_t code, const scancode_config_t* config) {

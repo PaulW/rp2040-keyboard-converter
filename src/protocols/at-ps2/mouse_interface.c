@@ -145,7 +145,9 @@ static uint8_t mouse_max_packets = 0; /**< Packet count for current mouse type *
 /**
  * @brief Handle mouse event in UNINITIALISED state.
  * @param data_byte The data byte received from the mouse.
- * @note Main loop only
+ * @return void
+ * @note IRQ-safe — called exclusively from mouse_input_event_handler() which runs in ISR context.
+ *       Must not call blocking functions or non-reentrant code.
  */
 static void handle_mouse_uninitialised(uint8_t data_byte) {
     switch (data_byte) {
@@ -167,7 +169,9 @@ static void handle_mouse_uninitialised(uint8_t data_byte) {
 /**
  * @brief Handle mouse event in INIT_AWAIT_ACK state.
  * @param data_byte The data byte received from the mouse.
- * @note Main loop only
+ * @return void
+ * @note IRQ-safe — called exclusively from mouse_input_event_handler() which runs in ISR context.
+ *       Must not call blocking functions or non-reentrant code.
  */
 static void handle_mouse_await_ack(uint8_t data_byte) {
     switch (data_byte) {
@@ -185,7 +189,9 @@ static void handle_mouse_await_ack(uint8_t data_byte) {
 /**
  * @brief Handle mouse event in INIT_AWAIT_SELFTEST state.
  * @param data_byte The data byte received from the mouse.
- * @note Main loop only
+ * @return void
+ * @note IRQ-safe — called exclusively from mouse_input_event_handler() which runs in ISR context.
+ *       Must not call blocking functions or non-reentrant code.
  */
 static void handle_mouse_await_selftest(uint8_t data_byte) {
     switch (data_byte) {
@@ -208,7 +214,9 @@ static void handle_mouse_await_selftest(uint8_t data_byte) {
 /**
  * @brief Handle mouse event in INIT_AWAIT_ID state.
  * @param data_byte The data byte received from the mouse.
- * @note Main loop only
+ * @return void
+ * @note IRQ-safe — called exclusively from mouse_input_event_handler() which runs in ISR context.
+ *       Must not call blocking functions or non-reentrant code.
  */
 static void handle_mouse_await_id(uint8_t data_byte) {
     switch (data_byte) {
@@ -267,7 +275,9 @@ static void handle_mouse_await_id(uint8_t data_byte) {
 /**
  * @brief Handle mouse event in INIT_DETECT_MOUSE_TYPE state.
  * @param data_byte The data byte received from the mouse.
- * @note Main loop only
+ * @return void
+ * @note IRQ-safe — called exclusively from mouse_input_event_handler() which runs in ISR context.
+ *       Must not call blocking functions or non-reentrant code.
  */
 static void handle_mouse_detect_type(uint8_t data_byte) {
     switch (data_byte) {
@@ -326,7 +336,9 @@ static void handle_mouse_detect_type(uint8_t data_byte) {
 /**
  * @brief Handle mouse event in INIT_SET_CONFIG state.
  * @param data_byte The data byte received from the mouse.
- * @note Main loop only
+ * @return void
+ * @note IRQ-safe — called exclusively from mouse_input_event_handler() which runs in ISR context.
+ *       Must not call blocking functions or non-reentrant code.
  */
 static void handle_mouse_set_config(uint8_t data_byte) {
     // Configuration sequence:
@@ -358,7 +370,9 @@ static void handle_mouse_set_config(uint8_t data_byte) {
 /**
  * @brief Handle mouse event in INITIALISED state (packet assembly and HID reporting).
  * @param data_byte The data byte received from the mouse.
- * @note Main loop only
+ * @return void
+ * @note IRQ-safe — called exclusively from mouse_input_event_handler() which runs in ISR context.
+ *       Must not call blocking functions or non-reentrant code.
  */
 static void handle_mouse_initialised(uint8_t data_byte) {
     switch (data_loop) {

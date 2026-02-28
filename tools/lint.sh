@@ -844,10 +844,18 @@ echo ""
 # "introducing a named constant" and never fires on it. This check enforces the
 # project convention that algorithm/protocol constants belong as file-scope
 # #defines, not as local const variables.
+#
+# Scope detection uses an indentation heuristic: any line with leading whitespace
+# is assumed to be inside a function body. This correctly covers the vast majority
+# of cases. Known limitation: a file-scope declaration indented inside a #ifdef
+# block at file scope would also match — use LINT:ALLOW local-const-hex for those.
+#
+# Type matching covers single-token types (uint8_t, size_t, …) and multi-word
+# types with qualifiers (unsigned int, unsigned long, …).
 echo -e "${BLUE}[19/19] Checking for local const hex-literal variables...${NC}"
 
 LOCAL_CONST_HEX_VIOLATIONS=$(grep -rn --include='*.c' --include='*.h' \
-    -E '^[[:space:]]+(const [a-z_][a-z_0-9]* [a-z_][a-z_0-9]* = 0x[0-9a-fA-F]+[UuLl]*)' \
+    -E '^[[:space:]]+(const ([a-z_][a-z_0-9]*[[:space:]]+)*[a-z_][a-z_0-9]*[[:space:]]*=[[:space:]]*0x[0-9a-fA-F]+[UuLl]*)' \
     src/ 2>/dev/null | grep -v '// LINT:ALLOW local-const-hex' || true)
 
 if [ -n "$LOCAL_CONST_HEX_VIOLATIONS" ]; then

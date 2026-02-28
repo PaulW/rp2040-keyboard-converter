@@ -23,7 +23,7 @@ This script checks source code against the architectural rules defined in `.gith
 
 ### What It Checks
 
-The script runs through eighteen different checks, each targeting a specific architectural rule:
+The script runs through nineteen different checks, each targeting a specific architectural rule:
 
 1. **Blocking Operations** - Detects `sleep_ms()`, `sleep_us()`, `busy_wait_us()`, `busy_wait_ms()`
    - ❌ **Fails**: Any blocking call found in src/
