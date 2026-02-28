@@ -695,7 +695,7 @@ while IFS= read -r protocol_file; do
         dispatcher_satisfied=false
         if grep -qE "pio_irq_dispatcher_init" "$protocol_file"; then
             dispatcher_satisfied=true
-        elif grep -qE '#include\s*"common_interface\.h"' "$protocol_file"; then
+        elif grep -qE '#include[[:space:]]*"common_interface\.h"' "$protocol_file"; then
             protocol_dir=$(dirname "$protocol_file")
             common_impl="${protocol_dir}/common_interface.c"
             if [ -f "$common_impl" ] && grep -q "pio_irq_dispatcher_init" "$common_impl"; then

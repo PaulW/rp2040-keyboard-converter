@@ -641,6 +641,11 @@ static void handle_init_detection(void) {
 }
 
 void keyboard_interface_task() {
+    // Guard against uninitialised PIO engine (setup may have failed due to resource exhaustion)
+    if (pio_engine.pio == NULL) {
+        return;
+    }
+
     __dmb();  // Memory barrier - ensure we see latest state from IRQ
     if (keyboard_state == INITIALISED) {
         // Normal operation: process scan codes and manage LED synchronisation
