@@ -851,11 +851,13 @@ echo ""
 # block at file scope would also match — use LINT:ALLOW local-const-hex for those.
 #
 # Type matching covers single-token types (uint8_t, size_t, …) and multi-word
-# types with qualifiers (unsigned int, unsigned long, …).
+# types with qualifiers (unsigned int, unsigned long, …).  An optional leading
+# "static" token is also accepted to catch "static const TYPE var = 0x..." forms.
+# Both "0x" and "0X" prefixes are matched.
 echo -e "${BLUE}[19/19] Checking for local const hex-literal variables...${NC}"
 
 LOCAL_CONST_HEX_VIOLATIONS=$(grep -rn --include='*.c' --include='*.h' \
-    -E '^[[:space:]]+(const ([a-z_][a-z_0-9]*[[:space:]]+)*[a-z_][a-z_0-9]*[[:space:]]*=[[:space:]]*0x[0-9a-fA-F]+[UuLl]*)' \
+    -E '^[[:space:]]+((static[[:space:]]+)?const[[:space:]]+([a-z_][a-z_0-9]*[[:space:]]+)*[a-z_][a-z_0-9]*[[:space:]]*=[[:space:]]*0[xX][0-9a-fA-F]+[UuLl]*)' \
     src/ 2>/dev/null | grep -v '// LINT:ALLOW local-const-hex' || true)
 
 if [ -n "$LOCAL_CONST_HEX_VIOLATIONS" ]; then
