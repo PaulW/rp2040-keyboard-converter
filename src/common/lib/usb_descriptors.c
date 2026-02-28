@@ -181,9 +181,10 @@ char const* string_desc_arr[] = {
 
 // Persistent buffer returned to TinyUSB - must remain valid until next call (DMA transfer).
 // File-scope static rather than function-local to make the lifetime intent explicit.
-#define DESC_STR_BUF_WORDS 32U                       /**< Total words in string descriptor buffer */
-#define DESC_STR_MAX_CHARS (DESC_STR_BUF_WORDS - 1U) /**< Max chars: one word reserved for header \
-                                                      */
+#define DESC_STR_BUF_WORDS 32U /**< Total words in string descriptor buffer */
+#define DESC_STR_MAX_CHARS                                                 \
+    (DESC_STR_BUF_WORDS - 1U) /**< Max chars: one word reserved for header \
+                               */
 static uint16_t desc_str_buf[DESC_STR_BUF_WORDS];
 
 /**
