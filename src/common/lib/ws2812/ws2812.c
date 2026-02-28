@@ -48,6 +48,9 @@ enum {
     WS2812_CYCLES_PER_BIT = 10,
 };
 
+/** Hz to kHz scaling factor used in clock divider calculation */
+#define HZ_TO_KHZ 0.001F
+
 /*
  * Private Functions
  */
@@ -358,7 +361,7 @@ bool ws2812_show(uint32_t led_colour) {
     }
 
     // FIFO has space - queue the LED data (non-blocking)
-    pio_sm_put(pio_engine.pio, pio_engine.sm, ws2812_set_colour(led_colour) << 8u);
+    pio_sm_put(pio_engine.pio, pio_engine.sm, ws2812_set_colour(led_colour) << 8U);
     return true;
 }
 
@@ -378,7 +381,7 @@ void ws2812_setup(uint led_pin) {
         return;
     }
 
-    float rp_clock_khz = 0.001 * clock_get_hz(clk_sys);
+    float rp_clock_khz = HZ_TO_KHZ * (float)clock_get_hz(clk_sys);
     float clock_div    = roundf(rp_clock_khz / (WS2812_BIT_RATE_KHZ * WS2812_CYCLES_PER_BIT));
 
     LOG_INFO("Effective SM Clock Speed: %.2fkHz\n", (float)(rp_clock_khz / clock_div));

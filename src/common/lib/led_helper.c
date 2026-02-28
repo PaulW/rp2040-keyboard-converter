@@ -29,8 +29,12 @@
 #include "ws2812/ws2812.h"
 #endif
 
-// Initialise the converter state with both keyboard and mouse states set to ready
-converter_state_union converter = {.value = 0xC3};
+// Initialise the converter state with both keyboard and mouse states set to ready.
+// Lower two bits (0x03): kb_ready=1, mouse_ready=1.  Upper nibble (0xC0) sets the
+// spare bits to a defined, non-zero pattern — useful as a sentinel during debugging.
+#define CONVERTER_STATE_INITIAL 0xC3U
+
+converter_state_union converter = {.value = CONVERTER_STATE_INITIAL};
 
 lock_keys_union volatile lock_leds;
 
@@ -96,9 +100,9 @@ bool update_converter_leds(void) {
     // Each LED takes ~30µs to transmit (24 bits × 1.25µs per bit)
     uint32_t now_us = to_us_since_boot(get_absolute_time());
 #ifdef CONVERTER_LOCK_LEDS
-    const uint32_t led_count = 4u;  // status + Num/Caps/Scroll
+    const uint32_t led_count = 4U;  // status + Num/Caps/Scroll
 #else
-    const uint32_t led_count = 1u;  // status only
+    const uint32_t led_count = 1U;  // status only
 #endif
     const uint32_t min_interval_us =
         WS2812_RESET_PULSE_US + (led_count * WS2812_LED_TRANSMISSION_US);
@@ -250,7 +254,11 @@ void update_converter_status(void) {
  *
  * @note Pure function - thread-safe, no state
  * @note Integer-only math for RP2040 performance
+ *
+ * clang-tidy: hue (uint16_t, 0-359 degrees) and saturation (uint8_t, 0-255) are distinct types with
+ * distinct value domains; swapping would produce clearly wrong behaviour
  */
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 uint32_t hsv_to_rgb(uint16_t hue, uint8_t saturation, uint8_t value) {
     // Normalise hue to 0-359
     hue = hue % 360;

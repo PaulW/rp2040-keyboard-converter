@@ -200,7 +200,11 @@ static uint8_t keymap_search_layers(uint8_t row, uint8_t col, uint8_t* source_la
  * @param source_layer    The layer the keycode came from
  * @param suppress_shift  Output parameter set to true if shift should be suppressed
  * @return                The possibly-modified keycode (original if no override)
+ *
+ * clang-tidy: key_code (HID keycode, 0-255) and source_layer (layer index, 0-KEYMAP_MAX_LAYERS-1)
+ * occupy distinct value domains; swapping would produce clearly wrong behaviour
  */
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 static uint8_t apply_shift_override(uint8_t key_code, uint8_t source_layer, bool* suppress_shift) {
     // Safety: key_code is uint8_t (0-255), guaranteeing valid index into 256-element arrays
     _Static_assert(SHIFT_OVERRIDE_ARRAY_SIZE == 256,

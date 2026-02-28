@@ -78,11 +78,6 @@
 
 #include "keyboard_interface.h"
 
-#include <math.h>
-
-#include "hardware/clocks.h"
-#include "interface.pio.h"
-
 #include "bsp/board.h"
 
 #include "common_interface.h"
@@ -129,6 +124,19 @@ static volatile bool    id_retry           = false; /**< Flag indicating ID read
 #define ATPS2_INIT_CHECK_MS       200U
 #define ATPS2_ID_RETRY_LIMIT      2U
 #define ATPS2_DETECT_MAX_ATTEMPTS 5U
+
+/**
+ * @brief PIO Frame-Shift Artifact for BAT Response
+ *
+ * When a keyboard is physically connected during operation a PIO frame-shift may cause
+ * the BAT response (0xAA) to arrive as 0x54 with incorrect parity.  This is a known
+ * hardware artefact and does not represent a valid response code.
+ */
+#define ATPS2_RESP_BAT_PIO_CONNECT 0x54U
+
+/* Initialisation detection state — promoted to file scope to allow helper functions */
+static uint8_t  detect_stall_count = 0; /**< Timeout counter for init stall detection */
+static uint32_t detect_ms          = 0; /**< Timestamp of last detection interval check */
 
 /**
  * @brief Stop Bit Compliance Detection
@@ -201,8 +209,7 @@ static enum {
  * @note Keyboard responses handled by IRQ event handler
  */
 static void keyboard_command_handler(uint8_t data_byte) {
-    uint16_t data_with_parity = (uint16_t)(data_byte + (interface_parity_table[data_byte] << 8));
-    pio_sm_put(pio_engine.pio, pio_engine.sm, data_with_parity);
+    atps2_send_command(&pio_engine, data_byte);
 }
 
 /**
@@ -410,8 +417,9 @@ static void keyboard_event_processor(uint8_t data_byte) {
         case INITIALISED:
             // Always queue to ring buffer - processing happens in main task loop
             // This ensures HID reports are sent from the correct context
-            if (!ringbuf_is_full())
+            if (!ringbuf_is_full()) {
                 ringbuf_put(data_byte);
+            }
     }
     update_keyboard_ready_led(keyboard_state == INITIALISED);
 }
@@ -463,29 +471,23 @@ static void __isr keyboard_input_event_handler(void) {
         return;
     }
 
-    io_ro_32 data_cast = pio_engine.pio->rxf[pio_engine.sm] >> 21;
-    uint16_t data      = (uint16_t)data_cast;
-
     // Parse AT/PS2 frame components from 11-bit PIO data
-    uint8_t start_bit        = data & 0x1;
-    uint8_t parity_bit       = (data >> 9) & 0x1;
-    uint8_t stop_bit         = (data >> 10) & 0x1;
-    uint8_t data_byte        = (uint8_t)((data_cast >> 1) & 0xFF);
-    uint8_t parity_bit_check = interface_parity_table[data_byte];
+    atps2_frame_t frame = atps2_parse_frame(&pio_engine);
 
     // Detect and adapt to non-standard stop bit behaviour (Z-150 compatibility)
-    if (stop_bit_state != (stop_bit ? STOP_BIT_HIGH : STOP_BIT_LOW)) {
-        stop_bit_state = stop_bit ? STOP_BIT_HIGH : STOP_BIT_LOW;
-        LOG_DEBUG("Stop Bit %s Detected\n", stop_bit ? "High" : "Low");
+    if (stop_bit_state != (frame.stop_bit ? STOP_BIT_HIGH : STOP_BIT_LOW)) {
+        stop_bit_state = frame.stop_bit ? STOP_BIT_HIGH : STOP_BIT_LOW;
+        LOG_DEBUG("Stop Bit %s Detected\n", frame.stop_bit ? "High" : "Low");
     }
 
-    if (start_bit != 0 || parity_bit != parity_bit_check) {
-        if (start_bit != 0)
-            LOG_ERROR("Start Bit Validation Failed: start_bit=%i\n", start_bit);
-        if (parity_bit != parity_bit_check) {
-            LOG_ERROR("Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check,
-                      parity_bit);
-            if (data_byte == 0x54 && parity_bit == 1) {
+    if (frame.start_bit != 0 || frame.parity_bit != frame.expected_parity) {
+        if (frame.start_bit != 0) {
+            LOG_ERROR("Start Bit Validation Failed: start_bit=%i\n", frame.start_bit);
+        }
+        if (frame.parity_bit != frame.expected_parity) {
+            LOG_ERROR("Parity Bit Validation Failed: expected=%i, actual=%i\n",
+                      frame.expected_parity, frame.parity_bit);
+            if (frame.data == ATPS2_RESP_BAT_PIO_CONNECT && frame.parity_bit == 1) {
                 // Power-on connection artifact: keyboard briefly pulls lines low during startup
                 // This causes bit shift in FIFO changing 0xAA to 0x54 with invalid parity
                 // Historical fix preserved for reference - indicates keyboard connection event
@@ -509,7 +511,7 @@ static void __isr keyboard_input_event_handler(void) {
         return;
     }
 
-    keyboard_event_processor(data_byte);
+    keyboard_event_processor(frame.data);
 }
 
 /**
@@ -559,13 +561,94 @@ static void __isr keyboard_input_event_handler(void) {
  * @note Function is non-blocking and maintains real-time responsiveness
  * @note Integrates with converter LED system when CONVERTER_LEDS enabled
  */
+/**
+ * @brief Handle Initialisation Timeout and Keyboard Detection
+ *
+ * Processes one detection-interval tick when the keyboard is not yet in the INITIALISED
+ * state.  Checks hardware presence via the CLOCK line, increments the stall counter, and
+ * drives the keyboard_state machine through timeout and recovery paths.
+ *
+ * Extracted from keyboard_interface_task to reduce cognitive complexity.
+ *
+ * @note Main loop only — reads and writes file-scoped volatile state variables
+ */
+static void handle_init_detection(void) {
+    if (gpio_get(keyboard_data_pin + 1) == 1) {
+        // Monitor initialisation progress when keyboard detected (CLOCK line high)
+        detect_stall_count++;  // Increment timeout counter for initialisation state
+        switch (keyboard_state) {
+            case INIT_READ_ID_1:
+            case INIT_READ_ID_2:
+            case INIT_SETUP:
+                if (detect_stall_count > ATPS2_ID_RETRY_LIMIT) {
+                    // Initialisation timeout detected during ID read or setup phase
+                    __dmb();  // Memory barrier - ensure we see latest volatile value
+                    if (!id_retry) {
+                        // First timeout - retry keyboard ID request before giving up
+                        LOG_DEBUG("Keyboard ID/Setup Timeout, retrying...\n");
+                        id_retry = true;
+                        __dmb();  // Memory barrier - ensure volatile write visible to IRQ
+                        keyboard_state = INIT_READ_ID_1;  // Return to ID read state for retry
+                        keyboard_command_handler(ATPS2_CMD_GET_ID);  // Send keyboard ID request
+                        detect_stall_count = 0;  // Reset timeout counter for retry attempt
+                    } else {
+                        LOG_DEBUG(
+                            "Keyboard Read ID/Setup Timed out again, continuing with "
+                            "defaults.\n");
+                        keyboard_id = ATPS2_KEYBOARD_ID_UNKNOWN;
+#if USING_SET123
+                        // Timeout - use default configuration for keyboards that don't respond to
+                        // ID command
+                        g_scancode_config = scancode_config_from_keyboard_id(keyboard_id);
+                        reset_scancode_state();  // Reset state machine when switching configs
+                        LOG_INFO("No ID response - defaulting to Scancode Set: %s\n",
+                                 g_scancode_config == &SCANCODE_CONFIG_SET1   ? "Set 1"
+                                 : g_scancode_config == &SCANCODE_CONFIG_SET2 ? "Set 2"
+                                                                              : "Set 3");
+#endif
+                        LOG_DEBUG("Keyboard Initialised!\n");
+                        keyboard_state     = INITIALISED;
+                        detect_stall_count = 0;
+                    }
+                }
+                break;
+            case SET_LOCK_LEDS:
+                if (detect_stall_count > ATPS2_ID_RETRY_LIMIT) {
+                    // LED command timeout - continue without LED synchronisation
+                    LOG_DEBUG("Timeout whilst setting keyboard lock LEDs, continuing.\n");
+                    keyboard_state     = INITIALISED;
+                    detect_stall_count = 0;
+                }
+                break;
+            default:
+                if (detect_stall_count < ATPS2_DETECT_MAX_ATTEMPTS) {
+                    LOG_DEBUG("Keyboard detected, awaiting ACK (%i/5 attempts)\n",
+                              detect_stall_count);
+                } else {
+                    LOG_DEBUG("Keyboard detected, but no ACK received!\n");
+                    LOG_DEBUG("Requesting keyboard reset\n");
+                    keyboard_state     = INIT_AWAIT_ACK;
+                    detect_stall_count = 0;
+                    keyboard_command_handler(ATPS2_CMD_RESET);
+                }
+                break;
+        }
+    } else if (keyboard_state == UNINITIALISED) {
+        LOG_DEBUG("Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
+        detect_stall_count = 0;  // Clear timeout counter whilst waiting for keyboard connection
+    }
+    update_keyboard_ready_led(keyboard_state == INITIALISED);
+}
+
 void keyboard_interface_task() {
-    static uint8_t detect_stall_count = 0;
+    // Guard against uninitialised PIO engine (setup may have failed due to resource exhaustion)
+    if (pio_engine.pio == NULL) {
+        return;
+    }
 
     __dmb();  // Memory barrier - ensure we see latest state from IRQ
     if (keyboard_state == INITIALISED) {
         // Normal operation: process scan codes and manage LED synchronisation
-        // LED state changes and terminal keyboard features handled here
         detect_stall_count = 0;  // Clear timeout counter - keyboard is operational
         if (lock_leds.value != keyboard_lock_leds) {
             keyboard_state = SET_LOCK_LEDS;
@@ -574,90 +657,19 @@ void keyboard_interface_task() {
         } else {
             if (!ringbuf_is_empty() && tud_hid_ready()) {
                 // Process scan codes only when HID interface ready to prevent report queue overflow
-                // Historical note: interrupt disabling during ring buffer read was tested
-                // but provided no benefit and increased input latency - removed for performance
                 uint8_t scancode = ringbuf_get();  // Retrieve next scan code from buffer
 #if USING_SET123
-                // Using unified processor - call with detected configuration
                 process_scancode(scancode, g_scancode_config);
 #else
-                // Using legacy per-set file - call legacy function
                 process_scancode(scancode);
 #endif
             }
         }
     } else {
         // Initialisation timeout management and keyboard detection logic
-        static uint32_t detect_ms = 0;
         if (board_millis() - detect_ms > ATPS2_INIT_CHECK_MS) {
             detect_ms = board_millis();
-            if (gpio_get(keyboard_data_pin + 1) == 1) {
-                // Monitor initialisation progress when keyboard detected (CLOCK line high)
-                detect_stall_count++;  // Increment timeout counter for initialisation state
-                switch (keyboard_state) {
-                    case INIT_READ_ID_1 ... INIT_SETUP:
-                        if (detect_stall_count > ATPS2_ID_RETRY_LIMIT) {
-                            // Initialisation timeout detected during ID read or setup phase
-                            __dmb();  // Memory barrier - ensure we see latest volatile value
-                            if (!id_retry) {
-                                // First timeout - retry keyboard ID request before giving up
-                                LOG_DEBUG("Keyboard ID/Setup Timeout, retrying...\n");
-                                id_retry = true;
-                                __dmb();  // Memory barrier - ensure volatile write visible to IRQ
-                                keyboard_state =
-                                    INIT_READ_ID_1;  // Return to ID read state for retry
-                                keyboard_command_handler(
-                                    ATPS2_CMD_GET_ID);   // Send keyboard identification request
-                                detect_stall_count = 0;  // Reset timeout counter for retry attempt
-                            } else {
-                                LOG_DEBUG(
-                                    "Keyboard Read ID/Setup Timed out again, continuing with "
-                                    "defaults.\n");
-                                keyboard_id = ATPS2_KEYBOARD_ID_UNKNOWN;
-#if USING_SET123
-                                // Timeout - use default configuration for keyboards that don't
-                                // respond to ID command
-                                g_scancode_config = scancode_config_from_keyboard_id(keyboard_id);
-                                reset_scancode_state();  // Reset state machine when switching
-                                                         // configs
-                                LOG_INFO("No ID response - defaulting to Scancode Set: %s\n",
-                                         g_scancode_config == &SCANCODE_CONFIG_SET1   ? "Set 1"
-                                         : g_scancode_config == &SCANCODE_CONFIG_SET2 ? "Set 2"
-                                                                                      : "Set 3");
-#endif
-                                LOG_DEBUG("Keyboard Initialised!\n");
-                                keyboard_state     = INITIALISED;
-                                detect_stall_count = 0;
-                            }
-                        }
-                        break;
-                    case SET_LOCK_LEDS:
-                        if (detect_stall_count > ATPS2_ID_RETRY_LIMIT) {
-                            // LED command timeout - continue without LED synchronisation
-                            LOG_DEBUG("Timeout whilst setting keyboard lock LEDs, continuing.\n");
-                            keyboard_state     = INITIALISED;
-                            detect_stall_count = 0;
-                        }
-                        break;
-                    default:
-                        if (detect_stall_count < ATPS2_DETECT_MAX_ATTEMPTS) {
-                            LOG_DEBUG("Keyboard detected, awaiting ACK (%i/5 attempts)\n",
-                                      detect_stall_count);
-                        } else {
-                            LOG_DEBUG("Keyboard detected, but no ACK received!\n");
-                            LOG_DEBUG("Requesting keyboard reset\n");
-                            keyboard_state     = INIT_AWAIT_ACK;
-                            detect_stall_count = 0;
-                            keyboard_command_handler(ATPS2_CMD_RESET);
-                        }
-                        break;
-                }
-            } else if (keyboard_state == UNINITIALISED) {
-                LOG_DEBUG("Awaiting keyboard detection. Please ensure a keyboard is connected.\n");
-                // Clear timeout counter whilst waiting for keyboard connection
-                detect_stall_count = 0;
-            }
-            update_keyboard_ready_led(keyboard_state == INITIALISED);
+            handle_init_detection();
         }
     }
 }
@@ -720,41 +732,9 @@ void keyboard_interface_setup(uint data_pin) {
     // Initialise ring buffer for key data communication between IRQ and main task
     ringbuf_reset();  // LINT:ALLOW ringbuf_reset - Safe: IRQs not yet enabled during init
 
-    // Claim PIO instance and state machine atomically with fallback
-    pio_engine = claim_pio_and_sm(&pio_interface_program);
-    if (pio_engine.pio == NULL) {
-        LOG_ERROR("AT/PS2 Keyboard: No PIO resources available for keyboard interface\n");
+    if (!atps2_setup_pio_engine(&pio_engine, data_pin, &keyboard_input_event_handler, "Keyboard")) {
         return;
     }
 
-    // Store pin assignment
     keyboard_data_pin = data_pin;
-
-    // Calculate clock divider for AT/PS2 timing (30µs minimum pulse width)
-    // Reference: IBM 84F9735 PS/2 Hardware Interface Technical Reference
-    float clock_div = calculate_clock_divider(ATPS2_TIMING_CLOCK_MIN_US);
-
-    // Initialise PIO program with calculated clock divider
-    pio_interface_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin,
-                               clock_div);
-
-    // Initialise shared PIO IRQ dispatcher (safe to call multiple times)
-    pio_irq_dispatcher_init(pio_engine.pio);
-
-    // Register keyboard event handler with the dispatcher
-    if (!pio_irq_register_callback(&keyboard_input_event_handler)) {
-        LOG_ERROR("AT/PS2 Keyboard: Failed to register IRQ callback\n");
-        // Release PIO resources before returning
-        pio_sm_set_enabled(pio_engine.pio, (uint)pio_engine.sm, false);
-        pio_sm_clear_fifos(pio_engine.pio, (uint)pio_engine.sm);
-        pio_sm_unclaim(pio_engine.pio, (uint)pio_engine.sm);
-        pio_remove_program(pio_engine.pio, &pio_interface_program, pio_engine.offset);
-        pio_engine.pio    = NULL;
-        pio_engine.sm     = -1;
-        pio_engine.offset = -1;
-        return;
-    }
-
-    LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
-             (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);
 }

@@ -57,6 +57,20 @@ typedef struct {
 pio_engine_t claim_pio_and_sm(const pio_program_t* program);
 
 /**
+ * @brief Release a PIO engine atomically, disabling the SM and freeing all resources.
+ *
+ * Complement to claim_pio_and_sm(). Resets all engine fields to the failure sentinel
+ * after release.
+ *
+ * @param engine  Pointer to the engine to release (modified in place).
+ * @param program PIO program to remove from instruction memory.
+ *
+ * @note Main loop only — modifies PIO hardware configuration.
+ * @note Safe to call when engine->pio is NULL (no-op).
+ */
+void release_pio_and_sm(pio_engine_t* engine, const pio_program_t* program);
+
+/**
  * @brief Restart a PIO state machine at the given offset.
  *
  * @param pio    PIO instance.

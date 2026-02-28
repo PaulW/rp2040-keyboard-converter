@@ -550,7 +550,7 @@ Whilst hot-swapping keyboards is not recommended and can cause state machine iss
 - **Once INITIALISED**: All received bytes are forwarded unchanged to the scancode processor via the ring buffer—no protocol-layer filtering of 0xAA, 0xFC, or any other codes
 
 **Scancode Layer Behaviour:**
-- **Set 1**: When in the E0-prefixed state, codes 0x2A, 0xAA, 0x36, and 0xB6 are ignored as "fake shift" sequences (see [Set 1 Self-Test Code Collision](../scancodes/set1.md#self-test-code-collision)). This is NOT a universal blacklist—0xAA is only handled specially when E0-prefixed. In INIT state, codes > 0xD3 log generically as `!INIT!` but are not processed as key events
+- **Set 1**: When in the E0-prefixed state, codes 0x2A, 0xAA, 0x36, and 0xB6 are ignored as "fake shift" sequences (see [Set 1 Self-Test Code Collision](../scancodes/set1.md#self-test-code-collision)). This is NOT a universal blacklist—0xAA is only handled specially when E0-prefixed. In INIT state, codes > 0xD8 log generically as `!INIT!` but are not processed as key events
 - **Set 2/3**: Codes 0xAA and 0xFC fall through to the default unmapped-code handler. In INIT state, any code ≥ 0x80 logs generically as `LOG_DEBUG("!INIT! (0x%02X)\n", code)`. This is not intentional "re-plug" detection—it's simply the generic logging for unmapped or out-of-range scancodes
 
 **What This Implementation Doesn't Provide:**

@@ -19,7 +19,6 @@ Checks: >
   -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
   bugprone-*,
   readability-*,
-  -readability-magic-numbers,
   -readability-isolate-declaration,
   cert-*,
   -cert-dcl37-c,
@@ -66,4 +65,17 @@ CheckOptions:
   - key: readability-function-cognitive-complexity.Threshold
     value: '25'
   - key: readability-function-cognitive-complexity.IgnoreMacros
+    value: 'true'
+
+  # Magic numbers: exempt common self-evident values used throughout embedded C.
+  # 0, 1, -1: zero/one/sentinel. 2-255: byte values, bit widths, small bounds.
+  # 256, 360: array sizes (HID descriptor, HSV hue range).
+  # 1000, 1024: ms/us conversions and DMA buffer sizing.
+  - key: readability-magic-numbers.IgnoredIntegerValues
+    value: '0;1;2;3;4;5;6;7;8;9;10;16;24;31;32;60;64;100;125;128;255;256;360;1000;1024'
+  - key: readability-magic-numbers.IgnoredFloatingPointValues
+    value: '0.0;1.0'
+  - key: readability-magic-numbers.IgnoreAllFloatingPointValues
+    value: 'false'
+  - key: readability-magic-numbers.IgnoreBitFieldsWidths
     value: 'true'

@@ -23,7 +23,7 @@ This script checks source code against the architectural rules defined in `.gith
 
 ### What It Checks
 
-The script runs through eighteen different checks, each targeting a specific architectural rule:
+The script runs through nineteen different checks, each targeting a specific architectural rule:
 
 1. **Blocking Operations** - Detects `sleep_ms()`, `sleep_us()`, `busy_wait_us()`, `busy_wait_ms()`
    - ❌ **Fails**: Any blocking call found in src/
@@ -116,6 +116,12 @@ The script runs through eighteen different checks, each targeting a specific arc
    - 📝 **Note**: Trailing whitespace causes noisy diffs and editor warnings
    - 📝 **Note**: Double trailing spaces in Markdown files are intentionally allowed — they produce a hard line break (`<br>`)
 
+1. **Local Const Hex-Literal Variables** - Detects hex-literal magic numbers hidden in `const` variable declarations
+   - ❌ **Fails**: Any `const TYPE var = 0x...` declaration inside a function body
+   - 💡 **Fix**: Move the value to a file-scope `#define` in the relevant constants block
+   - 📝 **Note**: `readability-magic-numbers` in clang-tidy treats `const TYPE var = LITERAL` as "introducing a named constant" and never fires on such declarations — this check closes that gap
+   - 📝 **Note**: Suppress with `// LINT:ALLOW local-const-hex` and a justification comment if absolutely necessary
+
 ### Integration
 
 - **Pre-commit**: Recommended to run before committing
@@ -129,10 +135,10 @@ The script runs through eighteen different checks, each targeting a specific arc
 RP2040 Architecture Lint Checks
 ========================================
 
-[1/18] Checking for blocking operations...
+[1/19] Checking for blocking operations...
 ✓ No blocking operations found
 
-[2/18] Checking for multicore API usage...
+[2/19] Checking for multicore API usage...
 ✓ No multicore API usage found
 
 ...
@@ -268,7 +274,7 @@ docker compose run --rm -e KEYBOARD="modelf/pcat" analyser
 
 ## analyse.sh
 
-This script runs the Debian Packaged version of [Clang 19.1.7](https://discourse.llvm.org/t/llvm-19-1-7-released/84062) and [Cppcheck 2.19.0](https://cppcheck.sourceforge.io/) against the project's source files. Both tools are configured to match the versions used by the CodeRabbit automated reviewer, so you can reproduce and investigate any findings it raises before they appear in a PR review.
+This script runs the Debian Packaged version of [Clang 19.1.7](https://discourse.llvm.org/t/llvm-19-1-7-released/84062) and [Cppcheck 2.19.0](https://cppcheck.sourceforge.io/) against the project's source files. Running the analyser locally lets you reproduce and investigate any static-analysis findings before they appear in code review.
 
 The analyser is invoked via the `analyser` Docker Compose service, which runs a full firmware build first and then analyses the result. Because analysis runs against the completed build artefacts — including all generated PIO header files — there are no missing-file or linking errors that you'd otherwise see if analysis ran before the build.
 
@@ -289,7 +295,7 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" analyser
 
 ### What It Checks
 
-**Clang-Tidy** runs a set of checks focused on correctness and readability for embedded C11 code. C++-specific and modernise checks are disabled. The active checks are configured in [`.clang-tidy`](../.clang-tidy) at the repository root and mirror what CodeRabbit runs. Categories include:
+**Clang-Tidy** runs a set of checks focused on correctness and readability for embedded C11 code. C++-specific and modernise checks are disabled. The active checks are configured in [`.clang-tidy`](../.clang-tidy) at the repository root. Categories include:
 
 - `bugprone-*` — potential logic errors, incorrect API usage, unsafe casts
 - `clang-analyzer-*` — deeper static analysis: null dereferences, use-after-free, dead code
@@ -361,7 +367,7 @@ These two tools are complementary, not overlapping:
 | **When to run** | Before every commit | When investigating findings |
 | **CI** | Required on every PR | On demand |
 
-Run `lint.sh` before committing. Run the analyser when you want to investigate a static-analysis warning or check your code matches what CodeRabbit would flag.
+Run `lint.sh` before committing. Run the analyser when you want to investigate a static-analysis warning or verify code quality before submitting a PR.
 
 ## filter_compile_db.py
 

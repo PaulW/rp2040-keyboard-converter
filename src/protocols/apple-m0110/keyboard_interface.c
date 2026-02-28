@@ -58,9 +58,6 @@
 
 #include "keyboard_interface.h"
 
-#include <math.h>
-
-#include "hardware/clocks.h"
 #include "keyboard_interface.pio.h"
 
 #include "bsp/board.h"
@@ -469,13 +466,7 @@ void keyboard_interface_setup(uint data_pin) {
     if (!pio_irq_register_callback(&keyboard_input_event_handler)) {
         LOG_ERROR("Apple M0110 Keyboard: Failed to register IRQ callback\n");
         // Release PIO resources before returning
-        pio_sm_set_enabled(pio_engine.pio, (uint)pio_engine.sm, false);
-        pio_sm_clear_fifos(pio_engine.pio, (uint)pio_engine.sm);
-        pio_sm_unclaim(pio_engine.pio, (uint)pio_engine.sm);
-        pio_remove_program(pio_engine.pio, &keyboard_interface_program, pio_engine.offset);
-        pio_engine.pio    = NULL;
-        pio_engine.sm     = -1;
-        pio_engine.offset = -1;
+        release_pio_and_sm(&pio_engine, &keyboard_interface_program);
         return;
     }
 

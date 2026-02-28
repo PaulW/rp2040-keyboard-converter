@@ -599,20 +599,20 @@ Then come standard library headers like `<stdio.h>`, `<stdint.h>`, and `<stdbool
 Within each group, sort alphabetically unless there are specific dependencies that require a different order.
 
 ```c
-// Example from keyboard_interface.c
-#include "keyboard_interface.h"  // Own header first
+// Example from src/protocols/amiga/keyboard_interface.c
+#include "keyboard_interface.h"         // Own header first
 
-#include <math.h>                 // Standard library
+#include "hardware/gpio.h"              // Pico SDK
+#include "keyboard_interface.pio.h"     // Generated PIO headers
 
-#include "bsp/board.h"            // External libraries
-#include "hardware/clocks.h"      // Pico SDK
-#include "interface.pio.h"        // Generated PIO headers
+#include "bsp/board.h"                  // External libraries (TinyUSB BSP)
 
-#include "config.h"               // Project headers (alphabetical)
+#include "config.h"                     // Project headers (alphabetical)
 #include "led_helper.h"
 #include "log.h"
 #include "pio_helper.h"
 #include "ringbuf.h"
+#include "scancode.h"
 ```
 
 ### Function Grouping
@@ -721,6 +721,7 @@ program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin);
 pio_irq_dispatcher_init(pio_engine.pio);         // Initialise shared IRQ dispatcher
 if (!pio_irq_register_callback(&handler)) {      // Register protocol handler
     LOG_ERROR("Failed to register IRQ callback\n");
+    release_pio_and_sm(&pio_engine, &program);   // Release already-claimed resources
     return false;
 }
 ```

@@ -38,6 +38,25 @@
 /** First-boot / reset sentinel for layers_hash */
 #define LAYERS_HASH_SENTINEL 0xFFFFFFFF
 
+// --- FNV-1a Hash Constants (32-bit) ---
+
+/** FNV-1a offset basis (initial hash value per specification) */
+#define FNV_OFFSET_BASIS 0x811c9dc5U
+
+/** FNV-1a 32-bit prime multiplier */
+#define FNV_PRIME 0x01000193U
+
+// --- CRC-16/CCITT Constants ---
+
+/** CRC-16/CCITT polynomial: x^16 + x^12 + x^5 + 1 */
+#define CRC16_CCITT_POLY 0x1021U
+
+/** Mask for CRC MSB (bit 15 of a 16-bit value) */
+#define CRC16_MSB_MASK 0x8000U
+
+/** Standard initial seed for CRC-16/CCITT computation */
+#define CRC16_INITIAL_SEED UINT16_MAX
+
 // --- Keyboard Identification ---
 
 /**
@@ -61,20 +80,19 @@ static uint32_t get_keyboard_id(void) {
     const char* protocol = _KEYBOARD_PROTOCOL;
     const char* codeset  = _KEYBOARD_CODESET;
 
-    // FNV-1a hash constants
-    uint32_t       hash  = 0x811c9dc5;  // FNV offset basis
-    const uint32_t prime = 0x01000193;  // FNV prime
+    // FNV-1a hash
+    uint32_t hash = FNV_OFFSET_BASIS;
 
     // Hash all four identifier strings
     const char* strings[] = {make, model, protocol, codeset};
     for (int i = 0; i < (int)(sizeof(strings) / sizeof(strings[0])); i++) {
         const char* str = strings[i];
         while (*str) {
-            hash ^= (uint32_t)(*str++);
-            hash *= prime;
+            hash ^= (uint32_t)(uint8_t)(*str++);
+            hash *= FNV_PRIME;
         }
         hash ^= 0xFF;  // Separator between strings
-        hash *= prime;
+        hash *= FNV_PRIME;
     }
 
     return hash;
@@ -161,8 +179,8 @@ static uint16_t crc16_update(uint16_t crc, const void* data, size_t length) {
     for (size_t i = 0; i < length; i++) {
         crc ^= (uint16_t)bytes[i] << 8;
         for (uint8_t bit = 0; bit < 8; bit++) {
-            if (crc & 0x8000) {
-                crc = (crc << 1) ^ 0x1021;
+            if (crc & CRC16_MSB_MASK) {
+                crc = (crc << 1) ^ CRC16_CCITT_POLY;
             } else {
                 crc = crc << 1;
             }
@@ -189,7 +207,7 @@ static uint16_t config_calculate_crc(const config_data_t* cfg) {
     size_t tail_len   = sizeof(config_data_t) - after_crc;
 
     // Compute continuous CRC over both regions
-    uint16_t crc = 0xFFFF;                              // Start with standard seed
+    uint16_t crc = CRC16_INITIAL_SEED;                  // Start with standard seed
     crc          = crc16_update(crc, cfg, before_crc);  // Hash everything before crc16
     crc          = crc16_update(crc, (const uint8_t*)cfg + after_crc,
                                 tail_len);  // Continue with everything after crc16
@@ -308,11 +326,13 @@ static const config_data_t* load_and_select_flash_copy(void) {
         LOG_INFO("Config loaded: Using copy %s (seq=%u)\n", (source == copy_a) ? "A" : "B",
                  (unsigned int)source->sequence);
         return source;
-    } else if (a_valid) {
+    }
+    if (a_valid) {
         LOG_WARN("Config loaded: Copy B corrupt, using copy A (seq=%u)\n",
                  (unsigned int)copy_a->sequence);
         return copy_a;
-    } else if (b_valid) {
+    }
+    if (b_valid) {
         LOG_WARN("Config loaded: Copy A corrupt, using copy B (seq=%u)\n",
                  (unsigned int)copy_b->sequence);
         return copy_b;

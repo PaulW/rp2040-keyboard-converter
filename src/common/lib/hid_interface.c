@@ -52,7 +52,7 @@
  *
  * This mask is used to check or clear shift modifier states in keyboard reports.
  */
-#define SHIFT_MODIFIER_MASK ((uint8_t)((1u << 1) | (1u << 5)))
+#define SHIFT_MODIFIER_MASK ((uint8_t)((1U << 1) | (1U << 5)))
 
 /**
  * @brief HID Interface Usage Pages

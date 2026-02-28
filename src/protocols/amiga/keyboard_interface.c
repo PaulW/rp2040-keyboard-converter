@@ -92,9 +92,6 @@
 
 #include "keyboard_interface.h"
 
-#include <math.h>
-
-#include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "keyboard_interface.pio.h"
 
@@ -235,7 +232,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
     }
 
     // Filter out invalid key codes (protocol defines 0x00-0x67 as valid)
-    if (data_byte > 0x67) {
+    if (data_byte > AMIGA_MAX_KEYCODE) {
         LOG_WARN("Amiga: Invalid key code 0x%02X (ignored)\n", data_byte);
         return;
     }
@@ -377,12 +374,6 @@ void keyboard_interface_setup(uint data_pin) {
     // Calculate clock divider for 20µs minimum pulse detection
     float clock_div = calculate_clock_divider(AMIGA_TIMING_CLOCK_MIN_US);
 
-    // Calculate effective SM clock speed for logging
-    float rp_clock_khz        = 0.001f * (float)clock_get_hz(clk_sys);
-    float effective_clock_khz = rp_clock_khz / clock_div;
-
-    LOG_INFO("Amiga: Effective SM Clock Speed: %.2fkHz\n", effective_clock_khz);
-
     // Initialise PIO program with calculated clock divider
     // Note: keyboard_interface_program_init (in .pio file) enables RX FIFO interrupt via:
     //   pio_set_irq0_source_enabled(pio, pis_sm0_rx_fifo_not_empty + sm, true)
@@ -396,13 +387,7 @@ void keyboard_interface_setup(uint data_pin) {
     if (!pio_irq_register_callback(&keyboard_input_event_handler)) {
         LOG_ERROR("Amiga Keyboard: Failed to register IRQ callback\n");
         // Release PIO resources before returning
-        pio_sm_set_enabled(pio_engine.pio, (uint)pio_engine.sm, false);
-        pio_sm_clear_fifos(pio_engine.pio, (uint)pio_engine.sm);
-        pio_sm_unclaim(pio_engine.pio, (uint)pio_engine.sm);
-        pio_remove_program(pio_engine.pio, &keyboard_interface_program, pio_engine.offset);
-        pio_engine.pio    = NULL;
-        pio_engine.sm     = -1;
-        pio_engine.offset = -1;
+        release_pio_and_sm(&pio_engine, &keyboard_interface_program);
         return;
     }
 

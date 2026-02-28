@@ -56,10 +56,10 @@
 #ifdef RUN_FROM_RAM_CHECK
 
 // RP2040 Memory Map Constants
-#define SRAM_BASE      0x20000000u
-#define SRAM_END       0x20042000u  // 264KB SRAM
-#define FLASH_XIP_BASE 0x10000000u
-#define FLASH_XIP_END  0x16000000u
+#define SRAM_BASE      0x20000000U
+#define SRAM_END       0x20042000U  // 264KB SRAM
+#define FLASH_XIP_BASE 0x10000000U
+#define FLASH_XIP_END  0x16000000U
 
 /**
  * @brief Verify that code is executing from SRAM

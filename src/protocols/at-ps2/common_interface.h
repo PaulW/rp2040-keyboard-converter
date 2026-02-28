@@ -30,7 +30,11 @@
 #ifndef COMMON_INTERFACE_H
 #define COMMON_INTERFACE_H
 
+#include <stdbool.h>
+
 #include "pico/stdlib.h"
+
+#include "pio_helper.h" /* pio_engine_t, pio_irq_callback_t */
 
 /**
  * @brief AT/PS2 Protocol Shared Command Codes
@@ -64,6 +68,99 @@
  */
 #define ATPS2_DATA_MASK 0xFF /**< Data byte extraction mask */
 
+/**
+ * @brief AT/PS2 serial frame bit layout within the PIO FIFO aligned word.
+ *
+ * The PIO state machine captures 11-bit frames and right-packs them into a 32-bit FIFO
+ * word.  After right-shifting by ATPS2_FRAME_FIFO_SHIFT, the bits are laid out as:
+ *
+ *   [0]     = start bit (must be 0)
+ *   [1..8]  = data byte (LSB first)
+ *   [9]     = parity bit (odd parity over data byte)
+ *   [10]    = stop bit (must be 1 for compliant devices)
+ */
+#define ATPS2_FRAME_FIFO_SHIFT 21U /**< Right-shift to align 11-bit frame from PIO FIFO word */
+#define ATPS2_FRAME_PARITY_BIT 9U  /**< Bit index of odd-parity bit in the aligned frame */
+#define ATPS2_FRAME_STOP_BIT   10U /**< Bit index of stop bit (must be HIGH) in aligned frame */
+#define ATPS2_FRAME_DATA_SHIFT                                        \
+    1U /**< Right-shift to extract 8-bit data byte from aligned frame \
+        */
+
+/**
+ * @brief Parsed AT/PS2 serial frame.
+ *
+ * Populated by atps2_parse_frame() from a single PIO FIFO word.  Used by both keyboard
+ * and mouse IRQ handlers after the shared extraction step.
+ */
+typedef struct {
+    uint8_t start_bit;       /**< Start bit (must be 0) */
+    uint8_t parity_bit;      /**< Received odd-parity bit */
+    uint8_t stop_bit;        /**< Stop bit (1 = compliant, 0 = non-standard) */
+    uint8_t data;            /**< 8-bit data byte extracted from frame */
+    uint8_t expected_parity; /**< Computed odd-parity bit for @p data */
+} atps2_frame_t;
+
 extern uint8_t interface_parity_table[];
+
+/**
+ * @brief Parse one AT/PS2 frame from the PIO RX FIFO.
+ *
+ * Reads the next word from the given PIO state machine RX FIFO, right-aligns the
+ * 11-bit serial frame, and extracts all constituent fields into an atps2_frame_t.
+ * Caller must ensure the FIFO is non-empty before calling (use
+ * pio_sm_is_rx_fifo_empty()).
+ *
+ * @param engine  Pointer to the active PIO engine for this interface.
+ * @return        Fully populated atps2_frame_t.
+ *
+ * @note Inline to avoid call overhead in __isr context.
+ * @note IRQ-safe — reads hardware FIFO only; no shared state modified.
+ */
+static inline atps2_frame_t atps2_parse_frame(const pio_engine_t* engine) {
+    io_ro_32      raw  = engine->pio->rxf[(uint)engine->sm] >> ATPS2_FRAME_FIFO_SHIFT;
+    uint16_t      bits = (uint16_t)raw;
+    atps2_frame_t f;
+    f.start_bit       = (uint8_t)(bits & 0x1U);
+    f.parity_bit      = (uint8_t)((bits >> ATPS2_FRAME_PARITY_BIT) & 0x1U);
+    f.stop_bit        = (uint8_t)((bits >> ATPS2_FRAME_STOP_BIT) & 0x1U);
+    f.data            = (uint8_t)((raw >> ATPS2_FRAME_DATA_SHIFT) & ATPS2_DATA_MASK);
+    f.expected_parity = interface_parity_table[f.data];
+    return f;
+}
+
+/**
+ * @brief Transmit one command byte to an AT/PS2 device via PIO.
+ *
+ * Calculates the odd-parity bit for @p data_byte, packs it with the data into a
+ * 16-bit value, and writes it to the PIO TX FIFO.  Non-blocking: data is silently
+ * dropped if the FIFO is full.
+ *
+ * @param engine    Pointer to the active PIO engine for this interface.
+ * @param data_byte 8-bit command code to transmit.
+ *
+ * @note Non-blocking — data is dropped silently if the PIO TX FIFO is full.
+ * @note IRQ-safe.
+ */
+void atps2_send_command(pio_engine_t* engine, uint8_t data_byte);
+
+/**
+ * @brief Initialise the AT/PS2 PIO engine for one interface.
+ *
+ * Performs the complete PIO bringup sequence shared by keyboard and mouse interfaces:
+ * claims a PIO instance and state machine, calculates and applies the AT/PS2 clock
+ * divider, initialises the PIO program, sets up the shared IRQ dispatcher, and
+ * registers the device-specific callback.  On any failure all claimed PIO resources
+ * are released before returning false.
+ *
+ * @param engine      Populated with the claimed PIO engine on success.
+ * @param data_pin    GPIO pin for the DATA line (CLOCK = data_pin + 1).
+ * @param callback    Device-specific IRQ callback to register with the dispatcher.
+ * @param device_name Human-readable label used in LOG messages (e.g. "Keyboard").
+ * @return true on success, false if PIO resources or callback registration failed.
+ *
+ * @note Main loop only — call before IRQs are enabled for this interface.
+ */
+bool atps2_setup_pio_engine(pio_engine_t* engine, uint data_pin, pio_irq_callback_t callback,
+                            const char* device_name);
 
 #endif /* COMMON_INTERFACE_H */

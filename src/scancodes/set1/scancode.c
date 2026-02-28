@@ -25,6 +25,37 @@
 #include "hid_interface.h"
 #include "log.h"
 
+// ============================================================================
+// Protocol Byte Constants
+// ============================================================================
+
+/* Prefix bytes */
+#define SC_ESCAPE_E0 0xE0U /**< E0 prefix — extended key indicator */
+#define SC_ESCAPE_E1 0xE1U /**< E1 prefix — Pause / Break multi-byte sequence */
+
+/* Set 1 make/break encoding */
+#define SC1_MAKE_MASK 0x7FU /**< Set 1: mask applied to break code to recover make code */
+#define SC1_MAX_CODE                                                                      \
+    0xD8U /**< Set 1: upper bound for valid break codes (0x58 | 0x80).                    \
+           *   0x58 is the highest make code on a 101-key keyboard (F12). Break codes for \
+           *   F11 (0xD7) and F12 (0xD8) are therefore the upper valid limit.             \
+           *   Codes above 0xD8 are out-of-range and discarded. */
+
+/* Set 1 fake shift bytes (E0-prefixed, silently discarded) */
+#define SC1_FAKE_LSHIFT_MAKE  0x2AU /**< Spurious Left-Shift make  (E0-prefixed) */
+#define SC1_FAKE_LSHIFT_BREAK 0xAAU /**< Spurious Left-Shift break (E0-prefixed) */
+#define SC1_FAKE_RSHIFT_MAKE  0x36U /**< Spurious Right-Shift make  (E0-prefixed) */
+#define SC1_FAKE_RSHIFT_BREAK 0xB6U /**< Spurious Right-Shift break (E0-prefixed) */
+
+/* Set 1 E1 Pause/Break sequence bytes */
+#define SC1_E1_CTRL_MAKE  0x1DU /**< E1 Pause make:  Left-Control make byte (E1 [1D] 45) */
+#define SC1_E1_CTRL_BREAK 0x9DU /**< E1 Pause break: Left-Control break byte (E1 [9D] C5) */
+#define SC1_NUMLOCK_MAKE  0x45U /**< E1 Pause make tail  (E1 1D [45]) */
+#define SC1_NUMLOCK_BREAK 0xC5U /**< E1 Pause break tail (E1 9D [C5]) */
+
+/* Interface code passed to handle_keyboard_report() */
+#define IFACE_PAUSE 0x48U /**< Interface code: Pause / Break key */
+
 /**
  * @brief E0-Prefixed Scancode Translation Table for XT/Set 1 Protocol
  *
@@ -135,16 +166,17 @@ void process_scancode(uint8_t code) {
     switch (state) {
         case INIT:
             switch (code) {
-                case 0xE0:
+                case SC_ESCAPE_E0:
                     state = E0;
                     break;
-                case 0xE1:
+                case SC_ESCAPE_E1:
                     state = E1;
                     break;
                 default:  // Handle normal key event
-                    if (code <= 0xD3) {
-                        // 0xAA (170 decimal) <= 0xD3 (211 decimal) - treated as normal break code
-                        handle_keyboard_report(code & 0x7F, code < 0x80);
+                    if (code <= SC1_MAX_CODE) {
+                        // 0xAA (170 decimal) <= SC1_MAX_CODE (0xD8 / 216 decimal) - treated as
+                        // normal break code
+                        handle_keyboard_report(code & SC1_MAKE_MASK, code < 0x80);
                     } else {
                         LOG_DEBUG("!INIT! (0x%02X)\n", code);
                     }
@@ -153,17 +185,18 @@ void process_scancode(uint8_t code) {
 
         case E0:  // E0-Prefixed
             switch (code) {
-                case 0x2A:
-                case 0xAA:  // Filtered as fake shift, NOT as self-test code
-                case 0x36:
-                case 0xB6:
+                case SC1_FAKE_LSHIFT_MAKE:
+                case SC1_FAKE_LSHIFT_BREAK:  // Filtered as fake shift, NOT as self-test code
+                case SC1_FAKE_RSHIFT_MAKE:
+                case SC1_FAKE_RSHIFT_BREAK:
                     // ignore fake shift
                     state = INIT;
                     break;
                 default:
                     state = INIT;
                     {
-                        uint8_t translated = switch_e0_code(code < 0x80 ? code : (code & 0x7F));
+                        uint8_t translated =
+                            switch_e0_code(code < 0x80 ? code : (code & SC1_MAKE_MASK));
                         if (translated) {
                             handle_keyboard_report(translated, code < 0x80);
                         } else {
@@ -175,10 +208,10 @@ void process_scancode(uint8_t code) {
 
         case E1:  // E1-Prefixed
             switch (code) {
-                case 0x1D:
+                case SC1_E1_CTRL_MAKE:
                     state = E1_1D;
                     break;
-                case 0x9D:
+                case SC1_E1_CTRL_BREAK:
                     state = E1_9D;
                     break;
                 default:
@@ -190,8 +223,8 @@ void process_scancode(uint8_t code) {
 
         case E1_1D:  // E1-prefixed 1D
             switch (code) {
-                case 0x45:
-                    handle_keyboard_report(0x48, true);
+                case SC1_NUMLOCK_MAKE:
+                    handle_keyboard_report(IFACE_PAUSE, true);
                     state = INIT;
                     break;
                 default:
@@ -202,8 +235,8 @@ void process_scancode(uint8_t code) {
 
         case E1_9D:  // E1-prefixed 9D
             switch (code) {
-                case 0xC5:
-                    handle_keyboard_report(0x48, false);
+                case SC1_NUMLOCK_BREAK:
+                    handle_keyboard_report(IFACE_PAUSE, false);
                     state = INIT;
                     break;
                 default:

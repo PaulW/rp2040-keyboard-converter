@@ -129,6 +129,15 @@
 #define UART_DMA_BACKOFF_MAX_US 1024U
 
 /**
+ * @brief DMA IRQ priority for UART DMA completion interrupt
+ *
+ * RP2040 IRQ priorities run from 0 (highest) to 255 (lowest) in 64-step
+ * increments. 0xC0 (192) gives low priority, ensuring DMA completion does
+ * not preempt PIO state machines or USB interrupt handling.
+ */
+#define UART_DMA_IRQ_PRIORITY 0xC0U
+
+/**
  * @brief Performance and Buffer Configuration
  *
  * These parameters are defined in config.h and tuned for optimal performance
@@ -146,7 +155,7 @@
 
 // Compile-time bounds (uint8_t indices, uint16_t lengths)
 _Static_assert(UART_DMA_QUEUE_SIZE <= 256, "UART_DMA_QUEUE_SIZE must fit uint8_t index");
-_Static_assert(UART_DMA_BUFFER_SIZE <= 65535, "UART_DMA_BUFFER_SIZE must fit uint16_t len");
+_Static_assert(UART_DMA_BUFFER_SIZE <= UINT16_MAX, "UART_DMA_BUFFER_SIZE must fit uint16_t len");
 
 // --- Queue full policy configuration ---
 // Policy constants and configuration are now defined in config.h
@@ -562,10 +571,12 @@ static inline bool try_reserve_slot(uint8_t* out_idx) {
  * @note Performance: Direct memcpy with atomic publish for efficiency
  */
 static void uart_dma_write_raw(const char* s, int len) {
-    if (len <= 0)
+    if (len <= 0) {
         return;
-    if (len > UART_DMA_BUFFER_SIZE)
+    }
+    if (len > UART_DMA_BUFFER_SIZE) {
         len = UART_DMA_BUFFER_SIZE;
+    }
 
     // Apply configurable queue policy for stdio output
     if (!wait_for_queue_space()) {
@@ -738,7 +749,7 @@ void init_uart_dma(void) {
 
     irq_set_exclusive_handler(DMA_IRQ_0, &uart_dma_complete_handler);  // Set our handler function
     irq_set_enabled(DMA_IRQ_0, true);                                  // Enable the interrupt
-    irq_set_priority(DMA_IRQ_0, 0xC0);  // Low priority (0=highest, 255=lowest)
+    irq_set_priority(DMA_IRQ_0, UART_DMA_IRQ_PRIORITY);  // Low priority (0=highest, 255=lowest)
 
     // Register this implementation as the system stdio driver
     // This replaces the standard Pico SDK UART stdio functionality

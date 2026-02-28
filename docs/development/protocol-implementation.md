@@ -170,7 +170,17 @@ pio_irq_register_callback(&keyboard_input_event_handler);
 
 The dispatcher supports up to 4 callbacks total (global registry) and only one PIO instance per session. Multiple protocols can share a single PIO (e.g., AT/PS2 keyboard + mouse), and handlers are called sequentially from the shared dispatcher.
 
-**Error handling:** If registration fails (e.g., all 4 callback slots full), the function returns `false` and logs an error. Check the return value if your protocol needs to handle this condition.
+**Error handling:** If registration fails (e.g., all 4 callback slots full), the function returns `false` and logs an error. Always call `release_pio_and_sm()` to free the already-claimed PIO resources before returning:
+
+```c
+if (!pio_irq_register_callback(&keyboard_input_event_handler)) {
+    LOG_ERROR("Protocol: Failed to register IRQ callback\n");
+    release_pio_and_sm(&pio_engine, &keyboard_interface_program);
+    return;
+}
+```
+
+`release_pio_and_sm()` is the complement to `claim_pio_and_sm()`. It disables the state machine, clears both FIFOs, unclaims the SM, removes the program from instruction memory, and resets all engine fields to the failure sentinel (`NULL`/`-1`/`-1`). It is safe to call when `engine->pio` is `NULL` (no-op), which means it can be used unconditionally in error paths.
 
 ### 11. IRQ Enable
 
@@ -257,7 +267,19 @@ if (pio_engine.pio == NULL) {
 }
 ```
 
-The `pio_engine_t` struct always exists; `pio_engine.pio == NULL` (with `sm`/`offset` set to -1) indicates complete failure. This pattern:
+If a later setup step fails after PIO resources have been claimed (e.g., IRQ callback registration fails because all callback slots are full), release the already-claimed resources before returning using `release_pio_and_sm()`:
+
+```c
+if (!pio_irq_register_callback(&handler)) {
+  LOG_ERROR("Failed to register IRQ callback\n");
+  release_pio_and_sm(&pio_engine, &program);  // Release already-claimed resources
+  return;
+}
+```
+
+`release_pio_and_sm()` is the complement to `claim_pio_and_sm()` — it disables the state machine, clears both FIFOs, unclaims the SM, removes the program from instruction memory, and resets all engine fields to the failure sentinel. It is safe to call when `engine->pio` is `NULL` (no-op).
+
+The `pio_engine_t` struct always exists; `pio_engine.pio == NULL` (with `sm`/`offset` set to -1) indicates complete failure. Together, the pair of helpers provides:
 - Handles PIO selection (pio0 vs pio1) automatically with fallback
 - Eliminates partial allocation failures (no allocated SM without program space)
 - Provides clean single-point error handling (one NULL check covers all failure cases)
