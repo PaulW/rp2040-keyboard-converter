@@ -111,9 +111,9 @@ The collision is mitigated by protocol-layer filtering during keyboard initialis
 
 **Scancode Layer Behaviour:**
 
-The Set 1 scancode processor ([`src/scancodes/set1/scancode.c`](../../src/scancodes/set1/scancode.c)) does **not** filter self-test codes. It performs a range check (`if (code <= 0xD3)`) that processes all valid scancodes, including `0xAA`:
+The Set 1 scancode processor ([`src/scancodes/set1/scancode.c`](../../src/scancodes/set1/scancode.c)) does **not** filter self-test codes. It performs a range check (`if (code <= 0xD8)`) that processes all valid scancodes, including `0xAA`:
 
-Since `0xAA` (170 decimal) is less than `0xD3` (211 decimal), it would be processed as a normal Left Shift break code if received post-initialisation. The scancode processor comment explicitly notes: *"Self-test codes (0xAA) are handled by protocol layer during initialisation"* (line 117).
+Since `0xAA` (170 decimal) is less than `0xD8` (216 decimal), it would be processed as a normal Left Shift break code if received post-initialisation. The scancode processor comment explicitly notes: *"Self-test codes (0xAA) are handled by protocol layer during initialisation"* (line 117).
 
 The only special handling of `0xAA` in the scancode layer occurs in the E0-prefixed state, where it's filtered as a "fake shift" sequence for Print Screen (not because it's a self-test code):
 
@@ -175,10 +175,14 @@ The keyspace is limited to 128 make codes (7-bit), which becomes a problem for m
 
 | Range | Usage |
 |-------|-------|
-| `0x01-0x53` | Standard key make codes |
-| `0x54-0x7F` | Reserved/extended |
-| `0x81-0xD3` | Standard key break codes (make + 0x80) |
-| `0xD4-0xFF` | Reserved/extended break codes |
+| `0x01-0x53` | Standard key make codes (83-key XT) |
+| `0x54-0x56` | Reserved/extended make codes |
+| `0x57-0x58` | F11/F12 make codes (101-key extension) |
+| `0x59-0x7F` | Reserved/extended |
+| `0x81-0xD3` | Standard key break codes (83-key XT, make + 0x80) |
+| `0xD4-0xD6` | Reserved/extended break codes |
+| `0xD7-0xD8` | F11/F12 break codes (101-key extension, make + 0x80) |
+| `0xD9-0xFF` | Reserved/extended break codes |
 
 ## Special Codes
 

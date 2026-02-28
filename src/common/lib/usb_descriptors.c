@@ -91,15 +91,15 @@ uint8_t const desc_hid_report_mouse[] = {TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID
 
 /**
  * @brief Invoked when received GET HID REPORT DESCRIPTOR.
- * This function returns a pointer to the HID report descriptor based on the interface number.
+ * This function returns a pointer to the HID report descriptor based on the HID instance number.
  * The descriptor contents must exist long enough for the transfer to complete.
  *
- * @param interface The interface number.
+ * @param instance The HID instance number.
  *
  * @return Pointer to the HID report descriptor.
  */
-uint8_t const* tud_hid_descriptor_report_cb(uint8_t interface) {
-    switch (interface) {
+uint8_t const* tud_hid_descriptor_report_cb(uint8_t instance) {
+    switch (instance) {
         case ITF_NUM_KEYBOARD:
             return KEYBOARD_ENABLED ? desc_hid_report_keyboard : desc_hid_report_mouse;
         case ITF_NUM_CONSUMER_CONTROL:
@@ -173,7 +173,9 @@ char const* string_desc_arr[] = {
     "",                          // 3: Serial, We will set this later to the unique Flash ID
 };
 
-static uint16_t _desc_str[32];
+// Persistent buffer returned to TinyUSB - must remain valid until next call (DMA transfer).
+// File-scope static rather than function-local to make the lifetime intent explicit.
+static uint16_t desc_str_buf[32];
 
 /**
  * @brief Invoked when received GET STRING DESCRIPTOR request.
@@ -184,7 +186,11 @@ static uint16_t _desc_str[32];
  * @param langid The language ID.
  *
  * @return Pointer to the string descriptor.
+ *
+ * clang-tidy: index (uint8_t, 0-based string index) and langid (uint16_t, 16-bit language ID) are
+ * distinct types with distinct value domains; swapping would produce clearly wrong behaviour
  */
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     (void)langid;
 
@@ -203,33 +209,35 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     }
 
     if (index == 0) {
-        memcpy(&_desc_str[1], string_desc_arr[0], 2);
+        memcpy(&desc_str_buf[1], string_desc_arr[0], 2);
         chr_count = 1;
     } else {
         // Note: the 0xEE index string is a Microsoft OS 1.0 Descriptors.
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-defined-usb-descriptors
 
-        if (!(index < sizeof(string_desc_arr) / sizeof(string_desc_arr[0])))
+        if (!(index < sizeof(string_desc_arr) / sizeof(string_desc_arr[0]))) {
             return NULL;
+        }
 
         const char* str = string_desc_arr[index];
 
         // Cap at max char
         chr_count = (uint8_t)strlen(str);
-        if (chr_count > 31)
+        if (chr_count > 31) {
             chr_count = 31;
+        }
 
         // Clear buffer to remove stale data from previous calls
-        memset(&_desc_str[1], 0, 31 * sizeof(uint16_t));
+        memset(&desc_str_buf[1], 0, 31 * sizeof(uint16_t));
 
         // Convert ASCII string into UTF-16
         for (uint8_t i = 0; i < chr_count; i++) {
-            _desc_str[1 + i] = str[i];
+            desc_str_buf[1 + i] = str[i];
         }
     }
 
     // first byte is length (including header), second byte is string type
-    _desc_str[0] = (uint16_t)((TUSB_DESC_STRING << 8) | (2 * chr_count + 2));
+    desc_str_buf[0] = (uint16_t)((TUSB_DESC_STRING << 8) | (2 * chr_count + 2));
 
-    return _desc_str;
+    return desc_str_buf;
 }

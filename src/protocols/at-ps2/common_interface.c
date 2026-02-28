@@ -20,6 +20,12 @@
 
 #include "common_interface.h"
 
+#include <stdbool.h>
+
+#include "interface.pio.h" /* pio_interface_program, pio_interface_program_init */
+
+#include "log.h"
+
 /**
  * @brief Mapping of HEX to Parity Bit for input from AT Keyboard.
  *
@@ -56,3 +62,38 @@ uint8_t interface_parity_table[256] = {
     0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,  // E
     1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1   // F
 };
+
+void atps2_send_command(pio_engine_t* engine, uint8_t data_byte) {
+    uint16_t data_with_parity = (uint16_t)(data_byte + (interface_parity_table[data_byte] << 8));
+    pio_sm_put(engine->pio, engine->sm, data_with_parity);
+}
+
+bool atps2_setup_pio_engine(pio_engine_t* engine, uint data_pin, pio_irq_callback_t callback,
+                            const char* device_name) {
+    *engine = claim_pio_and_sm(&pio_interface_program);
+    if (engine->pio == NULL) {
+        LOG_ERROR("AT/PS2 %s: No PIO resources available\n", device_name);
+        return false;
+    }
+
+    // Calculate clock divider for AT/PS2 timing (30µs minimum pulse width)
+    // Reference: IBM 84F9735 PS/2 Hardware Interface Technical Reference
+    float clock_div = calculate_clock_divider(ATPS2_TIMING_CLOCK_MIN_US);
+
+    // Initialise PIO program with calculated clock divider
+    pio_interface_program_init(engine->pio, engine->sm, engine->offset, data_pin, clock_div);
+
+    // Initialise shared PIO IRQ dispatcher (safe to call multiple times)
+    pio_irq_dispatcher_init(engine->pio);
+
+    // Register device-specific event handler with the dispatcher
+    if (!pio_irq_register_callback(callback)) {
+        LOG_ERROR("AT/PS2 %s: Failed to register IRQ callback\n", device_name);
+        release_pio_and_sm(engine, &pio_interface_program);
+        return false;
+    }
+
+    LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
+             (engine->pio == pio0 ? 0 : 1), engine->sm, engine->offset, clock_div);
+    return true;
+}

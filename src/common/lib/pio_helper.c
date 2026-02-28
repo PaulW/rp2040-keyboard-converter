@@ -35,6 +35,10 @@ _Static_assert(1, "PIO helper basic sanity check");  // Always true, validates _
 /* PIO IRQ Dispatcher State */
 #define MAX_PIO_IRQ_CALLBACKS 4 /**< Maximum callbacks per PIO (supports multiple devices) */
 
+/* Unit-conversion scaling factors used in clock divider calculation */
+#define HZ_TO_KHZ  0.001F  /**< Hz to kHz: divide by 1000 */
+#define US_PER_KHZ 1000.0F /**< µs per kHz period: 1000µs / 1kHz = 1ms */
+
 static volatile pio_irq_callback_t registered_callbacks[MAX_PIO_IRQ_CALLBACKS] = {NULL, NULL, NULL,
                                                                                   NULL};
 static bool dispatcher_initialised = false;  // Init-only flag, not IRQ-shared
@@ -131,6 +135,37 @@ pio_engine_t claim_pio_and_sm(const pio_program_t* program) {
     // Both PIOs exhausted
     LOG_ERROR("No PIO resources available (both PIO0 and PIO1 exhausted)\n");
     return result;
+}
+
+/**
+ * @brief Release a PIO engine atomically, disabling the SM and freeing all resources
+ *
+ * Complement to claim_pio_and_sm(). Performs the canonical teardown sequence:
+ * 1. Disable the state machine
+ * 2. Clear TX and RX FIFOs
+ * 3. Release the SM claim
+ * 4. Remove the program from instruction memory
+ * 5. Reset all engine fields to the failure sentinel
+ *
+ * This function is safe to call when engine->pio is NULL (returns immediately).
+ *
+ * @param engine  Pointer to the pio_engine_t to release. Modified in place.
+ * @param program The PIO program to remove from instruction memory.
+ *
+ * @note Must be called from main context (not IRQ) - modifies PIO configuration
+ * @note After return, engine->pio == NULL, engine->sm == -1, engine->offset == -1
+ */
+void release_pio_and_sm(pio_engine_t* engine, const pio_program_t* program) {
+    if (engine->pio == NULL) {
+        return;
+    }
+    pio_sm_set_enabled(engine->pio, (uint)engine->sm, false);
+    pio_sm_clear_fifos(engine->pio, (uint)engine->sm);
+    pio_sm_unclaim(engine->pio, (uint)engine->sm);
+    pio_remove_program(engine->pio, program, engine->offset);
+    engine->pio    = NULL;
+    engine->sm     = -1;
+    engine->offset = -1;
 }
 
 /**
@@ -237,14 +272,14 @@ float calculate_clock_divider(int min_clock_pulse_width_us) {
     const int samples_per_pulse = 5;
 
     // Get the system clock frequency in kHz
-    float rp_clock_khz = 0.001 * clock_get_hz(clk_sys);
+    float rp_clock_khz = HZ_TO_KHZ * (float)clock_get_hz(clk_sys);
     LOG_INFO("RP2040 Clock Speed: %.0fKHz\n", rp_clock_khz);
 
     // Calculate the frequency of the shortest pulse.
-    float shortest_pulse_khz = 1000.0 / (float)min_clock_pulse_width_us;
+    float shortest_pulse_khz = US_PER_KHZ / (float)min_clock_pulse_width_us;
 
     // Calculate the desired PIO sampling rate.
-    float target_sampling_khz = shortest_pulse_khz * samples_per_pulse;
+    float target_sampling_khz = shortest_pulse_khz * (float)samples_per_pulse;
 
     LOG_INFO("Desired PIO Sampling Rate: %.2fKHz\n", target_sampling_khz);
 
@@ -258,7 +293,7 @@ float calculate_clock_divider(int min_clock_pulse_width_us) {
     LOG_INFO("Effective PIO Clock Speed: %.2fKHz\n", effective_pio_khz);
 
     // Calculate and print the sample interval.
-    float sample_interval_us = (1.0 / effective_pio_khz) * 1000.0;
+    float sample_interval_us = (1.0F / effective_pio_khz) * US_PER_KHZ;
     LOG_INFO("Effective Sample Interval: %.2fus\n", sample_interval_us);
 
     return clock_div;

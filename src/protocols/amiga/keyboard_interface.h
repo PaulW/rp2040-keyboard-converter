@@ -121,8 +121,18 @@
  * Amiga protocol transmits bits in rotated order: 6-5-4-3-2-1-0-7
  * These masks help with de-rotation after reception.
  */
-#define AMIGA_BIT_ROTATION_BIT7 0x01 /**< Transmitted bit 0 = original bit 7 */
-#define AMIGA_BIT_ROTATION_REST 0xFE /**< Transmitted bits 7-1 = original bits 6-0 */
+#define AMIGA_BIT_ROTATION_BIT7 0x01U /**< Transmitted bit 0 = original bit 7 */
+#define AMIGA_BIT_ROTATION_REST 0xFEU /**< Transmitted bits 7-1 = original bits 6-0 */
+
+/**
+ * @brief Key Code Range and Encoding Constants
+ *
+ * The Amiga 8-bit scancode byte encodes make/break in bit 7 and the physical key
+ * identity in bits 6-0.  Valid key codes span 0x00-0x67 (104 keys).
+ */
+#define AMIGA_MAX_KEYCODE  0x67U /**< Highest valid Amiga key code (Right Amiga key) */
+#define AMIGA_KEYCODE_MASK 0x7FU /**< Mask to extract 7-bit key code (strips bit 7) */
+#define AMIGA_BREAK_BIT    0x80U /**< Bit 7 set = key release (break); clear = press (make) */
 
 /**
  * @brief Initialises the Commodore Amiga keyboard interface
@@ -161,8 +171,8 @@ static inline uint8_t amiga_derotate_byte(uint8_t rotated) {
     // Received: [6 5 4 3 2 1 0 7]
     // Target:   [7 6 5 4 3 2 1 0]
     uint8_t original = 0;
-    original |= (rotated & 0x01) << 7;  // Bit 0 → Bit 7
-    original |= (rotated & 0xFE) >> 1;  // Bits 7-1 → Bits 6-0
+    original |= (rotated & 0x01) << 7;                     // Bit 0 → Bit 7
+    original |= (rotated & AMIGA_BIT_ROTATION_REST) >> 1;  // Bits 7-1 → Bits 6-0
     return original;
 }
 

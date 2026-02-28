@@ -43,7 +43,7 @@ echo -e "${BLUE}========================================${NC}"
 echo ""
 
 # Check 1: Blocking Operations
-echo -e "${BLUE}[1/18] Checking for blocking operations...${NC}"
+echo -e "${BLUE}[1/19] Checking for blocking operations...${NC}"
 BLOCKING_CALLS=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "sleep_ms\(|sleep_us\(|busy_wait_us\(|busy_wait_ms\(" src/ 2>/dev/null || true)
 
 if [ -n "$BLOCKING_CALLS" ]; then
@@ -79,7 +79,7 @@ fi
 echo ""
 
 # Check 2: Multicore API Usage
-echo -e "${BLUE}[2/18] Checking for multicore API usage...${NC}"
+echo -e "${BLUE}[2/19] Checking for multicore API usage...${NC}"
 MULTICORE_USAGE=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "multicore_launch_core1|multicore_fifo_push_blocking|multicore_fifo_pop_blocking|multicore_fifo_drain|multicore_reset_core1|multicore_lockout" src/ 2>/dev/null || true)
 
 if [ -n "$MULTICORE_USAGE" ]; then
@@ -98,7 +98,7 @@ fi
 echo ""
 
 # Check 3: printf in IRQ Context
-echo -e "${BLUE}[3/18] Checking for printf in IRQ context...${NC}"
+echo -e "${BLUE}[3/19] Checking for printf in IRQ context...${NC}"
 # This is a heuristic check - finds functions with __isr attribute and checks for printf
 PRINTF_IN_ISR=""
 
@@ -135,7 +135,7 @@ fi
 echo ""
 
 # Check 4: ringbuf_reset() Usage
-echo -e "${BLUE}[4/18] Checking ringbuf_reset() usage...${NC}"
+echo -e "${BLUE}[4/19] Checking ringbuf_reset() usage...${NC}"
 # Exclude the ringbuf library itself (contains function definition)
 RINGBUF_RESET=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" --exclude-dir="ringbuf" "ringbuf_reset" src/ 2>/dev/null | grep -v "^src/common/lib/ringbuf\.[ch]:" || true)
 
@@ -174,7 +174,7 @@ fi
 echo ""
 
 # Check 5: docs-internal in Repository
-echo -e "${BLUE}[5/18] Checking for docs-internal/ files in repository...${NC}"
+echo -e "${BLUE}[5/19] Checking for docs-internal/ files in repository...${NC}"
 DOCS_INTERNAL=$(git ls-files | grep "^docs-internal/" 2>/dev/null || true)
 
 if [ -n "$DOCS_INTERNAL" ]; then
@@ -193,7 +193,7 @@ fi
 echo ""
 
 # Check 6: Flash Execution (check for missing copy_to_ram)
-echo -e "${BLUE}[6/18] Checking for copy_to_ram configuration...${NC}"
+echo -e "${BLUE}[6/19] Checking for copy_to_ram configuration...${NC}"
 COPY_TO_RAM=$(grep -R --exclude-dir=".git" --exclude-dir="build" --exclude-dir="external" --exclude-dir="docs-internal" "pico_set_binary_type.*copy_to_ram" . 2>/dev/null || true)
 
 if [ -z "$COPY_TO_RAM" ]; then
@@ -210,7 +210,7 @@ fi
 echo ""
 
 # Check 7: Volatile Usage on IRQ-Shared Variables
-echo -e "${BLUE}[7/18] Checking for IRQ-shared variables...${NC}"
+echo -e "${BLUE}[7/19] Checking for IRQ-shared variables...${NC}"
 
 VOLATILE_ISSUES=""
 BARRIER_ISSUES=""
@@ -391,7 +391,7 @@ fi
 echo ""
 
 # Check 8: Tab Characters
-echo -e "${BLUE}[8/18] Checking for tab characters...${NC}"
+echo -e "${BLUE}[8/19] Checking for tab characters...${NC}"
 TAB_USAGE=$(grep -R -E --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" $'^\t|[^\t]\t' src/ 2>/dev/null || true)
 
 if [ -n "$TAB_USAGE" ]; then
@@ -411,7 +411,7 @@ fi
 echo ""
 
 # Check 9: Header Guards in .h Files
-echo -e "${BLUE}[9/18] Checking header guards...${NC}"
+echo -e "${BLUE}[9/19] Checking header guards...${NC}"
 MISSING_GUARDS=""
 
 while IFS= read -r header; do
@@ -441,7 +441,7 @@ fi
 echo ""
 
 # Check 10: File Headers (GPL License)
-echo -e "${BLUE}[10/18] Checking file headers...${NC}"
+echo -e "${BLUE}[10/19] Checking file headers...${NC}"
 MISSING_HEADERS=""
 MIT_LICENSED_FILES=(
     "src/common/lib/usb_descriptors.c"
@@ -487,7 +487,7 @@ fi
 echo ""
 
 # Check 11: Naming Conventions (camelCase detection)
-echo -e "${BLUE}[11/18] Checking naming conventions...${NC}"
+echo -e "${BLUE}[11/19] Checking naming conventions...${NC}"
 CAMEL_CASE=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "^[a-z]+[A-Z][a-zA-Z]*\s*\(|^static\s+[a-z]+[A-Z][a-zA-Z]*\s+[a-z]" src/ 2>/dev/null | grep -v "typedef" | head -20 || true)
 
 if [ -n "$CAMEL_CASE" ]; then
@@ -507,7 +507,7 @@ fi
 echo ""
 
 # Check 12: Include Order (comprehensive check)
-echo -e "${BLUE}[12/18] Checking include order...${NC}"
+echo -e "${BLUE}[12/19] Checking include order...${NC}"
 WRONG_INCLUDE_ORDER=""
 GROUPING_ISSUES=""
 
@@ -611,7 +611,7 @@ fi
 echo ""
 
 # Check 13: Missing __isr Attribute
-echo -e "${BLUE}[13/18] Checking interrupt handler attributes...${NC}"
+echo -e "${BLUE}[13/19] Checking interrupt handler attributes...${NC}"
 MISSING_ISR=$(grep -R --line-number "${EXCLUDE_DIRS[@]}" --exclude="*.md" -E "void.*_irq_handler\s*\(|void.*_interrupt_handler\s*\(|void.*_isr\s*\(" src/ 2>/dev/null | grep -v "__isr" | grep -v "\.h:" || true)
 
 if [ -n "$MISSING_ISR" ]; then
@@ -631,7 +631,7 @@ echo ""
 
 # Check 14: _Static_assert for Compile-Time Validation
 # NOTE: This is an advisory-only check that doesn't affect pass/fail status
-echo -e "${BLUE}[14/18] Checking for compile-time validation...${NC}"
+echo -e "${BLUE}[14/19] Checking for compile-time validation...${NC}"
 STATIC_ASSERT_COUNT=$(grep -R "${EXCLUDE_DIRS[@]}" --exclude="*.md" -c "_Static_assert\|#error" src/ 2>/dev/null | grep -vc ":0$" || true)
 
 if [ "$STATIC_ASSERT_COUNT" -gt 0 ]; then
@@ -644,7 +644,7 @@ fi
 echo ""
 
 # Check 15: Protocol Setup Consistency - Ring Buffer Reset
-echo -e "${BLUE}[15/18] Checking protocol setup consistency (ring buffer)...${NC}"
+echo -e "${BLUE}[15/19] Checking protocol setup consistency (ring buffer)...${NC}"
 MISSING_RINGBUF_RESET=""
 
 while IFS= read -r protocol_file; do
@@ -676,7 +676,7 @@ fi
 echo ""
 
 # Check 16: Protocol Setup Consistency - PIO IRQ Dispatcher Usage
-echo -e "${BLUE}[16/18] Checking protocol setup consistency (PIO IRQ dispatcher)...${NC}"
+echo -e "${BLUE}[16/19] Checking protocol setup consistency (PIO IRQ dispatcher)...${NC}"
 MISSING_DISPATCHER=""
 DIRECT_IRQ_SETUP=""
 
@@ -686,8 +686,23 @@ while IFS= read -r protocol_file; do
     
     # Check if this file has keyboard_interface_setup or mouse_interface_setup function
     if grep -q "keyboard_interface_setup\|mouse_interface_setup" "$protocol_file"; then
-        # Check if they use the centralised PIO IRQ dispatcher
-        if ! grep -q "pio_irq_dispatcher_init" "$protocol_file"; then
+        # Check if they use the centralised PIO IRQ dispatcher.
+        # Accepted patterns:
+        #   - Direct call: pio_irq_dispatcher_init() in this file
+        #   - Via a shared common_interface: if this file includes common_interface.h,
+        #     check the adjacent common_interface.c for pio_irq_dispatcher_init() —
+        #     any helper in that file which calls it satisfies the requirement
+        dispatcher_satisfied=false
+        if grep -qE "pio_irq_dispatcher_init" "$protocol_file"; then
+            dispatcher_satisfied=true
+        elif grep -qE '#include\s*"common_interface\.h"' "$protocol_file"; then
+            protocol_dir=$(dirname "$protocol_file")
+            common_impl="${protocol_dir}/common_interface.c"
+            if [ -f "$common_impl" ] && grep -q "pio_irq_dispatcher_init" "$common_impl"; then
+                dispatcher_satisfied=true
+            fi
+        fi
+        if ! $dispatcher_satisfied; then
             MISSING_DISPATCHER="${MISSING_DISPATCHER}${protocol_name}: Missing pio_irq_dispatcher_init() call\n"
         fi
         
@@ -723,8 +738,10 @@ if [ -n "$MISSING_DISPATCHER" ]; then
     echo -e "${YELLOW}Setup pattern: All protocols must use PIO IRQ dispatcher${NC}"
     echo "  - Ensures proper IRQ multiplexing for multi-device support"
     echo "  - Centralises IRQ priority management (priority 0)"
-    echo "  - Should call pio_irq_dispatcher_init() before callback registration"
-    echo "  - See src/common/lib/pio_helper.h for documentation"
+    echo "  - Either call pio_irq_dispatcher_init() directly in the interface setup function,"
+    echo "    or route setup through a common_interface.c (in the same protocol directory)"
+    echo "    that calls pio_irq_dispatcher_init() — the check follows the include chain"
+    echo "  - See src/common/lib/pio_helper.h for dispatcher API documentation"
     echo ""
     WARNINGS=$((WARNINGS + 1))
 fi
@@ -736,7 +753,7 @@ fi
 echo ""
 
 # Check 17: Indentation Consistency (4-space, not 2-space)
-echo -e "${BLUE}[17/18] Checking indentation consistency (4-space required)...${NC}"
+echo -e "${BLUE}[17/19] Checking indentation consistency (4-space required)...${NC}"
 
 # Use awk to check for 2-space indentation, respecting clang-format blocks
 INDENT_VIOLATIONS=""
@@ -788,7 +805,7 @@ fi
 echo ""
 
 # Check 18: Trailing Whitespace
-echo -e "${BLUE}[18/18] Checking for trailing whitespace...${NC}"
+echo -e "${BLUE}[18/19] Checking for trailing whitespace...${NC}"
 
 TRAILING_VIOLATIONS=$(
     {
@@ -819,6 +836,33 @@ if [ -n "$TRAILING_VIOLATIONS" ]; then
     ERRORS=$((ERRORS + 1))
 else
     echo -e "${GREEN}✓ No trailing whitespace found${NC}"
+fi
+echo ""
+
+# Check 19: Local const variables initialised with hex literals
+# clang-tidy's readability-magic-numbers treats `const TYPE var = LITERAL` as
+# "introducing a named constant" and never fires on it. This check enforces the
+# project convention that algorithm/protocol constants belong as file-scope
+# #defines, not as local const variables.
+echo -e "${BLUE}[19/19] Checking for local const hex-literal variables...${NC}"
+
+LOCAL_CONST_HEX_VIOLATIONS=$(grep -rn --include='*.c' --include='*.h' \
+    -E '^[[:space:]]+(const [a-z_][a-z_0-9]* [a-z_][a-z_0-9]* = 0x[0-9a-fA-F]+[UuLl]*)' \
+    src/ 2>/dev/null | grep -v '// LINT:ALLOW local-const-hex' || true)
+
+if [ -n "$LOCAL_CONST_HEX_VIOLATIONS" ]; then
+    echo -e "${RED}ERROR: Local const variable(s) initialised with hex literal:${NC}"
+    echo ""
+    echo "$LOCAL_CONST_HEX_VIOLATIONS"
+    echo ""
+    echo -e "${YELLOW}Convention: Algorithm and protocol constants must be file-scope #defines${NC}"
+    echo "  - clang-tidy does not flag const-variable declarations as magic numbers"
+    echo "  - Use a named #define in the relevant constants block at the top of the file"
+    echo "  - Exception: add // LINT:ALLOW local-const-hex with justification"
+    echo ""
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ No local const hex-literal variables found${NC}"
 fi
 echo ""
 

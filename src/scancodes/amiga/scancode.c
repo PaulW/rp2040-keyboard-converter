@@ -87,17 +87,9 @@
 #include "pico/time.h"
 #include "config.h"
 #include "hid_interface.h"
+#include "keyboard_interface.h"
 #include "led_helper.h"
 #include "log.h"
-
-/**
- * @brief Maximum valid Amiga key code
- *
- * Amiga keyboards use 7-bit key codes (0x00-0x67 = 0-103 decimal).
- * Key code 0x67 is the Right Amiga key (rightmost position).
- * Codes above 0x67 are invalid (except special protocol codes handled elsewhere).
- */
-#define AMIGA_MAX_KEYCODE 0x67
 
 /**
  * @brief Amiga CAPS LOCK key code
@@ -197,9 +189,9 @@ static struct {
  */
 void process_scancode(uint8_t code) {
     // Extract key code (bits 6-0) and make/break flag (bit 7)
-    uint8_t key_code = code & 0x7F;         // Remove bit 7
-    bool    is_break = (code & 0x80) != 0;  // Check bit 7: 1 = break, 0 = make
-    bool    make     = !is_break;           // Invert for handle_keyboard_report convention
+    uint8_t key_code = code & AMIGA_KEYCODE_MASK;      // Remove bit 7
+    bool    is_break = (code & AMIGA_BREAK_BIT) != 0;  // Check bit 7: 1 = break, 0 = make
+    bool    make     = !is_break;  // Invert for handle_keyboard_report convention
 
     // Validate key code range (0x00-0x67 are valid)
     // Special codes (0x78, 0xF9-0xFE) should be filtered by protocol layer

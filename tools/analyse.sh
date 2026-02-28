@@ -4,9 +4,8 @@
 # Runs Clang-Tidy (distro-specific version) and Cppcheck 2.19.0 against our
 # project source files.
 #
-# Produces output similar to CodeRabbit automated review findings (Clang 14.0.6
-# and Cppcheck 2.19.0), allowing reproduction of reported issues locally before
-# they appear in PR review.
+# Produces output from Clang-Tidy 19.1.7 and Cppcheck 2.19.0, allowing
+# reproduction of issues locally before they appear in code review.
 #
 # Preferred usage — build + analyse in one step (no linking failures):
 #   docker compose run --rm -e KEYBOARD="modelf/pcat" analyser
@@ -166,6 +165,7 @@ if [ "${#PROJECT_FILES[@]}" -eq 0 ]; then
 else
   echo -e "${BLUE}[INFO]${NC} Analysing ${#PROJECT_FILES[@]} source files from compilation database..."
   for src_file in "${PROJECT_FILES[@]}"; do
+    echo -e "${BLUE}[FILE]${NC} ${src_file}"
     clang-tidy \
       --config-file="${APP_DIR}/.clang-tidy" \
       --header-filter="${APP_DIR}/src/.*" \

@@ -25,6 +25,36 @@
 #include "hid_interface.h"
 #include "log.h"
 
+// ============================================================================
+// Protocol Byte Constants
+// ============================================================================
+
+/* Prefix bytes */
+#define SC_ESCAPE_E0 0xE0U /**< E0 prefix — extended key indicator */
+#define SC_ESCAPE_E1 0xE1U /**< E1 prefix — Pause / Break multi-byte sequence */
+#define SC_ESCAPE_F0 0xF0U /**< F0 prefix — break code indicator */
+
+/* Set 2 fake shift bytes (E0-prefixed, silently discarded) */
+#define SC2_FAKE_LSHIFT 0x12U /**< Spurious Left-Shift (with E0 prefix) */
+#define SC2_FAKE_RSHIFT 0x59U /**< Spurious Right-Shift (with E0 prefix) */
+
+/* Set 2 E1 Pause/Break sequence bytes */
+#define SC2_CTRL                                                                       \
+    0x14U                 /**< Left-Control make; also Right-Control when E0-prefixed. \
+                           *   First data byte of the E1 Pause make/break sequences. */
+#define SC2_NUMLOCK 0x77U /**< E1 Pause make/break tail — Num Lock code */
+
+/* Special out-of-range Set 2 scancodes */
+#define SC2_SPECIAL_F7     0x83U /**< F7 key scancode (outside normal 0x01–0x7E range) */
+#define SC2_SPECIAL_SYSREQ 0x84U /**< SysReq / Alt+Print Screen scancode */
+
+/* Protocol response bytes (handled by protocol layer; listed here for clarity) */
+#define SC2_BAT_OK   0xAAU /**< Basic Assurance Test OK — self-test passed */
+#define SC2_BAT_FAIL 0xFCU /**< BAT failure / mouse transmit error */
+
+/* Interface code passed to handle_keyboard_report() for SysReq */
+#define IFACE_KP_PLUS 0x7FU /**< Interface code: Keypad Plus (used for SysReq output) */
+
 /**
  * @brief E0-Prefixed Scancode Translation Table for AT/PS2 Set 2 Protocol
  *
@@ -105,6 +135,233 @@ static inline uint8_t switch_e0_code(uint8_t code) {
     return e0_code_translation[code];
 }
 
+// ============================================================================
+// State Machine
+// ============================================================================
+
+/**
+ * @brief Unified State Machine States
+ *
+ * - Set 2: INIT, F0, E0, E0_F0, E1, E1_14, E1_F0, E1_F0_14, E1_F0_14_F0 (9 states)
+ */
+typedef enum {
+    INIT,        // Initial state / ready for next scancode
+    F0,          // Break prefix received
+    E0,          // E0 prefix received
+    E0_F0,       // E0 F0 sequence (break)
+    E1,          // E1 prefix received
+    E1_14,       // E1 14 sequence (Pause make)
+    E1_F0,       // E1 F0 sequence (Pause break)
+    E1_F0_14,    // E1 F0 14 sequence (Pause break)
+    E1_F0_14_F0  // E1 F0 14 F0 sequence (Pause break)
+} scancode_state_t;
+
+static scancode_state_t state = INIT;
+
+// ============================================================================
+// Per-State Handlers
+//
+// Each function handles exactly one state.  process_scancode() is a thin
+// dispatcher; keeping the logic split here makes each state independently
+// readable and holds cognitive complexity well within bounds.
+// ============================================================================
+
+/**
+ * @brief INIT state — detect prefix bytes, special codes, or dispatch make code.
+ * @note Main loop only.
+ */
+static void handle_state_init(uint8_t code) {
+    switch (code) {
+        case SC_ESCAPE_E0:
+            state = E0;
+            break;
+        case SC_ESCAPE_F0:
+            state = F0;
+            break;
+        case SC_ESCAPE_E1:
+            state = E1;
+            break;
+        case SC2_SPECIAL_F7:
+            handle_keyboard_report(0x02, true);
+            break;
+        case SC2_SPECIAL_SYSREQ:
+            handle_keyboard_report(IFACE_KP_PLUS, true);
+            break;
+        case SC2_BAT_OK:    // Self-test passed — handled by protocol layer; ignored here
+        case SC2_BAT_FAIL:  // Self-test failed — same
+        default:
+            state = INIT;
+            if (code < 0x80) {
+                handle_keyboard_report(code, true);
+            } else {
+                LOG_DEBUG("!INIT! (0x%02X)\n", code);
+            }
+    }
+}
+
+/**
+ * @brief F0 state — byte following F0 break prefix.
+ * @note Main loop only.
+ */
+static void handle_state_f0(uint8_t code) {
+    state = INIT;
+    switch (code) {
+        case SC2_SPECIAL_F7:
+            handle_keyboard_report(0x02, false);
+            break;
+        case SC2_SPECIAL_SYSREQ:
+            handle_keyboard_report(IFACE_KP_PLUS, false);
+            break;
+        default:
+            if (code < 0x80) {
+                handle_keyboard_report(code, false);
+            } else {
+                LOG_DEBUG("!F0! (0x%02X)\n", code);
+            }
+    }
+}
+
+/**
+ * @brief E0 state — byte following E0 prefix: make code, fake shift, or start of E0 F0.
+ * @note Main loop only.
+ */
+static void handle_state_e0(uint8_t code) {
+    switch (code) {
+        case SC2_FAKE_LSHIFT:
+        case SC2_FAKE_RSHIFT:
+            state = INIT;
+            break;
+        case SC_ESCAPE_F0:
+            state = E0_F0;
+            break;
+        default:
+            state = INIT;
+            if (code < 0x80) {
+                uint8_t translated = switch_e0_code(code);
+                if (translated) {
+                    handle_keyboard_report(translated, true);
+                }
+            } else {
+                LOG_DEBUG("!E0! (0x%02X)\n", code);
+            }
+    }
+}
+
+/**
+ * @brief E0_F0 state — byte following E0 F0 (E0-prefixed break code).
+ *
+ * Fake shifts arriving via E0 F0 12 / E0 F0 59 are silently discarded.
+ *
+ * @note Main loop only.
+ */
+static void handle_state_e0_f0(uint8_t code) {
+    state = INIT;
+    switch (code) {
+        case SC2_FAKE_LSHIFT:
+        case SC2_FAKE_RSHIFT:
+            break;
+        default:
+            if (code < 0x80) {
+                uint8_t translated = switch_e0_code(code);
+                if (translated) {
+                    handle_keyboard_report(translated, false);
+                }
+            } else {
+                LOG_DEBUG("!E0_F0! (0x%02X)\n", code);
+            }
+    }
+}
+
+/**
+ * @brief E1 state — first data byte of the E1 Pause/Break multi-byte sequence.
+ *
+ * Pause make:  E1 [14] 77
+ * Pause break: E1 [F0] 14 F0 77
+ *
+ * @note Main loop only.
+ */
+static void handle_state_e1(uint8_t code) {
+    switch (code) {
+        case SC2_CTRL:
+            state = E1_14;
+            break;
+        case SC_ESCAPE_F0:
+            state = E1_F0;
+            break;
+        default:
+            state = INIT;
+            LOG_DEBUG("!E1! (0x%02X)\n", code);
+    }
+}
+
+/**
+ * @brief E1_14 state — final byte of Pause make sequence (E1 14 [77]).
+ *
+ * Routes through the E0 translation table: 0x77 maps to IFACE_PAUSE (0x48).
+ *
+ * @note Main loop only.
+ */
+static void handle_state_e1_14(uint8_t code) {
+    state = INIT;
+    if (code == SC2_NUMLOCK) {
+        uint8_t translated = switch_e0_code(code);
+        if (translated) {
+            handle_keyboard_report(translated, true);
+        }
+    } else {
+        LOG_DEBUG("!E1_14! (0x%02X)\n", code);
+    }
+}
+
+/**
+ * @brief E1_F0 state — second byte of Pause break sequence (E1 F0 [14] F0 77).
+ * @note Main loop only.
+ */
+static void handle_state_e1_f0(uint8_t code) {
+    if (code == SC2_CTRL) {
+        state = E1_F0_14;
+    } else {
+        state = INIT;
+        LOG_DEBUG("!E1_F0! (0x%02X)\n", code);
+    }
+}
+
+/**
+ * @brief E1_F0_14 state — third byte of Pause break sequence (E1 F0 14 [F0] 77).
+ * @note Main loop only.
+ */
+static void handle_state_e1_f0_14(uint8_t code) {
+    if (code == SC_ESCAPE_F0) {
+        state = E1_F0_14_F0;
+    } else {
+        state = INIT;
+        LOG_DEBUG("!E1_F0_14! (0x%02X)\n", code);
+    }
+}
+
+/**
+ * @brief E1_F0_14_F0 state — final byte of Pause break sequence (E1 F0 14 F0 [77]).
+ *
+ * Routes through the E0 translation table: 0x77 maps to IFACE_PAUSE (0x48).
+ *
+ * @note Main loop only.
+ */
+static void handle_state_e1_f0_14_f0(uint8_t code) {
+    state = INIT;
+    if (code == SC2_NUMLOCK) {
+        uint8_t translated = switch_e0_code(code);
+        if (translated) {
+            handle_keyboard_report(translated, false);
+        }
+    } else {
+        LOG_DEBUG("!E1_F0_14_F0! (0x%02X)\n", code);
+    }
+}
+
+// ============================================================================
+// Main Processor
+// ============================================================================
+
 /**
  * @brief Process Keyboard Input (Scancode Set 2) Data
  *
@@ -134,196 +391,42 @@ static inline uint8_t switch_e0_code(uint8_t code) {
  *       ├──[84]──> INIT (SysReq/Alt+PrtScn)
  *       └──[code]──> INIT (process normal make code)
  *
- * Multi-byte Sequence Examples:
- * - Normal key press:     1C (A key make)
- * - Normal key release:   F0 1C (A key break)
- * - Right Ctrl press:     E0 14 (make)
- * - Right Ctrl release:   E0 F0 14 (break)
- * - Pause press:          E1 14 77 E1 F0 14 F0 77 (make and break together)
- * - Print Screen:         E0 7C (make), E0 F0 7C (break)
- *
- * Special Handling:
- * - E0 12, E0 59: Fake shifts (ignored, sent by some keyboards with certain keys)
- * - 83: F7 key (special code)
- * - 84: SysReq / Alt+PrintScreen (special code)
- * - E1 sequences: Only used for Pause/Break key (complex 8-byte sequence)
- * - Multimedia keys: Translated to F13-F24 range for compatibility
- *
  * @param code The keycode to process.
  *
- * @note This function is called from the keyboard_interface_task() in main task context
- * @note handle_keyboard_report() translates scan codes to HID keycodes via keymap lookup
+ * @note Main loop only.
+ * @note handle_keyboard_report() translates scan codes to HID keycodes via keymap lookup.
  */
 void process_scancode(uint8_t code) {
-    // clang-format off
-  static enum {
-    INIT,
-    F0,
-    E0,
-    E0_F0,
-    E1,
-    E1_14,
-    E1_F0,
-    E1_F0_14,
-    E1_F0_14_F0
-  } state = INIT;
-    // clang-format on
-
     switch (state) {
         case INIT:
-            switch (code) {
-                case 0xE0:
-                    state = E0;
-                    break;
-                case 0xF0:
-                    state = F0;
-                    break;
-                case 0xE1:
-                    state = E1;
-                    break;
-                case 0x83:  // F7
-                    handle_keyboard_report(0x02, true);
-                    break;
-                case 0x84:  // SysReq / Alt'd PrintScreen
-                    handle_keyboard_report(0x7F, true);
-                    break;
-                case 0xAA:  // Self-test passed
-                case 0xFC:  // Self-test failed
-                default:    // Handle normal key event
-                    state = INIT;
-                    if (code < 0x80) {
-                        handle_keyboard_report(code, true);
-                    } else {
-                        LOG_DEBUG("!INIT! (0x%02X)\n", code);
-                    }
-            }
+            handle_state_init(code);
             break;
-
-        case F0:  // Break code
-            state = INIT;
-            switch (code) {
-                case 0x83:  // F7
-                    handle_keyboard_report(0x02, false);
-                    break;
-                case 0x84:  // SysReq
-                    handle_keyboard_report(0x7F, false);
-                    break;
-                default:
-                    if (code < 0x80) {
-                        handle_keyboard_report(code, false);
-                    } else {
-                        LOG_DEBUG("!F0! (0x%02X)\n", code);
-                    }
-            }
+        case F0:
+            handle_state_f0(code);
             break;
-
-        case E0:  // E0-Prefixed
-            switch (code) {
-                case 0x12:  // to be ignored
-                case 0x59:  // to be ignored
-                    state = INIT;
-                    break;
-                case 0xF0:
-                    state = E0_F0;
-                    break;
-                default:
-                    state = INIT;
-                    if (code < 0x80) {
-                        uint8_t translated = switch_e0_code(code);
-                        if (translated) {
-                            handle_keyboard_report(translated, true);
-                        }
-                    } else {
-                        LOG_DEBUG("!E0! (0x%02X)\n", code);
-                    }
-            }
+        case E0:
+            handle_state_e0(code);
             break;
-
-        case E0_F0:  // Break code of E0-prefixed
-            state = INIT;
-            switch (code) {
-                case 0x12:  // to be ignored
-                case 0x59:  // to be ignored
-                    break;
-                default:
-                    if (code < 0x80) {
-                        uint8_t translated = switch_e0_code(code);
-                        if (translated) {
-                            handle_keyboard_report(translated, false);
-                        }
-                    } else {
-                        LOG_DEBUG("!E0_F0! (0x%02X)\n", code);
-                    }
-            }
+        case E0_F0:
+            handle_state_e0_f0(code);
             break;
-
-        case E1:  // E1-Prefixed
-            switch (code) {
-                case 0x14:
-                    state = E1_14;
-                    break;
-                case 0xF0:
-                    state = E1_F0;
-                    break;
-                default:
-                    state = INIT;
-                    LOG_DEBUG("!E1! (0x%02X)\n", code);
-            }
+        case E1:
+            handle_state_e1(code);
             break;
-
-        case E1_14:  // E1-prefixed 14
-            state = INIT;
-            switch (code) {
-                case 0x77:  // Pause
-                {
-                    uint8_t translated = switch_e0_code(code);
-                    if (translated) {
-                        handle_keyboard_report(translated, true);
-                    }
-                } break;
-                default:
-                    LOG_DEBUG("!E1_14! (0x%02X)\n", code);
-            }
+        case E1_14:
+            handle_state_e1_14(code);
             break;
-
-        case E1_F0:  // Break code of E1-prefixed
-            switch (code) {
-                case 0x14:
-                    state = E1_F0_14;
-                    break;
-                default:
-                    state = INIT;
-                    LOG_DEBUG("!E1_F0! (0x%02X)\n", code);
-            }
+        case E1_F0:
+            handle_state_e1_f0(code);
             break;
-
-        case E1_F0_14:  // Break code of E1-prefixed 14
-            switch (code) {
-                case 0xF0:  // Pause
-                    state = E1_F0_14_F0;
-                    break;
-                default:
-                    state = INIT;
-                    LOG_DEBUG("!E1_F0_14! (0x%02X)\n", code);
-            }
+        case E1_F0_14:
+            handle_state_e1_f0_14(code);
             break;
-
-        case E1_F0_14_F0:  // Break code of E1-prefixed 14
-            state = INIT;
-            switch (code) {
-                case 0x77:  // Pause
-                {
-                    uint8_t translated = switch_e0_code(code);
-                    if (translated) {
-                        handle_keyboard_report(translated, false);
-                    }
-                } break;
-                default:
-                    LOG_DEBUG("!E1_F0_14_F0! (0x%02X)\n", code);
-            }
+        case E1_F0_14_F0:
+            handle_state_e1_f0_14_f0(code);
             break;
-
         default:
             state = INIT;
+            break;
     }
 }

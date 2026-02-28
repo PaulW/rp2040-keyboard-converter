@@ -205,6 +205,15 @@
  *
  * @see ATPS2_KEYBOARD_ID_* constants in AT/PS2 protocol header
  */
+/** High byte of keyboard ID range for terminal keyboards that default to Scan Code Set 3.
+ *  Covers 0xBF00\u20130xBFFF (IBM 1390876, IBM 6110344, RT keyboards).
+ *  Source: https://github.com/tmk/tmk_keyboard/wiki/IBM-PC-AT-Keyboard-Protocol#keyboard-id */
+#define KBID_HIGH_TERM_SET3_DEFAULT 0xBFU
+/** High byte of keyboard ID range for terminal keyboards that always use Scan Code Set 3.
+ *  Covers 0x7F00\u20130x7FFF (IBM 1394204).
+ *  Source: https://github.com/tmk/tmk_keyboard/wiki/IBM-PC-AT-Keyboard-Protocol#keyboard-id */
+#define KBID_HIGH_TERM_SET3_ALWAYS 0x7FU
+
 static inline const scancode_config_t* scancode_config_from_keyboard_id(uint16_t keyboard_id) {
     uint8_t high_byte = (keyboard_id >> 8) & 0xFF;
 
@@ -213,7 +222,7 @@ static inline const scancode_config_t* scancode_config_from_keyboard_id(uint16_t
     // - 0xBF00-0xBFFF: Terminal keyboards that default to Set 3 (IBM 1390876, 6110344, RT
     // keyboards)
     // - 0x7F00-0x7FFF: Terminal keyboards that always use Set 3 (IBM 1394204)
-    if (high_byte == 0xBF || high_byte == 0x7F) {
+    if (high_byte == KBID_HIGH_TERM_SET3_DEFAULT || high_byte == KBID_HIGH_TERM_SET3_ALWAYS) {
         return &SCANCODE_CONFIG_SET3;
     }
 

@@ -72,9 +72,6 @@
 
 #include "keyboard_interface.h"
 
-#include <math.h>
-
-#include "hardware/clocks.h"
 #include "keyboard_interface.pio.h"
 
 #include "bsp/board.h"
@@ -186,8 +183,9 @@ static void keyboard_event_processor(uint8_t data_byte) {
         case INITIALISED:
             // Always queue to ring buffer - processing happens in main task loop
             // This ensures HID reports are sent from the correct context
-            if (!ringbuf_is_full())
+            if (!ringbuf_is_full()) {
                 ringbuf_put(data_byte);
+            }
     }
     update_keyboard_ready_led(keyboard_state == INITIALISED);
 }
@@ -477,13 +475,7 @@ void keyboard_interface_setup(uint data_pin) {
     if (!pio_irq_register_callback(&keyboard_input_event_handler)) {
         LOG_ERROR("XT Keyboard: Failed to register IRQ callback\n");
         // Release PIO resources before returning
-        pio_sm_set_enabled(pio_engine.pio, (uint)pio_engine.sm, false);
-        pio_sm_clear_fifos(pio_engine.pio, (uint)pio_engine.sm);
-        pio_sm_unclaim(pio_engine.pio, (uint)pio_engine.sm);
-        pio_remove_program(pio_engine.pio, &keyboard_interface_program, pio_engine.offset);
-        pio_engine.pio    = NULL;
-        pio_engine.sm     = -1;
-        pio_engine.offset = -1;
+        release_pio_and_sm(&pio_engine, &keyboard_interface_program);
         return;
     }
 

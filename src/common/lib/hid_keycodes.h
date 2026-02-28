@@ -21,6 +21,8 @@
 #ifndef HID_KEYCODES_H
 #define HID_KEYCODES_H
 
+#include <stdint.h>
+
 /* Define specific Key Types */
 #define IS_KEY(code) (KC_A <= (code) && (code) <= KC_EXSEL)
 #define IS_MOD(code) (KC_LCTRL <= (code) && (code) <= KC_RGUI)
@@ -254,7 +256,7 @@ enum hid_generic_desktop_usage_page {
 /* Enumerators have type int (C11 §6.7.2.2p3).  These values are used as
  * uint16_t HID usage IDs, so assert they fit to turn the implicit narrowing
  * into a compile-time guarantee. */
-_Static_assert(SYSTEM_POWER_DOWN >= 0 && SYSTEM_WAKE_UP <= 0xFFFF,
+_Static_assert(SYSTEM_POWER_DOWN >= 0 && SYSTEM_WAKE_UP <= UINT16_MAX,
                "hid_generic_desktop_usage_page values must fit in uint16_t");
 
 /* HID Keyboard Usage Page (0x07) */
@@ -486,7 +488,7 @@ enum hid_consumer_usage_page {
 /* Enumerators have type int (C11 §6.7.2.2p3).  These values are used as
  * uint16_t HID consumer usage IDs, so assert they fit to turn the implicit
  * narrowing into a compile-time guarantee. */
-_Static_assert(BRIGHTNESS_INCREMENT >= 0 && APPCONTROL_BOOKMARKS <= 0xFFFF,
+_Static_assert(BRIGHTNESS_INCREMENT >= 0 && APPCONTROL_BOOKMARKS <= UINT16_MAX,
                "hid_consumer_usage_page values must fit in uint16_t");
 
 /* Internal Special Codes

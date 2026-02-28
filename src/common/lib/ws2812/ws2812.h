@@ -27,8 +27,8 @@
 #include "config.h"
 
 // WS2812 Timing Constants (microseconds)
-#define WS2812_RESET_PULSE_US      60u  // Minimum reset pulse duration (≥50µs)
-#define WS2812_LED_TRANSMISSION_US 30u  // Per-LED transmission time (24 bits × 1.25µs)
+#define WS2812_RESET_PULSE_US      60U  // Minimum reset pulse duration (≥50µs)
+#define WS2812_LED_TRANSMISSION_US 30U  // Per-LED transmission time (24 bits × 1.25µs)
 
 #ifdef CONVERTER_LEDS
 // WS2812 Brightness Configuration
@@ -74,12 +74,12 @@ bool ws2812_show(uint32_t led_colour);
  * Sets up the PIO state machine for WS2812 LED control. Must be called
  * before ws2812_show() can be used.
  *
- * @param data_pin GPIO pin connected to WS2812 data line
+ * @param led_pin GPIO pin connected to WS2812 LED data line
  *
  * @note Call once during initialisation
  * @note Configures PIO hardware for WS2812 timing requirements
  */
-void ws2812_setup(uint data_pin);
+void ws2812_setup(uint led_pin);
 
 /**
  * @brief Set LED brightness level

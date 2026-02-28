@@ -208,6 +208,8 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 15. **Protocol ring buffer setup:** Missing `ringbuf_reset()` in keyboard protocol initialisation
 16. **Protocol PIO IRQ dispatcher:** Missing centralised `pio_irq_dispatcher_init()` or deprecated direct `irq_set_priority()` usage
 17. **Indentation consistency:** Enforces 4-space indentation width; detects files using 2-space base indentation
+18. **Trailing whitespace:** No trailing spaces in `.c`/`.h` files; single trailing spaces disallowed in `.md` files (double trailing spaces permitted as Markdown hard line breaks)
+19. **Local const hex-literal variables:** Detects `const TYPE var = 0x...` inside function bodies — algorithm and protocol constants must be file-scope `#define`s (clang-tidy does not catch this pattern)
 
 **Run before every commit:**
 ```bash
@@ -222,7 +224,7 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 
 ### Static Analysis
 
-The project uses [Clang-Tidy 14](https://releases.llvm.org/14.0.0/tools/clang/tools/extra/docs/clang-tidy/index.html) and [Cppcheck 2.19.0](https://cppcheck.sourceforge.io/) for language-level static analysis, configured to match the versions used by the CodeRabbit automated reviewer. Running the analyser locally lets you see and address any findings before they show up in a PR review.
+The project uses [Clang-Tidy 19.1.7](https://discourse.llvm.org/t/llvm-19-1-7-released/84062) and [Cppcheck 2.19.0](https://cppcheck.sourceforge.io/) for language-level static analysis through the same Docker container used for firmware builds. Running the analyser locally lets you see and address any findings before they appear in code review.
 
 Both tools run inside the same Docker build container used for firmware builds, so they see the exact compiler flags, include paths, and generated PIO header files that the real build uses. This matters because PIO headers (`.pio.h` files generated from `.pio` programs) don't exist until after the build step — running analysis without building first causes spurious missing-file errors.
 

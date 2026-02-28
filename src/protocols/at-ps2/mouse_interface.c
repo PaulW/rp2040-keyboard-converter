@@ -20,11 +20,8 @@
 
 #include "mouse_interface.h"
 
-#include <math.h>
 #include <stdbool.h>
-
-#include "hardware/clocks.h"
-#include "interface.pio.h"
+#include <stdint.h>
 
 #include "bsp/board.h"
 
@@ -89,8 +86,7 @@ typedef enum { X_POS, Y_POS, Z_POS } mousepos_index;
  * @param data_byte The command byte to be sent to the AT/PS2 Mouse.
  */
 static void mouse_command_handler(uint8_t data_byte) {
-    uint16_t data_with_parity = (uint16_t)(data_byte + (interface_parity_table[data_byte] << 8));
-    pio_sm_put(pio_engine.pio, pio_engine.sm, data_with_parity);
+    atps2_send_command(&pio_engine, data_byte);
 }
 
 /**
@@ -105,11 +101,15 @@ static void mouse_command_handler(uint8_t data_byte) {
  * @return The calculated XY movement as an int8_t value.
  */
 static int8_t get_xy_movement(uint8_t pos, bool sign_bit) {
-    int16_t new_pos = pos;
+    int16_t new_pos = (int16_t)pos;
     if (sign_bit) {
         new_pos -= 256;
     }
-    new_pos = (new_pos > 127) ? 127 : (new_pos < -127) ? -127 : new_pos;
+    if (new_pos > (int16_t)INT8_MAX) {
+        new_pos = (int16_t)INT8_MAX;
+    } else if (new_pos < (int16_t)(-INT8_MAX)) {
+        new_pos = (int16_t)(-INT8_MAX);
+    }
     return (int8_t)new_pos;
 }
 
@@ -123,8 +123,13 @@ static int8_t get_xy_movement(uint8_t pos, bool sign_bit) {
  *
  * @return The Z-axis movement as a signed 8-bit integer.
  */
+
+/** Nibble mask for extracting the Z-axis value from the lower 4 bits of an extended mouse packet
+ * byte. */
+#define ATPS2_MOUSE_Z_NIBBLE_MASK 0x0FU
+
 static int8_t get_z_movement(uint8_t pos) {
-    int8_t z_pos = pos & 0x0F;
+    int8_t z_pos = (int8_t)(pos & ATPS2_MOUSE_Z_NIBBLE_MASK);
     if (z_pos & 0x08) {
         z_pos -= 16;
     }
@@ -132,12 +137,291 @@ static int8_t get_z_movement(uint8_t pos) {
     return z_pos;
 }
 
+/* Packet processing state — promoted to file scope to support handler extraction */
+static uint8_t mouse_type_detect_sequence =
+    0;                                /**< Type-detection sequence counter (cleared on re-init) */
+static uint8_t mouse_max_packets = 0; /**< Packet count for current mouse type */
+
+/**
+ * @brief Handle mouse event in UNINITIALISED state.
+ * @param data_byte The data byte received from the mouse.
+ * @note Main loop only
+ */
+static void handle_mouse_uninitialised(uint8_t data_byte) {
+    switch (data_byte) {
+        case ATPS2_RESP_BAT_PASSED:
+            LOG_INFO("Mouse Self Test Passed\n");
+            LOG_INFO("Detecting Mouse Type\n");
+            mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;
+            mouse_state = INIT_AWAIT_ID;
+            __dmb();  // Memory barrier - ensure state write visible to main loop
+            break;
+        default:
+            LOG_ERROR("Asking Mouse to Reset\n");
+            mouse_state = INIT_AWAIT_ACK;
+            __dmb();  // Memory barrier - ensure state write visible to main loop
+            mouse_command_handler(ATPS2_CMD_RESET);
+    }
+}
+
+/**
+ * @brief Handle mouse event in INIT_AWAIT_ACK state.
+ * @param data_byte The data byte received from the mouse.
+ * @note Main loop only
+ */
+static void handle_mouse_await_ack(uint8_t data_byte) {
+    switch (data_byte) {
+        case ATPS2_RESP_ACK:
+            LOG_INFO("ACK Received after Reset\n");
+            mouse_state = INIT_AWAIT_SELFTEST;
+            __dmb();  // Memory barrier - ensure state write visible to main loop
+            break;
+        default:
+            LOG_DEBUG("Unknown ACK Response (0x%02X).  Asking again to Reset...\n", data_byte);
+            mouse_command_handler(ATPS2_CMD_RESET);
+    }
+}
+
+/**
+ * @brief Handle mouse event in INIT_AWAIT_SELFTEST state.
+ * @param data_byte The data byte received from the mouse.
+ * @note Main loop only
+ */
+static void handle_mouse_await_selftest(uint8_t data_byte) {
+    switch (data_byte) {
+        case ATPS2_RESP_BAT_PASSED:
+            LOG_INFO("Mouse Self Test Passed\n");
+            LOG_INFO("Detecting Mouse Type\n");
+            mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;
+            mouse_state = INIT_AWAIT_ID;
+            __dmb();  // Memory barrier - ensure state write visible to main loop
+            break;
+        default:
+            LOG_DEBUG("Self-Test invalid response (0x%02X).  Asking again to Reset...\n",
+                      data_byte);
+            mouse_state = INIT_AWAIT_ACK;
+            __dmb();  // Memory barrier - ensure state write visible to main loop
+            mouse_command_handler(ATPS2_CMD_RESET);
+    }
+}
+
+/**
+ * @brief Handle mouse event in INIT_AWAIT_ID state.
+ * @param data_byte The data byte received from the mouse.
+ * @note Main loop only
+ */
+static void handle_mouse_await_id(uint8_t data_byte) {
+    switch (data_byte) {
+        case ATPS2_RESP_ACK:
+            // Ack Received, silently ignore
+            break;
+        case ATPS2_MOUSE_ID_STANDARD:
+            if (mouse_id == ATPS2_MOUSE_ID_UNKNOWN) {
+                mouse_id                   = ATPS2_MOUSE_ID_STANDARD;
+                mouse_type_detect_sequence = 0;
+                mouse_state                = INIT_DETECT_MOUSE_TYPE;
+                __dmb();  // Memory barrier - ensure state write visible to main loop
+                mouse_command_handler(ATPS2_MOUSE_CMD_SET_SAMPLE_RATE);
+            } else {
+                LOG_INFO("Mouse Type: Standard PS/2 Mouse\n");
+                mouse_max_packets     = ATPS2_MOUSE_PACKET_STANDARD_SIZE;
+                mouse_config_sequence = 0;
+                mouse_state           = INIT_SET_CONFIG;
+                __dmb();  // Memory barrier - ensure state write visible to main loop
+                mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
+            }
+            break;
+        case ATPS2_MOUSE_ID_INTELLIMOUSE:
+            if (mouse_id == ATPS2_MOUSE_ID_STANDARD) {
+                mouse_id    = ATPS2_MOUSE_ID_INTELLIMOUSE;
+                mouse_state = INIT_DETECT_MOUSE_TYPE;
+                __dmb();  // Memory barrier - ensure state write visible to main loop
+                mouse_command_handler(ATPS2_MOUSE_CMD_SET_SAMPLE_RATE);
+            } else {
+                LOG_INFO("Mouse Type: Mouse with Scroll Wheel\n");
+                mouse_max_packets     = ATPS2_MOUSE_PACKET_EXTENDED_SIZE;
+                mouse_config_sequence = 0;
+                mouse_state           = INIT_SET_CONFIG;
+                __dmb();  // Memory barrier - ensure state write visible to main loop
+                mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
+            }
+            break;
+        case ATPS2_MOUSE_ID_INTELLIMOUSE_EXPLORER:
+            LOG_INFO("Mouse Type: 5 Button Mouse\n");
+            mouse_max_packets     = ATPS2_MOUSE_PACKET_EXTENDED_SIZE;
+            mouse_id              = ATPS2_MOUSE_ID_INTELLIMOUSE_EXPLORER;
+            mouse_config_sequence = 0;
+            mouse_state           = INIT_SET_CONFIG;
+            __dmb();  // Memory barrier - ensure state write visible to main loop
+            mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
+            break;
+        default:
+            LOG_ERROR("Unknown Mouse Type (0x%02X), Asking again to Reset...\n", data_byte);
+            mouse_state = INIT_AWAIT_ACK;
+            __dmb();  // Memory barrier - ensure state write visible to main loop
+            mouse_command_handler(ATPS2_CMD_RESET);
+            break;
+    }
+}
+
+/**
+ * @brief Handle mouse event in INIT_DETECT_MOUSE_TYPE state.
+ * @param data_byte The data byte received from the mouse.
+ * @note Main loop only
+ */
+static void handle_mouse_detect_type(uint8_t data_byte) {
+    switch (data_byte) {
+        case ATPS2_RESP_ACK:
+            switch (mouse_type_detect_sequence) {
+                case 0:
+                    // Set Sample Rate to 200
+                    mouse_type_detect_sequence++;
+                    mouse_command_handler(ATPS2_MOUSE_RATE_200_HZ);
+                    break;
+                case 1:
+                    // Ask to Set Sample Rate
+                    mouse_type_detect_sequence++;
+                    mouse_command_handler(ATPS2_MOUSE_CMD_SET_SAMPLE_RATE);
+                    break;
+                case 2:
+                    // Set Sample Rate based on ID
+                    mouse_type_detect_sequence++;
+                    mouse_command_handler((mouse_id == ATPS2_MOUSE_ID_INTELLIMOUSE)
+                                              ? ATPS2_MOUSE_RATE_200_HZ
+                                              : ATPS2_MOUSE_RATE_100_HZ);
+                    break;
+                case 3:
+                    // Ask to Set Sample Rate
+                    mouse_type_detect_sequence++;
+                    mouse_command_handler(ATPS2_MOUSE_CMD_SET_SAMPLE_RATE);
+                    break;
+                case 4:
+                    // Set Sample Rate to 80
+                    mouse_type_detect_sequence++;
+                    mouse_command_handler(ATPS2_MOUSE_RATE_80_HZ);
+                    break;
+                case 5:
+                    // Re-request Mouse ID
+                    mouse_type_detect_sequence = 0;
+                    mouse_state                = INIT_AWAIT_ID;
+                    __dmb();  // Memory barrier - ensure state write visible to main loop
+                    mouse_command_handler(ATPS2_CMD_GET_ID);
+                    break;
+                default:
+                    break;
+            }
+            break;
+        default:
+            LOG_DEBUG("Unhandled Response Received (0x%02X)\n", data_byte);
+            mouse_type_detect_sequence = 0;
+            mouse_id                   = ATPS2_MOUSE_ID_STANDARD;
+            mouse_max_packets          = ATPS2_MOUSE_PACKET_STANDARD_SIZE;
+            mouse_config_sequence      = 0;
+            mouse_state                = INIT_SET_CONFIG;
+            __dmb();  // Memory barrier - ensure state write visible to main loop
+            mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
+    }
+}
+
+/**
+ * @brief Handle mouse event in INIT_SET_CONFIG state.
+ * @param data_byte The data byte received from the mouse.
+ * @note Main loop only
+ */
+static void handle_mouse_set_config(uint8_t data_byte) {
+    // Configuration sequence:
+    //  - Set Resolution to 8 Counts/mm
+    //  - Set Sampling to 1:1
+    //  - Set Sample Rate to 40
+    //  - Enable Mouse
+    static const uint8_t config_sequence[] = {
+        ATPS2_MOUSE_RES_8_COUNT_MM, ATPS2_MOUSE_CMD_SET_SCALING_1_1,
+        ATPS2_MOUSE_CMD_SET_SAMPLE_RATE, ATPS2_MOUSE_RATE_40_HZ, ATPS2_MOUSE_CMD_ENABLE};
+    if (data_byte == ATPS2_RESP_ACK) {
+        if (mouse_config_sequence == sizeof(config_sequence) / sizeof(config_sequence[0])) {
+            mouse_config_sequence = 0;
+            mouse_state           = INITIALISED;
+            __dmb();        // Memory barrier - ensure state write visible to main loop
+            data_loop = 0;  // Reset packet alignment on initialisation
+            // Clear extended-mouse fields in case mouse type changed
+            buttons[BUTTON_BACKWARD] = 0;
+            buttons[BUTTON_FORWARD]  = 0;
+            pos[Z_POS]               = 0;
+            LOG_INFO("Mouse Initialisation Complete\n");
+        } else {
+            mouse_command_handler(config_sequence[mouse_config_sequence]);
+            mouse_config_sequence++;
+        }
+    }
+}
+
+/**
+ * @brief Handle mouse event in INITIALISED state (packet assembly and HID reporting).
+ * @param data_byte The data byte received from the mouse.
+ * @note Main loop only
+ */
+static void handle_mouse_initialised(uint8_t data_byte) {
+    switch (data_loop) {
+        case 0:
+            // Read in Button Data, as well as X and Y Overflow Data
+            buttons[BUTTON_LEFT]   = data_byte & 0x01;         // Left Button
+            buttons[BUTTON_RIGHT]  = (data_byte >> 1) & 0x01;  // Right Button
+            buttons[BUTTON_MIDDLE] = (data_byte >> 2) & 0x01;  // Middle Button
+            parameters[X_SIGN]     = (data_byte >> 4) & 0x01;  // X Sign Bit
+            parameters[Y_SIGN]     = (data_byte >> 5) & 0x01;  // Y Sign Bit
+            parameters[X_OVERFLOW] = (data_byte >> 6) & 0x01;  // X Overflow Bit
+            parameters[Y_OVERFLOW] = (data_byte >> 7) & 0x01;  // Y Overflow Bit
+            break;
+        case 1:
+            // Read in X Data
+            pos[X_POS] = (int8_t)(!(parameters[X_OVERFLOW] || parameters[Y_OVERFLOW])
+                                      ? get_xy_movement(data_byte, parameters[X_SIGN])
+                                      : 0);
+            break;
+        case 2:
+            // Read in Y Data
+            // Y-axis requires data inversion and sign flip (protocol quirk)
+            parameters[Y_SIGN] ^= 1;
+            pos[Y_POS] = (int8_t)(!(parameters[X_OVERFLOW] || parameters[Y_OVERFLOW])
+                                      ? get_xy_movement(~data_byte, parameters[Y_SIGN])
+                                      : 0);
+            break;
+        case 3:
+            // Read in Z/Extended Data
+            switch (mouse_id) {
+                case ATPS2_MOUSE_ID_INTELLIMOUSE:
+                    // Scroll Wheel Mouse
+                    pos[Z_POS] = get_z_movement(data_byte);
+                    break;
+                case ATPS2_MOUSE_ID_INTELLIMOUSE_EXPLORER:
+                    // 5 Button Mouse
+                    buttons[BUTTON_BACKWARD] = (data_byte >> 4) & 0x01;  // Button 4
+                    buttons[BUTTON_FORWARD]  = (data_byte >> 5) & 0x01;  // Button 5
+                    pos[Z_POS]               = get_z_movement(data_byte);
+                    break;
+                default:
+                    break;
+            }
+            break;
+        default:
+            break;
+    }
+    // Increment loop counter; reset when all packets for this mouse type are received.
+    data_loop++;
+
+    // If we have processed all packets, then we can handle the mouse report.
+    if (data_loop >= mouse_max_packets) {
+        data_loop = 0;
+        handle_mouse_report(buttons, pos);
+    }
+}
+
 /**
  * @brief Process the mouse event data.
- * This function is responsible for processing mouse events and updating the mouse state
- * accordingly. It handles various stages of mouse initialisation, including self-test, mouse type
- * detection, and configuration.  If the mouse is initialised, it processes the mouse data and sends
- * it to the HID interface.
+ *
+ * Dispatches a received data byte to the appropriate per-state handler based on the current
+ * protocol state.  Handles all initialisation phases and normal operation (packet assembly
+ * and HID reporting).
  *
  * @param data_byte The data byte received from the mouse.
  *
@@ -145,243 +429,28 @@ static int8_t get_z_movement(uint8_t pos) {
  * instead sends data directly to the HID interface.
  */
 void mouse_event_processor(uint8_t data_byte) {
-    static uint8_t mouse_type_detect_sequence = 0;
-    static uint8_t mouse_max_packets          = 0;
-
     switch (mouse_state) {
         case UNINITIALISED:
-            switch (data_byte) {
-                case ATPS2_RESP_BAT_PASSED:  // Self Test Passed
-                    LOG_INFO("Mouse Self Test Passed\n");
-                    LOG_INFO("Detecting Mouse Type\n");
-                    mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;  // Reset Mouse ID
-                    mouse_state = INIT_AWAIT_ID;
-                    __dmb();  // Memory barrier - ensure state write visible to main loop
-                    break;
-                default:
-                    // If we hit this, then either the self test failed, or we have an error.
-                    LOG_ERROR("Asking Mouse to Reset\n");
-                    mouse_state = INIT_AWAIT_ACK;
-                    __dmb();  // Memory barrier - ensure state write visible to main loop
-                    mouse_command_handler(ATPS2_CMD_RESET);
-            }
+            handle_mouse_uninitialised(data_byte);
             break;
         case INIT_AWAIT_ACK:
-            switch (data_byte) {
-                case ATPS2_RESP_ACK:  // Acknowledged
-                    LOG_INFO("ACK Received after Reset\n");
-                    mouse_state = INIT_AWAIT_SELFTEST;
-                    __dmb();  // Memory barrier - ensure state write visible to main loop
-                    break;
-                default:
-                    LOG_DEBUG("Unknown ACK Response (0x%02X).  Asking again to Reset...\n",
-                              data_byte);
-                    mouse_command_handler(ATPS2_CMD_RESET);
-            }
+            handle_mouse_await_ack(data_byte);
             break;
         case INIT_AWAIT_SELFTEST:
-            switch (data_byte) {
-                case ATPS2_RESP_BAT_PASSED:  // Self Test Passed
-                    LOG_INFO("Mouse Self Test Passed\n");
-                    LOG_INFO("Detecting Mouse Type\n");
-                    mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;  // Reset Mouse ID
-                    mouse_state = INIT_AWAIT_ID;
-                    __dmb();  // Memory barrier - ensure state write visible to main loop
-                    break;
-                default:
-                    LOG_DEBUG("Self-Test invalid response (0x%02X).  Asking again to Reset...\n",
-                              data_byte);
-                    mouse_state = INIT_AWAIT_ACK;
-                    __dmb();  // Memory barrier - ensure state write visible to main loop
-                    mouse_command_handler(ATPS2_CMD_RESET);
-            }
+            handle_mouse_await_selftest(data_byte);
             break;
         case INIT_AWAIT_ID:
-            switch (data_byte) {
-                case ATPS2_RESP_ACK:
-                    // Ack Received, silently ignore
-                    break;
-                case ATPS2_MOUSE_ID_STANDARD:
-                    if (mouse_id == ATPS2_MOUSE_ID_UNKNOWN) {
-                        mouse_id                   = ATPS2_MOUSE_ID_STANDARD;
-                        mouse_type_detect_sequence = 0;
-                        mouse_state                = INIT_DETECT_MOUSE_TYPE;
-                        __dmb();  // Memory barrier - ensure state write visible to main loop
-                        mouse_command_handler(ATPS2_MOUSE_CMD_SET_SAMPLE_RATE);
-                    } else {
-                        LOG_INFO("Mouse Type: Standard PS/2 Mouse\n");
-                        mouse_max_packets     = ATPS2_MOUSE_PACKET_STANDARD_SIZE;
-                        mouse_config_sequence = 0;
-                        mouse_state           = INIT_SET_CONFIG;
-                        __dmb();  // Memory barrier - ensure state write visible to main loop
-                        mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
-                    }
-                    break;
-                case ATPS2_MOUSE_ID_INTELLIMOUSE:
-                    if (mouse_id == ATPS2_MOUSE_ID_STANDARD) {
-                        mouse_id    = ATPS2_MOUSE_ID_INTELLIMOUSE;
-                        mouse_state = INIT_DETECT_MOUSE_TYPE;
-                        __dmb();  // Memory barrier - ensure state write visible to main loop
-                        mouse_command_handler(ATPS2_MOUSE_CMD_SET_SAMPLE_RATE);
-                    } else {
-                        LOG_INFO("Mouse Type: Mouse with Scroll Wheel\n");
-                        mouse_max_packets     = ATPS2_MOUSE_PACKET_EXTENDED_SIZE;
-                        mouse_config_sequence = 0;
-                        mouse_state           = INIT_SET_CONFIG;
-                        __dmb();  // Memory barrier - ensure state write visible to main loop
-                        mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
-                    }
-                    break;
-                case ATPS2_MOUSE_ID_INTELLIMOUSE_EXPLORER:
-                    LOG_INFO("Mouse Type: 5 Button Mouse\n");
-                    mouse_max_packets     = ATPS2_MOUSE_PACKET_EXTENDED_SIZE;
-                    mouse_id              = ATPS2_MOUSE_ID_INTELLIMOUSE_EXPLORER;
-                    mouse_config_sequence = 0;
-                    mouse_state           = INIT_SET_CONFIG;
-                    __dmb();  // Memory barrier - ensure state write visible to main loop
-                    mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
-                    break;
-                default:
-                    LOG_ERROR("Unknown Mouse Type (0x%02X), Asking again to Reset...\n", data_byte);
-                    mouse_state = INIT_AWAIT_ACK;
-                    __dmb();  // Memory barrier - ensure state write visible to main loop
-                    mouse_command_handler(ATPS2_CMD_RESET);
-                    break;
-            }
+            handle_mouse_await_id(data_byte);
             break;
         case INIT_DETECT_MOUSE_TYPE:
-            // Detect Mouse Type
-            switch (data_byte) {
-                case ATPS2_RESP_ACK:
-                    // Ack Received
-                    switch (mouse_type_detect_sequence) {
-                        case 0:
-                            // Set Sample Rate to 200
-                            mouse_type_detect_sequence++;
-                            mouse_command_handler(ATPS2_MOUSE_RATE_200_HZ);
-                            break;
-                        case 1:
-                            // Ask to Set Sample Rate
-                            mouse_type_detect_sequence++;
-                            mouse_command_handler(ATPS2_MOUSE_CMD_SET_SAMPLE_RATE);
-                            break;
-                        case 2:
-                            // Set Sample Rate based on ID
-                            mouse_type_detect_sequence++;
-                            mouse_command_handler((mouse_id == ATPS2_MOUSE_ID_INTELLIMOUSE)
-                                                      ? ATPS2_MOUSE_RATE_200_HZ
-                                                      : ATPS2_MOUSE_RATE_100_HZ);
-                            break;
-                        case 3:
-                            // Ask to Set Sample Rate
-                            mouse_type_detect_sequence++;
-                            mouse_command_handler(ATPS2_MOUSE_CMD_SET_SAMPLE_RATE);
-                            break;
-                        case 4:
-                            // Set Sample Rate to 80
-                            mouse_type_detect_sequence++;
-                            mouse_command_handler(ATPS2_MOUSE_RATE_80_HZ);
-                            break;
-                        case 5:
-                            // Re-request Mouse ID
-                            mouse_type_detect_sequence = 0;
-                            mouse_state                = INIT_AWAIT_ID;
-                            __dmb();  // Memory barrier - ensure state write visible to main loop
-                            mouse_command_handler(ATPS2_CMD_GET_ID);
-                            break;
-                    }
-                    break;
-                default:
-                    LOG_DEBUG("Unhandled Response Received (0x%02X)\n", data_byte);
-                    mouse_type_detect_sequence = 0;
-                    mouse_id                   = ATPS2_MOUSE_ID_STANDARD;
-                    mouse_max_packets          = ATPS2_MOUSE_PACKET_STANDARD_SIZE;
-                    mouse_config_sequence      = 0;
-                    mouse_state                = INIT_SET_CONFIG;
-                    __dmb();  // Memory barrier - ensure state write visible to main loop
-                    mouse_command_handler(ATPS2_MOUSE_CMD_SET_RESOLUTION);
-            }
+            handle_mouse_detect_type(data_byte);
             break;
-        case INIT_SET_CONFIG: {
-            // Finish Mouse Configuration
-            //  - Set Resolution to 8 Counts/mm
-            //  - Set Sampling to 1:1
-            //  - Set Sample Rate to 40
-            //  - Enable Mouse
-            static const uint8_t config_sequence[] = {
-                ATPS2_MOUSE_RES_8_COUNT_MM, ATPS2_MOUSE_CMD_SET_SCALING_1_1,
-                ATPS2_MOUSE_CMD_SET_SAMPLE_RATE, ATPS2_MOUSE_RATE_40_HZ, ATPS2_MOUSE_CMD_ENABLE};
-            if (data_byte == ATPS2_RESP_ACK) {
-                if (mouse_config_sequence == sizeof(config_sequence) / sizeof(config_sequence[0])) {
-                    mouse_config_sequence = 0;
-                    mouse_state           = INITIALISED;
-                    __dmb();        // Memory barrier - ensure state write visible to main loop
-                    data_loop = 0;  // Reset packet alignment on initialisation
-                    // Clear extended-mouse fields in case mouse type changed
-                    buttons[BUTTON_BACKWARD] = 0;
-                    buttons[BUTTON_FORWARD]  = 0;
-                    pos[Z_POS]               = 0;
-                    LOG_INFO("Mouse Initialisation Complete\n");
-                } else {
-                    mouse_command_handler(config_sequence[mouse_config_sequence]);
-                    mouse_config_sequence++;
-                }
-            }
+        case INIT_SET_CONFIG:
+            handle_mouse_set_config(data_byte);
             break;
-        }
         case INITIALISED:
-            // Process Mouse Data.
-            switch (data_loop) {
-                case 0:
-                    // Read in Button Data, as well as X and Y Overflow Data
-                    buttons[BUTTON_LEFT]   = data_byte & 0x01;         // Left Button
-                    buttons[BUTTON_RIGHT]  = (data_byte >> 1) & 0x01;  // Right Button
-                    buttons[BUTTON_MIDDLE] = (data_byte >> 2) & 0x01;  // Middle Button
-                    parameters[X_SIGN]     = (data_byte >> 4) & 0x01;  // X Sign Bit
-                    parameters[Y_SIGN]     = (data_byte >> 5) & 0x01;  // Y Sign Bit
-                    parameters[X_OVERFLOW] = (data_byte >> 6) & 0x01;  // X Overflow Bit
-                    parameters[Y_OVERFLOW] = (data_byte >> 7) & 0x01;  // Y Overflow Bit
-                    break;
-                case 1:
-                    // Read in X Data
-                    pos[X_POS] = !(parameters[X_OVERFLOW] || parameters[Y_OVERFLOW])
-                                     ? get_xy_movement(data_byte, parameters[X_SIGN])
-                                     : 0;
-                    break;
-                case 2:
-                    // Read in Y Data
-                    // Y-axis requires data inversion and sign flip (protocol quirk)
-                    parameters[Y_SIGN] ^= 1;
-                    pos[Y_POS] = !(parameters[X_OVERFLOW] || parameters[Y_OVERFLOW])
-                                     ? get_xy_movement(~data_byte, parameters[Y_SIGN])
-                                     : 0;
-                    break;
-                case 3:
-                    // Read in Z/Extended Data
-                    switch (mouse_id) {
-                        case ATPS2_MOUSE_ID_INTELLIMOUSE:
-                            // Scroll Wheel Mouse
-                            pos[Z_POS] = get_z_movement(data_byte);
-                            break;
-                        case ATPS2_MOUSE_ID_INTELLIMOUSE_EXPLORER:
-                            // 5 Button Mouse
-                            buttons[BUTTON_BACKWARD] = (data_byte >> 4) & 0x01;  // Button 4
-                            buttons[BUTTON_FORWARD]  = (data_byte >> 5) & 0x01;  // Button 5
-                            pos[Z_POS] = get_z_movement(data_byte);              // Z Data Position
-                            break;
-                        default:
-                            break;
-                    }
-                    break;
-            }
-            // Increment loop counter; reset when all packets for this mouse type are received.
-            data_loop++;
-
-            // If we have processed all packets, then we can handle the mouse report.
-            if (data_loop >= mouse_max_packets) {
-                data_loop = 0;
-                handle_mouse_report(buttons, pos);
-            }
+            handle_mouse_initialised(data_byte);
+            break;
     }
 #ifdef CONVERTER_LEDS
     converter.state.mouse_ready = mouse_state == INITIALISED ? 1 : 0;
@@ -405,19 +474,12 @@ static void __isr mouse_input_event_handler(void) {
         return;
     }
 
-    io_ro_32 data_cast = pio_engine.pio->rxf[pio_engine.sm] >> 21;
-    uint16_t data      = (uint16_t)data_cast;
-
-    // Extract the Start Bit, Parity Bit and Stop Bit.
-    uint8_t start_bit        = data & 0x1;
-    uint8_t parity_bit       = (data >> 9) & 0x1;
-    uint8_t stop_bit         = (data >> 10) & 0x1;
-    uint8_t data_byte        = (uint8_t)((data_cast >> 1) & ATPS2_DATA_MASK);
-    uint8_t parity_bit_check = interface_parity_table[data_byte];
+    // Parse AT/PS2 frame components from 11-bit PIO data
+    atps2_frame_t frame = atps2_parse_frame(&pio_engine);
 
     // Validate start bit (must be 0)
-    if (start_bit != 0) {
-        LOG_ERROR("Start Bit Validation Failed: start_bit=%i\n", start_bit);
+    if (frame.start_bit != 0) {
+        LOG_ERROR("Start Bit Validation Failed: start_bit=%i\n", frame.start_bit);
         mouse_state = UNINITIALISED;
         __dmb();  // Memory barrier - ensure state write visible to main loop
         mouse_id = ATPS2_MOUSE_ID_UNKNOWN;
@@ -426,8 +488,8 @@ static void __isr mouse_input_event_handler(void) {
     }
 
     // Validate stop bit (must be 1)
-    if (stop_bit != 1) {
-        LOG_ERROR("Stop Bit Validation Failed: stop_bit=%i\n", stop_bit);
+    if (frame.stop_bit != 1) {
+        LOG_ERROR("Stop Bit Validation Failed: stop_bit=%i\n", frame.stop_bit);
         mouse_state = UNINITIALISED;
         __dmb();  // Memory barrier - ensure state write visible to main loop
         mouse_id = ATPS2_MOUSE_ID_UNKNOWN;
@@ -436,9 +498,9 @@ static void __isr mouse_input_event_handler(void) {
     }
 
     // Validate parity bit
-    if (parity_bit != parity_bit_check) {
-        LOG_ERROR("Parity Bit Validation Failed: expected=%i, actual=%i\n", parity_bit_check,
-                  parity_bit);
+    if (frame.parity_bit != frame.expected_parity) {
+        LOG_ERROR("Parity Bit Validation Failed: expected=%i, actual=%i\n", frame.expected_parity,
+                  frame.parity_bit);
         mouse_state = UNINITIALISED;
         __dmb();  // Memory barrier - ensure state write visible to main loop
         mouse_id = ATPS2_MOUSE_ID_UNKNOWN;
@@ -448,7 +510,7 @@ static void __isr mouse_input_event_handler(void) {
     }
 
     // All validations passed - process the data byte
-    mouse_event_processor(data_byte);
+    mouse_event_processor(frame.data);
 }
 
 /**
@@ -521,41 +583,9 @@ void mouse_interface_setup(uint data_pin) {
     update_converter_status();  // Initialise converter status LEDs to "not ready" state
 #endif
 
-    // Claim PIO instance and state machine atomically with fallback
-    pio_engine = claim_pio_and_sm(&pio_interface_program);
-    if (pio_engine.pio == NULL) {
-        LOG_ERROR("AT/PS2 Mouse: No PIO resources available for mouse interface\n");
+    if (!atps2_setup_pio_engine(&pio_engine, data_pin, &mouse_input_event_handler, "Mouse")) {
         return;
     }
 
-    // Store pin assignment
     mouse_data_pin = data_pin;
-
-    // Calculate clock divider for AT/PS2 timing (30µs minimum pulse width)
-    // Reference: IBM 84F9735 PS/2 Hardware Interface Technical Reference
-    float clock_div = calculate_clock_divider(ATPS2_TIMING_CLOCK_MIN_US);
-
-    // Initialise PIO program with calculated clock divider
-    pio_interface_program_init(pio_engine.pio, pio_engine.sm, pio_engine.offset, data_pin,
-                               clock_div);
-
-    // Initialise shared PIO IRQ dispatcher (safe to call multiple times)
-    pio_irq_dispatcher_init(pio_engine.pio);
-
-    // Register mouse event handler with the dispatcher
-    if (!pio_irq_register_callback(&mouse_input_event_handler)) {
-        LOG_ERROR("AT/PS2 Mouse: Failed to register IRQ callback\n");
-        // Release PIO resources before returning
-        pio_sm_set_enabled(pio_engine.pio, (uint)pio_engine.sm, false);
-        pio_sm_clear_fifos(pio_engine.pio, (uint)pio_engine.sm);
-        pio_sm_unclaim(pio_engine.pio, (uint)pio_engine.sm);
-        pio_remove_program(pio_engine.pio, &pio_interface_program, pio_engine.offset);
-        pio_engine.pio    = NULL;
-        pio_engine.sm     = -1;
-        pio_engine.offset = -1;
-        return;
-    }
-
-    LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
-             (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);
 }
