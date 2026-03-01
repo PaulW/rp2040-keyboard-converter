@@ -39,6 +39,8 @@ Command Mode provides access to special functions without requiring firmware ref
 - ↕️ **'S'**: Toggle shift-override (keyboards with non-standard shift legends only)
 - 🔬 **'T'**: Toggle flow tracking *(developer builds only — requires `FLOW_TRACKING_ENABLED 1` and DEBUG log level)*
 
+**See also:** [Flow Tracking Guide](../advanced/flow-tracking.md) for enabling, reading the UART output, and how it works internally
+
 **LED Feedback:**
 - Alternating green/blue - Command Mode active
 - Solid green - Normal operation resumed
@@ -65,7 +67,7 @@ Currently stored settings include your log level (ERROR, INFO, or DEBUG), LED br
 
 ### LED Indicators
 
-**[LED Indicators Guide](led-indicators.md)**
+**[LED Support Guide](led-support.md)** · **[LED Indicators Guide](led-indicators.md)**
 
 LED indicators provide visual feedback about converter status, including operational state, Command Mode activation, and error conditions. Every converter requires at least one status LED, with optional WS2812 RGB LEDs available for enhanced visibility.
 
@@ -86,7 +88,7 @@ For keyboard lock indicators (Caps Lock, Num Lock, Scroll Lock), the converter h
 
 WS2812 RGB LEDs (NeoPixels) can be added for enhanced visual feedback. These connect to GPIO 29 by default and support configurable brightness through Command Mode. WS2812 support is optional and disabled by default to conserve power.
 
-**See:** [LED Indicators Guide](led-indicators.md) for wiring diagrams, colour patterns, and technical details
+**See:** [LED Support Guide](led-support.md) for status patterns, WS2812 configuration, and brightness control; [LED Indicators Guide](led-indicators.md) for keyboard lock LED synchronisation and protocol details
 
 ---
 
@@ -220,3 +222,4 @@ If you want to dive deeper into how these features work or understand the implem
 - Command Mode: [`src/common/lib/command_mode.[ch]`](../../src/common/lib/command_mode.c)
 - HID Interface: [`src/common/lib/hid_interface.[ch]`](../../src/common/lib/hid_interface.c)
 - Config Storage: [`src/common/lib/config_storage.[ch]`](../../src/common/lib/config_storage.c)
+- Flow Tracker: [`src/common/lib/flow_tracker.[ch]`](../../src/common/lib/flow_tracker.c)

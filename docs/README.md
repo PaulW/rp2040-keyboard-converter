@@ -31,6 +31,10 @@ I've documented details about specific devices I currently own and have used to 
 
 As the project's evolved, I've added various features to make using the converter a bit more streamlined. This will continue to evolve over time as new features are added, but current documentation can be found in the [Features Documentation](features/README.md).
 
+### 🔢 Scancodes
+
+When a key is pressed the keyboard sends a scancode—just a number identifying which key it was. Different protocols use different scancode sets, and the [Scancode Documentation](scancodes/README.md) explains how each one works, which keyboards use them, and how translation to HID keycodes happens.
+
 ### 🎓 Advanced Topics
 
 If you're interested in understanding how the converter works, or need more specific information, I've put together some more technical information which covers things like the architecture, performance characteristics, and inner workings:
@@ -56,6 +60,7 @@ If you're interested in contributing to the project, or want to understand the c
 | **Connect my keyboard** | [Hardware Setup](getting-started/hardware-setup.md) |
 | **See what keyboards are already supported** | [Supported Keyboards](keyboards/README.md) |
 | **Check supported Protocols** | [Protocol Overview](protocols/README.md) |
+| **Understand scancode translation** | [Scancode Sets](scancodes/README.md) |
 | **Understand architecture** | [Advanced Topics](advanced/README.md) |
 | **Add a new keyboard** | [Development Guide](development/README.md) |
 | **Contribute code** | [Development Guide](development/README.md) |
