@@ -98,8 +98,6 @@ void flow_tracker_init(void) {
  *
  * @param isr_func  __func__ passed from the ISR call site.
  * @param rx_byte   The byte that was just written to the ring buffer.
- * @return true if the token was queued; false if tracking is disabled or the
- *         queue is full.
  * @note ISR context only.
  * @note Non-blocking — drops the token silently if the queue is full; never
  *       spins or waits.
@@ -239,9 +237,12 @@ void flow_tracker_record_end(const char* func_name, uint32_t data_val) {
  *       ring-buffer write.
  */
 void flow_tracker_set_enabled(bool enable) {
-    __dmb();  // Ensure any in-flight ISR writes are visible before changing the flag
     flow_tracking_runtime_enabled = enable;
+    __dmb();  // Publish updated runtime flag before continuing
     if (!enable) {
+        uint32_t irq_state = save_and_disable_interrupts();
+        token_tail         = token_head;  // Drop queued tokens immediately
+        restore_interrupts(irq_state);
         flow_active = false;  // Discard any incomplete flow immediately
     }
 }

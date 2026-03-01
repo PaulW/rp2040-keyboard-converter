@@ -101,7 +101,7 @@ The runtime enable flag (`flow_tracking_runtime_enabled`) is `volatile bool`. Th
 
 ## Adding Instrumentation to a New Protocol
 
-If you're implementing a new keyboard protocol and want it to participate in flow tracking, have a look at `src/protocols/xt/keyboard_interface.c` for a working example. The pattern is the same for every protocol:
+If you're implementing a new keyboard protocol and want it to participate in flow tracking, have a look under `src/protocols/` for working examples. The pattern is the same for every protocol:
 
 In the ISR, immediately after a successful `ringbuf_put()`:
 
