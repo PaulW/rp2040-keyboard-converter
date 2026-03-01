@@ -24,6 +24,7 @@ Complete documentation is available in the [`docs/`](docs/) directory. Here's wh
 - [Hardware Setup](docs/hardware/README.md) - Wiring diagrams and connector information
 - [Supported Protocols](docs/protocols/README.md) - AT/PS2, XT, Amiga, M0110 specifications
 - [Supported Keyboards](docs/keyboards/README.md) - Compatible keyboards and configurations
+- [Scancode Sets](docs/scancodes/README.md) - Scancode sets and translation reference
 - [Features Guide](docs/features/README.md) - Command Mode, LED support, configuration
 
 **For Developers:**
@@ -126,6 +127,8 @@ Access firmware functions without physical board access:
 - **Debug Logging** - Adjust UART output level (press D)
 - **Factory Reset** - Restore default settings (press F)
 - **LED Brightness** - Adjust status LED (press L)
+- **Shift Override** - Toggle non-standard shift legend remapping (press S)
+- **Flow Tracking** - Toggle pipeline latency tracing, developer builds only (press T)
 
 **Activation:** Hold both Shift keys for 3 seconds
 
@@ -137,7 +140,7 @@ Settings persist across reboots and firmware updates:
 - LED brightness
 - Future: Macros and key remapping
 
-**📖 Details:** [Configuration Storage](docs/features/README.md#configuration-storage)
+**📖 Details:** [Configuration Storage](docs/features/config-storage.md)
 
 ### USB HID Boot Protocol
 6-key rollover for maximum compatibility:
