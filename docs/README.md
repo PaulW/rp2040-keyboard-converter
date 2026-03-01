@@ -33,7 +33,7 @@ As the project's evolved, I've added various features to make using the converte
 
 ### 🔢 Scancodes
 
-When a key is pressed the keyboard sends a scancode—just a number identifying which key it was. Different protocols use different scancode sets, and the [Scancode Documentation](scancodes/README.md) explains how each one works, which keyboards use them, and how translation to HID keycodes happens.
+When a key is pressed, the keyboard sends a scancode—just a number identifying which key it was. Different protocols use different scancode sets, and the [Scancode Documentation](scancodes/README.md) explains how each one works, which keyboards use them, and how translation to HID keycodes happens.
 
 ### 🎓 Advanced Topics
 
