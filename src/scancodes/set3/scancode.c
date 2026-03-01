@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "flow_tracker.h"
 #include "hid_interface.h"
 #include "log.h"
 
@@ -97,6 +98,7 @@ static bool try_remap_scancode(uint8_t code, uint8_t* mapped_code) {
  * @note Set 3 is the cleanest scan code set with no complex multi-byte sequences
  */
 void process_scancode(uint8_t code) {
+    FLOW_STEP(code);
     // clang-format off
     static enum {
         INIT,

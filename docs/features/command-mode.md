@@ -8,7 +8,7 @@ Command Mode provides a keyboard-driven interface for managing the converter's f
 
 Once you have the converter up and running, you might need to update firmware, troubleshoot issues, or adjust settings. Normally, this would require physical access to the RP2040 board—holding down the BOOTSEL button whilst plugging it in, or accessing configuration files. Command Mode eliminates this hassle by letting you trigger these actions directly from your keyboard.
 
-The converter supports five main operations through Command Mode:
+The converter supports six commands through Command Mode:
 
 **Bootloader Entry** - Reset into firmware update mode without touching the board. The RP2040 appears as a USB mass storage device where you can drag-and-drop new firmware.
 
@@ -19,6 +19,8 @@ The converter supports five main operations through Command Mode:
 **LED Brightness Control** - Adjust how bright the converter's status LED appears, from off to full brightness. Particularly useful if you have WS2812 RGB LEDs that are too bright in a dark room. See [LED Support](led-support.md) for LED configuration.
 
 **Shift-Override Toggle** - Enable or disable shift-override for keyboards with non-standard shift legends. Only affects keyboards that define custom shift mappings (like terminal keyboards with unusual number row legends).
+
+**Flow Tracking Toggle** - Enable or disable microsecond-resolution pipeline latency tracing. Only available in developer builds compiled with `FLOW_TRACKING_ENABLED 1` in `config.h`; compiled out entirely in normal production firmware. See ['T' - Toggle Flow Tracking](#t---toggle-flow-tracking) below.
 
 All these operations complete without interrupting your work—you trigger them through key combinations, wait a moment for confirmation, and continue typing.
 
@@ -38,7 +40,7 @@ Here's exactly what happens when you activate Command Mode:
 
 **Step 3**: Once you see the alternating LED pattern, you can release both shift keys. Command Mode is now active.
 
-**Step 4**: You have three seconds to press one of the command keys (B, D, F, L, or S). If you don't press anything within three seconds, the converter automatically exits Command Mode and returns to normal operation.
+**Step 4**: You have three seconds to press one of the command keys (B, D, F, L, S, or T). If you don't press anything within three seconds, the converter automatically exits Command Mode and returns to normal operation.
 
 The three-second hold requirement prevents accidental activation. It's long enough that you won't trigger it during normal typing, but short enough that it's not tedious when you actually want to use it.
 
@@ -91,7 +93,7 @@ There's one constraint: both activation keys must be HID modifiers (Shift, Contr
 
 ## Available Commands
 
-Once Command Mode is active (indicated by the alternating green/blue LED), you can press one of five command keys. Each triggers a different operation.
+Once Command Mode is active (indicated by the alternating green/blue LED), you can press one of six command keys. Each triggers a different operation. Note that the 'T' key is only present in developer builds compiled with `FLOW_TRACKING_ENABLED 1`.
 
 ### 'B' - Enter Bootloader Mode
 
@@ -218,6 +220,45 @@ For details on implementing shift-override for a new keyboard, see the [Adding K
 
 ---
 
+### 'T' - Toggle Flow Tracking
+
+Pressing 'T' toggles pipeline flow tracking on or off. This command is only available when the firmware is compiled with `FLOW_TRACKING_ENABLED 1` in `config.h`—it is compiled out entirely in normal production builds and never appears in release firmware. When enabled, the converter instruments each stage of the keyboard processing pipeline, measuring microsecond-resolution latency from the moment the ISR fires through to USB HID report transmission. All trace output goes to the UART debug channel as `LOG_DEBUG` messages.
+
+**How to use it**:
+
+1. Build firmware with `FLOW_TRACKING_ENABLED 1` in `config.h`
+2. Set the log level to DEBUG using Command Mode 'D' → '3' (flow tracking requires it)
+3. Activate Command Mode (both shifts, 3 seconds)
+4. Press the **'T'** key
+5. Command Mode exits and UART shows: `"Flow tracking enabled"` or `"Flow tracking disabled"`
+
+**If DEBUG log level isn't active**:
+
+Flow tracking output uses `LOG_DEBUG`. Attempting to enable tracking when the log level is lower than DEBUG displays `"Flow tracking: set log level to DEBUG first (D→3)"` and returns without changing the state. You can't accidentally enable tracking silently when no terminal is connected.
+
+**What flow tracking shows**:
+
+Each keypress produces a trace like this in the UART output:
+
+```text
+[FLOW] run=42
+  [0] time=1234567  func=keyboard_irq_handler     data=0x1C
+  [1] time=1234569  func=keyboard_interface_task  data=0x1C
+  [2] time=1234570  func=process_scancode         data=0x1C
+  [3] time=1234572  func=handle_keyboard_report   data=0x04
+  [4] time=1234573  func=keymap_get_key_val       data=0x04
+  [5] time=1234574  func=hid_keyboard_add_key     data=0x04
+  [6] time=1234575  func=hid_send_report          data=0x01
+```
+
+Timestamps are microseconds since boot (`timer_hw->timerawl`). Subtracting step `[0]`'s timestamp from the last step gives the end-to-end firmware latency for that keypress.
+
+Flow tracking state is not persisted to flash. It always starts disabled after power-up, even if it was active when the device was last running. This avoids filling the UART DMA queue on boot before you have a serial terminal connected.
+
+For full documentation including output format, pipeline coverage, and the concurrency model, see the [Flow Tracking guide](../advanced/flow-tracking.md).
+
+---
+
 ## How Command Mode Works Internally
 
 Understanding the implementation helps explain why Command Mode behaves the way it does and what limitations exist.
@@ -320,7 +361,7 @@ The same timeout applies to command submenus. After pressing 'D' or 'L', if you 
 
 ### Invalid Key Handling
 
-If you press a key that isn't a valid command (for example, pressing 'X' instead of 'B', 'D', 'F', 'L' or 'S'), Command Mode simply ignores it. The timeout continues running, so if you press the wrong key, you can just press the correct one within the 3-second window.
+If you press a key that isn't a valid command (for example, pressing 'X' instead of 'B', 'D', 'F', 'L', 'S', or 'T'), Command Mode simply ignores it. The timeout continues running, so if you press the wrong key, you can just press the correct one within the 3-second window.
 
 In submenus, the same logic applies. Pressing a key that isn't a valid option (pressing '4' for log level when only '1', '2', '3' are valid) gets ignored.
 

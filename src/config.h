@@ -137,6 +137,12 @@
 // The timing ensures compatibility with modern OS CAPS LOCK behaviour (e.g., macOS requires a period of time between make and break events).
 #define CAPS_LOCK_TOGGLE_TIME_MS 125  // Hold time for CAPS LOCK toggle (milliseconds)
 
+// --- Developer / Debug Features ---
+// Set FLOW_TRACKING_ENABLED to 1 to compile in pipeline latency tracing.
+// When enabled, the Command Mode 'T' key toggles tracing at runtime (requires DEBUG log level).
+// Leave at 0 for normal production builds — all instrumentation is compiled out entirely.
+#define FLOW_TRACKING_ENABLED 0  // Pipeline flow tracking (0 = off, 1 = compiled in)
+
 // Define some Compile Time variables.  Do not modify below this line
 #define BUILD_TIME _BUILD_TIME
 

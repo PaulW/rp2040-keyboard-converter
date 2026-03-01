@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 
+#include "flow_tracker.h"
 #include "hid_interface.h"
 #include "log.h"
 
@@ -153,6 +154,7 @@ static inline uint8_t switch_e0_code(uint8_t code) {
  * @note handle_keyboard_report() translates scan codes to HID keycodes via keymap lookup
  */
 void process_scancode(uint8_t code) {
+    FLOW_STEP(code);
     // clang-format off
     static enum {
         INIT,

@@ -27,6 +27,7 @@
 
 #include "command_mode.h"
 #include "config.h"
+#include "flow_tracker.h"
 #include "hid_keycodes.h"
 #include "keymaps.h"
 #include "led_helper.h"
@@ -154,6 +155,7 @@ static void log_hid_report_outcome(bool result, bool ready, uint8_t instance, ui
  */
 static inline bool hid_send_report(uint8_t instance, uint8_t report_id, void const* report,
                                    uint16_t len) {
+    FLOW_END(report_id);
     // Check endpoint readiness and attempt to send
     bool ready  = tud_hid_n_ready(instance);
     bool result = ready && tud_hid_n_report(instance, report_id, report, len);
@@ -223,6 +225,7 @@ static inline bool hid_send_report(uint8_t instance, uint8_t report_id, void con
  * @note Fix for issue #19: Prevents duplicate keys in report array
  */
 static bool hid_keyboard_add_key(uint8_t key) {
+    FLOW_STEP(key);
     if (IS_MOD(key)) {
         if ((keyboard_report.modifier & (uint8_t)(1 << (key & 0x7))) == 0) {
             keyboard_report.modifier |= (uint8_t)(1 << (key & 0x7));
@@ -288,6 +291,7 @@ static bool hid_keyboard_add_key(uint8_t key) {
  * @note Pairs with hid_keyboard_add_key() for make/break handling
  */
 static bool hid_keyboard_del_key(uint8_t key) {
+    FLOW_STEP(key);
     if (IS_MOD(key)) {
         uint8_t modifier_bit = (uint8_t)(1 << (key & 0x7));
         if ((keyboard_report.modifier & modifier_bit) != 0) {
@@ -362,6 +366,7 @@ static bool evaluate_command_mode(bool suppress_shift, uint8_t saved_modifiers) 
 }
 
 void handle_keyboard_report(uint8_t rawcode, bool make) {
+    FLOW_STEP(rawcode);
     // Convert the Interface Scancode to a HID Keycode
     bool    suppress_shift = false;
     uint8_t code           = keymap_get_key_val(rawcode, make, &suppress_shift);

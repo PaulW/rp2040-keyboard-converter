@@ -26,8 +26,9 @@
 #include "pico/bootrom.h"
 #include "pico/time.h"
 
-#include "config.h"
 #include "config_storage.h"
+#include "config.h"
+#include "flow_tracker.h"
 #include "hid_interface.h"
 #include "hid_keycodes.h"
 #include "keymaps.h"
@@ -682,6 +683,29 @@ static bool command_handle_shift_override_toggle(void) {
     return false;
 }
 
+#if FLOW_TRACKING_ENABLED
+/**
+ * @brief Toggle pipeline flow tracking on or off.
+ *
+ * Enabling is only permitted when the current log level is LOG_LEVEL_DEBUG,
+ * because all trace output uses LOG_DEBUG.  If the level is lower the request
+ * is ignored and the operator receives an informative exit message.
+ *
+ * @return false Always suppresses the keyboard report.
+ * @note Main loop only.
+ */
+static bool command_handle_flow_tracking_toggle(void) {
+    if (!flow_tracker_is_enabled() && log_get_level() < LOG_LEVEL_DEBUG) {
+        command_mode_exit("Flow tracking: set log level to DEBUG first (D→3)");
+        return false;
+    }
+    bool enabled = !flow_tracker_is_enabled();
+    flow_tracker_set_enabled(enabled);
+    command_mode_exit(enabled ? "Flow tracking enabled" : "Flow tracking disabled");
+    return false;
+}
+#endif /* FLOW_TRACKING_ENABLED */
+
 /**
  * @brief Process keyboard input in COMMAND_ACTIVE state
  *
@@ -715,6 +739,12 @@ static bool process_command_active(const hid_keyboard_report_t* keyboard_report)
     if (is_key_pressed(keyboard_report, KC_S)) {
         return command_handle_shift_override_toggle();
     }
+
+#if FLOW_TRACKING_ENABLED
+    if (is_key_pressed(keyboard_report, KC_T)) {
+        return command_handle_flow_tracking_toggle();
+    }
+#endif /* FLOW_TRACKING_ENABLED */
 
     // Note: LED update is handled in command_mode_task() which runs from main loop
     // This ensures smooth LED flashing even when no keys are being pressed
