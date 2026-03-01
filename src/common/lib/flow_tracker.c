@@ -35,6 +35,11 @@
 #include "hardware/timer.h"
 #include "log.h"
 
+_Static_assert((FLOW_TOKEN_QUEUE_SIZE & (FLOW_TOKEN_QUEUE_SIZE - 1U)) == 0U,
+               "FLOW_TOKEN_QUEUE_SIZE must be a power of two");
+_Static_assert(FLOW_TOKEN_QUEUE_SIZE <= 256U,
+               "FLOW_TOKEN_QUEUE_SIZE must fit uint8_t head/tail indices");
+
 /* --- Token queue (SPSC: ISR producer / main-loop consumer) ------------- */
 
 /**
@@ -227,8 +232,8 @@ void flow_tracker_record_end(const char* func_name, uint32_t data_val) {
  * @brief Enable or disable runtime flow tracking.
  *
  * When enabling, the ISR will start queuing tokens from the next ring-buffer
- * put.  When disabling, the ISR stops immediately; any tokens already in the
- * queue are drained silently on the next main-loop iteration.
+ * put.  When disabling, the ISR stops immediately; queued tokens are dropped
+ * atomically before returning.
  *
  * @param enable true to start tracking; false to stop.
  * @note Main loop only.
