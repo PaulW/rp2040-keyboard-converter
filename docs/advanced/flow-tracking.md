@@ -12,7 +12,7 @@ When a key is pressed, the converter works through several stages before the USB
 
 The output is a sequence of `LOG_DEBUG` lines in your UART terminal, one per stage, each with a microsecond timestamp from the RP2040 hardware timer. Subtracting the first timestamp from the last gives you the end-to-end firmware latency—the time from ISR entry to the USB report being handed off to TinyUSB.
 
-All the instrumented stages are located in `src/common/lib/flow_tracker.[ch]`. The call sites are found in the protocol implementations under `src/protocols/`, the scancode processors under `src/scancodes/`, and the files `src/common/lib/hid_interface.c` and `src/common/lib/keymaps.c`.
+All the instrumented stages are located in [`flow_tracker.c`](../../src/common/lib/flow_tracker.c) and [`flow_tracker.h`](../../src/common/lib/flow_tracker.h). The call sites are found in the protocol implementations under `src/protocols/`, the scancode processors under `src/scancodes/`, and the files `src/common/lib/hid_interface.c` and `src/common/lib/keymaps.c`.
 
 The mouse path is not instrumented—it uses a streaming protocol that does not go through the ring buffer, so the token queue model does not apply there.
 

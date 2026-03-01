@@ -90,6 +90,14 @@ Additional testing resources include [`./tools/lint.sh`](../../tools/lint.sh) fo
 
 ## Development Guides
 
+Detailed guides for the most common development tasks:
+
+- **[Contributing Guide](contributing.md)** - Pull request process, branch naming, and commit format
+- **[Adding Keyboards](adding-keyboards.md)** - Step-by-step guide to supporting a new keyboard model
+- **[Custom Keymaps](custom-keymaps.md)** - Remapping keys and configuring layers
+- **[Protocol Implementation](protocol-implementation.md)** - Adding a new keyboard protocol
+- **[Code Standards](code-standards.md)** - Architecture rules and coding conventions
+
 ### Adding Protocol Support
 
 How to add support for new keyboard protocols:
