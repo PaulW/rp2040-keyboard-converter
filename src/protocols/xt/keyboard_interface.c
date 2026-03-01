@@ -343,7 +343,7 @@ void keyboard_interface_task() {
             uint8_t scancode = ringbuf_get();  // Retrieve next scan code from buffer
 
             // Begin flow tracking for this scancode byte
-            FlowToken flow_tok;
+            flow_token_t flow_tok;
             if (main_pop_flow_token(&flow_tok)) {
                 flow_start(&flow_tok);
             }

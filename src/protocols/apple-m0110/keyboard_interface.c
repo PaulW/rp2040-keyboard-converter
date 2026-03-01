@@ -386,8 +386,8 @@ void keyboard_interface_task(void) {
 
             // Process buffered key data (only reached if keyboard is responding normally)
             if (!ringbuf_is_empty() && tud_hid_ready()) {
-                uint8_t   scancode = ringbuf_get();
-                FlowToken flow_tok;
+                uint8_t      scancode = ringbuf_get();
+                flow_token_t flow_tok;
                 if (main_pop_flow_token(&flow_tok)) {
                     flow_start(&flow_tok);
                 }

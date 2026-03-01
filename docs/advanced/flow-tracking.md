@@ -12,7 +12,9 @@ When a key is pressed, the converter works through several stages before the USB
 
 The output is a sequence of `LOG_DEBUG` lines in your UART terminal, one per stage, each with a microsecond timestamp from the RP2040 hardware timer. Subtracting the first timestamp from the last gives you the end-to-end firmware latency—the time from ISR entry to the USB report being handed off to TinyUSB.
 
-All the instrumented stages are in `src/common/lib/flow_tracker.[ch]` and the call sites are in the protocol implementations under `src/protocols/` and scancode processors under `src/scancodes/`. The mouse path isn't instrumented—it uses a streaming protocol that doesn't go through the ring buffer, so the token queue model doesn't apply there.
+All the instrumented stages are located in `src/common/lib/flow_tracker.[ch]`. The call sites are found in the protocol implementations under `src/protocols/`, the scancode processors under `src/scancodes/`, and the files `src/common/lib/hid_interface.c` and `src/common/lib/keymaps.c`.
+
+The mouse path is not instrumented—it uses a streaming protocol that does not go through the ring buffer, so the token queue model does not apply there.
 
 ---
 
@@ -50,7 +52,7 @@ One thing worth knowing: if you try to enable tracking whilst the log level is l
 
 Each keypress produces a block of `LOG_DEBUG` lines:
 
-```
+```text
 [FLOW] run=42
   [0] time=1234567  func=keyboard_irq_handler     data=0x1C
   [1] time=1234569  func=keyboard_interface_task  data=0x1C
@@ -63,7 +65,7 @@ Each keypress produces a block of `LOG_DEBUG` lines:
 
 `run=42` is a monotonic counter—it increments with every keypress so you can match make and break events up in the log. `time` is microseconds since boot from `timer_hw->timerawl`, the RP2040's 1MHz free-running hardware timer. `data` is whatever scancode, keycode, or report ID is in flight at that stage.
 
-The end-to-end latency in this example is `1234575 − 1234567 = 8µs`. The Command Mode evaluation path is a bit longer—around 24µs—because `evaluate_command_mode()` calls `to_ms_since_boot()` (a 64-bit division) and emits a `LOG_INFO` message. That's expected behaviour, not a problem; 24µs is still well within the 8ms USB polling budget.
+The end-to-end latency in this example is `1234575 − 1234567 = 8µs`. The Command Mode evaluation path is a bit longer—around 24µs (at the time of testing)—because `evaluate_command_mode()` calls `to_ms_since_boot()` (a 64-bit division) and emits a `LOG_INFO` message. That's expected behaviour, not a problem; 24µs is still well within the 8ms USB polling budget.
 
 Break codes—the byte the keyboard sends when you *release* a key—don't always produce a HID report, so some keypresses won't have a complete trace. That's normal.
 
@@ -116,7 +118,7 @@ In `keyboard_interface_task()`, immediately after `ringbuf_get()`:
 
 ```c
 uint8_t scancode = ringbuf_get();
-FlowToken flow_tok;
+flow_token_t flow_tok;
 if (main_pop_flow_token(&flow_tok)) {
     flow_start(&flow_tok);
 }

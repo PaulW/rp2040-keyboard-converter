@@ -461,8 +461,8 @@ void keyboard_interface_task() {
             // Process scan codes only when HID interface ready to prevent report queue overflow
             // HID ready check ensures reliable USB report transmission
 
-            uint8_t   scancode = ringbuf_get();  // Retrieve next scan code from buffer
-            FlowToken flow_tok;
+            uint8_t      scancode = ringbuf_get();  // Retrieve next scan code from buffer
+            flow_token_t flow_tok;
             if (main_pop_flow_token(&flow_tok)) {
                 flow_start(&flow_tok);
             }

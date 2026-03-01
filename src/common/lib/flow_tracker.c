@@ -43,7 +43,7 @@
  * Volatile because both ISR and main-loop contexts touch different fields
  * of the same array; the compiler must not cache these reads/writes.
  */
-static volatile FlowToken token_buf[FLOW_TOKEN_QUEUE_SIZE];
+static volatile flow_token_t token_buf[FLOW_TOKEN_QUEUE_SIZE];
 
 /** Written exclusively by the ISR. */
 static volatile uint8_t token_head = 0;
@@ -56,8 +56,8 @@ static volatile uint16_t run_id_ctr = 0;
 
 /* --- Active flow state (main-loop only) -------------------------------- */
 
-static ActiveFlow active_flow;
-static bool       flow_active = false;
+static active_flow_t active_flow;
+static bool          flow_active = false;
 
 /**
  * @brief Runtime enable switch.  Volatile because it is read from ISR context.
@@ -104,13 +104,13 @@ void flow_tracker_init(void) {
  * @note Non-blocking — drops the token silently if the queue is full; never
  *       spins or waits.
  */
-bool isr_push_flow_token(const char* isr_func, uint8_t rx_byte) {
+void isr_push_flow_token(const char* isr_func, uint8_t rx_byte) {
     if (!flow_tracking_runtime_enabled) {
-        return false;  // Tracking disabled at runtime — nothing to queue
+        return;  // Tracking disabled at runtime — nothing to queue
     }
     uint8_t next_head = (token_head + 1U) & (FLOW_TOKEN_QUEUE_SIZE - 1U);
     if (next_head == token_tail) {
-        return false;  // Queue full — drop without blocking
+        return;  // Queue full — drop without blocking
     }
 
     token_buf[token_head].rx_byte      = rx_byte;
@@ -119,7 +119,6 @@ bool isr_push_flow_token(const char* isr_func, uint8_t rx_byte) {
     token_buf[token_head].isr_func     = isr_func;
     __dmb();  // Ensure all token fields written before head advances
     token_head = next_head;
-    return true;
 }
 
 /**
@@ -130,7 +129,7 @@ bool isr_push_flow_token(const char* isr_func, uint8_t rx_byte) {
  * @note Main loop only.
  * @note Non-blocking — returns immediately if no token is available.
  */
-bool main_pop_flow_token(FlowToken* out_token) {
+bool main_pop_flow_token(flow_token_t* out_token) {
     if (token_head == token_tail) {
         return false;  // Queue empty
     }
@@ -157,7 +156,7 @@ bool main_pop_flow_token(FlowToken* out_token) {
  * @note Main loop only.
  * @note Non-blocking — completes in constant time.
  */
-void flow_start(const FlowToken* token) {
+void flow_start(const flow_token_t* token) {
     active_flow.run_id     = token->run_id;
     active_flow.step_count = 0;
     flow_active            = true;
@@ -218,7 +217,7 @@ void flow_tracker_record_end(const char* func_name, uint32_t data_val) {
 
     LOG_DEBUG("[FLOW] run=%u\n", (unsigned)active_flow.run_id);
     for (uint8_t i = 0; i < active_flow.step_count; i++) {
-        const FlowStep* s = &active_flow.steps[i];
+        const flow_step_t* s = &active_flow.steps[i];
         LOG_DEBUG("  [%u] time=%lu  func=%s  data=0x%02X\n", (unsigned)i,
                   (unsigned long)s->timestamp_us, s->func_name, (unsigned)s->data_val);
     }
