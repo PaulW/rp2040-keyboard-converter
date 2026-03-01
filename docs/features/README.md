@@ -219,7 +219,7 @@ If you want to dive deeper into how these features work or understand the implem
 - [Development Guide](../development/README.md) - Contributing and code standards
 
 **Source Code References:**
-- Command Mode: [`src/common/lib/command_mode.[ch]`](../../src/common/lib/command_mode.c)
-- HID Interface: [`src/common/lib/hid_interface.[ch]`](../../src/common/lib/hid_interface.c)
-- Config Storage: [`src/common/lib/config_storage.[ch]`](../../src/common/lib/config_storage.c)
-- Flow Tracker: [`src/common/lib/flow_tracker.[ch]`](../../src/common/lib/flow_tracker.c)
+- Command Mode: [`command_mode.c`](../../src/common/lib/command_mode.c)
+- HID Interface: [`hid_interface.c`](../../src/common/lib/hid_interface.c)
+- Config Storage: [`config_storage.c`](../../src/common/lib/config_storage.c)
+- Flow Tracker: [`flow_tracker.c`](../../src/common/lib/flow_tracker.c)
