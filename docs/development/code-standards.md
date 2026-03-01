@@ -38,7 +38,7 @@ The project defines formatting guidelines based on clang-format style (Google st
 { BasedOnStyle: Google, ReflowComments: true, UseTab: Never, AllowShortIfStatementsOnASingleLine: false, AllowShortFunctionsOnASingleLine: false, AlwaysBreakBeforeMultilineStrings: true, AllowAllParametersOfDeclarationOnNextLine: true, AlignConsecutiveAssignments: true, AlignConsecutiveBitFields: true, AlignConsecutiveDeclarations: true, AlignConsecutiveMacros: true, ColumnLimit: 100, IndentWidth: 4 }
 ```
 
-**Important:** There is no `.clang-format` file in the repository, and clang-format is not run during CI or build processes. The configuration above serves as a guideline for manual code review and editor formatting only.
+**Important:** A `.clang-format` file is present in the repository root, but clang-format is not run during CI or build processes. It serves as a guideline for editor formatting only.
 
 **Key formatting guidelines:**
 - **IndentWidth: 4** - Four spaces per indentation level
@@ -119,6 +119,15 @@ void __isr keyboard_irq_handler(void);
 void __isr keyboard_input_event_handler(void);
 ```
 
+**Hot-path inline functions:** Use `__force_inline` (not `inline`) for performance-critical functions that must be inlined, such as ring buffer operations. Combine with `static` for file-scoped functions:
+
+```c
+__force_inline static uint8_t ringbuf_get(void) { ... }
+__force_inline static void ringbuf_put(uint8_t data) { ... }
+```
+
+`static inline` permits the compiler to ignore the inline hint. `__force_inline` is a Pico SDK macro that maps to GCC's `always_inline` attribute, which strongly enforces inlining in the vast majority of cases — use it only on functions in genuinely hot paths (IRQ-called or per-scancode), not for convenience. It is not an absolute guarantee: indirect calls and certain compiler or configuration scenarios (such as inlining into a function that is itself never inlined) can still prevent it.
+
 **Static variables:** Prefix with `static` and use descriptive module-scoped names:
 
 ```c
@@ -149,7 +158,7 @@ Every source file should have a header comment with license information:
 /*
  * This file is part of RP2040 Keyboard Converter.
  *
- * Copyright 2023 Paul Bramhall (paulwamp@gmail.com)
+ * Copyright 2023-2026 Paul Bramhall (paulwamp@gmail.com)
  *
  * RP2040 Keyboard Converter is free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License
@@ -574,6 +583,21 @@ This catches configuration errors at compile time rather than runtime.
 Keep related functionality together. Each protocol should have its own directory under [`src/protocols/`](../../src/protocols/), each keyboard should have its own directory under [`src/keyboards/`](../../src/keyboards/). Don't scatter related code across multiple unrelated files—it makes things harder to find when you're debugging.
 
 Within a source file, organise functions in a logical order that reads well from top to bottom. Start with includes and defines, then type definitions, followed by static variables. If you need forward declarations, put them next. Then come private (static) functions, and finally public functions. This ordering means someone reading the file encounters definitions before they're used, which makes things easier to follow.
+
+### Static Scope
+
+All file-scope functions and variables that are not part of the public API must be declared `static`. This limits visibility to the translation unit and keeps the public API surface clean:
+
+```c
+// Good: internal helpers are static
+static bool is_extended_prefix(uint8_t scancode);
+static command_mode_context_t cmd_mode;  // Module-private state
+
+// Good: publicly declared functions match the header prototype (no static)
+bool scancode_processor_task(uint8_t scancode);
+```
+
+If a function is in a `.c` file and not declared in the corresponding `.h`, it must be `static`.
 
 ### Header Guards
 

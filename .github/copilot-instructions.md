@@ -28,11 +28,12 @@ Embedded firmware converting keyboard/mouse protocols to USB HID using RP2040's 
 
 1. Read relevant sections completely
 2. Check for Critical Rule violations
-3. Ask user for: blocking calls, ring buffer changes, PIO edits, IRQ handler changes
-4. Run `./tools/lint.sh` locally for code changes (only tool not in Docker)
-5. Verify facts, don't assume - never claim unverified performance metrics
-6. British English throughout project (code, comments, docs)
-7. Docs: conversational human-written style (see `docs/getting-started/`), no idioms/marketing/assumptions
+3. Check for Code Standards violations — refer to `docs/development/code-standards.md`
+4. Ask user for: blocking calls, ring buffer changes, PIO edits, IRQ handler changes
+5. Run `./tools/lint.sh` locally for code changes (only tool not in Docker)
+6. Verify facts, don't assume - never claim unverified performance metrics
+7. British English throughout project (code, comments, docs)
+8. Docs: conversational human-written style (see `docs/getting-started/`), no idioms/marketing/assumptions
 
 ### Pre-Commit Checklist:
 
@@ -44,6 +45,7 @@ Embedded firmware converting keyboard/mouse protocols to USB HID using RP2040's 
 - [ ] Time-based: Use `to_ms_since_boot(get_absolute_time())`, never sleep
 - [ ] Build test: `docker compose run --rm -e KEYBOARD="<config>" builder`
 - [ ] No docs-internal/ staged/referenced
+- [ ] Code Standards: verify against `docs/development/code-standards.md`
 
 ### Guard Analysis:
 
@@ -107,15 +109,6 @@ void task(void) { if (flag) { __dmb(); flag = 0; process(); } }
 
 ---
 
-## File Organization
-
-**Protocols:** `src/protocols/<name>/` → `.pio`, `keyboard_interface.[ch]`, `common_interface.c`, `README.md`
-**Keyboards:** `src/keyboards/<brand>/<model>/` → `keyboard.config`, `keyboard.h`, `keyboard.c`, `README.md`
-**Scancodes:** `src/scancodes/<set>/` → `scancode_processor.[ch]`, `README.md`
-**Common:** `src/common/lib/` → `ringbuf`, `hid_interface`, `command_mode`, `pio_helper`, `uart`
-
----
-
 ## Keyboard-Specific Traps
 
 **Command Mode Keys:** Override in `keyboard.h` before includes (defaults: L/R Shift):
@@ -165,16 +158,9 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
 
 ## Build & Enforcement
 
-**Docker Workflow:** ALL builds and compilation via Docker. Only `./tools/lint.sh` runs locally.
+**Docker Workflow:** ALL builds via Docker. `./tools/lint.sh` local pre-commit only. Git hooks block docs-internal commits. CI runs lint + build matrix.
 
-**Tools:** `./tools/lint.sh` (local pre-commit), Git hooks (docs-internal block), CI (lint + build matrix)
-
-**Documentation:**
-
-- **Public:** All in git (README, docs/, src/)
-- **Private:** docs-internal/ — use freely for development context, NEVER commit/reference publicly
-
-**Documentation Style (match existing docs in `docs/getting-started/`):**
+**Documentation style** (match `docs/getting-started/`):
 
 - **Conversational, human-written**: First-person narrative ("I've set this up...", "I know it might seem...", "Have a look at...")
 - **Explain WHY, not just WHAT**: Context before instructions ("Why Docker? It packages all the complex build tools...")
@@ -188,8 +174,8 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
 
 ## Code Standards
 
-- **C11 standard** - strict compliance required
-- **British English** - code, comments, docs use British spelling (colour, initialise, behaviour)
+- **C11 standard** — strict compliance required
+- **British English** — code, comments, docs use British spelling (colour, initialise, behaviour)
 - Indentation: 4 spaces, no tabs; line length target 100 chars
 - Naming: `snake_case` (vars/funcs), `UPPER_CASE` (macros/consts), `snake_case_t` (structs/enums)
 - IRQ handlers: must use `__isr` attribute — `void __isr keyboard_irq_handler(void)`
@@ -197,16 +183,25 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
 - Doxygen for all functions: include `@brief`, `@param`, `@return`, threading context (`@note IRQ-safe` / `@note Main loop only`), blocking behaviour
 - `.clang-format` present in repo root (Google style, 4-space indent, 100 col limit) — use for editor formatting; not run by CI
 - Follow PicoSDK/TinyUSB patterns
-- Run `./tools/lint.sh` locally before commits (everything else via Docker)
+
+`./tools/lint.sh` enforces 19 checks. Zero tolerance for errors or warnings.
+
+For thorough compliance reference — naming, formatting, Doxygen, IRQ safety, include ordering, file structure, LINT:ALLOW annotations — see `docs/development/code-standards.md`.
 
 **Repo Structure:**
 
 ```text
 src/
-  ├── common/      # Libraries, utilities
-  ├── keyboards/   # Configurations, layouts
-  ├── protocols/   # Protocol implementations
-  ├── scancodes/   # Scancode mappings
+  ├── board_config/    # Hardware board header (keyboard_converter_board.h)
+  ├── cmake_includes/  # CMake build fragments (common, keyboard, mouse, flags)
+  ├── common/
+  │   └── lib/         # Shared libraries: ringbuf, hid_interface, command_mode,
+  │                    #   keylayers, keymaps, config_storage, pio_helper, uart,
+  │                    #   led_helper, log, flow_tracker, ram_check, ws2812, types
+  ├── keyboards/       # Per-keyboard configs and keymaps (<brand>/<model>/)
+  ├── protocols/       # Protocol implementations (at-ps2, xt, amiga, apple-m0110)
+  ├── scancodes/       # Scancode sets (set1, set2, set3, set123, amiga, apple-m0110)
+  ├── config.h         # Top-level build configuration
   └── main.c
 ```
 
@@ -214,12 +209,15 @@ src/
 
 ## AI Guidelines
 
-**Validation sources:**
+**Validation sources (in priority order):**
 
-- Source code (ultimate truth)
-- Pico SDK docs (hardware)
-- docs-internal/ (decisions, context - use freely, never commit)
-- Protocol/keyboard READMEs (specs)
+1. Source code — ultimate truth for this project
+2. Pico SDK / TinyUSB / hardware datasheets — verifiable online docs
+3. Protocol/keyboard READMEs — specs and timings
+4. docs-internal/ — working notes, spike findings, and development context only; treat as potentially incomplete or out of date, not authoritative; never commit or reference publicly
+5. Training data — **last resort only**; if used, explicitly tell the user and ask them to confirm before acting
+
+**Never use training data as a primary source.** Always verify technical claims (hardware behaviour, timings, API signatures, protocol specs) against 100% verifiable online sources. If no verifiable source can be found, say so and ask the user before proceeding.
 
 **Behavioural rules:**
 
