@@ -28,7 +28,8 @@
  * Key Features:
  * - Runtime filtering: All log levels always available, filtered at runtime
  * - Command mode integration: Change log level via keyboard (Shift+Shift → 'D' → 1/2/3)
- * - Inline macros: No function call overhead when logging is enabled
+ * - Inline macros: No extra wrapper-call overhead (enabled paths still call
+ *   log_get_level() and printf())
  * - Single branch: Minimal CPU cycles for runtime level checks
  * - Early evaluation: Level check happens before printf formatting
  * - DMA-backed output: Uses existing high-performance UART DMA system
@@ -184,6 +185,8 @@ log_level_t log_get_level(void);
  * @note This is automatically called by init_uart_dma()
  * @note Idempotent: multiple calls are safe
  * @note Does not initialise UART hardware (uart.c handles that)
+ * @note Main loop only.
+ * @note Non-blocking: performs only log-level state initialisation (no waits/sleeps).
  */
 void log_init(void);
 

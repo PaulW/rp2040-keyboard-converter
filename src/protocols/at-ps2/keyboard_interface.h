@@ -43,7 +43,7 @@
  * - Clock frequency: 10-16.7 kHz
  * - Clock pulse width: minimum 30µs
  * - Data setup/hold: minimum 5µs before/after clock edge
- * - Inhibit time: 96µs CLOCK low to stop transmission
+ * - Inhibit time: 102µs CLOCK low to stop transmission (spec requires ≥100µs)
  *
  * Initialisation Sequence:
  * 1. Power-on self-test (keyboard sends 0xAA on success)

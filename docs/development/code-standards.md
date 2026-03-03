@@ -297,7 +297,7 @@ For protocol handlers, document critical timing characteristics:
  * - Clock frequency: 10-16.7 kHz (typical 10-15 kHz)
  * - Clock pulse width: minimum 30µs low, 30µs high
  * - Data setup time: minimum 5µs before clock falling edge
- * - Inhibit time: 96µs CLOCK low (exceeds max bit period)
+ * - Inhibit time: 102µs CLOCK low (spec requires ≥100µs; 17 PIO cycles × 6µs)
  */
 ```
 

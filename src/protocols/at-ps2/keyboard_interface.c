@@ -43,7 +43,8 @@
  * - Clock pulse width: minimum 30µs low, 30µs high
  * - Data setup time: minimum 5µs before clock falling edge
  * - Data hold time: minimum 5µs after clock falling edge
- * - Inhibit time: 96µs CLOCK low (exceeds max bit period, stops transmission)
+ * - Inhibit time: 102µs CLOCK low (spec requires ≥100µs; exceeds max bit period, stops
+ * transmission)
  *
  * State Machine:
  * 1. UNINITIALISED → Reset keyboard and wait for self-test

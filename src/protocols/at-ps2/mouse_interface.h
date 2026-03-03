@@ -46,7 +46,7 @@
  * Timing Requirements:
  * - Same as keyboard: 10-16.7 kHz clock, minimum 30µs pulse width
  * - Data setup/hold: minimum 5µs before/after clock edge
- * - Inhibit time: 96µs CLOCK low to stop transmission
+ * - Inhibit time: 102µs CLOCK low to stop transmission (spec requires ≥100µs)
  *
  * Initialisation Sequence:
  * 1. Power-on self-test (mouse sends 0xAA on success, 0x00 as device ID)
