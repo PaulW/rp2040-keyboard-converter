@@ -27,11 +27,35 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file ringbuf.h
+ * @brief Lock-free single-producer single-consumer (SPSC) ring buffer interface.
+ *
+ * A fixed-capacity 32-byte ring buffer adapted from the TMK keyboard firmware and Hasu's
+ * tinyusb_ps2 project. Used by all keyboard and mouse protocol implementations to pass
+ * raw scan bytes from PIO IRQ handlers to the main loop without locks.
+ *
+ * Design:
+ * - Head pointer advanced by the producer (IRQ context only)
+ * - Tail pointer advanced by the consumer (main loop only)
+ * - No synchronisation primitives required: each side owns one pointer exclusively
+ * - Capacity: 32 bytes (31 usable; one slot reserved to distinguish full from empty)
+ * - Overflow: additional bytes are silently discarded; check `ringbuf_is_full()` before put
+ *
+ * Usage:
+ * - Protocol IRQ handlers call `ringbuf_put()` to enqueue raw scan bytes
+ * - Protocol task functions call `ringbuf_is_empty()` then `ringbuf_get()` to drain them
+ *
+ * @note `ringbuf_put()` is IRQ-safe (producer side). `ringbuf_get()` is main loop only.
+ * @note Never call `ringbuf_reset()` with IRQs enabled.
+ */
+
 #ifndef RINGBUF_H
 #define RINGBUF_H
 
 #include <stdbool.h>
 #include <stdint.h>
+
 #include "hardware/sync.h"
 
 /**
@@ -168,6 +192,23 @@ __force_inline static void ringbuf_put(uint8_t data) {
     rbuf.head = (rbuf.head + 1) & rbuf.size_mask;
 }
 
+/**
+ * @brief Resets the ring buffer to empty state.
+ *
+ * Clears all buffered data by resetting head and tail pointers to zero.
+ * This operation is NOT thread-safe and must only be called when IRQs are
+ * disabled, as it modifies both head and tail pointers without synchronisation.
+ *
+ * Typical call sites:
+ * - During protocol initialisation (before IRQ is enabled)
+ * - During protocol error recovery (after temporarily disabling IRQ)
+ * - When the keyboard state machine enters reset/error state
+ *
+ * @note All buffered scancodes will be discarded.
+ * @note Does not modify the buffer contents, only the pointers.
+ * @note Main loop only. Must not be called with IRQs enabled.
+ * @note Non-blocking.
+ */
 void ringbuf_reset(void);
 
 #endif /* RINGBUF_H */

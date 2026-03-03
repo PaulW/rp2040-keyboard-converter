@@ -18,6 +18,18 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file scancode.h
+ * @brief Combined Scancode Sets 1, 2, and 3 unified processing interface.
+ *
+ * Provides a single `process_scancode()` entry point that dispatches to the
+ * per-set translator based on the active `scancode_set` runtime configuration.
+ * Used by AT/PS2 and XT keyboards that may report in multiple scancode sets.
+ *
+ * @see scancode_config.h for compile-time set selection.
+ * @see scancode_runtime.h for the runtime set-switching API.
+ */
+
 #ifndef SCANCODE_SET123_H
 #define SCANCODE_SET123_H
 
@@ -41,15 +53,11 @@
  * | State Complexity | Medium (5)      | High (9)        | Low (2)          |
  * | Common Usage     | XT, some AT     | PS/2 default    | Terminal KBs     |
  *
- * Historical Context:
- * - Set 1: Original IBM PC/XT scancode set (1981)
- * - Set 2: IBM AT scancode set, became PS/2 standard (1984)
- * - Set 3: IBM terminal keyboards, most logical design (1987)
  */
 typedef enum {
-    SCANCODE_SET1,  ///< XT/Set 1: Original IBM PC/XT scancode set (break = code | 0x80)
-    SCANCODE_SET2,  ///< AT/Set 2: PS/2 default scancode set (break = F0 + code)
-    SCANCODE_SET3   ///< Terminal/Set 3: Simplest scancode set (break = F0 + code, no E0/E1)
+    SCANCODE_SET1, /**< XT/Set 1: Original IBM PC/XT scancode set (break = code | 0x80) */
+    SCANCODE_SET2, /**< AT/Set 2: PS/2 default scancode set (break = F0 + code) */
+    SCANCODE_SET3  /**< Terminal/Set 3: Simplest scancode set (break = F0 + code, no E0/E1) */
 } scancode_set_t;
 
 /**
@@ -75,10 +83,10 @@ typedef enum {
  * ```
  */
 typedef struct {
-    scancode_set_t set;             ///< Which scancode set to use
-    const uint8_t* e0_translation;  ///< E0-prefix translation table (256 bytes, NULL if N/A)
-    bool           has_e0_prefix;   ///< True if this set uses E0 prefix
-    bool           has_e1_prefix;   ///< True if this set uses E1 prefix (Pause/Break)
+    scancode_set_t set;            /**< Which scancode set to use */
+    const uint8_t* e0_translation; /**< E0-prefix translation table (256 bytes, NULL if N/A) */
+    bool           has_e0_prefix;  /**< True if this set uses E0 prefix */
+    bool           has_e1_prefix;  /**< True if this set uses E1 prefix (Pause/Break) */
 } scancode_config_t;
 
 /**
@@ -90,14 +98,14 @@ typedef struct {
  *
  * Protocol Overview:
  *
- * **Set 1 (XT/AT):**
+ * Set 1 (XT/AT):
  * - Make: 0x01-0x53
  * - Break: Make + 0x80 (e.g., 0x81 = key 0x01 released)
  * - E0 prefix: Extended keys (arrows, navigation, Windows keys)
  * - E1 prefix: Pause/Break only
  * - Fake shifts: E0 2A, E0 AA, E0 36, E0 B6 (ignored)
  *
- * **Set 2 (PS/2 default):**
+ * Set 2 (PS/2 default):
  * - Make: 0x01-0x83
  * - Break: F0 + make (e.g., F0 1C = key 0x1C released)
  * - E0 prefix: Extended keys, multimedia keys
@@ -105,7 +113,7 @@ typedef struct {
  * - Fake shifts: E0 12, E0 59 (ignored)
  * - Special codes: 83 (F7), 84 (SysReq)
  *
- * **Set 3 (Terminal):**
+ * Set 3 (Terminal):
  * - Make: 0x01-0x84
  * - Break: F0 + make (e.g., F0 1C = key 0x1C released)
  * - No E0/E1 prefixes (simplest)
@@ -129,6 +137,7 @@ typedef struct {
  * @note State is reset to INIT after processing each complete sequence
  * @note Calls handle_keyboard_report(code, is_make) for each complete key event
  * @note Debug output via LOG_DEBUG() for unexpected states
+ * @note Main loop only.
  *
  * @see scancode_config_t for configuration details
  * @see handle_keyboard_report() for key event processing
@@ -145,12 +154,11 @@ void process_scancode(uint8_t code, const scancode_config_t* config);
  *
  * @note Not normally needed during regular operation
  * @note State is automatically reset after each complete sequence
+ * @note Main loop only.
  */
 void reset_scancode_state(void);
 
-// ============================================================================
-// Pre-configured Constants (for convenience)
-// ============================================================================
+// Pre-configured Constants
 
 /**
  * @brief Pre-configured Scancode Set Configurations
@@ -163,8 +171,8 @@ void reset_scancode_state(void);
  * process_scancode(scancode_byte, &SCANCODE_CONFIG_SET2);
  * ```
  */
-extern const scancode_config_t SCANCODE_CONFIG_SET1;  ///< XT/Set 1 configuration
-extern const scancode_config_t SCANCODE_CONFIG_SET2;  ///< AT/PS2 Set 2 configuration
-extern const scancode_config_t SCANCODE_CONFIG_SET3;  ///< Terminal Set 3 configuration
+extern const scancode_config_t SCANCODE_CONFIG_SET1; /**< XT/Set 1 configuration */
+extern const scancode_config_t SCANCODE_CONFIG_SET2; /**< AT/PS2 Set 2 configuration */
+extern const scancode_config_t SCANCODE_CONFIG_SET3; /**< Terminal Set 3 configuration */
 
-#endif  // SCANCODE_SET123_H
+#endif /* SCANCODE_SET123_H */

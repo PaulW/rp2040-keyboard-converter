@@ -88,14 +88,18 @@
  * - DATA and CLOCK must be adjacent GPIO pins (PIO requirement)
  * - No LED control from computer (except CAPS LOCK via key state)
  * - No typematic rate control or configuration
+ *
+ * @see keyboard_interface.h for the public API, constants, and inline utility functions.
  */
 
 #include "keyboard_interface.h"
 
+#include <stdint.h>
+
 #include "hardware/gpio.h"
 #include "keyboard_interface.pio.h"
 
-#include "bsp/board.h"
+#include "tusb.h"
 
 #include "config.h"
 #include "flow_tracker.h"
@@ -110,7 +114,7 @@
  */
 static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
 
-/* Pin Configuration */
+// Pin Configuration
 static uint keyboard_data_pin;  /**< GPIO pin for DATA (bidirectional) */
 static uint keyboard_clock_pin; /**< GPIO pin for CLOCK (input only) */
 
@@ -125,10 +129,13 @@ static uint keyboard_clock_pin; /**< GPIO pin for CLOCK (input only) */
  * special codes (0x78, 0xF9, 0xFA, 0xFC) through the event processor, not
  * through separate states.
  */
-static enum {
+typedef enum {
     UNINITIALISED, /**< Initial state, waiting for first byte from keyboard */
     INITIALISED    /**< Normal operation, processing key events and special codes */
-} keyboard_state = UNINITIALISED;
+} keyboard_state_t;
+static keyboard_state_t keyboard_state = UNINITIALISED;
+
+// --- Private Functions ---
 
 /**
  * @brief Amiga Keyboard Scan Code Processor
@@ -327,31 +334,8 @@ static void __isr keyboard_input_event_handler(void) {
     keyboard_event_processor(data_byte);
 }
 
-/**
- * @brief Setup Amiga keyboard interface
- *
- * Initialises PIO state machine, GPIO configuration, and interrupt handling
- * for Amiga keyboard protocol:
- *
- * PIO Configuration:
- * - Finds available PIO block (pio0 or pio1)
- * - Claims unused state machine
- * - Loads keyboard interface program into PIO instruction memory
- * - Configures clock divider for ~20µs timing detection
- *
- * GPIO Setup:
- * - DATA (data_pin): Bidirectional, open-collector with pull-up
- * - CLOCK (data_pin + 1): Input only, keyboard-driven, with pull-up
- * - Both pins initialised for PIO control
- *
- * Interrupt Configuration:
- * - Enables RX FIFO not empty interrupt
- * - Registers keyboard_input_event_handler as ISR
- * - IRQ priority set for timely handshake response
- *
- * @param data_pin GPIO pin for DATA (bidirectional data line)
- *                 CLOCK is automatically assigned to data_pin + 1
- */
+// --- Public Functions ---
+
 void keyboard_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
     // Initialise converter status LEDs to "not ready" state
@@ -402,59 +386,7 @@ void keyboard_interface_setup(uint data_pin) {
     LOG_INFO("Amiga keyboard interface initialised, waiting for first byte...\n");
 }
 
-/**
- * @brief Main task function for Amiga keyboard interface
- *
- * This function must be called periodically from the main loop to process
- * scan codes from the ring buffer and handle keyboard state management.
- *
- * Operation Modes:
- *
- * UNINITIALISED State:
- * - Waiting for first byte from keyboard (power-up sequence)
- * - Keyboard sends 0xFD (power-up start) after self-test
- * - Transition to INITIALISED happens in ISR on first byte
- *
- * INITIALISED State (Normal Operation):
- * - Process scan codes from ring buffer when HID interface ready
- * - Coordinates scan code translation for Amiga protocol
- * - Maintains optimal data flow between keyboard and USB HID
- * - Prevents HID report queue overflow through ready checking
- *
- * Data Processing:
- * - Non-blocking ring buffer processing for real-time performance
- * - HID-ready checking prevents USB report queue overflow
- * - Scan codes processed through dedicated Amiga processor
- * - Handles CAPS LOCK special behaviour (press only, LED state tracking)
- *
- * Protocol Features:
- * - No initialisation sequence needed (unlike AT/PS2)
- * - No LED control capability from computer (keyboard maintains state)
- * - Bidirectional handshake handled entirely in PIO hardware
- * - Special codes (0x78, 0xF9-0xFE) filtered by event processor
- *
- * Error Recovery:
- * - Lost sync recovery automatic (keyboard sends 0xF9, retransmits)
- * - Buffer overflow protection (ring buffer full checks)
- * - Keyboard self-test failures logged (0xFC)
- * - Reset warning detection (0x78)
- *
- * Performance:
- * - Called from main loop (not time-critical like ISR)
- * - Processing deferred until HID ready (prevents USB congestion)
- * - Efficient scan code processing without protocol overhead
- * - Direct translation to modern HID key codes via scancode processor
- *
- * Hardware Monitoring:
- * - Converter status LED updates when CONVERTER_LEDS enabled
- * - Keyboard ready state reflects INITIALISED status
- *
- * @note Must be called regularly from main loop for scan code processing
- * @note Ring buffer filled by ISR, consumed here (producer-consumer pattern)
- * @note HID ready check is critical to prevent USB report queue overflow
- * @note Handshake timing handled entirely in PIO (not here)
- */
-void keyboard_interface_task() {
+void keyboard_interface_task(void) {
     // INITIALISED state: Process scan codes from ring buffer
     if (keyboard_state == INITIALISED) {
         if (!ringbuf_is_empty() && tud_hid_ready()) {

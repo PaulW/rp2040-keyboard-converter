@@ -54,13 +54,21 @@
  * - Automatic retry with maximum attempt limits
  * - State machine reset on communication failure
  * - PIO FIFO overflow protection
+ *
+ * @see keyboard_interface.h for the public interface, commands, and timing constants.
  */
 
 #include "keyboard_interface.h"
 
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "pico/stdlib.h"
+
 #include "keyboard_interface.pio.h"
 
 #include "bsp/board.h"
+#include "tusb.h"
 
 #include "flow_tracker.h"
 #include "led_helper.h"
@@ -69,14 +77,14 @@
 #include "ringbuf.h"
 #include "scancode.h"
 
-/* Static assert threshold constants */
+// Static assert threshold constants
 #define M0110_INIT_DELAY_MIN_MS        500  /**< Minimum initialisation delay (ms) */
 #define M0110_MODEL_RETRY_MIN_MS       100  /**< Minimum model retry interval (ms) */
 #define M0110_RESPONSE_TIMEOUT_MIN_MS  100  /**< Minimum response timeout (ms) */
 #define M0110_MODEL_RETRY_MAX_MS       2000 /**< Maximum model retry interval (ms) */
 #define M0110_MODEL_RETRY_MAX_ATTEMPTS 5    /**< Maximum model request retry attempts */
 
-/* Compile-time validation of timing constants */
+// Compile-time validation of timing constants
 _Static_assert(M0110_INITIALISATION_DELAY_MS >= M0110_INIT_DELAY_MIN_MS,
                "M0110 initialisation delay must be at least 500ms for reliable keyboard startup");
 _Static_assert(M0110_MODEL_RETRY_INTERVAL_MS >= M0110_MODEL_RETRY_MIN_MS,
@@ -86,7 +94,7 @@ _Static_assert(M0110_RESPONSE_TIMEOUT_MS >= M0110_RESPONSE_TIMEOUT_MIN_MS,
 _Static_assert(M0110_MODEL_RETRY_INTERVAL_MS <= M0110_MODEL_RETRY_MAX_MS,
                "M0110 model retry interval should not exceed 2 seconds");
 
-/* PIO State Machine Configuration */
+// PIO State Machine Configuration
 static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
 
 /**
@@ -97,18 +105,22 @@ static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
  * - INIT_MODEL_REQUEST: Sending Model Number commands every 500ms, waiting for identification
  * - INITIALISED: Normal operation with key processing and 500ms response timeout monitoring
  */
-static enum {
+typedef enum {
     UNINITIALISED,      /**< System startup, waiting for initial delay */
     INIT_MODEL_REQUEST, /**< Sending model commands during initialisation */
     INITIALISED         /**< Initialisation complete, transitioning to operation */
-} keyboard_state = UNINITIALISED;
+} keyboard_state_t;
 
-/* Timing and State Tracking Variables */
+static keyboard_state_t keyboard_state = UNINITIALISED;
+
+// Timing and State Tracking Variables
 static volatile uint32_t last_command_time =
     0; /**< Timestamp of last command sent (for timeouts) */
 static uint8_t           model_retry_count = 0; /**< Number of model command retries attempted */
 static volatile uint32_t last_response_time =
     0; /**< Timestamp of last keyboard response received */
+
+// --- Private Functions ---
 
 /**
  * @brief Returns a human-readable description for an M0110 model response code
@@ -118,6 +130,7 @@ static volatile uint32_t last_response_time =
  *
  * @param model_byte Model identification byte from keyboard
  * @return Pointer to static string describing the keyboard model, or NULL if unrecognised
+ * @note IRQ-safe.
  */
 static const char* get_model_description(uint8_t model_byte) {
     switch (model_byte) {
@@ -156,7 +169,7 @@ static const char* get_model_description(uint8_t model_byte) {
  * @see M0110_CMD_INQUIRY, M0110_CMD_MODEL for common commands
  *
  * @note If the TX FIFO is full, the command is dropped and logged.
- * @note This is an internal function - not exposed in keyboard_interface.h
+ * @note IRQ-safe.
  */
 static void keyboard_command_handler(uint8_t command) {
     // Guard against setup failure - prevent NULL dereference if PIO allocation failed
@@ -197,6 +210,7 @@ static void keyboard_command_handler(uint8_t command) {
  * - Key data buffered for main task processing when USB HID interface ready
  *
  * @param data_byte 8-bit response received from keyboard (MSB-first)
+ * @note IRQ-safe.
  */
 static void keyboard_event_processor(uint8_t data_byte) {
     last_response_time = board_millis();  // Record response time for timeout management
@@ -270,8 +284,8 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * - Delegates to event processor for state-dependent handling
  * - Updates timing for timeout detection
  *
- * @note This function executes in interrupt context - keep processing minimal
- * @note PIO FIFO depth provides buffering for multiple rapid key events
+ * @note IRQ-safe.
+ * @note PIO FIFO depth provides buffering for multiple rapid key events.
  */
 static void __isr keyboard_input_event_handler(void) {
     // Guard against spurious dispatch from shared IRQ - only process if our FIFO has data
@@ -287,44 +301,8 @@ static void __isr keyboard_input_event_handler(void) {
     keyboard_event_processor(data_byte);
 }
 
-/**
- * @brief Main task function for Apple M0110 keyboard protocol management
- *
- * This function implements the main state machine for M0110 protocol operation.
- * It should be called regularly from the main application loop (typically every few ms).
- *
- * State Machine Operation:
- *
- * 1. UNINITIALISED (Startup Phase):
- *    - Waits for initial 1000ms delay to allow keyboard power-up
- *    - Uses command timing to track startup delay
- *    - Transitions to model identification phase when delay expires
- *
- * 2. INIT_MODEL_REQUEST (Keyboard Detection):
- *    - Sends Model Number commands (0x16) every 500ms using command timing
- *    - Retries up to 5 times if no response received
- *    - Model command causes keyboard to reset and identify itself
- *    - Transitions to INITIALISED phase on successful response (handled by IRQ)
- *
- * 3. INITIALISED (Normal Operation):
- *    - Monitors keyboard responses using response timing for 500ms timeout
- *    - Processes buffered key data when USB HID interface ready
- *    - Timeout detection triggers return to UNINITIALISED for recovery
- *    - Key data processing occurs via ring buffer from interrupt handler
- *
- * Timing and Performance:
- * - Optimised timing calculations with single elapsed time computation
- * - Timer wraparound protection prevents false timeouts on system rollover
- *
- * Error Recovery:
- * - Timeout detection triggers full protocol restart
- * - State machine reset returns to UNINITIALISED phase
- * - Maximum retry limits prevent infinite retry loops
- *
- * @note This function manages protocol timing and state transitions
- * @note Actual data reception occurs in interrupt context
- * @note Timer calculations are optimised to handle uint32_t wraparound scenarios
- */
+// --- Public Functions ---
+
 void keyboard_interface_task(void) {
     uint32_t current_time = board_millis();
     __dmb();  // Memory barrier - ensure we see latest volatile values from IRQ
@@ -401,43 +379,6 @@ void keyboard_interface_task(void) {
     }
 }
 
-/**
- * @brief Initialises the Apple M0110 keyboard interface hardware and software
- *
- * This function configures the RP2040 PIO system to handle the Apple M0110 protocol:
- *
- * Hardware Configuration:
- * - Allocates and configures PIO state machine for M0110 timing
- * - Sets up GPIO pins with appropriate pull-ups for open-drain signaling
- * - Configures interrupt handling for received data
- *
- * Protocol Setup:
- * - Calculates timing dividers for accurate bit-level timing
- * - Initialises PIO program for MSB-first transmission/reception
- * - Sets up FIFO buffers for asynchronous data handling
- *
- * Pin Assignment:
- * - data_pin: Connected to keyboard DATA line
- * - data_pin + 1: Connected to keyboard CLOCK line (keyboard controlled)
- *
- * Timing Calculation:
- * - Base timing uses 160µs as minimum reliable detection period
- * - PIO clock divider ensures proper sampling of keyboard signals
- * - Supports both keyboard TX (330µs cycles) and host TX (400µs cycles)
- *
- * Error Handling:
- * - Validates PIO resource availability
- * - Graceful degradation if hardware resources unavailable
- * - Comprehensive logging for troubleshooting
- *
- * @param data_pin GPIO pin number for DATA line (CLOCK will be data_pin + 1)
- *                 Must be even number to allow consecutive pin allocation
- *                 Recommended: Use pins with good signal integrity (avoid LED pins)
- *
- * @note Call this function once during system initialisation
- * @note Requires keyboard_interface_task() to be called regularly for operation
- * @see keyboard_interface_task() for ongoing protocol management
- */
 void keyboard_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
     // Initialise LED status indicators (if supported by hardware)

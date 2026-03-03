@@ -18,11 +18,6 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SCANCODE_CONFIG_H
-#define SCANCODE_CONFIG_H
-
-#include "scancode.h"
-
 /**
  * @file scancode_config.h
  * @brief Compile-Time Configuration for XT Protocol
@@ -36,11 +31,10 @@
  * ```c
  * #include "scancode_config.h"
  *
- * void keyboard_interface_task(void) {
- *     uint8_t code;
- *     if (get_scancode_from_buffer(&code)) {
- *         process_scancode_ct(code);  // Compile-time Set 1
- *     }
+ * // In main task:
+ * if (!ringbuf_is_empty() && tud_hid_ready()) {
+ *     uint8_t code = ringbuf_get();
+ *     process_scancode_ct(code);  // Compile-time Set 1
  * }
  * ```
  *
@@ -48,6 +42,11 @@
  * @see scancode.h for the unified processor API
  * @see scancode_runtime.h for AT/PS2 runtime detection
  */
+
+#ifndef SCANCODE_CONFIG_H
+#define SCANCODE_CONFIG_H
+
+#include "scancode.h"
 
 /**
  * @brief Compile-Time Wrapper for XT Protocol (Set 1)
@@ -59,4 +58,4 @@
  */
 #define process_scancode_ct(code) process_scancode((code), &SCANCODE_CONFIG_SET1)
 
-#endif  // SCANCODE_CONFIG_H
+#endif /* SCANCODE_CONFIG_H */

@@ -18,57 +18,63 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file keyboard.c
+ * @brief IBM Model M Enhanced keyboard keymap layer data.
+ *
+ * @see keyboard.h for the KEYMAP macro and keymap layout definition.
+ */
+
 #include "keyboard.h"
+
+#include <stdint.h>
 
 #include "keymaps.h"
 
 // clang-format off
 
-/* IBM Model M Enhanced Keyboard
- * ,---.   ,---------------. ,---------------. ,---------------. ,-----------.
- * |Esc|   |F1 |F2 |F3 |F4 | |F5 |F6 |F7 |F8 | |F9 |F10|F11|F12| |PrS|ScL|Pau|
- * `---'   `---------------' `---------------' `---------------' `-----------'
- * ,-----------------------------------------------------------. ,-----------. ,---------------.
- * |  `|  1|  2|  3|  4|  5|  6|  7|  8|  9|  0|  -|  =|     BS| |Ins|Hom|PgU| |NmL|  /|  *|  -|
- * |-----------------------------------------------------------| |-----------| |---------------|
- * |Tab  |  Q|  W|  E|  R|  T|  Y|  U|  I|  O|  P|  [|  ]|    \| |Del|End|PgD| |  7|  8|  9|  +|
- * |-----------------------------------------------------------| `-----------' |-----------|   |
- * |CapsL |  A|  S|  D|  F|  G|  H|  J|  K|  L|  ;|  '|  ±| Ret|               |  4|  5|  6|   |
- * |-----------------------------------------------------------|     ,---.     |---------------|
- * |Shft|  <|  Z|  X|  C|  V|  B|  N|  M|  ,|  ,|  /|     Shift|     |Up |     |  1|  2|  3|   |
- * |-----------------------------------------------------------| ,-----------. |-----------|Ent|
- * |Ctrl|    |Alt |          Space              |Alt |    |Ctrl| |Lef|Dow|Rig| |      0|  .|   |
- * `----'    `---------------------------------------'    `----' `-----------' `---------------'
- *
- * ±: ISO Hash Key uses same code as ANSI Backslash
- */
+// IBM Model M Enhanced Keyboard
+// ,---.   ,---------------. ,---------------. ,---------------. ,-----------.
+// |Esc|   |F1 |F2 |F3 |F4 | |F5 |F6 |F7 |F8 | |F9 |F10|F11|F12| |PrS|ScL|Pau|
+// `---'   `---------------' `---------------' `---------------' `-----------'
+// ,-----------------------------------------------------------. ,-----------. ,---------------.
+// |  `|  1|  2|  3|  4|  5|  6|  7|  8|  9|  0|  -|  =|     BS| |Ins|Hom|PgU| |NmL|  /|  *|  -|
+// |-----------------------------------------------------------| |-----------| |---------------|
+// |Tab  |  Q|  W|  E|  R|  T|  Y|  U|  I|  O|  P|  [|  ]|    \| |Del|End|PgD| |  7|  8|  9|  +|
+// |-----------------------------------------------------------| `-----------' |-----------|   |
+// |CapsL |  A|  S|  D|  F|  G|  H|  J|  K|  L|  ;|  '|  ±| Ret|               |  4|  5|  6|   |
+// |-----------------------------------------------------------|     ,---.     |---------------|
+// |Shft|  <|  Z|  X|  C|  V|  B|  N|  M|  ,|  ,|  /|     Shift|     |Up |     |  1|  2|  3|   |
+// |-----------------------------------------------------------| ,-----------. |-----------|Ent|
+// |Ctrl|    |Alt |          Space              |Alt |    |Ctrl| |Lef|Dow|Rig| |      0|  .|   |
+// `----'    `---------------------------------------'    `----' `-----------' `---------------'
+//
+// ±: ISO Hash Key uses same code as ANSI Backslash
 
 // clang-format on
 
-/* Define Keyboard Layers */
+// Define Keyboard Layers
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
-    KEYMAP(      /* Layer 0: Base Layer
-                  */
-           // clang-format off
+    KEYMAP(   // Layer 0: Base Layer
+             // clang-format off
     ESC,          F1,    F2,    F3,    F4,       F5,    F6,    F7,    F8,        F9,    F10,   F11,   F12,      PSCR,  SLCK,  PAUS, \
     GRV,   1,     2,     3,     4,     5,     6,     7,     8,     9,     0,     MINS,  EQL,          BSPC,     INS,   HOME,  PGUP,     NLCK,  PSLS,  PAST,  PMNS, \
     TAB,          Q,     W,     E,     R,     T,     Y,     U,     I,     O,     P,     LBRC,  RBRC,  BSLS,     DEL,   END,   PGDN,     P7,    P8,    P9,    PPLS, \
     CAPS,         A,     S,     D,     F,     G,     H,     J,     K,     L,     SCLN,  QUOT,         ENT,                              P4,    P5,    P6,          \
     LSFT,  NUBS,  Z,     X,     C,     V,     B,     N,     M,     COMM,  DOT,   SLSH,                RSFT,            UP,              P1,    P2,    P3,    PENT, \
     LCTL,         LALT,                     SPC,                                 MO_1,                LGUI,     LEFT,  DOWN,  RIGHT,           P0,    PDOT  // clang-format on
-           ),
-    KEYMAP(      /* Layer 1: Function Layer (activated by MO_1)
-                  * Provides media controls and application key access
-                  */
-           // clang-format off
+        ),
+    KEYMAP(  // Layer 1: Function Layer (activated by MO_1)
+             // Provides media controls and application key access
+        // clang-format off
     TRNS,         VOLD,  VOLU,  BRTD,  BRTI,     TRNS,  TRNS,  TRNS,  TRNS,      TRNS,  TRNS,  TRNS,  TRNS,     TRNS,  TRNS,  TRNS, \
     NUBS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,     TRNS,  TRNS,  TRNS,     TRNS,  TRNS,  TRNS,  TRNS, \
     TRNS,         TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,     TRNS,  TRNS,  TRNS,     TRNS,  TRNS,  TRNS,  TRNS, \
     APP,          TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,                             TRNS,  TRNS,  TRNS,        \
     TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,                TRNS,            TRNS,            TRNS,  TRNS,  TRNS,  TRNS, \
     TRNS,         TRNS,                     TRNS,                                TRNS,                TRNS,     TRNS,  TRNS,  TRNS,            TRNS,  TRNS  // clang-format on
-           ),
+        ),
 };
 
-/* Layer count - automatically calculated from keymap_map array size */
+// Layer count - automatically calculated from keymap_map array size
 const uint8_t keymap_layer_count = (uint8_t)(sizeof(keymap_map) / sizeof(keymap_map[0]));

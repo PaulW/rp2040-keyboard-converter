@@ -18,6 +18,35 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file led_helper.h
+ * @brief Converter status LED management and USB HID lock indicator synchronisation.
+ *
+ * Manages two independent LED concerns: the converter's own status indicators and the
+ * host-controlled lock indicator LEDs (Num Lock, Caps Lock, Scroll Lock).
+ *
+ * Converter Status LED:
+ * When CONVERTER_LEDS is defined, a WS2812 RGB LED reflects the converter's operational
+ * state via the `converter_state_union` bitfield:
+ * - kb_ready:    keyboard protocol initialised and communicating
+ * - mouse_ready: mouse protocol initialised and communicating
+ * - fw_flash:    bootloader mode pending (magenta)
+ * - cmd_mode:    command mode active (green/blue alternating, or green/pink for log selection)
+ * Without CONVERTER_LEDS, all LED update calls compile away to nothing.
+ *
+ * Lock Indicator LEDs:
+ * The `lock_leds` union (lock_keys_union) is updated by the TinyUSB HID
+ * `tud_hid_set_report_cb()` callback when the host changes lock key state.
+ * Protocol implementations read `lock_leds.value` to forward the state to the
+ * original keyboard's indicator LEDs.
+ *
+ * Update Cycle:
+ * `update_converter_status()` is called by protocol implementations whenever the keyboard or
+ * mouse ready state changes. It compares the current `converter.value` against a cached copy
+ * and calls `update_converter_leds()` only when state has changed or when a previous WS2812
+ * transmission was deferred (FIFO full). This is event-driven, not per-iteration polling.
+ */
+
 #ifndef LED_HELPER_H
 #define LED_HELPER_H
 
@@ -87,7 +116,15 @@ extern bool cmd_mode_led_green;
 extern bool log_level_selection_mode;
 #endif
 
-// Forward declaration for inline function below
+/**
+ * @brief Updates converter status LEDs if state has changed or a deferred update is pending.
+ *
+ * Caches the previous converter state and calls update_converter_leds() only when the state
+ * has changed or a previous WS2812 transmission was deferred. Prevents unnecessary PIO bus
+ * traffic whilst ensuring all state transitions are eventually reflected in the LEDs.
+ *
+ * @note Main loop only.
+ */
 void update_converter_status(void);
 
 /**
@@ -114,9 +151,9 @@ void update_converter_status(void);
  *
  * @param ready true if keyboard is initialised and ready, false otherwise
  *
- * @note Inline function provides zero-overhead abstraction
- * @note Compiled to nothing when CONVERTER_LEDS is not defined
- * @note ISR-safe: update_converter_status() only sets flags, no blocking I/O
+ * @note Inline function provides zero-overhead abstraction.
+ * @note Compiled to nothing when CONVERTER_LEDS is not defined.
+ * @note Main loop only.
  */
 static inline void update_keyboard_ready_led(bool ready) {
 #ifdef CONVERTER_LEDS
@@ -179,13 +216,48 @@ extern volatile lock_keys_union lock_leds;
  * @param value Brightness level (0-255)
  * @return 24-bit RGB colour value
  *
- * @note Uses integer math for efficiency (no floating point)
- * @note Thread-safe: pure function with no state
+ * @note Uses integer math for efficiency (no floating point).
+ * @note Pure function — thread-safe.
+ * @note clang-tidy bugprone-easily-swappable-parameters suppressed: @p hue (0–359°)
+ *       and @p saturation (0–255) occupy distinct domains; swapping would produce
+ *       clearly wrong behaviour.
  */
 uint32_t hsv_to_rgb(uint16_t hue, uint8_t saturation, uint8_t value);
 #endif
 
+/**
+ * @brief Updates keyboard lock indicator state from a USB HID lock report byte.
+ *
+ * Updates the lock_leds union (Num Lock, Caps Lock, Scroll Lock) from the given HID
+ * report byte and attempts an immediate LED update. If the update cannot complete due
+ * to timing constraints, sets an internal pending flag so update_converter_status()
+ * retries on the next main-loop iteration.
+ *
+ * @param lock_val HID lock byte (bit 0: Num Lock, bit 1: Caps Lock, bit 2: Scroll Lock).
+ *
+ * @note Non-blocking.
+ * @note Called from USB interrupt context.
+ */
 void set_lock_values_from_hid(uint8_t lock_val);
+
+/**
+ * @brief Updates the converter status LEDs to reflect the current converter state.
+ *
+ * Updates WS2812 RGB LEDs to reflect the converter's operational state. The status
+ * LED shows different colours for different states:
+ * - Firmware flash mode: Magenta (bootloader active)
+ * - Command mode: Green/Blue alternating (Green/Pink for log level selection)
+ * - Ready (keyboard and mouse): Green
+ * - Not ready: Orange
+ *
+ * Non-blocking: enforces a ≥60µs minimum interval between WS2812 transmissions.
+ * Returns false and sets an internal pending flag if the interval has not elapsed;
+ * the caller should retry on the next cycle.
+ *
+ * @return true if all LEDs were updated successfully, false if update was deferred.
+ *
+ * @note Non-blocking. Called from main loop and USB interrupt context.
+ */
 bool update_converter_leds(void);
 
 #endif /* LED_HELPER_H */

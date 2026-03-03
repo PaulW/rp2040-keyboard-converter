@@ -18,12 +18,40 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file main.c
+ * @brief Firmware entry point, subsystem initialisation, and cooperative main loop.
+ *
+ * Initialises all subsystems in order then runs a cooperative task loop. No RTOS is
+ * used; tasks are short non-blocking functions called in sequence. All timing-critical
+ * work happens in PIO IRQ handlers which write to ring buffers; the main loop drains
+ * those buffers and dispatches through the HID pipeline.
+ *
+ * Initialisation Sequence:
+ *  1. hid_device_setup()         — TinyUSB stack and USB device controller
+ *  2. init_uart_dma()            — DMA-backed UART logging
+ *  3. flow_tracker_init()        — pipeline latency instrumentation (no-op if disabled)
+ *  4. command_mode_init()        — command mode state machine
+ *  5. config_init()              — load persistent settings from flash
+ *  6. log_set_level()            — apply saved log verbosity
+ *  7. keylayers_init()           — layer system and restore saved layer state
+ *  8. ws2812_setup()             — WS2812 LED PIO (if CONVERTER_LEDS defined)
+ *  9. keyboard_interface_setup() — keyboard protocol PIO and IRQ (if KEYBOARD_ENABLED)
+ * 10. mouse_interface_setup()    — mouse protocol PIO and IRQ (if MOUSE_ENABLED)
+ *
+ * Main Loop Tasks (cooperative, non-preemptive):
+ * - keyboard_interface_task() — drains keyboard ring buffer, calls process_scancode()
+ * - mouse_interface_task()    — drains mouse ring buffer, generates mouse HID reports
+ * - command_mode_task()       — manages command mode timeout and LED state updates
+ * - tud_task()                — TinyUSB device task (USB event processing)
+ *
+ */
+
 #if !PICO_NO_FLASH && !PICO_COPY_TO_RAM
 #error "This must be built to run from SRAM!"
 #endif
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <stdint.h>
 
 #include "pico/unique_id.h"
 
@@ -52,6 +80,18 @@
 #include "ws2812/ws2812.h"
 #endif
 
+// --- Public Functions ---
+
+/**
+ * @brief Firmware entry point.
+ *
+ * Initialises all subsystems in order then runs the cooperative main loop.
+ * See the \@file documentation for the complete initialisation sequence and
+ * main loop task descriptions.
+ *
+ * @return int Never returns in normal operation; returns 0 if the main loop exits.
+ * @note Main loop only.
+ */
 int main(void) {
     hid_device_setup();
     init_uart_dma();

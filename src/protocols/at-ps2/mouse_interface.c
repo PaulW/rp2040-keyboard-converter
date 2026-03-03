@@ -18,10 +18,24 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file mouse_interface.c
+ * @brief AT/PS2 mouse interface implementation.
+ *
+ * Handles PS/2 mouse initialisation, IRQ-driven packet reception via ring buffer,
+ * and USB HID mouse report generation.
+ *
+ * @see mouse_interface.h for the public API documentation.
+ *
+ * @note IRQ handler writes ring buffer; main loop task reads and processes packets.
+ */
+
 #include "mouse_interface.h"
 
 #include <stdbool.h>
 #include <stdint.h>
+
+#include "pico/stdlib.h"
 
 #include "bsp/board.h"
 
@@ -38,18 +52,18 @@ static uint    mouse_data_pin;
 static int8_t  data_loop             = 0;  // Packet alignment counter (reset on re-init)
 static uint8_t mouse_config_sequence = 0;  // Configuration sequence counter (reset on re-init)
 
-/* Mouse packet state (cleared on re-initialisation) */
+// Mouse packet state (cleared on re-initialisation)
 static uint8_t buttons[5]    = {0, 0, 0, 0, 0};
 static uint8_t parameters[4] = {0, 0, 0, 0};
 static int8_t  pos[3]        = {0, 0, 0};
 
-/* Mouse detection timing constants */
-enum {
-    ATPS2_MOUSE_DETECT_INTERVAL_MS = 200, /**< Detection status check interval (ms) */
-    ATPS2_MOUSE_STALL_LIMIT        = 5,   /**< Max stall count before reset (5 × 200ms = 1s) */
-};
+// --- Private Functions ---
 
-static enum {
+// Mouse detection timing constants
+#define ATPS2_MOUSE_DETECT_INTERVAL_MS 200U /**< Detection status check interval (ms) */
+#define ATPS2_MOUSE_STALL_LIMIT        5U   /**< Max stall count before reset (5 × 200ms = 1s) */
+
+typedef enum {
     UNINITIALISED,
     INIT_AWAIT_ACK,
     INIT_AWAIT_SELFTEST,
@@ -57,7 +71,8 @@ static enum {
     INIT_DETECT_MOUSE_TYPE,
     INIT_SET_CONFIG,
     INITIALISED,
-} mouse_state = UNINITIALISED;
+} mouse_state_t;
+static volatile mouse_state_t mouse_state = UNINITIALISED;
 
 typedef enum {
     BUTTON_LEFT,
@@ -65,16 +80,16 @@ typedef enum {
     BUTTON_MIDDLE,
     BUTTON_BACKWARD,
     BUTTON_FORWARD
-} button_index;
+} button_index_t;
 
 typedef enum {
     X_SIGN,
     Y_SIGN,
     X_OVERFLOW,
     Y_OVERFLOW,
-} parameter_index;
+} parameter_index_t;
 
-typedef enum { X_POS, Y_POS, Z_POS } mousepos_index;
+typedef enum { X_POS, Y_POS, Z_POS } mousepos_index_t;
 
 /**
  * @brief Command Handler function to issue commands to the attached AT/PS2 Mouse.
@@ -84,6 +99,7 @@ typedef enum { X_POS, Y_POS, Z_POS } mousepos_index;
  * is then sent to the peripheral using the PIO state machine.
  *
  * @param data_byte The command byte to be sent to the AT/PS2 Mouse.
+ * @note IRQ-safe.
  */
 static void mouse_command_handler(uint8_t data_byte) {
     atps2_send_command(&pio_engine, data_byte);
@@ -99,6 +115,7 @@ static void mouse_command_handler(uint8_t data_byte) {
  * @param sign_bit The sign bit (9th bit for signed interpretation).
  *
  * @return The calculated XY movement as an int8_t value.
+ * @note IRQ-safe.
  */
 static int8_t get_xy_movement(uint8_t pos, bool sign_bit) {
     int16_t new_pos = (int16_t)pos;
@@ -122,10 +139,10 @@ static int8_t get_xy_movement(uint8_t pos, bool sign_bit) {
  * @param pos The position byte from which to extract the Z-axis movement.
  *
  * @return The Z-axis movement as a signed 8-bit integer.
+ * @note IRQ-safe.
  */
-
-/** Nibble mask for extracting the Z-axis value from the lower 4 bits of an extended mouse packet
- * byte. */
+// Nibble mask for extracting the Z-axis value from the lower 4 bits of an extended mouse packet
+// byte.
 #define ATPS2_MOUSE_Z_NIBBLE_MASK 0x0FU
 
 static int8_t get_z_movement(uint8_t pos) {
@@ -137,7 +154,7 @@ static int8_t get_z_movement(uint8_t pos) {
     return z_pos;
 }
 
-/* Packet processing state — promoted to file scope to support handler extraction */
+// Packet processing state — promoted to file scope to support handler extraction
 static uint8_t mouse_type_detect_sequence =
     0;                                /**< Type-detection sequence counter (cleared on re-init) */
 static uint8_t mouse_max_packets = 0; /**< Packet count for current mouse type */
@@ -441,8 +458,9 @@ static void handle_mouse_initialised(uint8_t data_byte) {
  *
  * @note Unlike the keyboard interface, the mouse interface does not utilise a ring buffer, and
  * instead sends data directly to the HID interface.
+ * @note IRQ-safe.
  */
-void mouse_event_processor(uint8_t data_byte) {
+static void mouse_event_processor(uint8_t data_byte) {
     switch (mouse_state) {
         case UNINITIALISED:
             handle_mouse_uninitialised(data_byte);
@@ -482,6 +500,7 @@ void mouse_event_processor(uint8_t data_byte) {
  * taken.
  * - If all the validation checks pass, the data byte is processed by the mouse_event_processor()
  * function.
+ * @note IRQ-safe.
  */
 static void __isr mouse_input_event_handler(void) {
     if (pio_sm_is_rx_fifo_empty(pio_engine.pio, pio_engine.sm)) {
@@ -527,14 +546,9 @@ static void __isr mouse_input_event_handler(void) {
     mouse_event_processor(frame.data);
 }
 
-/**
- * @brief Task function for the mouse interface.
- * This function simply assists with the initialisation of the mouse interface and handles timeout
- * events.
- *
- * @note This function should be called periodically in the main loop, or within a task scheduler.
- */
-void mouse_interface_task() {
+// --- Public Functions ---
+
+void mouse_interface_task(void) {
     // Guard against uninitialised PIO engine
     if (pio_engine.pio == NULL) {
         return;
@@ -576,21 +590,6 @@ void mouse_interface_task() {
     }
 }
 
-/**
- * @brief Initialises the AT/PS2 PIO interface for the mouse.
- * This function initialises the AT/PS2 PIO interface for the mouse by performing the following
- * steps:
- * 1. Resets the converter status if CONVERTER_LEDS is defined.
- * 2. Finds an available PIO to use for the keyboard interface program.
- * 3. Claims the PIO and loads the program.
- * 4. Sets up the IRQ for the PIO state machine.
- * 5. Defines the polling interval and cycles per clock for the state machine.
- * 6. Gets the base clock speed of the RP2040.
- * 7. Initialises the PIO interface program.
- * 8. Sets the IRQ handler and enables the IRQ.
- *
- * @param data_pin The data pin to be used for the mouse interface.
- */
 void mouse_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
     converter.state.mouse_ready = 0;

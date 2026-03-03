@@ -18,13 +18,46 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file hid_interface.h
+ * @brief USB HID report generation interface for keyboard, consumer control, and mouse output.
+ *
+ * This module bridges the keyboard and mouse protocol implementations with the TinyUSB HID
+ * device stack. It maintains report state for three independent HID endpoints and handles
+ * report submission to the USB host.
+ *
+ * HID Endpoints:
+ * - Keyboard: standard 6-key rollover report (8-bit modifier + 6-byte keycode array)
+ * - Consumer Control: multimedia/media key report (single 16-bit HID usage code)
+ * - Mouse: 5-button + XY movement + scroll wheel (signed 8-bit deltas, relative)
+ *
+ * Report Deduplication:
+ * Reports are only transmitted when state actually changes. This prevents USB bus
+ * saturation from typematic repeat bytes sent by some keyboards — the host handles
+ * key-repeat, not the firmware. A `report_modified` flag guards each send path.
+ *
+ * TinyUSB Integration:
+ * `tud_task()` must be called regularly from the main loop to service USB device events.
+ * All send functions in this module require `tud_hid_ready()` to return true before
+ * attempting transmission. Failed sends are logged but do not stall the main loop.
+ *
+ * Data Flow:
+ *   PIO → IRQ → ring buffer → protocol task → process_scancode() →
+ *   keymap_get_key_val() → handle_keyboard_report() → hid_send_report() → tud_hid_n_report()
+ *
+ * @note All public functions are main loop only. Check `tud_hid_ready()` before
+ *       calling any send function.
+ */
+
 #ifndef HID_INTERFACE_H
 #define HID_INTERFACE_H
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "config.h"
+
 #include "pico/stdlib.h"
+
+#include "config.h"
 
 /**
  * @brief Handles input reports for keyboard and consumer control devices
@@ -73,7 +106,7 @@
  *                Example: 0x48 for Pause key across all protocols
  * @param make    true for key press, false for key release
  *
- * @note Called from main task context via process_scancode()
+ * @note Main loop only.
  * @note Thread-safe: no interrupt access to keyboard_report or mouse_report
  */
 void handle_keyboard_report(uint8_t rawcode, bool make);
@@ -113,7 +146,7 @@ void handle_keyboard_report(uint8_t rawcode, bool make);
  *
  * @note Called from mouse protocol handlers (AT/PS2 mouse interface)
  * @note Uses separate USB endpoint from keyboard (ITF_NUM_MOUSE or ITF_NUM_KEYBOARD)
- * @note All calls from main task context (thread-safe)
+ * @note Main loop only.
  */
 void handle_mouse_report(const uint8_t buttons[5], const int8_t pos[3]);
 
@@ -139,6 +172,7 @@ void handle_mouse_report(const uint8_t buttons[5], const int8_t pos[3]);
  * - Boot protocol support for BIOS compatibility
  * - Endpoints: 0x81 (keyboard), 0x82 (consumer), 0x83 (mouse)
  *
+ * @note Main loop only.
  * @note Called once from main() before entering main loop
  * @note Must be called before any tud_*() TinyUSB functions
  * @note Enables USB device enumeration with host
@@ -158,6 +192,7 @@ void hid_device_setup(void);
  * - reserved: 0x00
  * - keycode[0-5]: all 0x00 (no keys pressed)
  *
+ * @note Main loop only.
  * @note Called from command mode on COMMAND_ACTIVE entry and on any exit path
  * @note Only resets internal keyboard_report state on successful transmission.
  *       If the send fails, keyboard_report is left unchanged so host and firmware
@@ -190,7 +225,7 @@ void send_empty_keyboard_report(void);
  * @return false if neither shift key is pressed
  *
  * @note Called from keymap_get_key_val() during shift-override processing
- * @note Thread-safe: only called from main task context
+ * @note Main loop only.
  */
 bool hid_is_shift_pressed(void);
 

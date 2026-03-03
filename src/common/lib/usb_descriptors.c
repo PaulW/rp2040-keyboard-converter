@@ -23,6 +23,16 @@
  *
  */
 
+/**
+ * @file usb_descriptors.c
+ * @brief TinyUSB callback implementations for USB descriptor provisioning.
+ *
+ * Implements the `tud_descriptor_*_cb()` callbacks required by TinyUSB to
+ * supply device, configuration, HID report, and string descriptors to the USB host.
+ *
+ * @note Device descriptor and product ID are derived from build-time configuration.
+ */
+
 #include "usb_descriptors.h"
 
 #include "pico/unique_id.h"
@@ -31,13 +41,12 @@
 
 #include "config.h"
 
-/* A combination of interfaces must have a unique product id, since PC will save device driver after
- * the first plug. Same VID/PID with different interface e.g MSC (first), then CDC (later) will
- * possibly cause system error on PC.
- *
- * Auto ProductID layout's Bitmap:
- *   [MSB]         HID | MSC | CDC          [LSB]
- */
+// A combination of interfaces must have a unique product id, since PC will save device driver after
+// the first plug. Same VID/PID with different interface e.g MSC (first), then CDC (later) will
+// possibly cause system error on PC.
+//
+// Auto ProductID layout's Bitmap:
+//   [MSB]         HID | MSC | CDC          [LSB]
 #define _PID_MAP(itf, n) ((CFG_TUD_##itf) << (n))
 #define USB_PID                                                                            \
     (0x4000 | _PID_MAP(CDC, 0) | _PID_MAP(MSC, 1) | _PID_MAP(HID, 2) | _PID_MAP(MIDI, 3) | \
@@ -67,13 +76,15 @@ tusb_desc_device_t const desc_device = {.bLength         = sizeof(tusb_desc_devi
 
                                         .bNumConfigurations = 0x01};
 
+// --- Public Functions ---
+
 /**
  * @brief Invoked when received GET DEVICE DESCRIPTOR.
  * This function returns a pointer to the device descriptor.
  *
  * @return Pointer to the device descriptor.
  *
- * @note Main loop only — invoked from tud_task(), not from ISR context.
+ * @note Main loop only.
  */
 uint8_t const* tud_descriptor_device_cb(void) {
     return (uint8_t const*)&desc_device;
@@ -100,7 +111,7 @@ uint8_t const desc_hid_report_mouse[] = {TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID
  *
  * @return Pointer to the HID report descriptor.
  *
- * @note Main loop only — invoked from tud_task(), not from ISR context.
+ * @note Main loop only.
  */
 uint8_t const* tud_hid_descriptor_report_cb(uint8_t instance) {
     switch (instance) {
@@ -158,7 +169,7 @@ uint8_t const desc_configuration[] = {
  *
  * @return Pointer to the configuration descriptor.
  *
- * @note Main loop only — invoked from tud_task(), not from ISR context.
+ * @note Main loop only.
  */
 uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
     (void)index;  // for multiple configurations
@@ -201,6 +212,8 @@ static uint16_t desc_str_buf[DESC_STR_BUF_WORDS];
  *
  * clang-tidy: index (uint8_t, 0-based string index) and langid (uint16_t, 16-bit language ID) are
  * distinct types with distinct value domains; swapping would produce clearly wrong behaviour
+ *
+ * @note Main loop only.
  */
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {

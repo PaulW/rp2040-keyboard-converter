@@ -31,16 +31,18 @@
 
 #if FLOW_TRACKING_ENABLED
 
+#include <stdbool.h>
+#include <stdint.h>
+
 #include "hardware/sync.h"
 #include "hardware/timer.h"
+
 #include "log.h"
 
-_Static_assert((FLOW_TOKEN_QUEUE_SIZE & (FLOW_TOKEN_QUEUE_SIZE - 1U)) == 0U,
-               "FLOW_TOKEN_QUEUE_SIZE must be a power of two");
 _Static_assert(FLOW_TOKEN_QUEUE_SIZE <= 256U,
                "FLOW_TOKEN_QUEUE_SIZE must fit uint8_t head/tail indices");
 
-/* --- Token queue (SPSC: ISR producer / main-loop consumer) ------------- */
+// --- Token queue (SPSC: ISR producer / main-loop consumer) ---
 
 /**
  * @brief Backing store for the lock-free token queue.
@@ -59,7 +61,7 @@ static volatile uint8_t token_tail = 0;
 /** Monotonic counter; incremented by the ISR for each successful push. */
 static volatile uint16_t run_id_ctr = 0;
 
-/* --- Active flow state (main-loop only) -------------------------------- */
+// --- Active flow state (main-loop only) ---
 
 static active_flow_t active_flow;
 static bool          flow_active = false;
@@ -74,16 +76,8 @@ static bool          flow_active = false;
  */
 static volatile bool flow_tracking_runtime_enabled = false;
 
-/* ----------------------------------------------------------------------- */
+// --- Public Functions ---
 
-/**
- * @brief Initialise the flow tracker.
- *
- * Resets all queue pointers and clears the active-flow state.
- *
- * @note Main loop only — call once before any keyboard tasks start.
- * @note Non-blocking — completes in constant time.
- */
 void flow_tracker_init(void) {
     token_head                    = 0;
     token_tail                    = 0;
@@ -93,20 +87,6 @@ void flow_tracker_init(void) {
     active_flow.step_count        = 0;
 }
 
-/**
- * @brief Push a tracking token from ISR context.
- *
- * Captures the current hardware timer value and the caller's __func__
- * string, then writes the token into the queue.  Non-blocking: if the
- * queue is full the push is silently dropped without affecting the ring
- * buffer or any protocol state.
- *
- * @param isr_func  __func__ passed from the ISR call site.
- * @param rx_byte   The byte that was just written to the ring buffer.
- * @note ISR context only.
- * @note Non-blocking — drops the token silently if the queue is full; never
- *       spins or waits.
- */
 void isr_push_flow_token(const char* isr_func, uint8_t rx_byte) {
     if (!flow_tracking_runtime_enabled) {
         return;  // Tracking disabled at runtime — nothing to queue
@@ -124,14 +104,6 @@ void isr_push_flow_token(const char* isr_func, uint8_t rx_byte) {
     token_head = next_head;
 }
 
-/**
- * @brief Pop the next token in main-loop context.
- *
- * @param out_token  Receives the token at the current tail position.
- * @return true if a token was available; false if the queue was empty.
- * @note Main loop only.
- * @note Non-blocking — returns immediately if no token is available.
- */
 bool main_pop_flow_token(flow_token_t* out_token) {
     if (token_head == token_tail) {
         return false;  // Queue empty
@@ -148,17 +120,6 @@ bool main_pop_flow_token(flow_token_t* out_token) {
     return true;
 }
 
-/**
- * @brief Start a new flow for the just-popped token.
- *
- * Records the ISR entry (function name, timestamp, raw byte from the
- * token) as step 0 of the new flow.  Any previously incomplete flow that
- * never reached FLOW_END is silently discarded.
- *
- * @param token  Token returned by main_pop_flow_token().
- * @note Main loop only.
- * @note Non-blocking — completes in constant time.
- */
 void flow_start(const flow_token_t* token) {
     active_flow.run_id     = token->run_id;
     active_flow.step_count = 0;
@@ -171,16 +132,6 @@ void flow_start(const flow_token_t* token) {
     active_flow.step_count            = 1;
 }
 
-/**
- * @brief Append a mid-pipeline step to the active flow.
- *
- * No-op if no flow is active or if the step array is full.
- *
- * @param func_name  Caller's __func__ string.
- * @param data_val   Payload at this pipeline stage.
- * @note Main loop only.
- * @note Non-blocking — no-op if no flow is active or the step array is full.
- */
 void flow_tracker_record_step(const char* func_name, uint32_t data_val) {
     if (!flow_active || active_flow.step_count >= FLOW_MAX_STEPS) {
         return;
@@ -191,27 +142,6 @@ void flow_tracker_record_step(const char* func_name, uint32_t data_val) {
     active_flow.steps[idx].data_val     = data_val;
 }
 
-/**
- * @brief Append the final pipeline step, emit the flow trace, and clear the
- *        active flow.
- *
- * Emits one LOG_DEBUG line per step in the format:
- *   [FLOW] run=<id>
- *     [0] time=<us>  func=<name>  data=0x<hex>
- *     [1] ...
- *
- * Performance Characteristics:
- * - Tracking disabled:                   zero overhead (isr_push_flow_token returns immediately)
- * - Tracking enabled, no active flow:    ~0µs (break codes / repeats never start a flow)
- * - Tracking enabled, typical make key:  ~8µs end-to-end, ISR entry to USB report send
- * - Command Mode evaluation path:        ~24µs (to_ms_since_boot() + LOG_INFO in
- *                                        evaluate_command_mode() — well within USB budget)
- *
- * @param func_name  Caller's __func__ string (typically hid_send_report).
- * @param data_val   Payload at the send point (e.g. HID report ID).
- * @note Main loop only.
- * @note Non-blocking — trace output is sent via the DMA-backed UART channel.
- */
 void flow_tracker_record_end(const char* func_name, uint32_t data_val) {
     flow_tracker_record_step(func_name, data_val);
     if (!flow_active) {
@@ -228,19 +158,6 @@ void flow_tracker_record_end(const char* func_name, uint32_t data_val) {
     flow_active = false;
 }
 
-/**
- * @brief Enable or disable runtime flow tracking.
- *
- * When enabling, the ISR will start queuing tokens from the next ring-buffer
- * put.  When disabling, the ISR stops immediately; queued tokens are dropped
- * atomically before returning.
- *
- * @param enable true to start tracking; false to stop.
- * @note Main loop only.
- * @note Non-blocking — does not wait for any in-flight ISR operation to complete;
- *       the __dmb() barrier ensures the ISR sees the updated flag before the next
- *       ring-buffer write.
- */
 void flow_tracker_set_enabled(bool enable) {
     flow_tracking_runtime_enabled = enable;
     __dmb();  // Publish updated runtime flag before continuing
@@ -252,12 +169,6 @@ void flow_tracker_set_enabled(bool enable) {
     }
 }
 
-/**
- * @brief Return true if runtime flow tracking is currently active.
- *
- * @return true if tracking is enabled and the ISR is queuing tokens.
- * @note Safe to call from any context.
- */
 bool flow_tracker_is_enabled(void) {
     return flow_tracking_runtime_enabled;
 }

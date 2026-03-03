@@ -18,16 +18,27 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file command_mode.c
+ * @brief Command mode state machine implementation.
+ *
+ * Implements the command mode entry, key dispatch, and action execution logic.
+ * @see command_mode.h for the full public API and state machine overview.
+ */
+
 #include "command_mode.h"
 
-#include <stdio.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #include "hardware/watchdog.h"
 #include "pico/bootrom.h"
 #include "pico/time.h"
 
-#include "config_storage.h"
+#include "tusb.h"
+
 #include "config.h"
+#include "config_storage.h"
 #include "flow_tracker.h"
 #include "hid_interface.h"
 #include "hid_keycodes.h"
@@ -38,75 +49,6 @@
 
 #ifdef CONVERTER_LEDS
 #include "ws2812/ws2812.h"
-#endif
-
-/**
- * @brief Command Mode State Machine States
- *
- * State Transitions:
- *
- *   IDLE ──┬─> SHIFT_HOLD_WAIT (only both shifts pressed, no other keys)
- *          └─> IDLE (normal operation)
- *
- *   SHIFT_HOLD_WAIT ──┬─> COMMAND_ACTIVE (held 3 seconds with only shifts)
- *                     ├─> IDLE (shifts released before 3s)
- *                     └─> IDLE (any other key pressed - abort)
- *
- *   COMMAND_ACTIVE ──┬─> Bootloader (command 'B' executed - device resets)
- *                    ├─> LOG_LEVEL_SELECT (command 'D' for debug level)
- *                    ├─> IDLE (command 'F' for factory reset)
- *                    ├─> BRIGHTNESS_SELECT (command 'L' for LED brightness)
- *                    ├─> IDLE (command 'S' for shift-override toggle)
- *                    └─> IDLE (3 second timeout)
- *
- *   LOG_LEVEL_SELECT ──┬─> IDLE (key '1' = ERROR level)
- *                      ├─> IDLE (key '2' = INFO level)
- *                      ├─> IDLE (key '3' = DEBUG level)
- *                      └─> IDLE (3 second timeout)
- *
- *
- *   BRIGHTNESS_SELECT ──┬─> IDLE (3 second timeout, saves if changed)
- *                       └─> (stays in BRIGHTNESS_SELECT on +/- keys, resets timeout)
- *
- * HID Report Behaviour:
- * - IDLE: Normal HID reports sent to host
- * - SHIFT_HOLD_WAIT: Normal HID reports sent (shifts visible to host)
- * - COMMAND_ACTIVE: ALL HID reports suppressed (empty report sent on entry)
- * - LOG_LEVEL_SELECT: ALL HID reports suppressed (waiting for level choice)
- * - BRIGHTNESS_SELECT: ALL HID reports suppressed (waiting for +/- keys, LED cycling)
- */
-typedef enum {
-    CMD_MODE_IDLE,             /**< Normal operation, no command mode active */
-    CMD_MODE_SHIFT_HOLD_WAIT,  /**< Both shifts held, waiting for 3 second hold */
-    CMD_MODE_COMMAND_ACTIVE,   /**< Command mode active, waiting for command key */
-    CMD_MODE_LOG_LEVEL_SELECT, /**< Waiting for log level selection (1/2/3) */
-#ifdef CONVERTER_LEDS
-    CMD_MODE_BRIGHTNESS_SELECT, /**< Waiting for LED brightness adjustment (+/-) */
-#endif
-} command_mode_state_t;
-
-/**
- * @brief Command Mode State Structure
- *
- * Tracks the current state of the command mode system including timing.
- *
- * Threading Model:
- * - Only accessed from main task context (via command_mode_process)
- * - No interrupt access, no synchronisation needed
- */
-typedef struct {
-    command_mode_state_t state;               /**< Current command mode state */
-    uint32_t             state_start_time_ms; /**< Time when current state started (milliseconds) */
-    uint32_t             last_led_toggle_ms;  /**< Time of last LED toggle in COMMAND_ACTIVE */
-} command_mode_context_t;
-
-static command_mode_context_t cmd_mode = {
-    .state = CMD_MODE_IDLE, .state_start_time_ms = 0, .last_led_toggle_ms = 0};
-
-#ifdef CONVERTER_LEDS
-/** Brightness selection state tracking */
-static uint8_t  brightness_original_value = 0; /**< Original brightness for selection mode */
-static uint16_t brightness_rainbow_hue = 0; /**< Current rainbow hue (0-359) for visual feedback */
 #endif
 
 /** HID modifier keycode range and index mask */
@@ -198,6 +140,75 @@ static uint16_t brightness_rainbow_hue = 0; /**< Current rainbow hue (0-359) for
      (1 << (CMD_MODE_KEY2 & HID_MODIFIER_INDEX_MASK)))
 
 /**
+ * @brief Command Mode State Machine States
+ *
+ * State Transitions:
+ *
+ *   IDLE ──┬─> SHIFT_HOLD_WAIT (only both shifts pressed, no other keys)
+ *          └─> IDLE (normal operation)
+ *
+ *   SHIFT_HOLD_WAIT ──┬─> COMMAND_ACTIVE (held 3 seconds with only shifts)
+ *                     ├─> IDLE (shifts released before 3s)
+ *                     └─> IDLE (any other key pressed - abort)
+ *
+ *   COMMAND_ACTIVE ──┬─> Bootloader (command 'B' executed - device resets)
+ *                    ├─> LOG_LEVEL_SELECT (command 'D' for debug level)
+ *                    ├─> IDLE (command 'F' for factory reset)
+ *                    ├─> BRIGHTNESS_SELECT (command 'L' for LED brightness)
+ *                    ├─> IDLE (command 'S' for shift-override toggle)
+ *                    └─> IDLE (3 second timeout)
+ *
+ *   LOG_LEVEL_SELECT ──┬─> IDLE (key '1' = ERROR level)
+ *                      ├─> IDLE (key '2' = INFO level)
+ *                      ├─> IDLE (key '3' = DEBUG level)
+ *                      └─> IDLE (3 second timeout)
+ *
+ *
+ *   BRIGHTNESS_SELECT ──┬─> IDLE (3 second timeout, saves if changed)
+ *                       └─> (stays in BRIGHTNESS_SELECT on +/- keys, resets timeout)
+ *
+ * HID Report Behaviour:
+ * - IDLE: Normal HID reports sent to host
+ * - SHIFT_HOLD_WAIT: Normal HID reports sent (shifts visible to host)
+ * - COMMAND_ACTIVE: ALL HID reports suppressed (empty report sent on entry)
+ * - LOG_LEVEL_SELECT: ALL HID reports suppressed (waiting for level choice)
+ * - BRIGHTNESS_SELECT: ALL HID reports suppressed (waiting for +/- keys, LED cycling)
+ */
+typedef enum {
+    CMD_MODE_IDLE,             /**< Normal operation, no command mode active */
+    CMD_MODE_SHIFT_HOLD_WAIT,  /**< Both shifts held, waiting for 3 second hold */
+    CMD_MODE_COMMAND_ACTIVE,   /**< Command mode active, waiting for command key */
+    CMD_MODE_LOG_LEVEL_SELECT, /**< Waiting for log level selection (1/2/3) */
+#ifdef CONVERTER_LEDS
+    CMD_MODE_BRIGHTNESS_SELECT, /**< Waiting for LED brightness adjustment (+/-) */
+#endif
+} command_mode_state_t;
+
+/**
+ * @brief Command Mode State Structure
+ *
+ * Tracks the current state of the command mode system including timing.
+ *
+ * Threading Model:
+ * - Only accessed from main loop context (via command_mode_process)
+ * - No interrupt access, no synchronisation needed
+ */
+typedef struct {
+    command_mode_state_t state;               /**< Current command mode state */
+    uint32_t             state_start_time_ms; /**< Time when current state started (milliseconds) */
+    uint32_t             last_led_toggle_ms;  /**< Time of last LED toggle in COMMAND_ACTIVE */
+} command_mode_context_t;
+
+static command_mode_context_t cmd_mode = {
+    .state = CMD_MODE_IDLE, .state_start_time_ms = 0, .last_led_toggle_ms = 0};
+
+#ifdef CONVERTER_LEDS
+/** Brightness selection state tracking */
+static uint8_t  brightness_original_value = 0; /**< Original brightness for selection mode */
+static uint16_t brightness_rainbow_hue = 0; /**< Current rainbow hue (0-359) for visual feedback */
+#endif
+
+/**
  * @brief Compile-time validation of command mode activation keys
  *
  * Static assertions ensure that CMD_MODE_KEY1 and CMD_MODE_KEY2 are HID modifier
@@ -214,6 +225,8 @@ _Static_assert(CMD_MODE_KEY2 >= HID_MODIFIER_KEYCODE_MIN &&
                    CMD_MODE_KEY2 <= HID_MODIFIER_KEYCODE_MAX,
                "CMD_MODE_KEY2 must be a HID modifier key (0xE0-0xE7)");
 
+// --- Private Functions ---
+
 /**
  * @brief Checks if any key is pressed in keyboard report
  *
@@ -225,6 +238,7 @@ _Static_assert(CMD_MODE_KEY2 >= HID_MODIFIER_KEYCODE_MIN &&
  *
  * @note Compiler likely inlines this (10-15 cycles)
  * @note Returns on first non-zero key (early exit optimisation)
+ * @note Main loop only.
  */
 static inline bool any_key_pressed(const hid_keyboard_report_t* keyboard_report) {
     for (int i = 0;
@@ -248,6 +262,7 @@ static inline bool any_key_pressed(const hid_keyboard_report_t* keyboard_report)
  *
  * @note Compiler likely inlines this (10-15 cycles)
  * @note Returns on first match (early exit optimisation)
+ * @note Main loop only.
  */
 static inline bool is_key_pressed(const hid_keyboard_report_t* keyboard_report, uint8_t keycode) {
     for (int i = 0;
@@ -276,6 +291,7 @@ static inline bool is_key_pressed(const hid_keyboard_report_t* keyboard_report, 
  * @note Returns false if other modifiers are pressed
  * @note Returns false if any regular keys are in the keycode array
  * @note This is the ONLY validation function needed for command mode entry
+ * @note Main loop only.
  */
 static inline bool command_keys_pressed(const hid_keyboard_report_t* keyboard_report) {
     // Check that both command mode keys are pressed
@@ -303,6 +319,8 @@ static inline bool command_keys_pressed(const hid_keyboard_report_t* keyboard_re
  * Clears lock LED states, disables the command mode LED, sets the firmware
  * flash indicator (magenta status LED), and triggers an LED update. Called
  * immediately before any operation that reboots or re-flashes the device.
+ *
+ * @note Main loop only.
  */
 static void reset_leds_for_reboot(void) {
     lock_leds.value          = 0;  // Clear all lock LED states (Num/Caps/Scroll)
@@ -324,6 +342,7 @@ static void reset_leds_for_reboot(void) {
  *
  * @note This function never returns (device resets via reset_usb_boot)
  * @note Called from command_mode_process when 'B' is detected
+ * @note Main loop only.
  */
 static void __attribute__((noreturn)) command_execute_bootloader(void) {
     LOG_INFO("Bootloader command received, initiating bootloader...\n");
@@ -352,6 +371,7 @@ static void __attribute__((noreturn)) command_execute_bootloader(void) {
  * @param reason Debug message describing why command mode is exiting
  *
  * @note Safe to call multiple times (idempotent)
+ * @note Main loop only.
  */
 static void command_mode_exit(const char* reason) {
     LOG_INFO("%s\n", reason);
@@ -370,12 +390,6 @@ static void command_mode_exit(const char* reason) {
     send_empty_keyboard_report();
 }
 
-void command_mode_init(void) {
-    cmd_mode.state               = CMD_MODE_IDLE;
-    cmd_mode.state_start_time_ms = 0;
-    cmd_mode.last_led_toggle_ms  = 0;
-}
-
 /**
  * @brief Handle SHIFT_HOLD_WAIT timeout to transition to COMMAND_ACTIVE
  *
@@ -383,6 +397,7 @@ void command_mode_init(void) {
  * Must run from main loop to work even when no keyboard events occur.
  *
  * @param now_ms Current timestamp in milliseconds
+ * @note Main loop only.
  */
 static void handle_shift_hold_wait_timeout(uint32_t now_ms) {
     if (now_ms - cmd_mode.state_start_time_ms >= CMD_MODE_HOLD_TIME_MS) {
@@ -419,6 +434,7 @@ static void handle_shift_hold_wait_timeout(uint32_t now_ms) {
  *
  * @param now_ms Current timestamp in milliseconds
  * @return true if timeout occurred and state transitioned to IDLE, false otherwise
+ * @note Main loop only.
  */
 static bool handle_command_timeout(uint32_t now_ms) {
     if (now_ms - cmd_mode.state_start_time_ms >= CMD_MODE_TIMEOUT_MS) {
@@ -455,6 +471,7 @@ static bool handle_command_timeout(uint32_t now_ms) {
  * and LOG_LEVEL_SELECT states.
  *
  * @param now_ms Current timestamp in milliseconds
+ * @note Main loop only.
  */
 static void update_command_mode_leds(uint32_t now_ms) {
     // Toggle LED every 100ms (CMD_MODE_LED_TOGGLE_MS)
@@ -477,6 +494,7 @@ static void update_command_mode_leds(uint32_t now_ms) {
  * during brightness adjustment mode.
  *
  * @param now_ms Current timestamp in milliseconds
+ * @note Main loop only.
  */
 static void update_brightness_rainbow(uint32_t now_ms) {
     if (now_ms - cmd_mode.last_led_toggle_ms >= CMD_MODE_RAINBOW_CYCLE_MS) {
@@ -495,48 +513,6 @@ static void update_brightness_rainbow(uint32_t now_ms) {
 }
 #endif
 
-void command_mode_task(void) {
-    // Early exit if idle - avoids time check overhead 99.99% of the time
-    // Most common case: user is typing normally, not in command mode
-    if (cmd_mode.state == CMD_MODE_IDLE) {
-        return;  // ~3 cycles: load, compare, branch
-    }
-
-    // Only get time if we're actually in an active state
-    uint32_t now_ms = to_ms_since_boot(get_absolute_time());
-
-    // Dispatch to per-state handlers based on current state
-    switch (cmd_mode.state) {
-        case CMD_MODE_SHIFT_HOLD_WAIT:
-            handle_shift_hold_wait_timeout(now_ms);
-            return;  // Exit early - no LED update needed in SHIFT_HOLD_WAIT
-
-        case CMD_MODE_COMMAND_ACTIVE:
-        case CMD_MODE_LOG_LEVEL_SELECT:
-            if (handle_command_timeout(now_ms)) {
-                return;  // Exit early after mode exit
-            }
-#ifdef CONVERTER_LEDS
-            update_command_mode_leds(now_ms);
-#endif
-            return;
-
-#ifdef CONVERTER_LEDS
-        case CMD_MODE_BRIGHTNESS_SELECT:
-            if (handle_command_timeout(now_ms)) {
-                return;  // Exit early after mode exit
-            }
-            update_brightness_rainbow(now_ms);
-            return;
-#endif
-
-        case CMD_MODE_IDLE:  // Unreachable: handled by early-exit guard above
-        default:             // Corrupted state or future enum values
-            cmd_mode.state = CMD_MODE_IDLE;
-            return;  // Safe fallback
-    }
-}
-
 /**
  * @brief Process keyboard input in IDLE state
  *
@@ -544,6 +520,7 @@ void command_mode_task(void) {
  *
  * @param keyboard_report Pointer to keyboard HID report
  * @return true to allow normal keyboard processing
+ * @note Main loop only.
  */
 static bool process_idle_state(const hid_keyboard_report_t* keyboard_report) {
     // Check if ONLY the command keys are pressed (no other keys) to enter hold-wait state
@@ -564,6 +541,7 @@ static bool process_idle_state(const hid_keyboard_report_t* keyboard_report) {
  *
  * @param keyboard_report Pointer to keyboard HID report
  * @return true to allow normal keyboard reports during wait
+ * @note Main loop only.
  */
 static bool process_shift_hold_wait(const hid_keyboard_report_t* keyboard_report) {
     // Check if command keys were released early OR if any other keys were pressed
@@ -587,6 +565,7 @@ static bool process_shift_hold_wait(const hid_keyboard_report_t* keyboard_report
  * Transitions to LOG_LEVEL_SELECT state and waits for user to press 1/2/3.
  *
  * @return false to suppress keyboard report
+ * @note Main loop only.
  */
 static bool command_handle_log_level_select(void) {
     cmd_mode.state               = CMD_MODE_LOG_LEVEL_SELECT;
@@ -604,6 +583,7 @@ static bool command_handle_log_level_select(void) {
  * Performs factory reset and reboots device. Returns after arming the watchdog.
  *
  * @return false to suppress keyboard report (watchdog fires shortly after return)
+ * @note Main loop only.
  */
 static bool command_handle_factory_reset(void) {
     LOG_WARN("Factory reset requested - restoring default configuration\n");
@@ -630,6 +610,7 @@ static bool command_handle_factory_reset(void) {
  * Transitions to BRIGHTNESS_SELECT state for +/- brightness control.
  *
  * @return false to suppress keyboard report
+ * @note Main loop only.
  */
 static bool command_handle_brightness_select(void) {
 #ifdef CONVERTER_LEDS
@@ -655,6 +636,7 @@ static bool command_handle_brightness_select(void) {
  * and exits command mode.
  *
  * @return false to suppress keyboard report
+ * @note Main loop only.
  */
 static bool command_handle_shift_override_toggle(void) {
     // Only allow toggle if keyboard defines at least one shift-override layer entry.
@@ -714,6 +696,7 @@ static bool command_handle_flow_tracking_toggle(void) {
  *
  * @param keyboard_report Pointer to keyboard HID report
  * @return false to suppress all keyboard reports
+ * @note Main loop only.
  */
 static bool process_command_active(const hid_keyboard_report_t* keyboard_report) {
     // Note: Timeout check is handled in command_mode_task() which runs from main loop
@@ -768,6 +751,7 @@ static bool process_command_active(const hid_keyboard_report_t* keyboard_report)
  *
  * @note Configuration is immediately saved to flash to persist across reboots
  * @note Always exits command mode after applying level
+ * @note Main loop only.
  */
 static void apply_log_level(log_level_t level, const char* exit_msg) {
     log_set_level(level);
@@ -784,6 +768,7 @@ static void apply_log_level(log_level_t level, const char* exit_msg) {
  *
  * @param keyboard_report Pointer to keyboard HID report
  * @return false to suppress all keyboard reports
+ * @note Main loop only.
  */
 static bool process_log_level_select(const hid_keyboard_report_t* keyboard_report) {
     // Wait for user to press 1, 2, or 3 to select log level
@@ -814,6 +799,7 @@ static bool process_log_level_select(const hid_keyboard_report_t* keyboard_repor
  * @brief Adjust LED brightness by one step in the given direction
  *
  * @param direction +1 to increase, -1 to decrease
+ * @note Main loop only.
  */
 static void adjust_brightness(int8_t direction) {
     uint8_t current = ws2812_get_brightness();
@@ -837,6 +823,7 @@ static void adjust_brightness(int8_t direction) {
  *
  * @param keyboard_report Pointer to keyboard HID report
  * @return false to suppress all keyboard reports
+ * @note Main loop only.
  */
 static bool process_brightness_select(const hid_keyboard_report_t* keyboard_report) {
     // KC_EQUAL is the physical '=' key which produces '+' when shifted
@@ -853,6 +840,56 @@ static bool process_brightness_select(const hid_keyboard_report_t* keyboard_repo
     return false;
 }
 #endif
+
+// --- Public Functions ---
+
+void command_mode_init(void) {
+    cmd_mode.state               = CMD_MODE_IDLE;
+    cmd_mode.state_start_time_ms = 0;
+    cmd_mode.last_led_toggle_ms  = 0;
+}
+
+void command_mode_task(void) {
+    // Early exit if idle - avoids time check overhead 99.99% of the time
+    // Most common case: user is typing normally, not in command mode
+    if (cmd_mode.state == CMD_MODE_IDLE) {
+        return;  // ~3 cycles: load, compare, branch
+    }
+
+    // Only get time if we're actually in an active state
+    uint32_t now_ms = to_ms_since_boot(get_absolute_time());
+
+    // Dispatch to per-state handlers based on current state
+    switch (cmd_mode.state) {
+        case CMD_MODE_SHIFT_HOLD_WAIT:
+            handle_shift_hold_wait_timeout(now_ms);
+            return;  // Exit early - no LED update needed in SHIFT_HOLD_WAIT
+
+        case CMD_MODE_COMMAND_ACTIVE:
+        case CMD_MODE_LOG_LEVEL_SELECT:
+            if (handle_command_timeout(now_ms)) {
+                return;  // Exit early after mode exit
+            }
+#ifdef CONVERTER_LEDS
+            update_command_mode_leds(now_ms);
+#endif
+            return;
+
+#ifdef CONVERTER_LEDS
+        case CMD_MODE_BRIGHTNESS_SELECT:
+            if (handle_command_timeout(now_ms)) {
+                return;  // Exit early after mode exit
+            }
+            update_brightness_rainbow(now_ms);
+            return;
+#endif
+
+        case CMD_MODE_IDLE:  // Unreachable: handled by early-exit guard above
+        default:             // Corrupted state or future enum values
+            cmd_mode.state = CMD_MODE_IDLE;
+            return;  // Safe fallback
+    }
+}
 
 bool command_mode_process(const hid_keyboard_report_t* keyboard_report) {
     // Dispatch to per-state handler based on current state

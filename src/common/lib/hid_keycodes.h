@@ -18,30 +18,61 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file hid_keycodes.h
+ * @brief HID keycode constants, modifier definitions, and internal special keycode ranges.
+ *
+ * Defines all `KC_*` constants used throughout the firmware for keymap tables,
+ * shift-override arrays, and HID report generation. Organised into distinct ranges
+ * reflected by the five classification macros:
+ *
+ * Keycode Ranges:
+ * - IS_KEY      (0x04–0xA4): Standard keyboard keys (KC_A through KC_EXSEL)
+ * - IS_MOD      (0xE0–0xE7): Modifier keys (KC_LCTRL through KC_RGUI)
+ * - IS_SPECIAL  (0xA5–0xDF, 0xE8–0xEF): Internal firmware keycodes (layer operations, flags)
+ * - IS_SYSTEM   (0xA5–0xA7): HID system usage page (power, sleep, wake — subset of IS_SPECIAL)
+ * - IS_CONSUMER (variable): HID consumer page (multimedia keys: KC_MPLY through KC_BRTD)
+ *
+ * Special Internal Codes:
+ * - KC_TRANSPARENT (0xD1): Fall through to next active layer below
+ * - KC_SPECIAL_BOOT (0xD2): Trigger bootloader entry via command mode
+ * - Layer macros MO(n), TG(n), TO(n), OSL(n) are defined below; implemented in keylayers.h
+ *
+ * Shift-Override Support:
+ * - SUPPRESS_SHIFT (0x80): Bit flag ORed into shift-override array values to remove
+ *   the shift modifier when sending the replacement keycode
+ *
+ * Command Mode Keys:
+ * - CMD_MODE_KEY1 / CMD_MODE_KEY2: Define the key pair held to enter command mode
+ *   (defaults to KC_LSHIFT and KC_RSHIFT; override in keyboard.h before this include)
+ *
+ * Short Aliases:
+ * - Common keys have short forms (KC_LSFT, KC_RSFT, KC_ESC, KC_BSPC, KC_ENT, etc.)
+ *   for use in compact keymap table definitions
+ */
+
 #ifndef HID_KEYCODES_H
 #define HID_KEYCODES_H
 
 #include <stdint.h>
 
-/* Define specific Key Types */
+// Define specific Key Types
 #define IS_KEY(code) (KC_A <= (code) && (code) <= KC_EXSEL)
 #define IS_MOD(code) (KC_LCTRL <= (code) && (code) <= KC_RGUI)
 
-/* IS_SPECIAL range: 0xA5-0xC8 = internal_special_codes enum; 0xC9-0xD0 and 0xD3-0xDF are
- * reserved/unassigned; 0xD1=KC_TRANSPARENT and 0xD2=KC_SPECIAL_BOOT are intentionally present.
- * Do not reuse codepoints in 0xA5-0xDF or 0xE8-0xEF without updating this macro. */
+// IS_SPECIAL range: 0xA5-0xC8 = internal_special_codes enum; 0xC9-0xD0 and 0xD3-0xDF are
+// reserved/unassigned; 0xD1=KC_TRANSPARENT and 0xD2=KC_SPECIAL_BOOT are intentionally present.
+// Do not reuse codepoints in 0xA5-0xDF or 0xE8-0xEF without updating this macro.
 #define IS_SPECIAL(code)  ((0xA5 <= (code) && (code) <= 0xDF) || (0xE8 <= (code) && (code) <= 0xEF))
 #define IS_SYSTEM(code)   (KC_PWR <= (code) && (code) <= KC_WAKE)
 #define IS_CONSUMER(code) (KC_MPLY <= (code) && (code) <= KC_BRTD)
 
-/* Define Super Macro Toggle */
+// Define Super Macro Toggle
 #define SUPER_MACRO_INIT(code)                                           \
     (((code) & ((1 << (KC_LSHIFT & 0x7)) | (1 << (KC_RSHIFT & 0x7)))) == \
      ((1 << (KC_LSHIFT & 0x7)) | (1 << (KC_RSHIFT & 0x7))))
 
-/*
- * Short names for ease of definition of keymap
- */
+// Short names for ease of definition of keymap
 #define KC_LCTL KC_LCTRL
 #define KC_RCTL KC_RCTRL
 #define KC_LSFT KC_LSHIFT
@@ -79,7 +110,7 @@
 #define KC_LSCR KC_LOCKING_SCROLL
 #define KC_ERAS KC_ALT_ERASE
 #define KC_CLR  KC_CLEAR
-/* Japanese specific */
+// Japanese specific
 #define KC_ZKHK KC_GRAVE
 #define KC_RO   KC_INT1
 #define KC_KANA KC_INT2
@@ -89,10 +120,10 @@
 #define KC_MHEN KC_INT5
 #define KC_MACJ KC_LANG1
 #define KC_MACE KC_LANG2
-/* Korean specific */
+// Korean specific
 #define KC_HAEN KC_LANG1
 #define KC_HANJ KC_LANG2
-/* Keypad */
+// Keypad
 #define KC_P1   KC_KP_1
 #define KC_P2   KC_KP_2
 #define KC_P3   KC_KP_3
@@ -111,16 +142,16 @@
 #define KC_PPLS KC_KP_PLUS
 #define KC_PEQL KC_KP_EQUAL
 #define KC_PENT KC_KP_ENTER
-/* Unix function key */
+// Unix function key
 #define KC_EXEC KC_EXECUTE
 #define KC_SLCT KC_SELECT
 #define KC_AGIN KC_AGAIN
 #define KC_PSTE KC_PASTE
-/* Sytem Control */
+// System Control
 #define KC_PWR  KC_SYSTEM_POWER
 #define KC_SLEP KC_SYSTEM_SLEEP
 #define KC_WAKE KC_SYSTEM_WAKE
-/* Consumer Page */
+// Consumer Page
 #define KC_MPLY KC_MEDIA_PLAY
 #define KC_MPAS KC_MEDIA_PAUSE
 #define KC_MREC KC_MEDIA_RECORD
@@ -135,7 +166,7 @@
 #define KC_MUTE KC_AUDIO_MUTE
 #define KC_VOLU KC_AUDIO_VOL_UP
 #define KC_VOLD KC_AUDIO_VOL_DOWN
-/* App Launch */
+// App Launch
 #define KC_CCNF KC_APPLAUNCH_CC_CONFIG
 #define KC_MAIL KC_APPLAUNCH_EMAIL
 #define KC_CALC KC_APPLAUNCH_CALCULATOR
@@ -144,7 +175,7 @@
 #define KC_LOCK KC_APPLAUNCH_LOCK
 #define KC_CRUN KC_APPLAUNCH_COMMAND_RUN
 #define KC_MYCM KC_APPLAUNCH_FILE_EXPLORER
-/* App Control */
+// App Control
 #define KC_MXMS KC_APPCONTROL_MAXIMISE
 #define KC_MNMS KC_APPCONTROL_MINIMISE
 #define KC_WSCH KC_APPCONTROL_SEARCH
@@ -154,33 +185,33 @@
 #define KC_WSTP KC_APPCONTROL_STOP
 #define KC_WREF KC_APPCONTROL_REFRESH
 #define KC_WBKM KC_APPCONTROL_BOOKMARKS
-/* Display Brightness Controls */
+// Display Brightness Controls
 #define KC_BRTI KC_BRIGHTNESS_INC
 #define KC_BRTD KC_BRIGHTNESS_DEC
-/* Transparent */
+// Transparent
 #define KC_TRANSPARENT 0xD1
 #define KC_TRNS        KC_TRANSPARENT
-/* Special Macro Keys */
+// Special Macro Keys
 #define KC_SPECIAL_BOOT 0xD2
 #define KC_BOOT         KC_SPECIAL_BOOT
-/* Jump to bootloader */
+// Jump to bootloader
 #define KC_BTLD KC_SPECIAL_BOOT
 
-/* ============================================================================
- * INTERNAL LAYER SWITCHING KEYCODES (0xF0-0xFF range)
- *
- * These values are NEVER sent to the HID interface. They are consumed by
- * keymap_get_key_val() and trigger internal layer state changes.
- *
- * These exist in the keymap OUTPUT space (returned FROM keymap lookup),
- * not the scancode INPUT space (consumed by scancode state machine).
- * Protocol scancodes like PS/2's 0xF0 "break prefix" are consumed by the
- * scancode processor before reaching the keymap - no conflict exists.
- *
- * If future USB HID specifications define keycodes in this range, these
- * internal values can be remapped without affecting keyboards (they're
- * purely implementation details, not part of keyboard definitions).
- * ============================================================================ */
+// ============================================================================
+// INTERNAL LAYER SWITCHING KEYCODES (0xF0-0xFF range)
+//
+// These values are NEVER sent to the HID interface. They are consumed by
+// keymap_get_key_val() and trigger internal layer state changes.
+//
+// These exist in the keymap OUTPUT space (returned FROM keymap lookup),
+// not the scancode INPUT space (consumed by scancode state machine).
+// Protocol scancodes like PS/2's 0xF0 "break prefix" are consumed by the
+// scancode processor before reaching the keymap - no conflict exists.
+//
+// If future USB HID specifications define keycodes in this range, these
+// internal values can be remapped without affecting keyboards (they're
+// purely implementation details, not part of keyboard definitions).
+// ============================================================================
 
 // Layer operation base values (0xF0-0xFF range)
 // Rationale: 0xE8-0xEF marked as "special" in IS_SPECIAL macro
@@ -242,24 +273,24 @@ _Static_assert(OSL(1) == KC_OSL_1 && OSL(3) == KC_OSL_3, "OSL(n) macro range val
 // Runtime validation occurs in keylayers_process_key().
 #define GET_LAYER_TARGET(code) ((((code) - KC_LAYER_MO_BASE) & 0x03) + 1)
 
-/* Migration note: If future HID spec uses 0xF0-0xFF, simply change the
- * KC_LAYER_*_BASE values above. No keyboard files need updating since
- * they use MO(n)/TG(n)/TO(n)/OSL(n) macros. */
+// Migration note: If future HID spec uses 0xF0-0xFF, simply change the
+// KC_LAYER_*_BASE values above. No keyboard files need updating since
+// they use MO(n)/TG(n)/TO(n)/OSL(n) macros.
 
-/* HID Usage Tables */
-/* HID Generic Desktop Usage Page (0x01) */
+// HID Usage Tables
+// HID Generic Desktop Usage Page (0x01)
 enum hid_generic_desktop_usage_page {
     SYSTEM_POWER_DOWN = 0x0081,  // 0x0081 /* System Power Down */
     SYSTEM_SLEEP      = 0x0082,  // 0x0082 /* System Sleep */
     SYSTEM_WAKE_UP    = 0x0083,  // 0x0083 /* System Wake Up */
 };
-/* Enumerators have type int (C11 §6.7.2.2p3).  These values are used as
- * uint16_t HID usage IDs, so assert they fit to turn the implicit narrowing
- * into a compile-time guarantee. */
+// Enumerators have type int (C11 §6.7.2.2p3).  These values are used as
+// uint16_t HID usage IDs, so assert they fit to turn the implicit narrowing
+// into a compile-time guarantee.
 _Static_assert(SYSTEM_POWER_DOWN >= 0 && SYSTEM_WAKE_UP <= UINT16_MAX,
                "hid_generic_desktop_usage_page values must fit in uint16_t");
 
-/* HID Keyboard Usage Page (0x07) */
+// HID Keyboard Usage Page (0x07)
 enum hid_keyboard_usage_page {
     KC_NO             = 0x00,  // 0x00 /* No event in this report */
     KC_ROLL_OVER      = 0x01,  // 0x01 /* Keyboard Error Roll Over */
@@ -427,7 +458,7 @@ enum hid_keyboard_usage_page {
     KC_CRSEL          = 0xA3,  // 0xA3 /* Keyboard CrSel/Props */
     KC_EXSEL          = 0xA4,  // 0xA4 /* Keyboard ExSel */
 
-    /* Modifiers */
+    // Modifiers
     KC_LCTRL  = 0xE0,  // 0xE0 /* Keyboard Left Control */
     KC_LSHIFT = 0xE1,  // 0xE1 /* Keyboard Left Shift */
     KC_LALT   = 0xE2,  // 0xE2 /* Keyboard Left Alt */
@@ -437,18 +468,18 @@ enum hid_keyboard_usage_page {
     KC_RALT   = 0xE6,  // 0xE6 /* Keyboard Right Alt */
     KC_RGUI   = 0xE7,  // 0xE7 /* Keyboard Right GUI */
 };
-/* Enumerators have type int (C11 §6.7.2.2p3).  These values are stored as
- * uint8_t bytes in HID keyboard reports, so assert they fit to turn the
- * implicit narrowing into a compile-time guarantee. */
+// Enumerators have type int (C11 §6.7.2.2p3).  These values are stored as
+// uint8_t bytes in HID keyboard reports, so assert they fit to turn the
+// implicit narrowing into a compile-time guarantee.
 _Static_assert(KC_NO == 0 && KC_RGUI <= 0xFF, "hid_keyboard_usage_page values must fit in uint8_t");
 
-/* HID Consumer Usage Page (0x0C) */
+// HID Consumer Usage Page (0x0C)
 enum hid_consumer_usage_page {
-    /* Display Brightness Controls */
+    // Display Brightness Controls
     BRIGHTNESS_INCREMENT = 0x006F,  // 0x006F /* Keyboard Brightness Increment */
     BRIGHTNESS_DECREMENT = 0x0070,  // 0x0070 /* Keyboard Brightness Decrement */
 
-    /* Media Controls */
+    // Media Controls
     MEDIA_PLAY         = 0x00B0,  // 0x00B0 /* Keyboard Play */
     MEDIA_PAUSE        = 0x00B1,  // 0x00B1 /* Keyboard Pause */
     MEDIA_RECORD       = 0x00B2,  // 0x00B2 /* Keyboard Record */
@@ -464,7 +495,7 @@ enum hid_consumer_usage_page {
     AUDIO_VOL_UP       = 0x00E9,  // 0x00E9 /* Keyboard Volume Up */
     AUDIO_VOL_DOWN     = 0x00EA,  // 0x00EA /* Keyboard Volume Down */
 
-    /* App Launch */
+    // App Launch
     APPLAUNCH_CC_CONFIG     = 0x0183,  // 0x0183 /* Keyboard Configuration */
     APPLAUNCH_EMAIL         = 0x018A,  // 0x018A /* Keyboard Email */
     APPLAUNCH_CALCULATOR    = 0x0192,  // 0x0192 /* Keyboard Calculator */
@@ -474,7 +505,7 @@ enum hid_consumer_usage_page {
     APPLAUNCH_COMMAND_RUN   = 0x01A0,  // 0x01A0 /* Keyboard Command Run */
     APPLAUNCH_FILE_EXPLORER = 0x01B4,  // 0x01B4 /* Keyboard File Explorer */
 
-    /* App Control */
+    // App Control
     APPCONTROL_MAXIMISE  = 0x0205,  // 0x0205 /* Keyboard Maximise */
     APPCONTROL_MINIMISE  = 0x0206,  // 0x0206 /* Keyboard Minimise */
     APPCONTROL_SEARCH    = 0x0221,  // 0x0221 /* Keyboard Search */
@@ -485,23 +516,22 @@ enum hid_consumer_usage_page {
     APPCONTROL_REFRESH   = 0x0227,  // 0x0227 /* Keyboard Refresh */
     APPCONTROL_BOOKMARKS = 0x022A,  // 0x022A /* Keyboard Bookmarks */
 };
-/* Enumerators have type int (C11 §6.7.2.2p3).  These values are used as
- * uint16_t HID consumer usage IDs, so assert they fit to turn the implicit
- * narrowing into a compile-time guarantee. */
+// Enumerators have type int (C11 §6.7.2.2p3).  These values are used as
+// uint16_t HID consumer usage IDs, so assert they fit to turn the implicit
+// narrowing into a compile-time guarantee.
 _Static_assert(BRIGHTNESS_INCREMENT >= 0 && APPCONTROL_BOOKMARKS <= UINT16_MAX,
                "hid_consumer_usage_page values must fit in uint16_t");
 
-/* Internal Special Codes
- * These are not part of the HID Usage Tables, but are used internally
- * to represent special keys that are not part of the standard HID Usage Tables.
- */
+// Internal Special Codes
+// These are not part of the HID Usage Tables, but are used internally
+// to represent special keys that are not part of the standard HID Usage Tables.
 enum internal_special_codes {
-    /* System Control */
+    // System Control
     KC_SYSTEM_POWER = 0xA5,  // A5
     KC_SYSTEM_SLEEP = 0xA6,  // A6
     KC_SYSTEM_WAKE  = 0xA7,  // A7
 
-    /* Media Control */
+    // Media Control
     KC_MEDIA_PLAY         = 0xA8,  // A8
     KC_MEDIA_PAUSE        = 0xA9,  // A9
     KC_MEDIA_RECORD       = 0xAA,  // AA
@@ -517,7 +547,7 @@ enum internal_special_codes {
     KC_AUDIO_VOL_UP       = 0xB4,  // B4
     KC_AUDIO_VOL_DOWN     = 0xB5,  // B5
 
-    /* App Launch */
+    // App Launch
     KC_APPLAUNCH_CC_CONFIG     = 0xB6,  // B6
     KC_APPLAUNCH_EMAIL         = 0xB7,  // B7
     KC_APPLAUNCH_CALCULATOR    = 0xB8,  // B8
@@ -527,7 +557,7 @@ enum internal_special_codes {
     KC_APPLAUNCH_COMMAND_RUN   = 0xBC,  // BC
     KC_APPLAUNCH_FILE_EXPLORER = 0xBD,  // BD
 
-    /* App Control */
+    // App Control
     KC_APPCONTROL_MAXIMISE  = 0xBE,  // BE
     KC_APPCONTROL_MINIMISE  = 0xBF,  // BF
     KC_APPCONTROL_SEARCH    = 0xC0,  // C0
@@ -538,13 +568,13 @@ enum internal_special_codes {
     KC_APPCONTROL_REFRESH   = 0xC5,  // C5
     KC_APPCONTROL_BOOKMARKS = 0xC6,  // C6
 
-    /* Display Brightness Controls */
+    // Display Brightness Controls
     KC_BRIGHTNESS_INC = 0xC7,  // C7
     KC_BRIGHTNESS_DEC = 0xC8,  // C8
 };
-/* Enumerators have type int (C11 §6.7.2.2p3).  These values are stored as
- * uint8_t internal keymap codes (0xA5-0xFF range), so assert they fit to turn
- * the implicit narrowing into a compile-time guarantee. */
+// Enumerators have type int (C11 §6.7.2.2p3).  These values are stored as
+// uint8_t internal keymap codes (0xA5-0xFF range), so assert they fit to turn
+// the implicit narrowing into a compile-time guarantee.
 _Static_assert(KC_SYSTEM_POWER >= 0 && KC_BRIGHTNESS_DEC <= 0xFF,
                "internal_special_codes values must fit in uint8_t");
 
@@ -555,7 +585,7 @@ _Static_assert(KC_SYSTEM_POWER >= 0 && KC_BRIGHTNESS_DEC <= 0xFF,
     ((key) == KC_SYSTEM_SLEEP ? SYSTEM_SLEEP : \
     ((key) == KC_SYSTEM_WAKE  ? SYSTEM_WAKE_UP : 0)))
 
-/* keycode to consumer usage */
+// keycode to consumer usage
 #define CODE_TO_CONSUMER(key) \
     ((key) == KC_MEDIA_PLAY               ?  MEDIA_PLAY : \
     ((key) == KC_MEDIA_PAUSE              ?  MEDIA_PAUSE : \

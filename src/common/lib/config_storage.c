@@ -18,19 +18,49 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file config_storage.c
+ * @brief Flash-based keyboard configuration and layer state persistence.
+ *
+ * Implements dual-hash validated read/write to a dedicated flash sector.
+ * @see config_storage.h for the full public API and storage layout.
+ *
+ * @note Main loop only — flash operations disable IRQs internally.
+ */
+
 #include "config_storage.h"
 
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
+// hardware/flash.h also provides PICO_FLASH_SIZE_BYTES transitively via
+// pico.h → boards/<board>.h. It is not defined by flash.h directly; the
+// constant is a board-level config value. Do not replace this include with
+// pico/platform.h (guarded, must not be included directly) or remove it on
+// the assumption that PICO_FLASH_SIZE_BYTES comes from elsewhere — the
+// transitive chain only holds because hardware/flash.h pulls in pico.h.
 #include "hardware/flash.h"
 #include "hardware/sync.h"
-#include "pico/platform.h"
 
 #include "config.h"
 #include "keymaps.h"
 #include "log.h"
 
 // --- Configuration Constants ---
+
+/** Magic number for config validation ("RP20") */
+#define CONFIG_MAGIC 0x52503230
+
+/** Flash offset for config storage (last 4KB of flash) */
+#define CONFIG_FLASH_OFFSET (PICO_FLASH_SIZE_BYTES - 4096)
+
+/** Size of each config copy (2KB each, 2 copies = 4KB total) */
+#define CONFIG_COPY_SIZE 2048
+
+// Compile-time size validation
+_Static_assert(sizeof(config_data_t) <= CONFIG_COPY_SIZE, "Config structure exceeds copy size");
 
 /** Layer 0 always-active bitmask */
 #define LAYER_0_ACTIVE_BIT 0x01
@@ -56,50 +86,6 @@
 
 /** Standard initial seed for CRC-16/CCITT computation */
 #define CRC16_INITIAL_SEED UINT16_MAX
-
-// --- Keyboard Identification ---
-
-/**
- * @brief Generate keyboard ID from compile-time defines
- *
- * Creates a hash from keyboard make, model, protocol, and codeset to uniquely
- * identify the keyboard configuration. Used for smart persistence: if the
- * keyboard ID changes (different firmware), shift-override resets to disabled.
- *
- * Simple FNV-1a hash algorithm (32-bit):
- * - Fast, good distribution, no crypto needed
- * - Hash at runtime from compile-time string defines
- *
- * @return 32-bit keyboard identifier hash
- */
-static uint32_t get_keyboard_id(void) {
-    // Keyboard defines from CMake (passed as compile-time strings)
-#ifdef _KEYBOARD_ENABLED
-    const char* make     = _KEYBOARD_MAKE;
-    const char* model    = _KEYBOARD_MODEL;
-    const char* protocol = _KEYBOARD_PROTOCOL;
-    const char* codeset  = _KEYBOARD_CODESET;
-
-    // FNV-1a hash
-    uint32_t hash = FNV_OFFSET_BASIS;
-
-    // Hash all four identifier strings
-    const char* strings[] = {make, model, protocol, codeset};
-    for (int i = 0; i < (int)(sizeof(strings) / sizeof(strings[0])); i++) {
-        const char* str = strings[i];
-        while (*str) {
-            hash ^= (uint32_t)(uint8_t)(*str++);
-            hash *= FNV_PRIME;
-        }
-        hash ^= 0xFF;  // Separator between strings
-        hash *= FNV_PRIME;
-    }
-
-    return hash;
-#else
-    return 0;  // No keyboard configured (shouldn't happen)
-#endif
-}
 
 // --- Factory Default Configuration ---
 
@@ -155,6 +141,54 @@ static config_data_t g_config;
 
 /** Initialisation flag */
 static bool g_initialised = false;
+
+// --- Private Functions ---
+
+// --- Keyboard Identification ---
+
+/**
+ * @brief Generate keyboard ID from compile-time defines
+ *
+ * Creates a hash from keyboard make, model, protocol, and codeset to uniquely
+ * identify the keyboard configuration. Used for smart persistence: if the
+ * keyboard ID changes (different firmware), shift-override resets to disabled.
+ *
+ * Simple FNV-1a hash algorithm (32-bit):
+ * - Fast, good distribution, no crypto needed
+ * - Hash at runtime from compile-time string defines
+ *
+ * @return 32-bit keyboard identifier hash
+ *
+ * @note Main loop only.
+ */
+static uint32_t get_keyboard_id(void) {
+    // Keyboard defines from CMake (passed as compile-time strings)
+#ifdef _KEYBOARD_ENABLED
+    const char* make     = _KEYBOARD_MAKE;
+    const char* model    = _KEYBOARD_MODEL;
+    const char* protocol = _KEYBOARD_PROTOCOL;
+    const char* codeset  = _KEYBOARD_CODESET;
+
+    // FNV-1a hash
+    uint32_t hash = FNV_OFFSET_BASIS;
+
+    // Hash all four identifier strings
+    const char* strings[] = {make, model, protocol, codeset};
+    for (int i = 0; i < (int)(sizeof(strings) / sizeof(strings[0])); i++) {
+        const char* str = strings[i];
+        while (*str) {
+            hash ^= (uint32_t)(uint8_t)(*str++);
+            hash *= FNV_PRIME;
+        }
+        hash ^= 0xFF;  // Separator between strings
+        hash *= FNV_PRIME;
+    }
+
+    return hash;
+#else
+    return 0;  // No keyboard configured (shouldn't happen)
+#endif
+}
 
 // --- CRC-16/CCITT Implementation ---
 
@@ -257,7 +291,7 @@ static bool validate_config(const config_data_t* cfg) {
  * Returns the size of the config structure for a given version.
  * This enables size-based migration without explicit conversion functions.
  *
- * **When adding fields:**
+ * When adding fields:
  * Add new case here with offsetof() to the FIRST NEW FIELD in that version.
  *
  * Example:
@@ -448,7 +482,7 @@ static void validate_shift_override(void) {
     }
 }
 
-// --- Public API Implementation ---
+// --- Public Functions ---
 
 bool config_init(void) {
     if (g_initialised) {

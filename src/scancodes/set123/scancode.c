@@ -18,25 +18,30 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file scancode.c
+ * @brief Combined Scancode Sets 1, 2, and 3 unified processing implementation.
+ *
+ * @see scancode.h for the public API and dispatch model.
+ */
+
 #include "scancode.h"
 
-#include <stdio.h>
-#include <string.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #include "flow_tracker.h"
 #include "hid_interface.h"
 #include "log.h"
 
-// ============================================================================
 // Protocol Byte Constants
-// ============================================================================
 
-/* Escape / prefix bytes common to Set 2 and Set 3 (and Set 1 extended) */
+// Escape / prefix bytes common to Set 2 and Set 3 (and Set 1 extended)
 #define SC_ESCAPE_E0 0xE0U /**< E0 prefix — extended key indicator */
 #define SC_ESCAPE_E1 0xE1U /**< E1 prefix — Pause / Break multi-byte sequence */
 #define SC_ESCAPE_F0 0xF0U /**< F0 prefix — Set 2/3 break code indicator */
 
-/* Set 1 (XT / original IBM PC) protocol-specific byte values */
+// Set 1 (XT / original IBM PC) protocol-specific byte values
 #define SC1_BREAK_BIT 0x80U /**< Set 1: OR'd into make code to form break code */
 #define SC1_MAKE_MASK 0x7FU /**< Set 1: mask applied to break code to recover make code */
 #define SC1_MAX_CODE                                                                      \
@@ -55,7 +60,7 @@
 #define SC1_NUMLOCK_MAKE  0x45U /**< Set 1: E1 Pause make tail — Num Lock byte */
 #define SC1_NUMLOCK_BREAK 0xC5U /**< Set 1: E1 Pause break tail — Num Lock break byte */
 
-/* Set 2 (AT / PS2 default) protocol-specific byte values */
+// Set 2 (AT / PS2 default) protocol-specific byte values
 #define SC2_FAKE_LSHIFT 0x12U /**< Set 2: spurious Left-Shift (with E0 prefix) */
 #define SC2_FAKE_RSHIFT 0x59U /**< Set 2: spurious Right-Shift (with E0 prefix) */
 #define SC2_CTRL                                                                      \
@@ -63,22 +68,20 @@
            *   the first data byte of the E1 Pause make/break sequences. */
 #define SC2_NUMLOCK 0x77U /**< Set 2: E1 Pause make/break tail — Num Lock code */
 
-/* Special scancodes shared by Sets 2 and 3 (fall outside the normal 0x01–0x7E range) */
+// Special scancodes shared by Sets 2 and 3 (fall outside the normal 0x01–0x7E range)
 #define SC23_SPECIAL_F7     0x83U /**< Sets 2 and 3: F7 key scancode */
 #define SC23_SPECIAL_SYSREQ 0x84U /**< Sets 2 and 3: SysReq / Alt+Print Screen scancode */
 
-/* Set 3 (IBM terminal) protocol-specific byte values */
+// Set 3 (IBM terminal) protocol-specific byte values
 #define SC3_KP_PLUS 0x7CU /**< Set 3: Keypad Plus (KP-+) untranslated scancode */
 
-/* Interface codes — output values passed to handle_keyboard_report().
- * These are protocol-to-HID translation table indices, not raw HID usage IDs. */
+// Interface codes — output values passed to handle_keyboard_report().
+// These are protocol-to-HID translation table indices, not raw HID usage IDs.
 #define IFACE_PAUSE    0x48U /**< Interface code: Pause / Break key */
 #define IFACE_KP_COMMA 0x68U /**< Interface code: Keypad Comma */
 #define IFACE_KP_PLUS  0x7FU /**< Interface code: Keypad Plus */
 
-// ============================================================================
 // E0-Prefix Translation Tables
-// ============================================================================
 
 /**
  * @brief E0-Prefixed Scancode Translation Table for XT/Set 1 Protocol
@@ -190,9 +193,7 @@ static const uint8_t set2_e0_translation[256] = {
     // All other entries implicitly 0 (unmapped/ignore)
 };
 
-// ============================================================================
-// Configuration Structures (Exported for easy setup)
-// ============================================================================
+// Configuration Structures
 
 const scancode_config_t SCANCODE_CONFIG_SET1 = {.set            = SCANCODE_SET1,
                                                 .e0_translation = set1_e0_translation,
@@ -207,9 +208,7 @@ const scancode_config_t SCANCODE_CONFIG_SET2 = {.set            = SCANCODE_SET2,
 const scancode_config_t SCANCODE_CONFIG_SET3 = {
     .set = SCANCODE_SET3, .e0_translation = NULL, .has_e0_prefix = false, .has_e1_prefix = false};
 
-// ============================================================================
 // State Machine
-// ============================================================================
 
 /**
  * @brief Unified State Machine States
@@ -237,9 +236,7 @@ typedef enum {
 
 static scancode_state_t state = INIT;
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
+// --- Private Functions ---
 
 /**
  * @brief Translate E0-prefixed code using appropriate table
@@ -247,6 +244,7 @@ static scancode_state_t state = INIT;
  * @param code The E0-prefixed scancode to translate
  * @param config Pointer to scancode configuration
  * @return Translated interface code, or 0 if unmapped/ignored
+ * @note Main loop only.
  */
 static inline uint8_t translate_e0_code(uint8_t code, const scancode_config_t* config) {
     if (config->e0_translation == NULL) {
@@ -268,6 +266,7 @@ static inline uint8_t translate_e0_code(uint8_t code, const scancode_config_t* c
  * @param code The scancode to check
  * @param config Pointer to scancode configuration
  * @return true if code is a fake shift (should be ignored)
+ * @note Main loop only.
  */
 static inline bool is_fake_shift(uint8_t code, const scancode_config_t* config) {
     switch (config->set) {
@@ -291,6 +290,7 @@ static inline bool is_fake_shift(uint8_t code, const scancode_config_t* config) 
  *
  * @param code The scancode to process
  * @param config Pointer to scancode configuration
+ * @note Main loop only.
  */
 static void process_normal_code(uint8_t code, const scancode_config_t* config) {
     // Validate configuration pointer
@@ -344,6 +344,7 @@ static void process_normal_code(uint8_t code, const scancode_config_t* config) {
  *
  * @param code The scancode following F0 prefix
  * @param config Pointer to scancode configuration
+ * @note Main loop only.
  */
 static void process_break_code(uint8_t code, const scancode_config_t* config) {
     switch (config->set) {
@@ -381,14 +382,12 @@ static void process_break_code(uint8_t code, const scancode_config_t* config) {
     }
 }
 
-// ============================================================================
 // Per-State Handlers
 //
 // Each function handles exactly one state in the scancode state machine.
 // process_scancode() is a thin dispatcher that calls these; keeping the logic
 // split this way makes each state's behaviour independently readable and keeps
 // the cognitive complexity of any single function well within bounds.
-// ============================================================================
 
 /**
  * @brief INIT state — detect prefix bytes or dispatch normal code.
@@ -623,21 +622,8 @@ static void handle_state_e1_f0_14_f0(uint8_t code, const scancode_config_t* conf
     state = INIT;
 }
 
-// ============================================================================
-// Main Processor
-// ============================================================================
+// --- Public Functions ---
 
-/**
- * @brief Dispatch one incoming byte through the scancode state machine.
- *
- * This is a thin dispatcher: each case delegates immediately to the
- * corresponding per-state handler above.  All state transitions are owned
- * by those handlers so this function stays at a flat complexity level.
- *
- * @param code   Raw byte received from the keyboard protocol layer.
- * @param config Pointer to the active scancode set configuration.
- * @note Main loop only.
- */
 void process_scancode(uint8_t code, const scancode_config_t* config) {
     FLOW_STEP(code);
     switch (state) {

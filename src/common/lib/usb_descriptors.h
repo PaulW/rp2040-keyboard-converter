@@ -22,20 +22,29 @@
  * THE SOFTWARE.
  */
 
+/**
+ * @file usb_descriptors.h
+ * @brief USB interface and HID report ID enumerations.
+ *
+ * Defines the USB interface numbers and HID report IDs used by the TinyUSB
+ * descriptor tables and the HID interface layer.
+ */
+
 #ifndef USB_DESCRIPTORS_H_
 #define USB_DESCRIPTORS_H_
 
-// Interfaces
-enum {
-    ITF_NUM_KEYBOARD,
-    ITF_NUM_CONSUMER_CONTROL,
-    ITF_NUM_MOUSE,
-};
+/** @brief USB interface numbers assigned to HID endpoints. */
+typedef enum {
+    ITF_NUM_KEYBOARD,         /**< Keyboard HID interface */
+    ITF_NUM_CONSUMER_CONTROL, /**< Consumer control HID interface */
+    ITF_NUM_MOUSE,            /**< Mouse HID interface */
+} itf_num_t;
 
-enum {
-    REPORT_ID_KEYBOARD = 1,
-    REPORT_ID_CONSUMER_CONTROL,
-    REPORT_ID_MOUSE,
-};
+/** @brief HID report IDs used in multi-report HID descriptors. */
+typedef enum {
+    REPORT_ID_KEYBOARD = 1,     /**< Keyboard report */
+    REPORT_ID_CONSUMER_CONTROL, /**< Consumer control report */
+    REPORT_ID_MOUSE,            /**< Mouse report */
+} report_id_t;
 
 #endif /* USB_DESCRIPTORS_H_ */

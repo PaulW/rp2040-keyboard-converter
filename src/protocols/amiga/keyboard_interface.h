@@ -22,9 +22,12 @@
  * @file keyboard_interface.h
  * @brief Commodore Amiga Keyboard Protocol Implementation
  *
- * This file implements the Commodore Amiga keyboard protocol used by Amiga computers
- * (A1000, A500, A2000, A3000, A4000) from 1985 onwards. This is a sophisticated
- * bidirectional protocol with handshaking and synchronisation recovery.
+ * This file implements the Commodore Amiga keyboard protocol used by all Amiga
+ * models (A1000, A500, A2000, A3000, A4000*). This is a bidirectional protocol with
+ * handshaking and synchronisation recovery.
+ *
+ * A4000* Note: The A4000's keyboard protocol was not directly referenced or mentioned in the
+ * official Commodore documentation, so this implementation may not be compatible.
  *
  * Protocol Characteristics:
  * - 2-wire interface: CLOCK (keyboard clock) + DATA (bidirectional data)
@@ -33,7 +36,7 @@
  * - Synchronous serial transmission with keyboard-generated clock
  * - Bit rotation: Transmitted as 6-5-4-3-2-1-0-7 (bit 7 last)
  * - Active-low logic: HIGH = 0, LOW = 1
- * - Mandatory handshake: Computer must pulse DATA low for 85µs after each byte
+ * - Mandatory handshake: Computer must pulse DATA low after each byte (PIO-driven)
  * - Automatic resynchronisation on handshake timeout (143ms)
  *
  * Physical Interface:
@@ -47,7 +50,7 @@
  * - Bit rate: ~17 kbit/sec (keyboard-generated)
  * - Bit period: ~60µs (20µs setup + 20µs low + 20µs high)
  * - Handshake: Must start within 1µs of byte completion
- * - Handshake pulse: 85µs minimum (CRITICAL for compatibility)
+ * - Handshake pulse: intended target 85µs; actual ~15.5ms with current PIO divider
  * - Timeout: 143ms without handshake triggers resync mode
  *
  * Data Format:
@@ -59,37 +62,32 @@
  * - Special codes: 0x78, 0xF9, 0xFA, 0xFC, 0xFD, 0xFE
  *
  * Initialisation Sequence:
- * 1. Keyboard powers up and performs self-test
- * 2. Keyboard clocks out 1-bits slowly until handshake received
- * 3. After sync: keyboard sends 0xFD (initiate powerup key stream)
- * 4. Keyboard sends codes for any currently pressed keys
- * 5. Keyboard sends 0xFE (terminate key stream)
- * 6. Normal operation begins
+ * 1. Keyboard sends 0xFD (initiate powerup key stream)
+ * 2. Keyboard sends codes for any currently pressed keys
+ * 3. Keyboard sends 0xFE (terminate key stream)
+ * 4. Normal operation begins
  *
  * Handshake Protocol:
- * - Computer MUST respond to every byte within 1µs
- * - Response: Pull DATA low for exactly 85µs
- * - Shorter pulses may not be detected by all keyboards
+ * - Computer must pulse DATA low within 1µs of byte completion
+ * - PIO handles handshake automatically (no software delay)
+ * - Actual pulse duration: ~15.5ms with current divider (within keyboard tolerance)
  * - Missing handshake triggers resync (keyboard clocks out 1-bits)
  * - After resync: keyboard sends 0xF9, then retransmits failed byte
  *
  * Special Features:
  * - Reset warning: Three-key combo (CTRL + both Amiga keys)
- * - Reset sequence: Keyboard sends 0x78 twice, waits 10 seconds
- * - Hard reset: Keyboard pulls CLOCK low for 500ms
+ * - Reset: Keyboard sends 0x78; system reset in 10 seconds
  * - CAPS LOCK: Only generates code on press (not release), bit 7 = LED state
  *
- * Compatibility:
- * - Compatible with all Amiga models (A1000, A500, A2000, A3000, A4000)
- * - Some keyboard variations exist (numeric pad codes differ)
- * - Protocol specification consistent across all models
  */
 
 #ifndef KEYBOARD_INTERFACE_H
 #define KEYBOARD_INTERFACE_H
 
-#include "pico/stdlib.h"
 #include <stdbool.h>
+#include <stdint.h>
+
+#include "pico/stdlib.h"
 
 /**
  * @brief Amiga Protocol Special Codes
@@ -109,9 +107,10 @@
  *
  * These timing values are critical for proper Amiga keyboard operation.
  */
-#define AMIGA_TIMING_BIT_PERIOD_US    60  /**< Typical bit period (20µs × 3 phases) */
-#define AMIGA_TIMING_CLOCK_MIN_US     20  /**< Minimum CLOCK pulse width for PIO detection */
-#define AMIGA_TIMING_HANDSHAKE_US     85  /**< Handshake pulse width (MUST be 85µs) */
+#define AMIGA_TIMING_BIT_PERIOD_US 60 /**< Typical bit period (20µs × 3 phases) */
+#define AMIGA_TIMING_CLOCK_MIN_US  20 /**< Minimum CLOCK pulse width for PIO detection */
+#define AMIGA_TIMING_HANDSHAKE_US \
+    85 /**< Intended handshake pulse target (85µs); actual ~15.5ms with current PIO divider */
 #define AMIGA_TIMING_HANDSHAKE_MAX_US 1   /**< Maximum delay before handshake starts */
 #define AMIGA_TIMING_TIMEOUT_MS       143 /**< Handshake timeout before keyboard resyncs */
 
@@ -135,28 +134,87 @@
 #define AMIGA_BREAK_BIT    0x80U /**< Bit 7 set = key release (break); clear = press (make) */
 
 /**
- * @brief Initialises the Commodore Amiga keyboard interface
+ * @brief Setup Amiga keyboard interface
  *
- * Sets up PIO state machine and GPIO configuration for Amiga keyboard
- * communication. Configures bidirectional DATA line for data reception
- * and handshake transmission. CLOCK pin is automatically set to data_pin + 1.
+ * Initialises PIO state machine, GPIO configuration, and interrupt handling
+ * for Amiga keyboard protocol:
  *
- * @param data_pin GPIO pin for DATA (bidirectional: input for data, output for handshake)
+ * PIO Configuration:
+ * - Finds available PIO block (pio0 or pio1)
+ * - Claims unused state machine
+ * - Loads keyboard interface program into PIO instruction memory
+ * - Configures clock divider for ~20µs timing detection
+ *
+ * GPIO Setup:
+ * - DATA (data_pin): Bidirectional, open-collector with pull-up
+ * - CLOCK (data_pin + 1): Input only, keyboard-driven, with pull-up
+ * - Both pins initialised for PIO control
+ *
+ * Interrupt Configuration:
+ * - Enables RX FIFO not empty interrupt
+ * - Registers keyboard_input_event_handler as ISR
+ * - IRQ priority set for timely handshake response
+ *
+ * @param data_pin GPIO pin for DATA (bidirectional data line)
  *                 CLOCK is automatically assigned to data_pin + 1
+ * @note Main loop only.
  */
 void keyboard_interface_setup(uint data_pin);
 
 /**
  * @brief Main task function for Amiga keyboard interface
  *
- * Processes received scan codes, manages handshake timing, handles special
- * codes, and manages the Amiga protocol state machine. Must be called
- * periodically from main loop to ensure handshake timing requirements are met.
+ * This function must be called periodically from the main loop to process
+ * scan codes from the ring buffer and handle keyboard state management.
  *
- * Note: Handshake timing (≤1µs start, 85µs pulse) is handled in PIO/ISR.
- * This task should run regularly to drain scan codes and manage CAPS LOCK timing.
+ * Operation Modes:
+ *
+ * UNINITIALISED State:
+ * - Waiting for first byte from keyboard (power-up sequence)
+ * - Keyboard sends 0xFD (power-up start) after self-test
+ * - Transition to INITIALISED happens in ISR on first byte
+ *
+ * INITIALISED State (Normal Operation):
+ * - Process scan codes from ring buffer when HID interface ready
+ * - Coordinates scan code translation for Amiga protocol
+ * - Maintains optimal data flow between keyboard and USB HID
+ * - Prevents HID report queue overflow through ready checking
+ *
+ * Data Processing:
+ * - Non-blocking ring buffer processing for real-time performance
+ * - HID-ready checking prevents USB report queue overflow
+ * - Scan codes processed through dedicated Amiga processor
+ * - Handles CAPS LOCK special behaviour (press only, LED state tracking)
+ *
+ * Protocol Features:
+ * - No initialisation sequence needed (unlike AT/PS2)
+ * - No LED control capability from computer (keyboard maintains state)
+ * - Bidirectional handshake handled entirely in PIO hardware
+ * - Special codes (0x78, 0xF9-0xFE) filtered by event processor
+ *
+ * Error Recovery:
+ * - Lost sync recovery automatic (keyboard sends 0xF9, retransmits)
+ * - Buffer overflow protection (ring buffer full checks)
+ * - Keyboard self-test failures logged (0xFC)
+ * - Reset warning detection (0x78)
+ *
+ * Performance:
+ * - Called from main loop (not time-critical like ISR)
+ * - Processing deferred until HID ready (prevents USB congestion)
+ * - Efficient scan code processing without protocol overhead
+ * - Direct translation to modern HID key codes via scancode processor
+ *
+ * Hardware Monitoring:
+ * - Converter status LED updates when CONVERTER_LEDS enabled
+ * - Keyboard ready state reflects INITIALISED status
+ *
+ * @note Must be called regularly from main loop for scan code processing
+ * @note Ring buffer filled by ISR, consumed here (producer-consumer pattern)
+ * @note HID ready check is critical to prevent USB report queue overflow
+ * @note Handshake timing handled entirely in PIO (not here)
+ * @note Main loop only.
  */
-void keyboard_interface_task();
+void keyboard_interface_task(void);
 
 /**
  * @brief De-rotate received Amiga byte
@@ -166,6 +224,7 @@ void keyboard_interface_task();
  *
  * @param rotated Byte received from keyboard (rotated format)
  * @return Original byte in standard bit order [7-6-5-4-3-2-1-0]
+ * @note IRQ-safe.
  */
 static inline uint8_t amiga_derotate_byte(uint8_t rotated) {
     // Received: [6 5 4 3 2 1 0 7]
@@ -184,6 +243,7 @@ static inline uint8_t amiga_derotate_byte(uint8_t rotated) {
  *
  * @param code Byte received from keyboard (after de-rotation)
  * @return true if code is a special protocol code
+ * @note IRQ-safe.
  */
 static inline bool amiga_is_special_code(uint8_t code) {
     return (code == AMIGA_CODE_RESET_WARNING || code == AMIGA_CODE_LOST_SYNC ||

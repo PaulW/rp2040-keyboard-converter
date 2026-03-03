@@ -52,7 +52,8 @@
  * @note Only active in debug builds when RUN_FROM_RAM_CHECK is defined
  * @note Zero overhead in release builds (compiled out)
  * @note Will panic() with descriptive message if check fails
+ * @note Main loop only.
  */
 void ram_check_verify(void);
 
-#endif  // RAM_CHECK_H
+#endif /* RAM_CHECK_H */

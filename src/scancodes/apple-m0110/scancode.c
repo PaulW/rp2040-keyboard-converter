@@ -18,12 +18,17 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-// NOTE: Apple M0110/M0110A protocol and scancode support is currently under
-// development and considered incomplete/placeholder. The protocol implementation
-// and scancode translation may require further refinement based on hardware
-// testing and real-world keyboard behaviour.
+/**
+ * @file scancode.c
+ * @brief Apple M0110/M0110A keyboard scancode processing implementation.
+ *
+ * @see scancode.h for the public API and scancode processing interface.
+ */
 
 #include "scancode.h"
+
+#include <stdbool.h>
+#include <stdint.h>
 
 #include "flow_tracker.h"
 #include "hid_interface.h"
@@ -69,31 +74,18 @@ static const uint8_t code_71_translation[64] = {
     // All other entries implicitly 0 (unmapped)
 };
 
-/**
- * @brief Process Apple M0110 Keyboard Scancode Data
- *
- * The Apple M0110 protocol encoding:
- * - Bit 7: 1 = key up, 0 = key down
- * - Bit 0: Always 1 (for key transitions)
- * - Bits 6-1: Key code
- *
- * M0110A Extended Sequences:
- * - Normal keys: Single byte
- * - Extended keys: 0x79 followed by code (two bytes) → code_79_translation[]
- * - Special extended: 0x71, 0x79, then code (three bytes) → code_71_translation[]
- *
- * @param code The scancode to process
- */
+typedef enum {
+    INIT,
+    PREFIX_79,    // Got 0x79, next byte uses code_79_translation[]
+    PREFIX_71,    // Got 0x71, expecting 0x79 next
+    PREFIX_71_79  // Got 0x71 then 0x79, next byte uses code_71_translation[]
+} scancode_state_t;
+static scancode_state_t state = INIT;
+
+// --- Public Functions ---
+
 void process_scancode(uint8_t code) {
     FLOW_STEP(code);
-    // clang-format off
-    static enum {
-        INIT,
-        PREFIX_79,      // Got 0x79, next byte uses code_79_translation[]
-        PREFIX_71,      // Got 0x71, expecting 0x79 next
-        PREFIX_71_79    // Got 0x71 then 0x79, next byte uses code_71_translation[]
-    } state = INIT;
-    // clang-format on
 
     // Validate that bit 0 is set (should always be 1 for key transitions)
     if ((code & 0x01) == 0) {
