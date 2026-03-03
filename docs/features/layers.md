@@ -24,13 +24,13 @@ This means you don't need to redefine your entire keyboard layout for each layer
 
 **Important:** Layer 0 (the base layer) must never contain `TRNS` entries. If `TRNS` is encountered in Layer 0 (either through fall-through from an upper layer or when Layer 0 is active directly), the converter logs an error and defaults to `NO` (no key). Always use `NO` explicitly for unmapped keys in Layer 0 rather than `TRNS`.
 
-The system supports up to 8 layers (numbered 0-7). Keep the layer count as low as practical to reduce keymap complexity. Finding the right balance depends on what you're trying to achieve.
+The system supports 4 switchable layers plus base Layer 0 (layers 0–4). Keep the layer count as low as practical to reduce keymap complexity. Finding the right balance depends on what you're trying to achieve.
 
 ### How Transparent Fallthrough Actually Works
 
-Right, this is important—the converter maintains a bitmap of active layers (8 bits, one per layer). When you press a key, the lookup starts at the **highest active layer** based on that bitmap. Layer 0 is always active, so it's always the final fallback.
+The converter maintains a bitmap of active layers (5 bits used, one per layer). When you press a key, the lookup starts at **the highest active layer** based on that bitmap. Layer 0 is always active, so it's always the final fallback.
 
-Here's the key bit: if the starting layer has `TRNS` at that key position, the lookup falls through to the **next lower active layer** in the bitmap. It skips any layers that aren't currently active. This continues until it finds a non-transparent keycode or reaches Layer 0.
+If the starting layer has `TRNS` at that key position, the lookup falls through to the **next lower active layer** in the bitmap. It skips any layers that aren't currently active. This continues until it finds a non-transparent keycode or reaches Layer 0.
 
 What does this mean practically? Say you've activated Layer 1 and Layer 3 via toggle (both in the bitmap). You press a key that has `TRNS` in Layer 3. The lookup checks Layer 3 (highest) → skips Layer 2 (not active) → checks Layer 1 (active, finds keycode) → stops. If Layer 1 also had `TRNS`, it'd fall through to Layer 0.
 
@@ -54,10 +54,10 @@ There are several ways to activate layers, each suited to different use cases. Y
 
 | Keycode | Type | Behaviour | Use Case |
 |---------|------|-----------|----------|
-| MO_1, MO_2, MO_3 | Momentary | Active whilst held | Fn key for media controls or navigation |
-| TG_1, TG_2, TG_3 | Toggle | Stays on until pressed again | Gaming layer, alternative layout |
-| TO_1, TO_2, TO_3 | Permanent | Switches to layer, deactivates others | Force specific layout mode |
-| OSL_1, OSL_2, OSL_3 | One-shot | Active for next keypress only | Symbols or special characters |
+| MO_1, MO_2, MO_3, MO_4 | Momentary | Active whilst held | Fn key for media controls or navigation |
+| TG_1, TG_2, TG_3, TG_4 | Toggle | Stays on until pressed again | Gaming layer, alternative layout |
+| TO_1, TO_2, TO_3, TO_4 | Permanent | Switches to layer, deactivates others | Force-specific layout mode |
+| OSL_1, OSL_2, OSL_3, OSL_4 | One-shot | Active for next keypress only | Symbols or special characters |
 
 **Momentary layers** activate whilst you hold a specific key and deactivate when you release it. Hold the Fn key, press another key to access its upper-layer function, release Fn and you're back to normal typing. The IBM Model M Enhanced uses this pattern with MO_1 positioned where Right Alt normally sits.
 

@@ -68,13 +68,19 @@
  * - No host-to-keyboard communication
  * - Limited to basic scan code set
  * - No keyboard identification or capabilities detection
+ *
+ * @see keyboard_interface.h for the public API and protocol constants.
  */
 
 #include "keyboard_interface.h"
 
+#include <stdint.h>
+
 #include "keyboard_interface.pio.h"
+#include "pico/stdlib.h"
 
 #include "bsp/board.h"
+#include "tusb.h"
 
 #include "flow_tracker.h"
 #include "led_helper.h"
@@ -93,7 +99,7 @@
 #define USING_SET123 0
 #endif
 
-/* PIO State Machine Configuration */
+// PIO State Machine Configuration
 static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
 
 static uint keyboard_data_pin; /**< GPIO pin for DATA line (2-wire interface) */
@@ -107,16 +113,17 @@ static uint keyboard_data_pin; /**< GPIO pin for DATA line (2-wire interface) */
  * - UNINITIALISED: System startup, hardware setup complete
  * - INITIALISED: Normal operation, receiving and processing scan codes
  */
-static enum {
+typedef enum {
     UNINITIALISED, /**< Initial state, waiting for system startup */
     INITIALISED,   /**< Normal operation, processing scan codes */
-} keyboard_state = UNINITIALISED;
+} keyboard_state_t;
+static keyboard_state_t keyboard_state = UNINITIALISED;
 
-/* Keyboard detection timing constants */
-enum {
-    XT_DETECT_INTERVAL_MS = 200, /**< Detection status check interval (ms) */
-    XT_DETECT_STALL_LIMIT = 5,   /**< Max stall count before reset */
-};
+// Keyboard detection timing constants
+#define XT_DETECT_INTERVAL_MS 200 /**< Detection status check interval (ms) */
+#define XT_DETECT_STALL_LIMIT 5   /**< Max stall count before reset */
+
+// --- Private Functions ---
 
 /**
  * @brief IBM XT Keyboard Scan Code Processor
@@ -163,9 +170,7 @@ enum {
  *
  * @param data_byte 8-bit scan code received from keyboard (LSB-first transmission)
  *
- * @note Executes in interrupt context - processing kept minimal for real-time performance
- * @note XT protocol simplicity eliminates need for complex error handling
- * @note Self-test validation ensures keyboard is functional before accepting scan codes
+ * @note IRQ-safe.
  */
 static void keyboard_event_processor(uint8_t data_byte) {
     switch (keyboard_state) {
@@ -241,10 +246,7 @@ static void keyboard_event_processor(uint8_t data_byte) {
  * - No host timing control or flow management needed
  * - PIO handles all signal timing automatically
  *
- * @note ISR function - must complete quickly to maintain real-time performance
- * @note PIO state machine handles complex timing requirements transparently
- * @note Start bit filtering for clone keyboards handled in PIO code, not here
- * @note No software reset capability - reset via PIO restart only
+ * @note IRQ-safe.
  */
 static void __isr keyboard_input_event_handler(void) {
     // Guard against spurious dispatch from shared IRQ - only process if our FIFO has data
@@ -269,66 +271,9 @@ static void __isr keyboard_input_event_handler(void) {
     keyboard_event_processor(data_byte);
 }
 
-/**
- * @brief IBM XT Keyboard Interface Main Task
- *
- * Main task function that manages IBM XT keyboard communication and data processing.
- * Designed for the simple XT protocol which requires minimal state management:
- *
- * Normal Operation (INITIALISED state):
- * - Processes scan codes from ring buffer when HID interface ready
- * - Coordinates scan code translation for IBM XT Set 1 format
- * - Maintains optimal data flow between keyboard and USB HID
- * - Prevents HID report queue overflow through ready checking
- *
- * Initialisation Management (UNINITIALISED state):
- * - Monitors GPIO clock line for keyboard presence detection
- * - Implements simple retry logic for keyboard detection
- * - Handles keyboard connection/disconnection events
- * - Manages PIO restart for clean protocol recovery
- *
- * Protocol Simplicity:
- * - No complex initialisation sequence (unlike AT/PS2)
- * - No LED control capability (hardware limitation)
- * - No bidirectional communication or command/response
- * - Immediate operation once keyboard detected and self-test passed
- *
- * Detection and Recovery:
- * - 200ms periodic checks for keyboard presence via clock line
- * - 5-attempt detection cycle before PIO restart
- * - Automatic recovery from communication failures
- * - Simple state machine reflects protocol simplicity
- *
- * Data Processing Features:
- * - Non-blocking ring buffer processing for real-time performance
- * - HID-ready checking prevents USB report queue overflow
- * - Efficient scan code processing without protocol overhead
- * - Direct translation to modern HID key codes
- *
- * Hardware Monitoring:
- * - GPIO clock line monitoring for presence detection
- * - Converter status LED updates when CONVERTER_LEDS enabled
- * - Simple hardware interface monitoring (single DATA line)
- * - No complex timing or signal management required
- *
- * Performance Characteristics:
- * - Minimal CPU overhead due to protocol simplicity
- * - Fast response time (no initialisation delays)
- * - Efficient ring buffer usage without protocol buffering
- * - Real-time scan code processing capability
- *
- * Compatibility Notes:
- * - Works with original IBM PC/XT keyboards (1981-1987)
- * - Compatible with modern XT-protocol keyboards
- * - No special handling for keyboard variants needed
- * - Plug-and-play operation (no configuration required)
- *
- * @note Must be called periodically from main loop (typically 1-10ms intervals)
- * @note Function is non-blocking and maintains real-time responsiveness
- * @note Much simpler than AT/PS2 due to XT protocol limitations and design
- * @note No LED synchronisation capability due to XT protocol constraints
- */
-void keyboard_interface_task() {
+// --- Public Functions ---
+
+void keyboard_interface_task(void) {
     static uint8_t detect_stall_count = 0;
 
     __dmb();  // Memory barrier - ensure we see latest state from IRQ
@@ -387,68 +332,6 @@ void keyboard_interface_task() {
     }
 }
 
-/**
- * @brief IBM XT Keyboard Interface Initialisation
- *
- * Configures and initialises the IBM XT keyboard interface using RP2040 PIO hardware
- * for accurate timing and protocol implementation. Sets up the minimal hardware
- * required for the simple XT unidirectional protocol:
- *
- * Hardware Setup:
- * - Finds available PIO instance (PIO0 or PIO1) with program space
- * - Claims unused state machine and loads XT protocol program
- * - Configures GPIO pins for DATA and CLOCK lines (2-wire interface)
- * - Keyboard generates clock signal on dedicated CLOCK line
- *
- * PIO Configuration:
- * - Calculates clock divider for 10µs sampling (XT_TIMING_SAMPLE_US)
- * - Configures state machine for unidirectional receive-only operation
- * - Sets up automatic scan code reception and frame processing
- * - Optimised for ~10 kHz keyboard transmission rate
- *
- * Interrupt System:
- * - Configures PIO-specific IRQ (PIO0_IRQ_0 or PIO1_IRQ_0)
- * - Installs XT keyboard input event handler for scan code processing
- * - Enables interrupt-driven reception for optimal performance
- * - Links PIO RX FIFO to interrupt processing system
- *
- * Software Initialisation:
- * - Resets ring buffer to ensure clean startup state
- * - Initialises protocol state machine to UNINITIALISED
- * - Resets converter status LEDs when CONVERTER_LEDS enabled
- * - Clears all protocol state variables
- *
- * Timing Configuration:
- * - Based on IBM PC/XT Technical Reference specifications
- * - 30µs minimum timing for reliable signal detection
- * - Accommodates keyboard clock variations (~40µs low, ~60µs high)
- * - Supports original IBM and compatible clone keyboards
- *
- * Protocol Simplicity:
- * - No bidirectional communication setup needed
- * - No command/response initialisation required
- * - No LED control or advanced feature configuration
- * - Immediate operation once keyboard powers on
- *
- * Compatibility Features:
- * - Works with original IBM PC/XT keyboards (1981-1987)
- * - Compatible with modern XT-protocol keyboards
- * - Handles timing variations in clone keyboards
- * - No keyboard-specific configuration needed
- *
- * Error Handling:
- * - Validates PIO resource availability before configuration
- * - Reports initialisation failures with detailed error messages
- * - Graceful failure if insufficient PIO resources available
- * - Logs successful initialisation with configuration details
- *
- * @param data_pin GPIO pin number for DATA line (2-wire interface)
- *
- * @note XT protocol uses 2-wire interface: DATA and CLOCK lines
- * @note Function blocks until hardware initialisation complete
- * @note Much simpler setup than AT/PS2 due to XT protocol design
- * @note Call before any other XT keyboard interface operations
- */
 void keyboard_interface_setup(uint data_pin) {
 #ifdef CONVERTER_LEDS
     converter.state.kb_ready = 0;

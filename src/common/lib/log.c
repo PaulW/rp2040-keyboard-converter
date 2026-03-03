@@ -25,16 +25,10 @@
  * This file implements the runtime portion of the log level filtering system.
  * The implementation is designed for maximum performance with minimal overhead.
  *
- * **Performance Characteristics:**
+ * Performance Characteristics:
  *
  * Storage:
  * - 1 byte: current_log_level (static volatile)
- * - ~50 bytes: function code (get/set/init)
- *
- * Runtime Overhead:
- * - log_get_level(): 2-3 cycles (inline candidate, single load)
- * - log_set_level(): 2-3 cycles (single store)
- * - LOG_* macro check: 5-10 cycles (comparison + conditional branch)
  *
  * Thread Safety:
  * - Cortex-M0+ has atomic byte read/write operations
@@ -66,12 +60,12 @@
  * Volatile Qualifier:
  * - Ensures visibility across different execution contexts
  * - Prevents compiler from caching value in registers
- * - Critical for IRQ-safe operation
  *
  * Thread Safety:
- * - Cortex-M0+ provides atomic byte read/write
- * - No need for explicit synchronisation primitives
- * - Safe to access from any context without locks
+ * - Written only from main loop context via log_set_level()
+ * - Cortex-M0+ provides atomic byte read; safe to read from any context
+ * - If log_set_level() were called from an IRQ, __dmb() would be required
+ *   after the write to guarantee visibility to other contexts
  *
  * Default Value:
  * - Initialised to LOG_LEVEL_DEFAULT from config.h
@@ -80,42 +74,6 @@
  */
 static volatile uint8_t current_log_level = LOG_LEVEL_DEFAULT;
 
-/**
- * @brief Set runtime log level
- *
- * Changes the minimum log level that will be output. This is a simple
- * atomic write operation with minimal overhead.
- *
- * Implementation:
- * - Single volatile uint8_t write (atomic on Cortex-M0+)
- * - No locking or synchronisation needed
- * - Effect is immediate for subsequent log calls
- * - Compiler generates 1-2 instructions (mov + strb)
- *
- * Performance:
- * - Execution time: 2-3 CPU cycles
- * - No function call overhead (likely inlined)
- * - No memory barriers needed (Cortex-M0+ memory model)
- *
- * Thread Safety:
- * - Safe to call from any execution context
- * - Atomic write ensures no corruption
- * - Changes visible immediately to all contexts
- *
- * @param level New minimum log level
- *
- * Examples:
- * ```c
- * // Reduce noise during normal operation
- * log_set_level(LOG_LEVEL_INFO);
- *
- * // Enable verbose debugging
- * log_set_level(LOG_LEVEL_DEBUG);
- *
- * // Only show critical errors and warnings
- * log_set_level(LOG_LEVEL_ERROR);
- * ```
- */
 void log_set_level(log_level_t level) {
     current_log_level = (uint8_t)level;
 }
@@ -123,31 +81,18 @@ void log_set_level(log_level_t level) {
 /**
  * @brief Get current runtime log level
  *
- * Returns the current minimum log level. This is a simple atomic
- * read operation with minimal overhead.
+ * Returns the current minimum log level.
  *
  * Implementation:
  * - Single volatile uint8_t read (atomic on Cortex-M0+)
  * - No locking or synchronisation needed
- * - Compiler generates 1-2 instructions (ldrb + mov)
- * - Likely inlined by compiler at call sites
- *
- * Performance:
- * - Execution time: 2-3 CPU cycles
- * - No function call overhead (likely inlined)
- * - Used in LOG_* macro hot path
  *
  * Thread Safety:
  * - Safe to call from any execution context
  * - Atomic read ensures consistent value
- * - Volatile qualifier prevents optimisation
+ * - Volatile qualifier prevents compiler caching
  *
  * @return Current log level
- *
- * Usage Note:
- * This function is called by LOG_* macros on every log statement.
- * The compiler typically inlines it to a single load instruction,
- * making the overhead negligible (~2-3 cycles).
  *
  * Example:
  * ```c
@@ -162,32 +107,6 @@ log_level_t log_get_level(void) {
     return (log_level_t)current_log_level;
 }
 
-/**
- * @brief Initialise logging system
- *
- * Sets the initial log level from config.h. This function is
- * automatically called by init_uart_dma(), so explicit calls
- * are typically not needed.
- *
- * Implementation:
- * - Sets current_log_level to LOG_LEVEL_DEFAULT
- * - Idempotent: safe to call multiple times
- * - No hardware initialisation (uses existing UART DMA)
- *
- * When to Call:
- * - Automatically called by init_uart_dma()
- * - Can be called explicitly if needed before UART init
- * - Safe to call multiple times (idempotent)
- *
- * Performance:
- * - Execution time: 2-3 CPU cycles
- * - Called once at startup only
- * - Negligible impact on boot time
- *
- * @note This is automatically called by init_uart_dma()
- * @note Idempotent: multiple calls are safe
- * @note Does not initialise UART hardware (uart.c handles that)
- */
 void log_init(void) {
     current_log_level = LOG_LEVEL_DEFAULT;
 }

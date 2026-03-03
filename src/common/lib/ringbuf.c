@@ -27,7 +27,16 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file ringbuf.c
+ * @brief Ring buffer implementation.
+ *
+ * @see ringbuf.h for the public API and threading model documentation.
+ */
+
 #include "ringbuf.h"
+
+#include <stdint.h>
 
 // Ring buffer storage
 static uint8_t buf[RINGBUF_SIZE];
@@ -35,21 +44,8 @@ static uint8_t buf[RINGBUF_SIZE];
 // Ring buffer structure (exposed via extern in header for inline functions)
 ringbuf_t rbuf = {.buffer = buf, .head = 0, .tail = 0, .size_mask = RINGBUF_SIZE - 1};
 
-/**
- * @brief Resets the ring buffer to empty state.
- *
- * Clears all buffered data by resetting head and tail pointers to zero.
- * This operation is NOT thread-safe and should only be called when:
- * - During initialisation (before IRQ is enabled)
- * - When keyboard state machine enters reset/error state
- * - When IRQs are temporarily disabled
- *
- * WARNING: Do not call this function whilst IRQ handlers may be active,
- * as it modifies both head and tail pointers without synchronisation.
- *
- * @note All buffered scancodes will be discarded
- * @note Does not modify the buffer contents, only the pointers
- */
+// --- Public Functions ---
+
 void ringbuf_reset(void) {
     rbuf.head = 0;
     rbuf.tail = 0;

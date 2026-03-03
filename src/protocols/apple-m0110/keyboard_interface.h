@@ -43,12 +43,11 @@
  * Initialisation Sequence:
  * 1. Host sends Model Number command (0x16)
  * 2. Keyboard responds with model ID and resets itself
- * 3. Host begins normal operation with Inquiry commands
- * 4. Inquiry commands sent every 250ms during normal operation
+ * 3. Host begins continuous polling with Inquiry commands
  *
  * Supported Models:
- * - M0110: Original compact keyboard (1984)
- * - M0110A: Enhanced version with arrow keys and numeric keypad (1987)
+ * - M0110: Original compact keyboard
+ * - M0110A: Enhanced version with arrow keys and numeric keypad
  */
 
 #ifndef KEYBOARD_INTERFACE_H
@@ -108,16 +107,83 @@
 #define M0110_INITIALISATION_DELAY_MS 1000 /**< Initial delay before first model command */
 
 /**
- * @brief Initialises the Apple M0110 keyboard interface.
+ * @brief Initialises the Apple M0110 keyboard interface hardware and software
  *
- * @param data_pin The GPIO pin connected to the DATA line
+ * This function configures the RP2040 PIO system to handle the Apple M0110 protocol:
+ *
+ * Hardware Configuration:
+ * - Allocates and configures PIO state machine for M0110 timing
+ * - Sets up GPIO pins with appropriate pull-ups for open-drain signaling
+ * - Configures interrupt handling for received data
+ *
+ * Protocol Setup:
+ * - Calculates timing dividers for accurate bit-level timing
+ * - Initialises PIO program for MSB-first transmission/reception
+ * - Sets up FIFO buffers for asynchronous data handling
+ *
+ * Pin Assignment:
+ * - data_pin: Connected to keyboard DATA line
+ * - data_pin + 1: Connected to keyboard CLOCK line (keyboard controlled)
+ *
+ * Timing Calculation:
+ * - Base timing uses 160µs as minimum reliable detection period
+ * - PIO clock divider ensures proper sampling of keyboard signals
+ * - Supports both keyboard TX (330µs cycles) and host TX (400µs cycles)
+ *
+ * Error Handling:
+ * - Validates PIO resource availability
+ * - Graceful degradation if hardware resources unavailable
+ * - Comprehensive logging for troubleshooting
+ *
+ * @param data_pin GPIO pin number for DATA line (CLOCK will be data_pin + 1)
+ *
+ * @note Call this function once during system initialisation
+ * @note Requires keyboard_interface_task() to be called regularly for operation
+ * @note Non-blocking.
+ * @note Main loop only.
  */
 void keyboard_interface_setup(uint data_pin);
 
 /**
- * @brief Main task function for Apple M0110 keyboard interface.
- * Should be called periodically from the main loop.
+ * @brief Main task function for Apple M0110 keyboard protocol management
+ *
+ * This function implements the main state machine for M0110 protocol operation.
+ * It should be called regularly from the main application loop (typically every few ms).
+ *
+ * State Machine Operation:
+ *
+ * 1. UNINITIALISED (Startup Phase):
+ *    - Waits for initial 1000ms delay to allow keyboard power-up
+ *    - Uses command timing to track startup delay
+ *    - Transitions to model identification phase when delay expires
+ *
+ * 2. INIT_MODEL_REQUEST (Keyboard Detection):
+ *    - Sends Model Number commands (0x16) every 500ms using command timing
+ *    - Retries up to 5 times if no response received
+ *    - Model command causes keyboard to reset and identify itself
+ *    - Transitions to INITIALISED phase on successful response (handled by IRQ)
+ *
+ * 3. INITIALISED (Normal Operation):
+ *    - Monitors keyboard responses using response timing for 500ms timeout
+ *    - Processes buffered key data when USB HID interface ready
+ *    - Timeout detection triggers return to UNINITIALISED for recovery
+ *    - Key data processing occurs via ring buffer from interrupt handler
+ *
+ * Timing and Performance:
+ * - Optimised timing calculations with single elapsed time computation
+ * - Timer wraparound protection prevents false timeouts on system rollover
+ *
+ * Error Recovery:
+ * - Timeout detection triggers full protocol restart
+ * - State machine reset returns to UNINITIALISED phase
+ * - Maximum retry limits prevent infinite retry loops
+ *
+ * @note This function manages protocol timing and state transitions
+ * @note Actual data reception occurs in interrupt context
+ * @note Timer calculations are optimised to handle uint32_t wraparound scenarios
+ * @note Non-blocking.
+ * @note Main loop only.
  */
-void keyboard_interface_task();
+void keyboard_interface_task(void);
 
 #endif /* KEYBOARD_INTERFACE_H */

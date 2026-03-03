@@ -150,6 +150,20 @@ typedef enum {
 
 ## Comments and Documentation
 
+### Comment Style
+
+There are three distinct comment styles in use, each with a specific purpose:
+
+| Style | Use |
+|-------|-----|
+| `/* ... */` | GPL licence headers only — the block at the top of every `.c` and `.h` file |
+| `/** ... */` | Doxygen documentation blocks — functions, structs, enums, and macros |
+| `// ...` | Everything else — inline notes, section labels, layout diagrams, explanations |
+
+Never use `/* ... */` for code comments or explanatory notes. If it isn't a licence header or a Doxygen block, use `//`.
+
+The one permitted exception is `#endif /* GUARD_H */` at the end of header guard closers.
+
 ### File Headers
 
 Every source file should have a header comment with license information:
@@ -170,6 +184,16 @@ Every source file should have a header comment with license information:
 ```
 
 ### Function Documentation
+
+**Where Doxygen lives:** public API documentation belongs in the header file — full stop. The `.h` file is what callers read, so that's where the `@brief`, `@param`, `@return`, and `@note` annotations go. The `.c` file should not repeat or duplicate that documentation.
+
+Private (static) functions that never appear in a header are the one exception — document those where they are defined, in the `.c` file.
+
+In practice this means:
+- `.h` file → Doxygen for every public function, struct, enum, and macro
+- `.c` file → `// --- Private Functions ---` section with Doxygen only on static helpers; public function bodies have no Doxygen block above them
+
+If a code review tool flags a `.c` file as "missing documentation" for a public function, the documentation is almost certainly already in the corresponding `.h` file where it belongs. That is the correct and intended location.
 
 Use Doxygen-style comments for functions, especially in header files:
 
@@ -273,7 +297,7 @@ For protocol handlers, document critical timing characteristics:
  * - Clock frequency: 10-16.7 kHz (typical 10-15 kHz)
  * - Clock pulse width: minimum 30µs low, 30µs high
  * - Data setup time: minimum 5µs before clock falling edge
- * - Inhibit time: 96µs CLOCK low (exceeds max bit period)
+ * - Inhibit time: 102µs CLOCK low (spec requires ≥100µs; 17 PIO cycles × 6µs)
  */
 ```
 
@@ -630,6 +654,7 @@ Within each group, sort alphabetically unless there are specific dependencies th
 #include "keyboard_interface.pio.h"     // Generated PIO headers
 
 #include "bsp/board.h"                  // External libraries (TinyUSB BSP)
+#include "tusb.h"                       // TinyUSB (tud_* functions)
 
 #include "config.h"                     // Project headers (alphabetical)
 #include "led_helper.h"
@@ -639,14 +664,25 @@ Within each group, sort alphabetically unless there are specific dependencies th
 #include "scancode.h"
 ```
 
+#### Transitive Includes
+
+Every symbol you use directly must have its own explicit `#include`. Never rely on a header appearing transitively because another header happens to pull it in — that chain can break silently when the intermediate header changes.
+
+A common trap in this codebase: `bsp/board.h` transitively includes `tusb.h`, so `tud_hid_ready()` may appear to resolve without a direct `tusb.h` include. It will stop working the moment `bsp/board.h` is removed or its internals change. Both must be included explicitly:
+
+- **`bsp/board.h`** — include when you call `board_init()` or `board_millis()`.
+- **`tusb.h`** — include when you call any `tud_*` function, regardless of whether `bsp/board.h` is present.
+
+Another common case: `PICO_FLASH_SIZE_BYTES` is a board-level constant that resolves transitively through `hardware/flash.h` → `pico.h` → `boards/<board>.h`. It is not defined by `flash.h` itself. Do not replace `hardware/flash.h` with `pico/platform.h` — that header is SDK-internal and guarded against direct inclusion.
+
+**Auditing before removing an include:** If you are considering removing an `#include`, grep the *entire* file for every symbol that header provides before concluding it is unused. Default search results can be truncated in large files, causing you to miss usages further down. Raise `maxResults` or grep in sections.
+
 ### Function Grouping
 
 Group related functions together and separate groups with comment headers:
 
 ```c
-/* ============================================================================
- * Ring Buffer Operations
- * ============================================================================ */
+// --- Ring Buffer Operations --------------------------------------------------
 
 static inline bool ringbuf_is_empty(void) {
     return head == tail;
@@ -656,11 +692,25 @@ static inline bool ringbuf_is_full(void) {
     return ((head + 1) % RINGBUF_SIZE) == tail;
 }
 
-/* ============================================================================
- * Scancode Processing
- * ============================================================================ */
+// --- Scancode Processing -----------------------------------------------------
 
 static bool process_make_code(uint8_t scancode) {
+    // ...
+}
+```
+
+Always use separator comments to mark the boundary between private and public functions. Combined with the ordering rule (private first, public last), this makes the public API surface immediately visible to anyone reading the file:
+
+```c
+// --- Private Functions -------------------------------------------------------
+
+static void internal_helper(void) {
+    // ...
+}
+
+// --- Public Functions --------------------------------------------------------
+
+void module_task(void) {
     // ...
 }
 ```

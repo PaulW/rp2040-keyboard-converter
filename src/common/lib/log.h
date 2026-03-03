@@ -25,22 +25,23 @@
  * This header provides a runtime configurable log level filtering system designed
  * for debugging and diagnostics with minimal performance overhead.
  *
- * **Key Features:**
- * - **Runtime filtering**: All log levels always available, filtered at runtime
- * - **Command mode integration**: Change log level via keyboard (Shift+Shift → 'D' → 1/2/3)
- * - **Inline macros**: No function call overhead when logging is enabled
- * - **Single branch**: Minimal CPU cycles for runtime level checks (~5-10 cycles)
- * - **Early evaluation**: Level check happens before printf formatting
- * - **DMA-backed output**: Uses existing high-performance UART DMA system
+ * Key Features:
+ * - Runtime filtering: All log levels always available, filtered at runtime
+ * - Command mode integration: Change log level via keyboard (Shift+Shift → 'D' → 1/2/3)
+ * - Inline macros: No extra wrapper-call overhead (enabled paths still call
+ *   log_get_level() and printf())
+ * - Single branch: Minimal CPU cycles for runtime level checks
+ * - Early evaluation: Level check happens before printf formatting
+ * - DMA-backed output: Uses existing high-performance UART DMA system
  *
- * **Log Levels:**
+ * Log Levels:
  * ```
  * LOG_LEVEL_ERROR (0)   - Critical errors and warnings      [ERR] [WARN]
  * LOG_LEVEL_INFO  (1)   - Errors + informational messages   [ERR] [WARN] [INFO]
  * LOG_LEVEL_DEBUG (2)   - All messages (errors, info, debug) [ERR] [WARN] [INFO] [DBG]
  * ```
  *
- * **Configuration:**
+ * Configuration:
  *
  * Set in `config.h`:
  * ```c
@@ -48,7 +49,7 @@
  * #define LOG_LEVEL_DEFAULT LOG_LEVEL_INFO   // Default to ERROR + WARN + INFO
  * ```
  *
- * **Usage Examples:**
+ * Usage Examples:
  *
  * ```c
  * // Standard usage (recommended):
@@ -65,42 +66,20 @@
  * // Hold Shift+Shift (3s) → Press 'D' → Press '1' (ERROR) / '2' (INFO) / '3' (DEBUG)
  * ```
  *
- * **Performance Characteristics:**
+ * Thread Safety:
+ * - LOG_* macros are safe to call from main loop and IRQ context (DMA-backed UART path)
+ * - log_set_level() should be called from main loop
  *
- * Runtime disabled levels:
- * - CPU overhead: ~5-10 cycles (single uint8_t comparison + branch)
- * - No printf formatting performed
- * - No DMA queue operations
- * - Example: `if (log_level >= LOG_LEVEL_DEBUG) printf(...)`
- *
- * Enabled levels:
- * - Performance identical to direct printf() call
- * - Uses existing DMA-driven UART system
- * - ~20µs total overhead (DMA queue + formatting)
- *
- * **Binary Size:**
- * - All log levels compiled in: ~84KB (current)
- * - Minimal overhead: ~50 bytes for level checking
- * - All LOG_* calls remain in binary (runtime-filterable)
- *
- * **Thread Safety:**
- * - log_set_level() is thread-safe (atomic uint8_t write)
- * - LOG_* macros are thread-safe (backed by thread-safe DMA UART)
- * - Can be called from any context (main loop, IRQ, etc.)
- *
- * **Memory Usage:**
- * - Runtime variable: 1 byte (current log level)
- * - Code overhead: ~50 bytes (level check + comparison functions)
- * - No additional buffers or data structures
- *
- * **Integration with UART DMA:**
+ * Integration with UART DMA:
  * - Uses existing uart.c DMA-based output system
  * - Respects configured UART_DMA_POLICY (DROP/WAIT_FIXED/WAIT_EXP)
  * - No additional queue or buffering overhead
  *
- * @note **NON-BLOCKING**: All LOG_* macros are non-blocking (backed by DMA UART)
- * @note **RUNTIME CONFIGURABLE**: All levels available, change anytime with log_set_level()
- * @note **IRQ-SAFE**: Can be called from any execution context
+ * @note LOG_* macros use DMA-backed UART output; blocking behaviour depends on
+ *       UART_DMA_POLICY (e.g. WAIT_* policies may block)
+ * @note Do not use LOG_* from IRQ context when a blocking UART_DMA_POLICY is configured
+ * @note All levels are runtime-selectable via log_set_level()
+ * @note log_set_level() is main-loop only; if used in IRQ, issue __dmb() afterwards
  *
  * @warning Must call init_uart_dma() before using LOG_* macros
  * @warning Long format strings may be truncated (UART_DMA_BUFFER_SIZE limit)
@@ -128,28 +107,34 @@ typedef uint8_t log_level_t;
 /**
  * @brief Set runtime log level
  *
- * Changes the minimum log level that will be output at runtime. Messages
- * with a level higher than the set level will be suppressed.
+ * Changes the minimum log level that will be output. This is a simple
+ * atomic write operation with minimal overhead.
  *
- * All log levels are always available since they're compiled into the binary.
- * This provides maximum flexibility for debugging and diagnostics.
+ * Implementation:
+ * - Single volatile uint8_t write (atomic on Cortex-M0+)
+ * - No locking needed (single-byte atomic store)
+ * - Cross-context IRQ callers require a __dmb() after the write
+ * - Effect is immediate for subsequent log calls
  *
  * Thread Safety:
- * - Safe to call from any context (atomic uint8_t write on Cortex-M0+)
- * - Changes take effect immediately for subsequent log calls
- * - No synchronisation needed
+ * - Must be called from main loop context only
+ * - If called from an IRQ handler, the caller must issue __dmb() afterwards
+ *   to ensure the updated level is visible to other execution contexts
  *
- * @param level New minimum log level (LOG_LEVEL_ERROR, LOG_LEVEL_INFO, or LOG_LEVEL_DEBUG)
+ * @param level New minimum log level
  *
- * @note Changes affect all subsequent LOG_* macro calls
- * @note Thread-safe and can be called from IRQ context
- * @note Can also be changed via command mode (Shift+Shift → 'D' → 1/2/3)
+ * @note Main loop only.
  *
  * Examples:
  * ```c
- * log_set_level(LOG_LEVEL_ERROR);  // Only show errors and warnings
- * log_set_level(LOG_LEVEL_INFO);   // Show errors, warnings, and info (default)
- * log_set_level(LOG_LEVEL_DEBUG);  // Show everything
+ * // Reduce noise during normal operation
+ * log_set_level(LOG_LEVEL_INFO);
+ *
+ * // Enable verbose debugging
+ * log_set_level(LOG_LEVEL_DEBUG);
+ *
+ * // Only show critical errors and warnings
+ * log_set_level(LOG_LEVEL_ERROR);
  * ```
  */
 void log_set_level(log_level_t level);
@@ -178,12 +163,30 @@ log_level_t log_get_level(void);
 /**
  * @brief Initialise logging system
  *
- * Sets the initial log level from config.h (LOG_LEVEL_DEFAULT).
- * This is automatically called by init_uart_dma(), so explicit
- * calls are optional.
+ * Sets the initial log level from config.h. This function is
+ * automatically called by init_uart_dma(), so explicit calls
+ * are typically not needed.
  *
- * @note Idempotent: Safe to call multiple times
- * @note Automatically called by init_uart_dma()
+ * Implementation:
+ * - Sets current_log_level to LOG_LEVEL_DEFAULT
+ * - Idempotent: safe to call multiple times
+ * - No hardware initialisation (uses existing UART DMA)
+ *
+ * When to Call:
+ * - Automatically called by init_uart_dma()
+ * - Can be called explicitly if needed before UART init
+ * - Safe to call multiple times (idempotent)
+ *
+ * Performance:
+ * - Execution time: 2-3 CPU cycles
+ * - Called once at startup only
+ * - Negligible impact on boot time
+ *
+ * @note This is automatically called by init_uart_dma()
+ * @note Idempotent: multiple calls are safe
+ * @note Does not initialise UART hardware (uart.c handles that)
+ * @note Main loop only.
+ * @note Non-blocking: performs only log-level state initialisation (no waits/sleeps).
  */
 void log_init(void);
 

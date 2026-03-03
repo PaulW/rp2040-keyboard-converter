@@ -35,6 +35,7 @@
 
 #include "keylayers.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "config_storage.h"
@@ -69,6 +70,8 @@ layer_state_t layer_state = {
     .oneshot_active = false             // One-shot not active
 };
 
+// --- Private Functions ---
+
 /**
  * @brief Compute effective layer bitmap from persistent state and momentary keys
  *
@@ -92,69 +95,6 @@ static void keylayers_update_effective_state(void) {
 
     // Compute effective state: base | persistent | momentary
     layer_state.layer_state = LAYER_BASE_MASK | persistent_layer_state | momentary_bitmap;
-}
-
-/**
- * @brief Reset layer state to base layer (layer 0)
- *
- * Clears all layer activations and returns to base layer.
- * Used during initialisation and error recovery.
- *
- * @note This function only modifies in-RAM state and does NOT persist changes to flash.
- *       If TG/TO layers were previously saved via config_save(), they will be restored
- *       on next boot by keylayers_init(). Callers requiring persistent reset must call
- *       config_set_layer_state() and config_save() explicitly after this function.
- */
-void keylayers_reset(void) {
-    persistent_layer_state = 0;  // Clear persistent layers
-    for (uint8_t i = 0; i < KEYMAP_MAX_LAYERS - 1; i++) {
-        layer_state.momentary_keys[i] = 0;
-    }
-    keylayers_update_effective_state();  // Recompute effective state
-    layer_state.oneshot_layer  = 0;
-    layer_state.oneshot_active = false;
-}
-
-/**
- * @brief Get the highest active layer number
- *
- * Priority order (highest to lowest):
- * 1. One-shot layer (if active)
- * 2. Momentary layers (highest MO layer held)
- * 3. Toggle/base layers (highest bit in bitmap)
- *
- * This ensures MO (momentary) takes precedence over TG (toggle).
- *
- * Implementation uses early returns - checks one-shot first, then iterates
- * momentary layers array (indices 0 to KEYMAP_MAX_LAYERS-2), then falls back to bitmap scan.
- *
- * @return Active layer number (0-7)
- */
-uint8_t keylayers_get_active(void) {
-    // Check one-shot layer first (highest priority)
-    if (layer_state.oneshot_active && layer_state.oneshot_layer > 0) {
-        return layer_state
-            .oneshot_layer;  // oneshot_layer stores target layer (1 to KEYMAP_MAX_LAYERS-1)
-    }
-
-    // Check momentary layers (higher priority than toggles)
-    // Search from highest to lowest momentary layer
-    for (int8_t i = KEYMAP_MAX_LAYERS - 2; i >= 0; i--) {
-        // momentary_keys indices 0 to MAX-2 correspond to layers 1 to MAX-1
-        if (layer_state.momentary_keys[i] != 0) {
-            return i + 1;  // Return layer number (1 to MAX-1)
-        }
-    }
-
-    // Check toggle/base layers (search bitmap from highest to lowest)
-    for (int8_t i = KEYMAP_MAX_LAYERS - 1; i >= 0; i--) {
-        if (layer_state.layer_state & (1 << i)) {
-            return i;
-        }
-    }
-
-    // Fallback to layer 0 (should never reach here due to init)
-    return 0;
 }
 
 /**
@@ -269,37 +209,6 @@ static void handle_valid_hash(uint8_t saved_layer_state) {
 }
 
 /**
- * @brief Initialise layer system and restore saved layer state
- *
- * This function should be called after config_init() during boot.
- * It computes the current keymap hash and attempts to restore the saved
- * layer state from config storage.
- *
- * Validation checks:
- * - If keyboard_id changed → reset to base layer (Layer 0)
- * - If layers_hash changed → reset to base layer (Layer 0)
- * - Otherwise → restore saved layer_state
- *
- * The keyboard_id validation happens in config_storage.c during config_init().
- * This function handles the layers_hash validation.
- */
-void keylayers_init(void) {
-    const uint32_t current_hash      = keylayers_compute_hash();
-    const uint32_t saved_hash        = config_get_layers_hash();
-    const uint8_t  saved_layer_state = config_get_layer_state();
-
-    // Sentinel value LAYERS_HASH_UNINITIALISED indicates first boot or config reset
-    // (more robust than 0, which could theoretically be a valid hash)
-    if (saved_hash == LAYERS_HASH_UNINITIALISED) {
-        handle_first_boot(current_hash);
-    } else if (saved_hash != current_hash) {
-        handle_hash_mismatch(saved_hash, current_hash);
-    } else {
-        handle_valid_hash(saved_layer_state);
-    }
-}
-
-/**
  * @brief Handle MO (momentary) layer operation
  *
  * MO layers are NEVER persisted - they only affect momentary_keys[] array.
@@ -388,21 +297,64 @@ static void keylayers_handle_osl(uint8_t target_layer, bool make) {
     }
 }
 
-/**
- * @brief Process layer switching key operations
- *
- * Handles MO (momentary), TG (toggle), TO (switch to), and OSL (one-shot) operations.
- * Updates layer_state based on keycode and make/break.
- *
- * Implementation uses bitmap operations and array indexing.
- * Config persistence triggered only for TG and TO (not MO or OSL).
- *
- * @param code The layer operation keycode (0xF0-0xFF)
- * @param make true if key pressed, false if released
- */
+// --- Public Functions ---
+
+void keylayers_reset(void) {
+    persistent_layer_state = 0;  // Clear persistent layers
+    for (uint8_t i = 0; i < KEYMAP_MAX_LAYERS - 1; i++) {
+        layer_state.momentary_keys[i] = 0;
+    }
+    keylayers_update_effective_state();  // Recompute effective state
+    layer_state.oneshot_layer  = 0;
+    layer_state.oneshot_active = false;
+}
+
+uint8_t keylayers_get_active(void) {
+    // Check one-shot layer first (highest priority)
+    if (layer_state.oneshot_active && layer_state.oneshot_layer > 0) {
+        return layer_state
+            .oneshot_layer;  // oneshot_layer stores target layer (1 to KEYMAP_MAX_LAYERS-1)
+    }
+
+    // Check momentary layers (higher priority than toggles)
+    // Search from highest to lowest momentary layer
+    for (int8_t i = KEYMAP_MAX_LAYERS - 2; i >= 0; i--) {
+        // momentary_keys indices 0 to MAX-2 correspond to layers 1 to MAX-1
+        if (layer_state.momentary_keys[i] != 0) {
+            return i + 1;  // Return layer number (1 to MAX-1)
+        }
+    }
+
+    // Check toggle/base layers (search bitmap from highest to lowest)
+    for (int8_t i = KEYMAP_MAX_LAYERS - 1; i >= 0; i--) {
+        if (layer_state.layer_state & (1 << i)) {
+            return i;
+        }
+    }
+
+    // Fallback to layer 0 (should never reach here due to init)
+    return 0;
+}
+
+void keylayers_init(void) {
+    const uint32_t current_hash      = keylayers_compute_hash();
+    const uint32_t saved_hash        = config_get_layers_hash();
+    const uint8_t  saved_layer_state = config_get_layer_state();
+
+    // Sentinel value LAYERS_HASH_UNINITIALISED indicates first boot or config reset
+    // (more robust than 0, which could theoretically be a valid hash)
+    if (saved_hash == LAYERS_HASH_UNINITIALISED) {
+        handle_first_boot(current_hash);
+    } else if (saved_hash != current_hash) {
+        handle_hash_mismatch(saved_hash, current_hash);
+    } else {
+        handle_valid_hash(saved_layer_state);
+    }
+}
+
 void keylayers_process_key(uint8_t code, bool make) {
     const uint8_t operation    = GET_LAYER_OPERATION(code);  // 0=MO, 1=TG, 2=TO, 3=OSL
-    const uint8_t target_layer = GET_LAYER_TARGET(code);     // 1-3 (current MO/TG/TO/OSL macros)
+    const uint8_t target_layer = GET_LAYER_TARGET(code);     // 1-4 (MO/TG/TO/OSL macros)
 
     // Guard: Validate target_layer bounds to prevent buffer underflow and invalid operations
     // Lower bound: target_layer must not be 0 (Layer 0 is base, cannot be used with MO/TG)
@@ -435,14 +387,6 @@ void keylayers_process_key(uint8_t code, bool make) {
     }
 }
 
-/**
- * @brief Consume one-shot layer after key press
- *
- * Should be called after processing any non-layer, non-transparent key press.
- * Deactivates the one-shot layer if currently active.
- *
- * Implementation clears oneshot_active flag and oneshot_layer value.
- */
 void keylayers_consume_oneshot(void) {
     layer_state.oneshot_active = false;
     layer_state.oneshot_layer  = 0;

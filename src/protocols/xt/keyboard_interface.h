@@ -22,32 +22,30 @@
  * @file keyboard_interface.h
  * @brief IBM XT Keyboard Protocol Implementation
  *
- * This file implements the IBM XT keyboard protocol used by the original IBM PC/XT
- * systems (1981-1987). This is the simplest of the IBM keyboard protocols.
+ * This file implements the IBM XT keyboard protocol used by the original IBM PC and
+ * PC/XT systems.
  *
  * Protocol Characteristics:
  * - 2-wire interface: separate DATA and CLOCK lines
  * - Keyboard generates clock signal on dedicated CLOCK line
  * - Unidirectional communication (keyboard to host only)
  * - LSB-first bit transmission (bit 0 → bit 7)
- * - No parity, start, or stop bits
- * - Fixed scan code set (Set 1 equivalent)
+ * - Start bit present; no parity or stop bits
+ * - Fixed scan code set (equivalent to later "Set 1")
  * - No host commands or acknowledgments
  *
  * Physical Interface:
  * - DATA line for keyboard-to-host data transmission
  * - CLOCK line for keyboard-generated clock signal
- * - Both lines have pull-up resistors
- * - 5V TTL logic levels
+ * - 5V TTL logic levels with pull-up resistor
  * - 5-pin DIN connector on original IBM keyboards
  *
  * Note: Unlike AT/PS2 protocol, the CLOCK line in XT is primarily keyboard-driven
- * with no continuous host flow control. However, XT Type 2 keyboards support soft
- * reset by pulling both CLOCK and DATA low simultaneously.
+ * with no continuous host flow control.
  *
  * Timing Requirements:
  * - Keyboard-generated clock: approximately 10 kHz
- * - Clock pulse width: ~40µs low, 60µs high
+ * - Clock pulse width: ~40µs low, ~60µs high
  * - Total bit time: ~100µs
  * - No host timing control or flow control
  *
@@ -62,9 +60,7 @@
  * - Keyboard begins transmitting immediately when powered
  * - Host simply receives and processes scan codes
  *
- * Compatibility:
- * - Compatible with IBM PC (1981), PC/XT (1983)
- * - Subset of AT keyboard functionality
+ * Advantages:
  * - Simple, reliable protocol with minimal overhead
  */
 
@@ -114,22 +110,124 @@
 #define XT_TIMING_SAMPLE_US     10 /**< PIO sampling interval for double-start-bit detection (10µs) */
 
 /**
- * @brief Initialises the IBM XT keyboard interface
+ * @brief IBM XT Keyboard Interface Initialisation
  *
- * Sets up PIO state machine and GPIO configuration for XT keyboard
- * communication. XT keyboards require minimal setup since they use
- * a simple unidirectional protocol.
+ * Configures and initialises the IBM XT keyboard interface using RP2040 PIO hardware
+ * for accurate timing and protocol implementation. Sets up the minimal hardware
+ * required for the simple XT unidirectional protocol:
  *
- * @param data_pin GPIO pin for DATA line (2-wire interface)
+ * Hardware Setup:
+ * - Atomically claims PIO resources using claim_pio_and_sm(&keyboard_interface_program)
+ * - Uses returned pio_engine_t for program init and runtime access
+ * - Configures GPIO pins for DATA and CLOCK lines (2-wire interface)
+ * - Keyboard generates clock signal on dedicated CLOCK line
+ *
+ * PIO Configuration:
+ * - Calculates clock divider for 10µs sampling (XT_TIMING_SAMPLE_US)
+ * - Configures state machine for unidirectional receive-only operation
+ * - Sets up automatic scan code reception and frame processing
+ * - Optimised for ~10 kHz keyboard transmission rate
+ *
+ * Interrupt System:
+ * - Configures PIO-specific IRQ (PIO0_IRQ_0 or PIO1_IRQ_0)
+ * - Installs XT keyboard input event handler for scan code processing
+ * - Enables interrupt-driven reception for optimal performance
+ * - Links PIO RX FIFO to interrupt processing system
+ *
+ * Software Initialisation:
+ * - Resets ring buffer to ensure clean startup state
+ * - Initialises protocol state machine to UNINITIALISED
+ * - Resets converter status LEDs when CONVERTER_LEDS enabled
+ * - Clears all protocol state variables
+ *
+ * Timing Configuration:
+ * - Based on IBM PC/XT Technical Reference specifications
+ * - 30µs minimum timing for reliable signal detection
+ * - Accommodates keyboard clock variations (~40µs low, ~60µs high)
+ * - Supports original IBM and compatible clone keyboards
+ *
+ * Protocol Simplicity:
+ * - No bidirectional communication setup needed
+ * - No command/response initialisation required
+ * - No LED control or advanced feature configuration
+ * - Immediate operation once keyboard powers on
+ *
+ * Compatibility Features:
+ * - Works with original IBM PC/XT keyboards (1981-1987)
+ * - Compatible with modern XT-protocol keyboards
+ * - Handles timing variations in clone keyboards
+ * - No keyboard-specific configuration needed
+ *
+ * Error Handling:
+ * - Validates PIO resource availability before configuration
+ * - Reports initialisation failures with detailed error messages
+ * - Graceful failure if insufficient PIO resources available
+ * - Logs successful initialisation with configuration details
+ *
+ * @param data_pin GPIO pin number for DATA line; CLOCK is expected on (data_pin + 1)
+ *
+ * @note Main loop only.
+ * @note Non-blocking.
  */
 void keyboard_interface_setup(uint data_pin);
 
 /**
- * @brief Main task function for IBM XT keyboard interface
+ * @brief IBM XT Keyboard Interface Main Task
  *
- * Processes received scan codes and manages the simple XT protocol
- * state machine. Should be called periodically from main loop.
+ * Main task function that manages IBM XT keyboard communication and data processing.
+ * Designed for the simple XT protocol which requires minimal state management:
+ *
+ * Normal Operation (INITIALISED state):
+ * - Processes scan codes from ring buffer when HID interface ready
+ * - Coordinates scan code translation for IBM XT Set 1 format
+ * - Maintains optimal data flow between keyboard and USB HID
+ * - Prevents HID report queue overflow through ready checking
+ *
+ * Initialisation Management (UNINITIALISED state):
+ * - Monitors GPIO clock line for keyboard presence detection
+ * - Implements simple retry logic for keyboard detection
+ * - Handles keyboard connection/disconnection events
+ * - Manages PIO restart for clean protocol recovery
+ *
+ * Protocol Simplicity:
+ * - No complex initialisation sequence (unlike AT/PS2)
+ * - No LED control capability (hardware limitation)
+ * - No bidirectional communication or command/response
+ * - Immediate operation once keyboard detected and self-test passed
+ *
+ * Detection and Recovery:
+ * - 200ms periodic checks for keyboard presence via clock line
+ * - 5-attempt detection cycle before PIO restart
+ * - Automatic recovery from communication failures
+ * - Simple state machine reflects protocol simplicity
+ *
+ * Data Processing Features:
+ * - Non-blocking ring buffer processing for real-time performance
+ * - HID-ready checking prevents USB report queue overflow
+ * - Efficient scan code processing without protocol overhead
+ * - Direct translation to modern HID key codes
+ *
+ * Hardware Monitoring:
+ * - GPIO clock line monitoring for presence detection
+ * - Converter status LED updates when CONVERTER_LEDS enabled
+ * - Simple hardware interface monitoring (single DATA line)
+ * - No complex timing or signal management required
+ *
+ * Performance Characteristics:
+ * - Minimal CPU overhead due to protocol simplicity
+ * - Fast response time (no initialisation delays)
+ * - Efficient ring buffer usage without protocol buffering
+ * - Real-time scan code processing capability
+ *
+ * Compatibility Notes:
+ * - Works with original IBM PC/XT keyboards (1981-1987)
+ * - Compatible with modern XT-protocol keyboards
+ * - No special handling for keyboard variants needed
+ * - Plug-and-play operation (no configuration required)
+ *
+ * @note Main loop only.
+ * @note Non-blocking.
  */
-void keyboard_interface_task();
+void keyboard_interface_task(void);
 
 #endif /* KEYBOARD_INTERFACE_H */

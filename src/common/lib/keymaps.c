@@ -18,10 +18,19 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file keymaps.c
+ * @brief Scancode-to-HID keycode mapping implementation with layer and shift-override support.
+ *
+ * @see keymaps.h for the full public API and layer model documentation.
+ *
+ * @note Main loop only — not IRQ-safe.
+ */
+
 #include "keymaps.h"
 
+#include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 
 #include "config_storage.h"
 #include "flow_tracker.h"
@@ -34,6 +43,8 @@
 // This limits maximum keymap dimensions to 16x16 (0-15 range per nibble)
 _Static_assert(KEYMAP_ROWS <= 16 && KEYMAP_COLS <= 16,
                "Keymap dimensions must fit in 4-bit encoding (pos parameter)");
+
+// --- Private Functions ---
 
 /**
  * @brief Scans lower layers for layer modifiers only
@@ -236,23 +247,8 @@ static uint8_t apply_shift_override(uint8_t key_code, uint8_t source_layer, bool
     return key_code;
 }
 
-/**
- * @brief Retrieves the key value at the specified position in the keymap.
- *
- * Main keymap lookup function. Handles:
- * - Layer switching operations (MO/TG/TO/OSL)
- * - Transparent key fallthrough
- * - Per-layer shift-override (if keyboard defines keymap_shift_override_layers)
- * - One-shot layer consumption
- *
- * @param pos            The position of the key in the keymap (upper nibble = row, lower nibble =
- * col).
- * @param make           True if key pressed, false if released.
- * @param suppress_shift Output parameter set to true if shift should be suppressed for this key.
- *                       Used by shift-override system when remapping to the final character.
- *
- * @return The HID keycode to send, or KC_NO if consumed by layer operation.
- */
+// --- Public Functions ---
+
 uint8_t keymap_get_key_val(uint8_t pos, bool make, bool* suppress_shift) {
     FLOW_STEP(pos);
     // Initialise output parameter to default false to avoid leaking previous value

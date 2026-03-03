@@ -35,15 +35,15 @@
  * - Bidirectional communication with acknowledgments
  *
  * Supported Scan Code Sets:
- * - Set 1: Original XT scan codes (default for AT keyboards)
- * - Set 2: Standard PS/2 scan codes (default for PS/2 keyboards)
- * - Set 3: Terminal keyboard scan codes (less common)
+ * - Sets 1, 2, and 3 supported
+ * - Terminal keyboards (identified by device ID response) use Set 3
+ * - All other keyboards use Set 2 by default
  *
  * Timing Requirements:
  * - Clock frequency: 10-16.7 kHz
  * - Clock pulse width: minimum 30µs
  * - Data setup/hold: minimum 5µs before/after clock edge
- * - Inhibit time: minimum 100µs CLOCK low to stop transmission
+ * - Inhibit time: 102µs CLOCK low to stop transmission (spec requires ≥100µs)
  *
  * Initialisation Sequence:
  * 1. Power-on self-test (keyboard sends 0xAA on success)
@@ -54,10 +54,9 @@
  *
  * Special Features:
  * - LED control (Caps Lock, Num Lock, Scroll Lock)
- * - Typematic rate and delay configuration
- * - Multiple scan code set support
- * - Keyboard identification and capability detection
- * - Compatible with both AT and PS/2 electrical interfaces
+ * - Typematic repeat rate configuration
+ * - Multiple scan code set support (Sets 1, 2, 3)
+ * - Keyboard identification from device ID response
  */
 
 #ifndef KEYBOARD_INTERFACE_H
@@ -85,22 +84,106 @@
 #define ATPS2_KEYBOARD_ID_UNKNOWN   0xFFFF /**< Unknown or unrecognised keyboard ID */
 
 /**
- * @brief Initialises the AT/PS2 keyboard interface
+ * @brief AT/PS2 Keyboard Interface Initialisation
  *
- * Sets up PIO state machine, GPIO configuration, and protocol handlers
- * for AT/PS2 keyboard communication.
+ * Configures and initialises the complete AT/PS2 keyboard interface using RP2040 PIO
+ * hardware for precise timing and protocol implementation. Sets up all hardware and
+ * software components required for reliable keyboard communication:
  *
- * @param data_pin GPIO pin for DATA line (CLOCK will be data_pin + 1)
+ * Hardware Setup:
+ * - Atomically claims PIO instance and state machine via claim_pio_and_sm()
+ * - Loads the AT/PS2 protocol program as part of the atomic allocation flow
+ * - Configures GPIO pins: DATA line and CLOCK line (DATA + 1)
+ * - Sets up pull-up resistors for open-drain signaling
+ *
+ * PIO Configuration:
+ * - Calculates clock divider for 30µs minimum pulse width timing
+ * - Configures state machine for bidirectional communication
+ * - Sets up automatic frame reception and transmission
+ * - Enables precise timing compliance with AT/PS2 specifications
+ *
+ * Interrupt System:
+ * - Configures PIO-specific IRQ (PIO0_IRQ_0 or PIO1_IRQ_0)
+ * - Installs keyboard input event handler for frame processing
+ * - Enables interrupt-driven data reception for optimal performance
+ * - Links PIO RX FIFO to interrupt system
+ *
+ * Software Initialisation:
+ * - Resets ring buffer to ensure clean startup state
+ * - Initialises protocol state machine to UNINITIALISED
+ * - Resets converter status LEDs when CONVERTER_LEDS enabled
+ * - Clears all protocol state variables
+ *
+ * Timing Calibration:
+ * - Uses IBM PS/2 Technical Reference timing specifications
+ * - 30µs minimum clock pulse width (per IBM 84F9735 document)
+ * - Supports 10-16.7 kHz clock frequency range
+ * - Accommodates both AT and PS/2 timing requirements
+ *
+ * Error Handling:
+ * - Validates PIO resource availability before configuration
+ * - Reports initialisation failures with detailed error messages
+ * - Graceful failure if insufficient PIO resources available
+ * - Logs successful initialisation with configuration details
+ *
+ * @param data_pin GPIO pin number for DATA line (CLOCK automatically assigned as data_pin + 1)
+ *
+ * @note CLOCK pin must be DATA pin + 1 for hardware compatibility
+ * @note Performs synchronous initialisation and returns when setup attempt completes.
+ * @note No intentional blocking waits are used.
+ * @note Call before any other keyboard interface operations
+ * @note Main loop only.
  */
 void keyboard_interface_setup(uint data_pin);
 
 /**
- * @brief Main task function for AT/PS2 keyboard interface
+ * @brief AT/PS2 Keyboard Interface Main Task
  *
- * Manages protocol state machine, processes received data, handles
- * initialisation sequence, and maintains keyboard communication.
- * Should be called periodically from main loop.
+ * Main task function that coordinates all aspects of AT/PS2 keyboard communication
+ * and protocol management. Handles both operational data flow and initialisation:
+ *
+ * Normal Operation (INITIALISED state):
+ * - Processes scan codes from ring buffer when HID interface ready
+ * - Manages LED state synchronisation (Caps/Num/Scroll Lock)
+ * - Coordinates scan code translation and HID report generation
+ * - Maintains optimal throughput whilst preventing report queue overflow
+ *
+ * Initialisation Management (Non-INITIALISED states):
+ * - Monitors initialisation timeouts and implements retry logic
+ * - Detects keyboard presence via clock line monitoring
+ * - Handles stalled initialisation with automatic recovery
+ * - Manages keyboard ID read timeouts with graceful fallback
+ * - Coordinates LED setup timeout recovery
+ *
+ * Timeout Handling:
+ * - 200ms periodic checks for initialisation progress
+ * - 2-retry limit for keyboard ID operations before fallback
+ * - 5-attempt detection cycle before reset request
+ * - Automatic state machine recovery on persistent failures
+ *
+ * LED Synchronisation:
+ * - Detects host lock key state changes
+ * - Issues LED command sequence (0xED followed by LED bitmap)
+ * - Handles LED command timeout and recovery
+ * - Provides audio feedback on successful LED changes
+ *
+ * Hardware Integration:
+ * - Monitors GPIO clock line for keyboard presence detection
+ * - Updates converter status LEDs based on initialisation state
+ * - Integrates with USB HID subsystem for optimal report timing
+ * - Coordinates with ring buffer for efficient data flow
+ *
+ * Performance Features:
+ * - Non-blocking ring buffer processing
+ * - HID-ready checking prevents report queue overflow
+ * - Efficient state-based processing reduces CPU overhead
+ * - Interrupt-driven data reception with task-level processing
+ *
+ * @note Must be called periodically from main loop (typically 1-10ms intervals)
+ * @note Function is non-blocking and maintains real-time responsiveness
+ * @note Integrates with converter LED system when CONVERTER_LEDS enabled
+ * @note Main loop only.
  */
-void keyboard_interface_task();
+void keyboard_interface_task(void);
 
 #endif /* KEYBOARD_INTERFACE_H */

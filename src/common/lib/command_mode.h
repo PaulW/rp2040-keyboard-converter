@@ -18,14 +18,6 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef COMMAND_MODE_H
-#define COMMAND_MODE_H
-
-#include <stdbool.h>
-#include <stdint.h>
-
-#include "tusb.h"
-
 /**
  * @file command_mode.h
  * @brief Command Mode System for 2KRO-Compatible Special Functions
@@ -83,10 +75,18 @@
  * - BRIGHTNESS_SELECT: Waiting for brightness adjustment (+/-, rainbow LED cycling)
  *
  * Threading Model:
- * - All functions called from main task context only
+ * - All functions called from main loop context only
  * - No interrupt access, no synchronisation primitives needed
  * - Safe to call from handle_keyboard_report() context
  */
+
+#ifndef COMMAND_MODE_H
+#define COMMAND_MODE_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "tusb.h"
 
 /**
  * @brief Initialises the command mode system
@@ -96,6 +96,7 @@
  *
  * @note Called from main() during startup
  * @note Idempotent - safe to call multiple times
+ * @note Main loop only
  */
 void command_mode_init(void);
 
@@ -129,6 +130,7 @@ void command_mode_init(void);
  * @note Safe to call even when no keyboard activity
  * @note Must be called regularly for timely state transitions
  * @note Optimised for minimal overhead during normal operation
+ * @note Main loop only.
  */
 void command_mode_task(void);
 
@@ -165,7 +167,7 @@ void command_mode_task(void);
  *
  * @note Called from handle_keyboard_report() after report is updated
  * @note Non-blocking design using time-based state checks
- * @note Thread-safe: main task context only
+ * @note Main loop only.
  */
 bool command_mode_process(const hid_keyboard_report_t* keyboard_report);
 

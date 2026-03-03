@@ -46,7 +46,7 @@
  * Timing Requirements:
  * - Same as keyboard: 10-16.7 kHz clock, minimum 30µs pulse width
  * - Data setup/hold: minimum 5µs before/after clock edge
- * - Inhibit time: minimum 100µs CLOCK low to stop transmission
+ * - Inhibit time: 102µs CLOCK low to stop transmission (spec requires ≥100µs)
  *
  * Initialisation Sequence:
  * 1. Power-on self-test (mouse sends 0xAA on success, 0x00 as device ID)
@@ -116,23 +116,31 @@
 #define ATPS2_MOUSE_PACKET_EXTENDED_SIZE 4 /**< Extended mouse packet size (bytes) */
 
 /**
- * @brief Initialises the AT/PS2 mouse interface
+ * @brief Initialises the AT/PS2 PIO interface for the mouse.
+ * This function initialises the AT/PS2 PIO interface for the mouse by performing the following
+ * steps:
+ * 1. Resets the converter status if CONVERTER_LEDS is defined.
+ * 2. Finds an available PIO to use for the mouse interface program.
+ * 3. Claims the PIO and loads the program.
+ * 4. Sets up the IRQ for the PIO state machine.
+ * 5. Defines the polling interval and cycles per clock for the state machine.
+ * 6. Gets the base clock speed of the RP2040.
+ * 7. Initialises the PIO interface program.
+ * 8. Sets the IRQ handler and enables the IRQ.
  *
- * Sets up PIO state machine, GPIO configuration, and protocol handlers
- * for AT/PS2 mouse communication. Shares physical interface with keyboard
- * but uses separate state machine and command processing.
- *
- * @param data_pin GPIO pin for DATA line (CLOCK will be data_pin + 1)
+ * @param data_pin The data pin to be used for the mouse interface.
+ * @note Main loop only.
  */
 void mouse_interface_setup(uint data_pin);
 
 /**
- * @brief Main task function for AT/PS2 mouse interface
+ * @brief Task function for the mouse interface.
+ * This function simply assists with the initialisation of the mouse interface and handles timeout
+ * events.
  *
- * Manages protocol state machine, processes received data, handles
- * initialisation sequence, and maintains mouse communication.
- * Should be called periodically from main loop.
+ * @note This function should be called periodically in the main loop, or within a task scheduler.
+ * @note Main loop only.
  */
-void mouse_interface_task();
+void mouse_interface_task(void);
 
 #endif /* MOUSE_INTERFACE_H */

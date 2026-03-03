@@ -10,7 +10,7 @@ init:
     wait 1 pin 1
 
 check:
-    ; Wait for incoming data, but jump to the Output loop if the Output Shif Register has data.
+    ; Wait for incoming data, but jump to the Output loop if the Output Shift Register has data.
     jmp !OSRE, bitLoopOut
     jmp pin, check ; Loop back if CLOCK is HIGH (keyboard idle)
 

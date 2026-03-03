@@ -31,10 +31,11 @@
 #define COMMON_INTERFACE_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "pico/stdlib.h"
 
-#include "pio_helper.h" /* pio_engine_t, pio_irq_callback_t */
+#include "pio_helper.h"  // pio_engine_t, pio_irq_callback_t
 
 /**
  * @brief AT/PS2 Protocol Shared Command Codes
@@ -100,7 +101,19 @@ typedef struct {
     uint8_t expected_parity; /**< Computed odd-parity bit for @p data */
 } atps2_frame_t;
 
-extern uint8_t interface_parity_table[];
+/**
+ * @brief Mapping of HEX to parity bit for AT/PS2 byte values.
+ *
+ * Maps each byte value (0x00–0xFF) to its corresponding odd-parity bit as
+ * required by the AT/PS2 serial frame format. Used by both keyboard and mouse
+ * interface drivers to construct outgoing command frames and to validate incoming
+ * parity bits against received data.
+ *
+ * Example:
+ * - interface_parity_table[0x3C] = 1 (0x3C has 4 ones, parity bit is 1)
+ * - interface_parity_table[0x8A] = 0 (0x8A has 3 ones, parity bit is 0)
+ */
+extern const uint8_t interface_parity_table[256];
 
 /**
  * @brief Parse one AT/PS2 frame from the PIO RX FIFO.
@@ -129,36 +142,43 @@ static inline atps2_frame_t atps2_parse_frame(const pio_engine_t* engine) {
 }
 
 /**
- * @brief Transmit one command byte to an AT/PS2 device via PIO.
+ * @brief   Send a PS/2 command byte to the device via the PIO engine, with parity appended.
  *
- * Calculates the odd-parity bit for @p data_byte, packs it with the data into a
- * 16-bit value, and writes it to the PIO TX FIFO.  Non-blocking: data is silently
- * dropped if the FIFO is full.
+ * Packs @p data_byte together with its odd-parity bit (looked up from
+ * @c interface_parity_table) into a 16-bit word and writes it to the PIO state
+ * machine TX FIFO.  The PIO programme is responsible for shifting out the data
+ * and parity bits over the PS/2 CLK/DATA lines.
  *
- * @param engine    Pointer to the active PIO engine for this interface.
- * @param data_byte 8-bit command code to transmit.
- *
- * @note Non-blocking — data is dropped silently if the PIO TX FIFO is full.
- * @note IRQ-safe.
+ * @param   engine      Pointer to the @c pio_engine_t that owns the PIO state machine.
+ * @param   data_byte   Command byte to transmit; parity is appended automatically
+ *                      using @c interface_parity_table[data_byte].
+ * @note    Main loop only — must not be called from an ISR.  No locking is
+ *          performed; callers must ensure single-threaded access to the PIO TX FIFO.
  */
 void atps2_send_command(pio_engine_t* engine, uint8_t data_byte);
 
 /**
- * @brief Initialise the AT/PS2 PIO engine for one interface.
+ * @brief   Claim PIO resources and initialise the AT/PS2 interface engine.
  *
- * Performs the complete PIO bringup sequence shared by keyboard and mouse interfaces:
- * claims a PIO instance and state machine, calculates and applies the AT/PS2 clock
- * divider, initialises the PIO program, sets up the shared IRQ dispatcher, and
- * registers the device-specific callback.  On any failure all claimed PIO resources
- * are released before returning false.
+ * Allocates a PIO instance and state machine via @c claim_pio_and_sm(), loads
+ * and initialises the AT/PS2 PIO programme with the correct clock divider for
+ * the protocol timing requirements, initialises the shared PIO IRQ dispatcher,
+ * and registers @p callback as the device-specific event handler.
  *
- * @param engine      Populated with the claimed PIO engine on success.
- * @param data_pin    GPIO pin for the DATA line (CLOCK = data_pin + 1).
- * @param callback    Device-specific IRQ callback to register with the dispatcher.
- * @param device_name Human-readable label used in LOG messages (e.g. "Keyboard").
- * @return true on success, false if PIO resources or callback registration failed.
+ * On any failure the function logs the error, releases all claimed resources
+ * via @c release_pio_and_sm(), and returns @c false so the caller need not
+ * perform additional teardown.
  *
- * @note Main loop only — call before IRQs are enabled for this interface.
+ * @param   engine       Output parameter; receives the claimed @c pio_engine_t
+ *                       (PIO instance, state machine index, and program offset).
+ * @param   data_pin     GPIO pin number used as the combined PS/2 CLK/DATA line.
+ * @param   callback     PIO IRQ callback to register with the shared dispatcher
+ *                       for this device's state machine events.
+ * @param   device_name  Human-readable name used in log messages (e.g. @c "keyboard").
+ * @return  @c true on success; @c false if PIO resources are unavailable or
+ *          the IRQ callback slot could not be registered (all resources freed).
+ * @note    Main loop only — must not be called from an ISR.  Not reentrant;
+ *          call once per device during initialisation.
  */
 bool atps2_setup_pio_engine(pio_engine_t* engine, uint data_pin, pio_irq_callback_t callback,
                             const char* device_name);

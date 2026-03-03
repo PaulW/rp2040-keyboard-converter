@@ -69,17 +69,17 @@ bitLoopOut:
     ;    * = Some keyboards have slow/irregular clock during ACK
 
     ; Host-to-Device Transmission Sequence (see README for detailed timing):
-    ; 1. Inhibit: Pull CLOCK LOW for ~96µs (stops keyboard transmission)
+    ; 1. Inhibit: Pull CLOCK LOW for ~102µs (stops keyboard transmission)
     ; 2. RTS: Pull DATA LOW (Request-to-Send + Start bit)
     ; 3. Release: Set CLOCK to input (keyboard takes over clock generation)
     ; 4. Data: Send 8 bits + parity on keyboard clock edges
     ; 5. Stop: Pull DATA HIGH
     ; 6. ACK: Wait for keyboard to pull DATA LOW (acknowledgment)
 
-    ; Inhibit Phase: Drive both CLOCK and DATA LOW for ~96µs
-    ; Clock divider 750 → 6µs per cycle, 16 cycles = 96µs
+    ; Inhibit Phase: Drive both CLOCK and DATA LOW for ~102µs
+    ; Clock divider 750 → 6µs per cycle, 17 cycles = 102µs (spec requires ≥100µs)
     set pindirs 3 [15]  ; Set both DATA (Pin 0) and CLOCK (Pin 1) to output
-    set pins, 0 [15]    ; Drive both LOW: CLOCK=Inhibit, DATA=RTS/Start Bit
+    set pins, 0 [16]    ; Drive both LOW: CLOCK=Inhibit, DATA=RTS/Start Bit
 
     ; Release CLOCK, keep DATA LOW
     ; Keyboard detects CLOCK release and begins generating clock pulses

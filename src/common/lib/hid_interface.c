@@ -18,8 +18,22 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file hid_interface.c
+ * @brief HID interface implementation for USB report generation.
+ *
+ * Implements TinyUSB HID callback handlers and report submission logic for
+ * keyboard, consumer control, and mouse HID endpoints.
+ *
+ * @note Report-generation entry points are main-loop only.
+ * @note TinyUSB callbacks in this file are invoked by USB stack callback context.
+ */
+
 #include "hid_interface.h"
 
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include "bsp/board.h"
@@ -81,6 +95,8 @@ enum {
 static hid_keyboard_report_t keyboard_report;
 static hid_mouse_report_t    mouse_report;
 
+// --- Private Functions ---
+
 /**
  * @brief Dispatches log messages for a HID report send outcome
  *
@@ -99,7 +115,7 @@ static hid_mouse_report_t    mouse_report;
  * @param hex_buf   Pre-built, null-terminated hex dump string of the report
  * @param len       Size of the original report data in bytes (for error messages)
  *
- * @note Main loop only — not IRQ-safe
+ * @note Main loop only.
  * @note Only called when logging is required; guard logic lives in hid_send_report()
  */
 static void log_hid_report_outcome(bool result, bool ready, uint8_t instance, uint8_t report_id,
@@ -364,6 +380,8 @@ static bool evaluate_command_mode(bool suppress_shift, uint8_t saved_modifiers) 
     }
     return command_mode_process(&cmd_report);
 }
+
+// --- Public Functions ---
 
 void handle_keyboard_report(uint8_t rawcode, bool make) {
     FLOW_STEP(rawcode);

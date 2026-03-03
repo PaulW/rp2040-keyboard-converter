@@ -149,7 +149,7 @@ Terminal keyboards may use specialised connectors with different pinouts from st
 - **Clock Pulse Width**: Minimum 30µs per IBM specification
 - **Data Setup/Hold**: Minimum 5µs before/after clock edge
 - **Frame Spacing**: Minimum 50µs between consecutive frames
-- **Host Inhibit**: 96µs typical (CLOCK held LOW to stop device transmission, must exceed bit period)
+- **Host Inhibit**: 102µs (CLOCK held LOW; spec requires ≥100µs; implemented as 17 PIO cycles × 6µs)
 
 **Power Requirements:**
 - **Voltage**: +5V ±5% (4.75V to 5.25V)
@@ -298,7 +298,7 @@ DATA        \___/___X___X___X___X___X___X___X___X___/  \___/
 
 Legend:
 H     = Host/Idle state (both lines HIGH)
-I     = Inhibit phase (CLOCK held LOW by host, ~96µs)
+I     = Inhibit phase (CLOCK held LOW by host, ~102µs)
 R     = Request-to-Send (DATA LOW, CLOCK released, doubles as start bit)
 D0-D7 = Data bits (LSB-first)
 P     = Parity bit  
@@ -308,10 +308,10 @@ ACK   = Device acknowledgment (DATA briefly pulled LOW)
 
 **Transmission Sequence:**
 
-**Phase 1: Inhibit** (~96µs)
+**Phase 1: Inhibit** (~102µs)
 - **Purpose**: Signal to device that host wants to transmit
 - Host pulls CLOCK LOW (inhibits device transmission)
-- Duration: ~96µs (must exceed typical bit period of 60-100µs)
+- Duration: ~102µs (spec requires ≥100µs regardless of clock rate; 17 PIO cycles × 6µs)
 - Device stops any pending transmission when it detects sustained CLOCK LOW
 - Host maintains DATA HIGH during inhibit
 
@@ -350,10 +350,10 @@ The PIO implementation ([`interface.pio`](../../src/protocols/at-ps2/interface.p
 
 ```pio
 bitLoopOut:
-    ; Inhibit Phase: Drive both CLOCK and DATA LOW for ~96µs
-    ; Clock divider 750 → 6µs per cycle, 16 cycles = 96µs
+    ; Inhibit Phase: Drive both CLOCK and DATA LOW for ~102µs
+    ; Clock divider 750 → 6µs per cycle, 17 cycles = 102µs (spec requires ≥100µs)
     set pindirs 3 [15]  ; Set both DATA (Pin 0) and CLOCK (Pin 1) to output
-    set pins, 0 [15]    ; Drive both LOW: CLOCK=Inhibit, DATA=RTS/Start Bit
+    set pins, 0 [16]    ; Drive both LOW: CLOCK=Inhibit, DATA=RTS/Start Bit
 
     ; Release CLOCK, keep DATA LOW
     ; Keyboard detects CLOCK release and begins generating clock pulses
@@ -797,7 +797,7 @@ The function calculates the divider using 5× oversampling for reliable edge det
 // 4. Clock divider: 125,000 / 166.67 = 750
 ```
 
-This results in a 6µs PIO cycle time, enabling the 96µs inhibit phase (16 cycles × 6µs) and reliable signal sampling.
+This results in a 6µs PIO cycle time, enabling the 102µs inhibit phase (17 cycles × 6µs, satisfying the ≥100µs spec requirement) and reliable signal sampling.
 
 **Shared PIO Program:**
 

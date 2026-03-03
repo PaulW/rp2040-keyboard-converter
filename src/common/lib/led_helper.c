@@ -18,9 +18,17 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file led_helper.c
+ * @brief LED state management implementation.
+ *
+ * @see led_helper.h for the public API documentation.
+ */
+
 #include "led_helper.h"
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "hardware/sync.h"  // for __dmb() memory barrier
 #include "pico/time.h"
@@ -36,7 +44,7 @@
 
 converter_state_union converter = {.value = CONVERTER_STATE_INITIAL};
 
-lock_keys_union volatile lock_leds;
+volatile lock_keys_union lock_leds;
 
 #ifdef CONVERTER_LEDS
 // Track last LED update time (us since boot) for non-blocking WS2812 reset timing
@@ -57,42 +65,8 @@ bool log_level_selection_mode = false;
 #define CMD_MODE_LED_PINK  0xFF1493 /**< Pink (Deep Pink) LED for log level selection */
 #endif
 
-/**
- * @brief Updates the LEDs on the converter based on the current state
- *
- * This function updates WS2812 RGB LEDs to reflect the converter's operational state.
- * The status LED shows different colours for different states:
- * - Firmware flash mode: Magenta (bootloader active)
- * - Ready (KB + Mouse): Green (all devices initialised)
- * - Not ready: Orange (waiting for device initialisation)
- *
- * If CONVERTER_LOCK_LEDS is defined, additional LEDs show lock key states
- * (Num Lock, Caps Lock, Scroll Lock).
- *
- * WS2812 Protocol Implementation:
- * - Data cascades through LED chain (first LED receives all data, passes remainder)
- * - Each ws2812_show() call sends 24 bits (GRB) to next LED in chain
- * - After all LEDs are updated, a ≥50µs reset pulse latches all colours simultaneously
- * - Uses non-blocking timing check to enforce minimum 60µs between update cycles
- *
- * Non-Blocking Approach with Multiple Safeguards:
- * 1. Timing Check: Ensures ≥60µs elapsed since last update (WS2812 reset requirement)
- * 2. FIFO Check: ws2812_show() checks PIO TX FIFO before writing (prevents blocking)
- * 3. Deferred Updates: Sets pending flag if either check fails, retry on next call
- * 4. Atomic Updates: All LEDs must succeed or entire update is deferred for consistency
- *
- * Critical for Protocol Timing:
- * - Keyboard/mouse protocols use PIO with strict timing requirements
- * - Any blocking in WS2812 updates could cause protocol bit errors
- * - Non-blocking at both timing AND PIO FIFO levels prevents interference
- * - Typical update latency: <10µs when FIFO has space, zero blocking ever
- *
- * @return true if all LEDs were updated, false if update was deferred
- *
- * @note Fully non-blocking: never blocks on timing OR PIO FIFO
- * @note Thread-safe: Uses atomic time operations from pico SDK
- * @note Caller should retry if returns false (handled automatically by wrapper)
- */
+// --- Public Functions ---
+
 bool update_converter_leds(void) {
 #ifdef CONVERTER_LEDS
     // WS2812 requires ≥50µs reset time AFTER transmission completes
@@ -161,30 +135,6 @@ bool update_converter_leds(void) {
 #endif
 }
 
-/**
- * @brief Wrapper function to update converter status LEDs efficiently
- *
- * This function implements change detection to prevent unnecessary LED updates.
- * WS2812 LED updates are relatively expensive operations (PIO state machine),
- * so we only update when the state actually changes OR when a previous update
- * was deferred due to timing constraints.
- *
- * Benefits:
- * - Prevents LED flickering from repeated identical updates
- * - Reduces PIO bus traffic and CPU overhead
- * - Improves overall system responsiveness
- * - Ensures deferred updates eventually get applied
- *
- * Change Detection with Deferred Update Handling:
- * - Uses static variable to cache previous state
- * - Compares full state byte (union value) for efficiency
- * - Single byte comparison vs multiple bitfield checks
- * - Retries if previous update was deferred (led_update_pending flag)
- *
- * @note Called frequently from protocol tasks
- * @note Only updates LEDs when state changes or retry needed
- * @note Non-blocking: deferred updates handled in next call iteration
- */
 void update_converter_status(void) {
 #ifdef CONVERTER_LEDS
     __dmb();  // Ensure latest IRQ updates are visible before reads
@@ -203,61 +153,7 @@ void update_converter_status(void) {
 #endif
 }
 
-/**
- * @brief Sets the lock values for the keyboard LEDs based on the given HID lock value
- *
- * This function updates the lock values for the keyboard LEDs (num lock, caps lock, and scroll
- * lock) based on the given HID lock value. The lock values are stored in the `lock_leds` structure.
- *
- * USB HID Context:
- * - Called from tud_hid_set_report_cb() in USB interrupt context
- * - Lock key changes are rare (user presses Caps Lock, Num Lock, etc.)
- * - Immediate LED feedback is important for user experience
- *
- * Non-Blocking Update Strategy:
- * - Attempts a single LED update via update_converter_leds()
- * - If the update cannot complete (timing constraint), sets led_update_pending
- *   so the main-loop wrapper (update_converter_status) retries on the next call
- * - No blocking or looping — safe for USB interrupt context
- *
- * @param lock_val The HID lock value (bit 0: Num Lock, bit 1: Caps Lock, bit 2: Scroll Lock)
- *
- * @note Called from USB interrupt context - non-blocking single attempt only
- * @note Most calls succeed immediately; deferred retry only if timing constraint active
- */
-
 #ifdef CONVERTER_LEDS
-/**
- * @brief Convert HSV colour to RGB colour
- *
- * Converts HSV (Hue, Saturation, Value) colour space to RGB colour space using
- * efficient integer mathematics. No floating point operations are used.
- *
- * Algorithm:
- * - Divides 360-degree hue circle into 6 regions (60 degrees each)
- * - Calculates RGB components using region-specific formulas
- * - Returns 24-bit RGB value suitable for WS2812 LEDs
- *
- * Colour Wheel:
- * - 0° (0): Red
- * - 60°: Yellow
- * - 120°: Green
- * - 180°: Cyan
- * - 240°: Blue
- * - 300°: Magenta
- * - 360° wraps back to 0° (Red)
- *
- * @param hue Hue angle (0-359 degrees, automatically wraps if >= 360)
- * @param saturation Colour saturation (0-255, 0=grayscale, 255=full colour)
- * @param value Brightness value (0-255, 0=black, 255=full brightness)
- * @return 24-bit RGB colour in format 0xRRGGBB
- *
- * @note Pure function - thread-safe, no state
- * @note Integer-only math for RP2040 performance
- *
- * clang-tidy: hue (uint16_t, 0-359 degrees) and saturation (uint8_t, 0-255) are distinct types with
- * distinct value domains; swapping would produce clearly wrong behaviour
- */
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 uint32_t hsv_to_rgb(uint16_t hue, uint8_t saturation, uint8_t value) {
     // Normalise hue to 0-359

@@ -18,6 +18,29 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file config.h
+ * @brief Top-level compile-time configuration: hardware pins, feature flags, and build parameters.
+ *
+ * Central location for all user-configurable compile-time settings. Values are set here
+ * with sensible defaults; the CMake build system passes keyboard/mouse-specific values as
+ * `_<VAR>` prefixed defines which are then exposed without the prefix.
+ *
+ * Configuration Sections:
+ * - UART Hardware:      GPIO pin and baud rate for debug serial output
+ * - UART DMA:           Buffer size, queue depth, queue-full policy (DROP/WAIT_FIXED/WAIT_EXP)
+ * - Log Levels:         Runtime log verbosity constants (ERROR/INFO/DEBUG) and startup default
+ * - LED:                WS2812 enable, LED type, brightness (1–10), and per-state colours
+ * - GPIO Pins:          KEYBOARD_DATA_PIN, MOUSE_DATA_PIN, LED_PIN starting addresses
+ * - Caps Lock Toggle:   Hold time for make-before-break CapsLock toggling (macOS compatibility)
+ * - Debug Features:     FLOW_TRACKING_ENABLED for pipeline latency instrumentation
+ * - CMake Build Vars:   KEYBOARD_ENABLED, KEYBOARD_MAKE, KEYBOARD_MODEL, KEYBOARD_PROTOCOL,
+ *                       KEYBOARD_CODESET, MOUSE_ENABLED, MOUSE_PROTOCOL
+ *
+ * At least one of KEYBOARD_ENABLED or MOUSE_ENABLED must be set; a compile-time error
+ * is raised otherwise. clang-format is disabled for this file to preserve comment alignment.
+ */
+
 #ifndef CONFIG_H
 #define CONFIG_H
 
@@ -111,20 +134,17 @@
 
 #define LOG_LEVEL_DEFAULT LOG_LEVEL_INFO   // Default to INFO level at startup
 
-// Include some common type definitions for this config.h file
-#include "types.h"
-
 // Define configuration options for the Keyboard Converter
 #define CONVERTER_LEDS               // Enable support for LED indicator lights on Converter Hardware
 #define CONVERTER_LEDS_TYPE LED_GRB  // Define type of LED which we are using
 #define CONVERTER_LOCK_LEDS          // Enable Lock LED Indicators on Converter Hardware
 
 // Define the colours of the LEDs in HEX.  Regardless of LED Type, we always use RGB Value here.
-#define CONVERTER_LEDS_BRIGHTNESS 5                     // Brightness of LEDs.  This ranges from 1 to 10.
-#define CONVERTER_LEDS_STATUS_READY_COLOUR 0x00FF00      // Colour of Status LED when Converter is initialised
+#define CONVERTER_LEDS_BRIGHTNESS 5                      // Brightness of LEDs.  This ranges from 1 to 10.
+#define CONVERTER_LEDS_STATUS_READY_COLOUR     0x00FF00  // Colour of Status LED when Converter is initialised
 #define CONVERTER_LEDS_STATUS_NOT_READY_COLOUR 0xFF2800  // Colour of Status LED when Converter is not ready
-#define CONVERTER_LEDS_STATUS_FWFLASH_COLOUR 0xFF00FF    // Colour of Status LED when in Bootloader Mode (Firmware Flashing)
-#define CONVERTER_LOCK_LEDS_COLOUR 0x00FF00              // Colour of Lock Light LEDs
+#define CONVERTER_LEDS_STATUS_FWFLASH_COLOUR   0xFF00FF  // Colour of Status LED when in Bootloader Mode (Firmware Flashing)
+#define CONVERTER_LOCK_LEDS_COLOUR             0x00FF00  // Colour of Lock Light LEDs
 
 // Define the GPIO Pins for the Keyboard Converter.
 #define KEYBOARD_DATA_PIN 2  // This is the starting pin for the connected Keyboard.  Depending on the keyboard, we may use 2, 3 or more pins.
@@ -148,19 +168,19 @@
 
 // Define the Keyboard Information
 #ifdef _KEYBOARD_ENABLED
-#define KEYBOARD_ENABLED _KEYBOARD_ENABLED
-#define KEYBOARD_MAKE _KEYBOARD_MAKE
-#define KEYBOARD_MODEL _KEYBOARD_MODEL
+#define KEYBOARD_ENABLED     _KEYBOARD_ENABLED
+#define KEYBOARD_MAKE        _KEYBOARD_MAKE
+#define KEYBOARD_MODEL       _KEYBOARD_MODEL
 #define KEYBOARD_DESCRIPTION _KEYBOARD_DESCRIPTION
-#define KEYBOARD_PROTOCOL _KEYBOARD_PROTOCOL
-#define KEYBOARD_CODESET _KEYBOARD_CODESET
+#define KEYBOARD_PROTOCOL    _KEYBOARD_PROTOCOL
+#define KEYBOARD_CODESET     _KEYBOARD_CODESET
 #else
 #define KEYBOARD_ENABLED 0
 #endif
 
 // Define the Mouse Information
 #ifdef _MOUSE_ENABLED
-#define MOUSE_ENABLED _MOUSE_ENABLED
+#define MOUSE_ENABLED  _MOUSE_ENABLED
 #define MOUSE_PROTOCOL _MOUSE_PROTOCOL
 #else
 #define MOUSE_ENABLED 0

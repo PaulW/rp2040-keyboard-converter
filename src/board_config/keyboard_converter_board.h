@@ -18,6 +18,14 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file keyboard_converter_board.h
+ * @brief RP2040 hardware board configuration for the keyboard converter.
+ *
+ * Defines default GPIO pin assignments for UART, USB, and on-board peripherals.
+ * Included by the Pico SDK board detection mechanism as the custom board header.
+ */
+
 #ifndef _BOARDS_KEYBOARD_CONVERTER_BOARD_H
 #define _BOARDS_KEYBOARD_CONVERTER_BOARD_H
 
@@ -36,14 +44,13 @@
 #endif
 
 // --- SPI/I2C ---
-/* We don't use either capability, so there is no need to define these here. */
+// We don't use either capability, so there is no need to define these here.
 
 // --- FLASH ---
 #define PICO_BOOT_STAGE2_CHOOSE_W25Q080 1
 
-/* When using W25Q16JVUXIQ Flash Chip, max clock frequency for Read Data instruction (03h) is 50 MHz.
-   Default value of PICO_FLASH_SPI_CLKDIV of 2 sets the clock to around 60 MHz exceeding the spec.
-*/
+// When using W25Q16JVUXIQ Flash Chip, max clock frequency for Read Data instruction (03h) is 50MHz.
+// Default value of PICO_FLASH_SPI_CLKDIV of 2 sets the clock to around 60 MHz exceeding the spec.
 #define PICO_FLASH_SPI_CLKDIV 4
 
 #ifndef PICO_FLASH_SIZE_BYTES

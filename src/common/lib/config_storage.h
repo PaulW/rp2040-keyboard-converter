@@ -26,28 +26,28 @@
  * internal flash memory. Configuration is stored in the last 4KB sector of
  * flash and loaded into RAM at boot for fast access.
  *
- * **Architecture:**
+ * Architecture:
  *
- * 1. **Flash → RAM at Boot:**
+ * 1. Flash to RAM at Boot:
  *    - Read both config copies from flash (A and B)
  *    - Validate CRC and magic numbers
  *    - Use newest valid copy (highest sequence number)
  *    - Fall back to factory defaults if both corrupt
  *    - Copy to RAM for zero-overhead runtime access
  *
- * 2. **Runtime Access:**
+ * 2. Runtime Access:
  *    - All reads from RAM (no flash access)
  *    - Writes update RAM immediately
  *    - "Dirty" flag tracks pending changes
  *
- * 3. **RAM → Flash on Save:**
+ * 3. RAM to Flash on Save:
  *    - Only writes if dirty flag set
  *    - Increments sequence number
  *    - Recalculates CRC
  *    - Writes to alternate copy (wear leveling)
- *    - ~25ms blocking operation (acceptable for rare writes)
+ *    - Blocking flash erase and program operation (acceptable for rare writes)
  *
- * **Version Migration:**
+ * Version Migration:
  *
  * Uses size-based automatic migration:
  * - Newer firmware reading old config: Missing fields use defaults
@@ -55,36 +55,29 @@
  * - No explicit migration functions needed
  * - Just increment CONFIG_VERSION_CURRENT when changing struct
  *
- * **Dual-Copy Redundancy:**
+ * Dual-Copy Redundancy:
  *
  * Two copies (A and B) protect against corruption:
  * - Sequence number determines newest copy
- * - Alternating writes for wear leveling (~10K cycles per location)
+ * - Alternating writes for wear leveling
  * - Power loss during write: Other copy still valid
  *
- * **Flash Layout (Last 4KB of 2MB):**
+ * Flash Layout (Last 4KB of 2MB):
  * ```
  * 0x101FF000 - Config Copy A (2KB)
  * 0x101FF800 - Config Copy B (2KB)
  * ```
  *
- * **Memory Usage:**
- * - Flash: 4KB (0.2% of 2MB)
- * - RAM: ~2KB (0.7% of 264KB)
- * - Code: ~2KB
+ * Memory Usage:
+ * - Flash: 4KB (last sector of 2MB)
+ * - RAM: Two config struct copies plus working state
  *
- * **Performance:**
- * - Read: 0 cycles (direct RAM access)
- * - Write RAM: 2-3 cycles
- * - Write Flash: ~25ms (blocking, rare operation)
- * - Boot Load: ~100µs (one-time)
- *
- * **Thread Safety:**
+ * Thread Safety:
  * - config_get(): Thread-safe (const pointer to RAM)
  * - config_save(): NOT thread-safe (disables interrupts briefly)
  * - config_set_*(): NOT thread-safe (use from main loop only)
  *
- * **Example Usage:**
+ * Example Usage:
  *
  * ```c
  * // Boot initialisation
@@ -106,7 +99,7 @@
  * config_save();  // Persist to flash
  * ```
  *
- * @note Flash writes are blocking (~25ms) but safe due to ring buffer
+ * @note Flash writes are blocking but safe due to ring buffer
  * @note Always call config_init() before using other functions
  * @note Changes are NOT persisted until config_save() is called
  *
@@ -117,28 +110,16 @@
 #ifndef CONFIG_STORAGE_H
 #define CONFIG_STORAGE_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 // --- Configuration Constants ---
-
-/** Magic number for config validation ("RP20") */
-#define CONFIG_MAGIC 0x52503230
 
 /** Current config version - increment when changing config_data_t */
 #define CONFIG_VERSION_CURRENT 3
 
 /** Size of variable storage area (for future TLV data) */
 #define CONFIG_STORAGE_SIZE 2022  // Fit within 2048-byte copy (v3: 26 bytes header/fixed fields)
-
-/** Flash offset for config storage (last 4KB of flash) */
-#define CONFIG_FLASH_OFFSET (PICO_FLASH_SIZE_BYTES - 4096)
-
-/** Size of each config copy (2KB each, 2 copies = 4KB total) */
-#define CONFIG_COPY_SIZE 2048
-
-/** Flash sector size (RP2040 flash sectors are 4KB) */
-#define FLASH_SECTOR_SIZE 4096
 
 // --- Configuration Data Structure ---
 
@@ -149,7 +130,7 @@
  * zero overhead. Changes are persisted to flash only when config_save()
  * is called.
  *
- * **Version History:**
+ * Version History:
  * - v1: Initial version (log_level only)
  * - v2: Added shift_override_enabled, keyboard_id (for smart persistence across firmware updates)
  * - v3: Added layer_state, layers_hash (for layer state persistence with validation)
@@ -198,9 +179,6 @@ typedef struct __attribute__((packed)) {
 
 } config_data_t;
 
-// Compile-time size validation
-_Static_assert(sizeof(config_data_t) <= CONFIG_COPY_SIZE, "Config structure exceeds copy size");
-
 // --- Public API ---
 
 /**
@@ -209,19 +187,20 @@ _Static_assert(sizeof(config_data_t) <= CONFIG_COPY_SIZE, "Config structure exce
  * Loads configuration from flash into RAM. This should be called once
  * at boot before using any other config functions.
  *
- * **Process:**
+ * Process:
  * 1. Read both config copies (A and B) from flash
  * 2. Validate magic number and CRC for each
  * 3. Use newest valid copy (highest sequence number)
  * 4. If both corrupt, use factory defaults and save
  * 5. If version mismatch, overlay old data onto defaults and upgrade
  *
- * **Return Value:**
+ * Return Value:
  * - `true`: Valid config loaded from flash
  * - `false`: Using factory defaults (no valid config found)
  *
  * @return true if config loaded successfully, false if using defaults
  *
+ * @note Main loop only.
  * @note Must be called after init_uart_dma() for logging
  * @note Safe to call multiple times (idempotent)
  *
@@ -241,7 +220,6 @@ bool config_init(void);
  * Returns a const pointer to the RAM-resident configuration. This can
  * be used for direct, zero-overhead reads of any config field.
  *
- * **Performance:** Direct RAM access, 0 CPU cycles overhead
  *
  * @return Pointer to config structure (never NULL)
  *
@@ -270,7 +248,7 @@ const config_data_t* config_get(void);
  * @param level LOG_LEVEL_ERROR (0), LOG_LEVEL_INFO (1), or LOG_LEVEL_DEBUG (2)
  *
  * @note Only updates RAM, call config_save() to persist
- * @note Not thread-safe, call from main loop only
+ * @note Main loop only.
  *
  * Example:
  * ```c
@@ -287,7 +265,7 @@ void config_set_log_level(uint8_t level);
  * Updates the LED brightness level in the RAM configuration. The value is
  * clamped to the valid range [0-10] where 0 is off and 10 is maximum brightness.
  *
- * **Usage:**
+ * Usage:
  * - Range: 0-10 (0=off, 10=brightest)
  * - Applies gamma correction via BRIGHTNESS_LUT in ws2812.c
  * - Values outside range are clamped automatically
@@ -297,7 +275,7 @@ void config_set_log_level(uint8_t level);
  * @param level Brightness level (0-10, will be clamped to valid range)
  *
  * @note Only updates RAM, call config_save() to persist
- * @note Not thread-safe, call from main loop only
+ * @note Main loop only.
  * @note Caller must apply brightness to LEDs separately
  *
  * Example:
@@ -316,14 +294,14 @@ void config_set_led_brightness(uint8_t level);
  * keymap_shift_override_layers[]. Even if the array is defined, shift-override is
  * disabled by default and must be explicitly enabled.
  *
- * **Smart Persistence:**
+ * Smart Persistence:
  * - If keyboard config changes (different firmware), state resets to disabled
  * - If same keyboard config, persisted state is preserved
  *
  * @param enabled true to enable shift-override, false to disable (default)
  *
  * @note Only updates RAM, call config_save() to persist
- * @note Not thread-safe, call from main loop only
+ * @note Main loop only.
  * @note Has no effect if keyboard doesn't define keymap_shift_override_layers[]
  *
  * Example:
@@ -378,33 +356,31 @@ uint8_t config_get_led_brightness(void);
  * @brief Save configuration to flash
  *
  * Writes the current RAM config to flash if the dirty flag is set.
- * This is a blocking operation that takes ~25ms.
+ * This is a blocking operation.
  *
- * **Process:**
+ * Process:
  * 1. Check dirty flag (skip if not dirty)
  * 2. Increment sequence number
  * 3. Recalculate CRC
  * 4. Determine write location (alternating A/B for wear leveling)
- * 5. Erase flash sector (~20ms, blocking)
- * 6. Write config to flash (~5ms, blocking)
+ * 5. Erase flash sector (blocking)
+ * 6. Write config to flash (blocking)
  * 7. Clear dirty flag
- *
- * **Blocking Time:** ~25ms (acceptable due to ring buffer protection)
  *
  * @return true if write successful or no write needed, false on error
  *
  * @note Safe to call frequently - only writes if dirty
- * @note Not thread-safe, call from main loop only
+ * @note Main loop only.
  * @note Keyboard input protected by ring buffer during write
  *
  * @warning Do not call from interrupt context
- * @warning Disables interrupts briefly (~25ms)
+ * @warning Disables interrupts briefly during flash write
  *
  * Example:
  * ```c
  * // Safe - only writes if changed
  * config_set_log_level(LOG_LEVEL_DEBUG);
- * config_save();  // ~25ms if dirty, ~1µs if not
+ * config_save();
  *
  * // Command mode exit - flush all changes
  * config_save();
@@ -418,15 +394,15 @@ bool config_save(void);
  * Resets all configuration to compile-time defaults and immediately
  * saves to flash. This is useful for troubleshooting or first-time setup.
  *
- * **Defaults:**
+ * Defaults:
  * - log_level: LOG_LEVEL_DEFAULT (from config.h)
  * - All other fields: Zero/disabled
  *
- * **Command Mode Integration:**
+ * Command Mode Integration:
  * Could be mapped to 'R' key in command mode for user-accessible reset.
  *
  * @note Immediately writes to flash (~25ms blocking)
- * @note Not thread-safe, call from main loop only
+ * @note Main loop only.
  *
  * Example:
  * ```c
@@ -450,7 +426,7 @@ void config_factory_reset(void);
  * @param layer_state Bitmap of active layers (bit 0 = Layer 0, etc.)
  *
  * @note Only updates RAM, call config_save() to persist
- * @note Not thread-safe, call from main loop only
+ * @note Main loop only.
  * @note Automatically invalidated if keyboard or layers change
  *
  * Example:
@@ -494,7 +470,7 @@ uint8_t config_get_layer_state(void);
  * @param layers_hash Hash of layer count + keymap data
  *
  * @note Only updates RAM, call config_save() to persist
- * @note Not thread-safe, call from main loop only
+ * @note Main loop only.
  * @note Automatically computed at boot in keymap_init()
  *
  * Example:

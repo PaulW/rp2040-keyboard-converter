@@ -18,23 +18,31 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file scancode.c
+ * @brief XT Scancode Set 1 processing implementation.
+ *
+ * @see scancode.h for the public API.
+ * @note Main loop only — not IRQ-safe.
+ */
+
 #include "scancode.h"
 
-#include <stdio.h>
+#include <stdint.h>
 
 #include "flow_tracker.h"
 #include "hid_interface.h"
 #include "log.h"
 
-// ============================================================================
-// Protocol Byte Constants
-// ============================================================================
+// --- Private Functions ---
 
-/* Prefix bytes */
+// Protocol Byte Constants
+
+// Prefix bytes
 #define SC_ESCAPE_E0 0xE0U /**< E0 prefix — extended key indicator */
 #define SC_ESCAPE_E1 0xE1U /**< E1 prefix — Pause / Break multi-byte sequence */
 
-/* Set 1 make/break encoding */
+// Set 1 make/break encoding
 #define SC1_MAKE_MASK 0x7FU /**< Set 1: mask applied to break code to recover make code */
 #define SC1_MAX_CODE                                                                      \
     0xD8U /**< Set 1: upper bound for valid break codes (0x58 | 0x80).                    \
@@ -42,19 +50,19 @@
            *   F11 (0xD7) and F12 (0xD8) are therefore the upper valid limit.             \
            *   Codes above 0xD8 are out-of-range and discarded. */
 
-/* Set 1 fake shift bytes (E0-prefixed, silently discarded) */
+// Set 1 fake shift bytes (E0-prefixed, silently discarded)
 #define SC1_FAKE_LSHIFT_MAKE  0x2AU /**< Spurious Left-Shift make  (E0-prefixed) */
 #define SC1_FAKE_LSHIFT_BREAK 0xAAU /**< Spurious Left-Shift break (E0-prefixed) */
 #define SC1_FAKE_RSHIFT_MAKE  0x36U /**< Spurious Right-Shift make  (E0-prefixed) */
 #define SC1_FAKE_RSHIFT_BREAK 0xB6U /**< Spurious Right-Shift break (E0-prefixed) */
 
-/* Set 1 E1 Pause/Break sequence bytes */
+// Set 1 E1 Pause/Break sequence bytes
 #define SC1_E1_CTRL_MAKE  0x1DU /**< E1 Pause make:  Left-Control make byte (E1 [1D] 45) */
 #define SC1_E1_CTRL_BREAK 0x9DU /**< E1 Pause break: Left-Control break byte (E1 [9D] C5) */
 #define SC1_NUMLOCK_MAKE  0x45U /**< E1 Pause make tail  (E1 1D [45]) */
 #define SC1_NUMLOCK_BREAK 0xC5U /**< E1 Pause break tail (E1 9D [C5]) */
 
-/* Interface code passed to handle_keyboard_report() */
+// Interface code passed to handle_keyboard_report()
 #define IFACE_PAUSE 0x48U /**< Interface code: Pause / Break key */
 
 /**
@@ -108,62 +116,19 @@ static const uint8_t e0_code_translation[128] = {
  *
  * @param code The E0-prefixed scan code to translate
  * @return Translated interface code, or 0 if code should be ignored
+ * @note Only called from process_scancode — main loop only.
  */
 static inline uint8_t switch_e0_code(uint8_t code) {
     return e0_code_translation[code];
 }
 
-/**
- * @brief Process Keyboard Input (Scancode Set 1) Data
- *
- * This function processes scan codes from XT and AT keyboards using Scan Code Set 1.
- * Set 1 is the original IBM PC/XT scan code set, still widely used for compatibility.
- *
- * Protocol Overview:
- * - Make codes: 0x01-0x53 (key press)
- * - Break codes: Make code + 0x80 (key release, e.g., 0x81 = key 0x01 released)
- * - Multi-byte sequences: E0-prefixed (2 bytes) and E1-prefixed (3-6 bytes)
- *
- * State Machine:
- *
- *     INIT ──[E0]──> E0 ──[code]──> INIT (process E0-prefixed code)
- *       │            │
- *       │            └──[2A,AA,36,B6]──> INIT (ignore fake shifts)
- *       │
- *       ├──[E1]──> E1 ──[1D]──> E1_1D ──[45]──> INIT (Pause press)
- *       │           │
- *       │           └──[9D]──> E1_9D ──[C5]──> INIT (Pause release)
- *       │
- *       └──[code]──> INIT (process normal code)
- *
- * Multi-byte Sequence Examples:
- * - Print Screen: E0 37 (make), E0 B7 (break)
- * - Pause/Break:  E1 1D 45 (make), E1 9D C5 (break)
- * - Right Ctrl:   E0 1D (make), E0 9D (break)
- * - Keypad Enter: E0 1C (make), E0 9C (break)
- *
- * Special Handling:
- * - E0 2A, E0 AA, E0 36, E0 B6: Fake shifts (ignored, some keyboards send these)
- * - E1 sequences: Only used for Pause/Break key
- * - Codes >= 0x80: Break codes (key release)
- * - Self-test codes (0xAA) are handled by protocol layer during initialisation
- *
- * @param code The keycode to process.
- *
- * @note This function is called from the keyboard_interface_task() in main task context
- * @note handle_keyboard_report() translates scan codes to HID keycodes via keymap lookup
- */
+typedef enum { INIT, E0, E1, E1_1D, E1_9D } scancode_state_t;
+
+// --- Public Functions ---
+
 void process_scancode(uint8_t code) {
     FLOW_STEP(code);
-    // clang-format off
-    static enum {
-        INIT,
-        E0,
-        E1,
-        E1_1D,
-        E1_9D
-    } state = INIT;
-    // clang-format on
+    static scancode_state_t state = INIT;
 
     switch (state) {
         case INIT:

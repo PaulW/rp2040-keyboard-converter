@@ -18,52 +18,58 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file keyboard.c
+ * @brief Cherry G80-0614H keyboard keymap layer data.
+ *
+ * @see keyboard.h for the KEYMAP_XT macro and keymap layout definition.
+ */
+
 #include "keyboard.h"
+
+#include <stdint.h>
 
 #include "keymaps.h"
 
 // clang-format off
 
-/* Cherry G80 (ISO Layout - 1104H):
- * This Keyboard was used on the BT Cheetah Plus.
- * Key legends are unique, however for the most part the keycodes are the same as the IBM 101 Key.
- * ,-------.  ,--------------------------------------------------------------------------.
- * | F1| F2|  |Esc|  1|  2|  3|  4|  5|  6|  7|  8|  9|  0|  -|  =|  BS  |NumLck |ScrLck |
- * |-------|  |--------------------------------------------------------------------------|
- * | F3| F4|  | Tab |  Q|  W|  E|  R|  T|  Y|  U|  I|  O|  P|  [|  ] |   |  7|  8|  9|  -|
- * |-------|  |------------------------------------------------------|Ent|---------------|
- * | F5| F6|  | Ctrl |  A|  S|  D|  F|  G|  H|  J|  K|  L|  ;|  '|  `|   |  4|  5|  6|   |
- * |-------|  |----------------------------------------------------------------------|   |
- * | F7| F8|  |Shif|  \|  Z|  X|  C|  V|  B|  N|  M|  ,|  .|  /|Shift|  *|  1|  2|  3|  +|
- * |-------|  |----------------------------------------------------------------------|   |
- * | F9|F10|  |  Alt  |               Space                  |CapsLck|   0   |   .   |   |
- * `-------'  `--------------------------------------------------------------------------'
- */
+// Cherry G80 (ISO Layout - G80-0614H):
+// This Keyboard was used on the BT Cheetah Plus.
+// Key legends are unique, however for the most part the keycodes are the same as the IBM 101 Key.
+// ,-------.  ,--------------------------------------------------------------------------.
+// | F1| F2|  |Esc|  1|  2|  3|  4|  5|  6|  7|  8|  9|  0|  -|  =|  BS  |NumLck |ScrLck |
+// |-------|  |--------------------------------------------------------------------------|
+// | F3| F4|  | Tab |  Q|  W|  E|  R|  T|  Y|  U|  I|  O|  P|  [|  ] |   |  7|  8|  9|  -|
+// |-------|  |------------------------------------------------------|Ent|---------------|
+// | F5| F6|  | Ctrl |  A|  S|  D|  F|  G|  H|  J|  K|  L|  ;|  '|  `|   |  4|  5|  6|   |
+// |-------|  |----------------------------------------------------------------------|   |
+// | F7| F8|  |Shif|  \|  Z|  X|  C|  V|  B|  N|  M|  ,|  .|  /|Shift|  *|  1|  2|  3|  +|
+// |-------|  |----------------------------------------------------------------------|   |
+// | F9|F10|  |  Alt  |               Space                  |CapsLck|   0   |   .   |   |
+// `-------'  `--------------------------------------------------------------------------'
 
 // clang-format on
 
-/* Define Keyboard Layers */
+// Define Keyboard Layers
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
-    KEYMAP_XT(              /* Layer 0: Base Layer
-                             */
-              // clang-format off
+    KEYMAP_XT(  // Layer 0: Base Layer
+                // clang-format off
     F1,    F2,        ESC,   1,     2,     3,     4,     5,     6,     7,     8,     9,     0,     MINS,  EQL,   BSPC,  NLCK,         SLCK, \
     F3,    F4,        TAB,   Q,     W,     E,     R,     T,     Y,     U,     I,     O,     P,     LBRC,  RBRC,  ENT,   P7,    P8,    P9,    PMNS, \
     F5,    F6,        LCTL,  A,     S,     D,     F,     G,     H,     J,     K,     L,     SCLN,  QUOT,  BSLS,         P4,    P5,    P6,          \
     F7,    F8,        LSFT,  NUBS,  Z,     X,     C,     V,     B,     N,     M,     COMM,  DOT,   SLSH,  RSFT,  PSCR,  P1,    P2,    P3,    PPLS, \
-    MO_1,  LGUI,      LALT,                                     SPC,                                      CAPS,         P0,           PDOT  // clang-format on
-              ),
-    KEYMAP_XT(      /* Layer 1: Function Layer (activated by MO_1)
-                     * Provides F9-F12, media controls, arrow key navigation, and application key
-                     */
-              // clang-format off
+    MO_1,  LGUI,      LALT,                                     SPC,                                      CAPS,         P0,           PDOT    // clang-format on
+        ),
+    KEYMAP_XT(  // Layer 1: Function Layer (activated by MO_1)
+                // Provides F9-F12, media controls, arrow key navigation, and application key
+        // clang-format off
     F9,    F10,       TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS, \
     F11,   F12,       TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS, \
     VOLD,  VOLU,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,         TRNS,  UP,    TRNS, \
     BRTD,  BRTI,      TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  TRNS,  LEFT,  DOWN,  RIGHT, TRNS, \
     TRNS,  TRNS,      TRNS,                                     TRNS,                                     APP,          TRNS,         TRNS  // clang-format on
-              ),
+        ),
 };
 
-/* Layer count - automatically calculated from keymap_map array size */
+// Layer count - automatically calculated from keymap_map array size
 const uint8_t keymap_layer_count = (uint8_t)(sizeof(keymap_map) / sizeof(keymap_map[0]));

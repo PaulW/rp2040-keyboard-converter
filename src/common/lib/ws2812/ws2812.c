@@ -18,42 +18,38 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file ws2812.c
+ * @brief WS2812 RGB LED PIO-based driver implementation.
+ *
+ * Drives WS2812-compatible addressable LEDs via RP2040 PIO at 800 kHz using
+ * a gamma-corrected brightness lookup table for perceptually linear dimming.
+ *
+ * @see ws2812.h for the public API documentation.
+ */
+
 #include "ws2812.h"
 
 #include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 #include "ws2812.pio.h"  // Generated from ws2812.pio at build time
-
-#include "bsp/board.h"
 
 #include "config.h"
 #include "log.h"
 #include "pio_helper.h"
 
+/** Hz to kHz scaling factor used in clock divider calculation */
+#define HZ_TO_KHZ 0.001F
+
+/** WS2812 data transmission rate in kHz */
+#define WS2812_BIT_RATE_KHZ 800U
+/** PIO cycles per bit for accurate 800 kHz timing */
+#define WS2812_CYCLES_PER_BIT 10U
+
 /**
  * @brief PIO engine for WS2812 LED control
  */
 static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
-
-/**
- * @brief WS2812 Protocol Timing Constants
- *
- * WS2812_BIT_RATE_KHZ: WS2812 data transmission rate (800 kHz)
- * WS2812_CYCLES_PER_BIT: PIO cycles per bit for accurate timing (10 cycles)
- */
-enum {
-    WS2812_BIT_RATE_KHZ   = 800,
-    WS2812_CYCLES_PER_BIT = 10,
-};
-
-/** Hz to kHz scaling factor used in clock divider calculation */
-#define HZ_TO_KHZ 0.001F
-
-/*
- * Private Functions
- */
 
 /**
  * @brief Gamma-Corrected Brightness Lookup Table
@@ -162,18 +158,20 @@ static const uint8_t BRIGHTNESS_LUT[WS2812_BRIGHTNESS_MAX + 1] = {
 static uint8_t g_led_brightness = CONVERTER_LEDS_BRIGHTNESS;
 #endif
 
+// --- Private Functions ---
+
 /**
  * @brief Applies gamma-corrected brightness and colour order to LED colour value
  *
  * This function performs two critical transformations on the input RGB colour:
  *
- * 1. **Gamma-Corrected Brightness Scaling**:
+ * 1. Gamma-Corrected Brightness Scaling:
  *    - Looks up perceptually-linear multiplier from BRIGHTNESS_LUT
  *    - Scales each RGB component: `output = (input * multiplier) / 255`
  *    - Division by 255 normalises the result back to 8-bit range (0-255)
  *    - Uses integer arithmetic for performance (no floating point)
  *
- * 2. **Colour Order Conversion**:
+ * 2. Colour Order Conversion:
  *    - Different WS2812-compatible LEDs use different colour orders
  *    - Common variants: RGB, GRB (most common), BGR, RBG, GBR, BRG
  *    - Function reorders colour bytes based on CONVERTER_LEDS_TYPE configuration
@@ -249,6 +247,7 @@ static uint8_t g_led_brightness = CONVERTER_LEDS_BRIGHTNESS;
  * @note Brightness is applied before colour reordering
  * @note Function is static inline for performance
  * @note All calculations use integer arithmetic (fast on Cortex-M0+)
+ * @note Main loop only.
  */
 static inline uint32_t ws2812_set_colour(uint32_t led_colour) {
     // Extract RGB components from 24-bit colour value (bit shifts + masks)
@@ -285,8 +284,6 @@ static inline uint32_t ws2812_set_colour(uint32_t led_colour) {
         b = (uint8_t)((b * multiplier) / 255);
     }
 #endif
-    // If g_led_brightness > 10, use original colours unchanged (shouldn't happen, but safe
-    // fallback)
 
 #ifdef CONVERTER_LEDS_TYPE
     // Apply colour order based on LED chip variant
@@ -319,35 +316,8 @@ static inline uint32_t ws2812_set_colour(uint32_t led_colour) {
 #endif
 }
 
-/*
- * Public Functions
- */
+// --- Public Functions ---
 
-/**
- * @brief Illuminates the WS2812 LED strip with the specified colour
- *
- * This function sets the colour of a single LED in the WS2812 LED strip. It is
- * called sequentially to update multiple LEDs in a chain, with data cascading
- * through each LED to the next.
- *
- * Non-Blocking Implementation:
- * - Checks if PIO TX FIFO has space before writing
- * - Returns false immediately if FIFO is full (no blocking)
- * - Allows caller to defer update and retry later
- * - Critical for preventing interference with time-sensitive protocol PIOs
- *
- * WS2812 Timing:
- * - Each LED requires 24 bits (GRB format) transmitted at 800kHz
- * - Transmission takes ~30µs per LED
- * - PIO autopull (shift=24) moves data from FIFO to OSR automatically
- * - FIFO has 4-entry depth, but we check before each write for safety
- *
- * @param led_colour The colour value to set for the LED (RGB format, 0x00RRGGBB)
- * @return true if colour was queued to PIO, false if FIFO was full or not initialised
- *
- * @note Caller should check return value and defer/retry if false
- * @note Colour is automatically converted to GRB and adjusted for brightness
- */
 bool ws2812_show(uint32_t led_colour) {
     // Guard against uninitialised PIO/SM
     if (pio_engine.pio == NULL) {
@@ -365,14 +335,6 @@ bool ws2812_show(uint32_t led_colour) {
     return true;
 }
 
-/**
- * @brief Sets up the WS2812 interface.
- * This function sets up the WS2812 interface by finding an available PIO, claiming an unused
- * state machine (SM), adding the WS2812 program to the PIO, initialising the program with the
- * specified parameters, and printing information about the setup.
- *
- * @param led_pin The GPIO pin connected to the WS2812 LED strip.
- */
 void ws2812_setup(uint led_pin) {
     // Claim PIO instance and state machine atomically with fallback
     pio_engine = claim_pio_and_sm(&ws2812_program);
@@ -392,33 +354,6 @@ void ws2812_setup(uint led_pin) {
              pio_engine.pio == pio0 ? 0 : 1, pio_engine.sm, pio_engine.offset, clock_div);
 }
 
-/**
- * @brief Set LED brightness level
- *
- * Updates the runtime LED brightness level. The new brightness takes effect
- * immediately on the next LED update (ws2812_show() call).
- *
- * **Usage:**
- * - Range: 0-10 (0=off, 10=maximum brightness)
- * - Values outside range are automatically clamped
- * - Gamma correction applied via BRIGHTNESS_LUT
- * - Non-blocking operation (just updates variable)
- *
- * **Thread Safety:**
- * - Call from main loop context only
- * - Not thread-safe (but not needed - single-threaded design)
- *
- * @param level Brightness level (0-10, will be clamped to valid range)
- *
- * @note Takes effect on next ws2812_show() call
- * @note Does not trigger LED update automatically
- *
- * Example:
- * ```c
- * ws2812_set_brightness(7);  // Set to bright
- * ws2812_show(0xFF0000);     // Red at 70% perceived brightness
- * ```
- */
 #ifdef CONVERTER_LEDS
 void ws2812_set_brightness(uint8_t level) {
     // Clamp to valid range [0-10]
@@ -430,24 +365,6 @@ void ws2812_set_brightness(uint8_t level) {
     LOG_DEBUG("LED brightness set to %d\n", level);
 }
 
-/**
- * @brief Get current LED brightness level
- *
- * Returns the current runtime LED brightness setting.
- *
- * @return Current brightness level (0-10)
- *
- * @note Returns value from RAM (fast, no hardware access)
- * @note Thread-safe for reads
- *
- * Example:
- * ```c
- * uint8_t current = ws2812_get_brightness();
- * if (current < 10) {
- *     ws2812_set_brightness(current + 1);  // Increment
- * }
- * ```
- */
 uint8_t ws2812_get_brightness(void) {
     return g_led_brightness;
 }

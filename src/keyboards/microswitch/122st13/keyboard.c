@@ -18,37 +18,44 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file keyboard.c
+ * @brief MicroSwitch 122ST13 terminal keyboard keymap layer data.
+ *
+ * @see keyboard.h for the KEYMAP_PC122 macro and keymap layout definition.
+ */
+
 #include "keyboard.h"
+
+#include <stdint.h>
 
 #include "keymaps.h"
 
 // clang-format off
-/* MicroSwitch 122ST13 Terminal Keyboard:
- *               ,-----------------------------------------------.
- *               |F13|F14|F15|F16|F17|F18|F19|F20|F21|F22|F23|F24|
- *               |-----------------------------------------------|
- *               |F1 |F2 |F3 |F4 |F5 |F6 |F7 |F8 |F9 |F10|F11|F12|
- *               `-----------------------------------------------'
- * ,-------. ,-----------------------------------------------------------. ,-----------. ,---------------.
- * |VDn|VUp| |  `|  1|  2|  3|  4|  5|  6|  7|  8|  9|  0|  -|  =|     BS| |  /|PgU|PgD| |Esc|NmL|ScL|  *|
- * |-------| |-----------------------------------------------------------| |-----------| |---------------|
- * |BDn|BUp| |Tab  |  Q|  W|  E|  R|  T|  Y|  U|  I|  O|  P|  [|  ]|     | |End|Ins|Del| |  7|  8|  9|  +|
- * |-------| |------------------------------------------------------.    | `-----------' |-----------|---|
- * |   |   | |CapsL |  A|  S|  D|  F|  G|  H|  J|  K|  L|  ;|  '|  #| Ret|     |Up |     |  4|  5|  6|  -|
- * |-------| |-----------------------------------------------------------| ,-----------. |---------------|
- * |   |   | |Shft|  \|  Z|  X|  C|  V|  B|  N|  M|  ,|  ,|  /|     Shift| |Lef|Hom|Rig| |  1|  2|  3|   |
- * |-------| |-----------------------------------------------------------| `-----------' |-----------|Ent|
- * |App|Gui| |Ctrl|    | Alt |           Space           | Alt |    |Ctrl|     |Dow|     |      0|  .|   |
- * `-------' `----'    `---------------------------------------'    `----'     `---'     `---------------'
- */
+// MicroSwitch 122ST13 Terminal Keyboard:
+//               ,-----------------------------------------------.
+//               |F13|F14|F15|F16|F17|F18|F19|F20|F21|F22|F23|F24|
+//               |-----------------------------------------------|
+//               |F1 |F2 |F3 |F4 |F5 |F6 |F7 |F8 |F9 |F10|F11|F12|
+//               `-----------------------------------------------'
+// ,-------. ,-----------------------------------------------------------. ,-----------. ,---------------.
+// |VDn|VUp| |  `|  1|  2|  3|  4|  5|  6|  7|  8|  9|  0|  -|  =|     BS| |  /|PgU|PgD| |Esc|NmL|ScL|  *|
+// |-------| |-----------------------------------------------------------| |-----------| |---------------|
+// |BDn|BUp| |Tab  |  Q|  W|  E|  R|  T|  Y|  U|  I|  O|  P|  [|  ]|     | |End|Ins|Del| |  7|  8|  9|  +|
+// |-------| |------------------------------------------------------.    | `-----------' |-----------|---|
+// |   |   | |CapsL |  A|  S|  D|  F|  G|  H|  J|  K|  L|  ;|  '|  #| Ret|     |Up |     |  4|  5|  6|  -|
+// |-------| |-----------------------------------------------------------| ,-----------. |---------------|
+// |   |   | |Shft|  \|  Z|  X|  C|  V|  B|  N|  M|  ,|  ,|  /|     Shift| |Lef|Hom|Rig| |  1|  2|  3|   |
+// |-------| |-----------------------------------------------------------| `-----------' |-----------|Ent|
+// |App|Gui| |Ctrl|    | Alt |           Space           | Alt |    |Ctrl|     |Dow|     |      0|  .|   |
+// `-------' `----'    `---------------------------------------'    `----'     `---'     `---------------'
 
 // clang-format on
 
-/* Define Keyboard Layers */
+// Define Keyboard Layers
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
-    KEYMAP_PC122(                        /* Layer 0: Base Layer
-                                          */
-                 // clang-format off
+    KEYMAP_PC122(  // Layer 0: Base Layer
+                   // clang-format off
                             F13,   F14,   F15,   F16,   F17,   F18,   F19,   F20,   F21,   F22,   F23,   F24, \
                             F1,    F2,    F3,    F4,    F5,    F6,    F7,    F8,    F9,    F10,   F11,   F12, \
     ESC,   NO,       GRV,   1,     2,     3,     4,     5,     6,     7,     8,     9,     0,     MINS,  EQL,          BSPC,     INS,   HOME,  PGUP,     NLCK,  PSLS,  PAST,  PMNS, \
@@ -56,8 +63,8 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     BRTD,  BRTI,     CAPS,         A,     S,     D,     F,     G,     H,     J,     K,     L,     SCLN,  QUOT,  BSLS,  ENT,             UP,              P4,    P5,    P6,    PMNS, \
     NO,    APP,      LSFT,  NUBS,  Z,     X,     C,     V,     B,     N,     M,     COMM,  DOT,   SLSH,                RSFT,     LEFT,  NO,    RIGHT,    P1,    P2,    P3,    PENT, \
     LGUI,  RGUI,     LCTL,         LALT,                              SPC,                               RALT,         RCTL,            DOWN,            P0,    PDOT  // clang-format on
-                 ),
+        ),
 };
 
-/* Layer count - automatically calculated from keymap_map array size */
+// Layer count - automatically calculated from keymap_map array size
 const uint8_t keymap_layer_count = (uint8_t)(sizeof(keymap_map) / sizeof(keymap_map[0]));

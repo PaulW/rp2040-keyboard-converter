@@ -18,42 +18,50 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file scancode.c
+ * @brief AT/PS2 Scancode Set 2 processing implementation.
+ *
+ * @see scancode.h for the public API.
+ * @note Main loop only — not IRQ-safe.
+ */
+
 #include "scancode.h"
 
-#include <stdio.h>
+#include <stdint.h>
 
 #include "flow_tracker.h"
 #include "hid_interface.h"
 #include "log.h"
 
-// ============================================================================
-// Protocol Byte Constants
-// ============================================================================
+// --- Private Functions ---
 
-/* Prefix bytes */
+// Protocol Byte Constants
+
+// Prefix bytes
 #define SC_ESCAPE_E0 0xE0U /**< E0 prefix — extended key indicator */
 #define SC_ESCAPE_E1 0xE1U /**< E1 prefix — Pause / Break multi-byte sequence */
 #define SC_ESCAPE_F0 0xF0U /**< F0 prefix — break code indicator */
 
-/* Set 2 fake shift bytes (E0-prefixed, silently discarded) */
+// Set 2 fake shift bytes (E0-prefixed, silently discarded)
 #define SC2_FAKE_LSHIFT 0x12U /**< Spurious Left-Shift (with E0 prefix) */
 #define SC2_FAKE_RSHIFT 0x59U /**< Spurious Right-Shift (with E0 prefix) */
 
-/* Set 2 E1 Pause/Break sequence bytes */
+// Set 2 E1 Pause/Break sequence bytes
 #define SC2_CTRL                                                                       \
     0x14U                 /**< Left-Control make; also Right-Control when E0-prefixed. \
                            *   First data byte of the E1 Pause make/break sequences. */
 #define SC2_NUMLOCK 0x77U /**< E1 Pause make/break tail — Num Lock code */
 
-/* Special out-of-range Set 2 scancodes */
+// Special out-of-range Set 2 scancodes
 #define SC2_SPECIAL_F7     0x83U /**< F7 key scancode (outside normal 0x01–0x7E range) */
 #define SC2_SPECIAL_SYSREQ 0x84U /**< SysReq / Alt+Print Screen scancode */
 
-/* Protocol response bytes (handled by protocol layer; listed here for clarity) */
+// Protocol response bytes (handled by protocol layer; listed here for clarity)
 #define SC2_BAT_OK   0xAAU /**< Basic Assurance Test OK — self-test passed */
 #define SC2_BAT_FAIL 0xFCU /**< BAT failure / mouse transmit error */
 
-/* Interface code passed to handle_keyboard_report() for SysReq */
+// Interface code passed to handle_keyboard_report() for SysReq
 #define IFACE_KP_PLUS 0x7FU /**< Interface code: Keypad Plus (used for SysReq output) */
 
 /**
@@ -131,14 +139,13 @@ static const uint8_t e0_code_translation[256] = {
  *
  * @param code The E0-prefixed scan code to translate
  * @return Translated interface code, or 0 if code should be ignored
+ * @note IRQ-safe.
  */
 static inline uint8_t switch_e0_code(uint8_t code) {
     return e0_code_translation[code];
 }
 
-// ============================================================================
 // State Machine
-// ============================================================================
 
 /**
  * @brief Unified State Machine States
@@ -159,13 +166,10 @@ typedef enum {
 
 static scancode_state_t state = INIT;
 
-// ============================================================================
 // Per-State Handlers
-//
-// Each function handles exactly one state.  process_scancode() is a thin
+// Each function handles exactly one state. process_scancode() is a thin
 // dispatcher; keeping the logic split here makes each state independently
 // readable and holds cognitive complexity well within bounds.
-// ============================================================================
 
 /**
  * @brief INIT state — detect prefix bytes, special codes, or dispatch make code.
@@ -377,44 +381,8 @@ static void handle_state_e1_f0_14_f0(uint8_t code) {
     }
 }
 
-// ============================================================================
-// Main Processor
-// ============================================================================
+// --- Public Functions ---
 
-/**
- * @brief Process Keyboard Input (Scancode Set 2) Data
- *
- * This function processes scan codes from AT/PS2 keyboards using Scan Code Set 2.
- * Set 2 is the default for PS/2 keyboards and is the most commonly used scan code set.
- *
- * Protocol Overview:
- * - Make codes: 0x01-0x83 (key press)
- * - Break codes: F0 followed by make code (key release, e.g., F0 1C = key 0x1C released)
- * - Multi-byte sequences: E0-prefixed (2-3 bytes) and E1-prefixed (8 bytes)
- *
- * State Machine:
- *
- *     INIT ──[F0]──> F0 ──[code]──> INIT (process break code)
- *       │
- *       ├──[E0]──> E0 ──[F0]──> E0_F0 ──[code]──> INIT (E0-prefixed break)
- *       │           │
- *       │           └──[12,59]──> INIT (ignore fake shifts)
- *       │           │
- *       │           └──[code]──> INIT (process E0-prefixed make)
- *       │
- *       ├──[E1]──> E1 ──[14]──> E1_14 ──[77]──> INIT (Pause make)
- *       │           │  (Pause/Break key sends an 8-byte sequence: E1 14 77 E1 F0 14 F0 77)
- *       │           └──[F0]──> E1_F0 ──[14]──> E1_F0_14 ──[F0]──> E1_F0_14_F0 ──[77]──> INIT
- *       |
- *       ├──[83]──> INIT (F7 special handling)
- *       ├──[84]──> INIT (SysReq/Alt+PrtScn)
- *       └──[code]──> INIT (process normal make code)
- *
- * @param code The keycode to process.
- *
- * @note Main loop only.
- * @note handle_keyboard_report() translates scan codes to HID keycodes via keymap lookup.
- */
 void process_scancode(uint8_t code) {
     FLOW_STEP(code);
     switch (state) {
