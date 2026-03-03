@@ -354,7 +354,7 @@ void keylayers_init(void) {
 
 void keylayers_process_key(uint8_t code, bool make) {
     const uint8_t operation    = GET_LAYER_OPERATION(code);  // 0=MO, 1=TG, 2=TO, 3=OSL
-    const uint8_t target_layer = GET_LAYER_TARGET(code);     // 1-3 (current MO/TG/TO/OSL macros)
+    const uint8_t target_layer = GET_LAYER_TARGET(code);     // 1-4 (MO/TG/TO/OSL macros)
 
     // Guard: Validate target_layer bounds to prevent buffer underflow and invalid operations
     // Lower bound: target_layer must not be 0 (Layer 0 is base, cannot be used with MO/TG)

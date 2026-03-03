@@ -113,7 +113,7 @@ typedef struct {
  * - interface_parity_table[0x3C] = 1 (0x3C has 4 ones, parity bit is 1)
  * - interface_parity_table[0x8A] = 0 (0x8A has 3 ones, parity bit is 0)
  */
-extern uint8_t interface_parity_table[];
+extern const uint8_t interface_parity_table[256];
 
 /**
  * @brief Parse one AT/PS2 frame from the PIO RX FIFO.

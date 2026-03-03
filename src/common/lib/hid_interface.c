@@ -25,7 +25,8 @@
  * Implements TinyUSB HID callback handlers and report submission logic for
  * keyboard, consumer control, and mouse HID endpoints.
  *
- * @note Main loop only — do not call from IRQ context.
+ * @note Report-generation entry points are main-loop only.
+ * @note TinyUSB callbacks in this file are invoked by USB stack callback context.
  */
 
 #include "hid_interface.h"

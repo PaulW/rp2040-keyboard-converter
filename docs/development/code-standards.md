@@ -185,6 +185,16 @@ Every source file should have a header comment with license information:
 
 ### Function Documentation
 
+**Where Doxygen lives:** public API documentation belongs in the header file — full stop. The `.h` file is what callers read, so that's where the `@brief`, `@param`, `@return`, and `@note` annotations go. The `.c` file should not repeat or duplicate that documentation.
+
+Private (static) functions that never appear in a header are the one exception — document those where they are defined, in the `.c` file.
+
+In practice this means:
+- `.h` file → Doxygen for every public function, struct, enum, and macro
+- `.c` file → `// --- Private Functions ---` section with Doxygen only on static helpers; public function bodies have no Doxygen block above them
+
+If a code review tool flags a `.c` file as "missing documentation" for a public function, the documentation is almost certainly already in the corresponding `.h` file where it belongs. That is the correct and intended location.
+
 Use Doxygen-style comments for functions, especially in header files:
 
 ```c

@@ -66,9 +66,8 @@
  * ```
  *
  * Thread Safety:
- * - log_set_level() is thread-safe (atomic uint8_t write)
- * - LOG_* macros are thread-safe (backed by thread-safe DMA UART)
- * - Can be called from any context (main loop, IRQ, etc.)
+ * - LOG_* macros are safe to call from main loop and IRQ context (DMA-backed UART path)
+ * - log_set_level() should be called from main loop
  *
  * Integration with UART DMA:
  * - Uses existing uart.c DMA-based output system
@@ -76,8 +75,8 @@
  * - No additional queue or buffering overhead
  *
  * @note All LOG_* macros are non-blocking (backed by DMA UART)
- * @note All levels available at runtime; change anytime with log_set_level()
- * @note Can be called from any execution context (IRQ-safe via DMA UART)
+ * @note All levels are runtime-selectable via log_set_level()
+ * @note log_set_level() is main-loop only; if used in IRQ, issue __dmb() afterwards
  *
  * @warning Must call init_uart_dma() before using LOG_* macros
  * @warning Long format strings may be truncated (UART_DMA_BUFFER_SIZE limit)

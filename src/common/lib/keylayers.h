@@ -28,7 +28,7 @@
  *
  * Key Features:
  * - Layer priority: One-shot > Momentary (MO) > Toggle (TG) > Base (Layer 0)
- * - Configurable layer count via KEYMAP_MAX_LAYERS (default: 8)
+ * - Configurable layer count via KEYMAP_MAX_LAYERS (default: 5: base Layer 0 + 4 switchable)
  * - Persistent layer state across reboots (toggle/switch-to layers)
  * - One-shot layer support with automatic deactivation
  */
@@ -107,7 +107,7 @@ void keylayers_reset(void);
  * Implementation uses early returns - checks one-shot first, then iterates
  * momentary layers array (indices 0 to KEYMAP_MAX_LAYERS-2), then falls back to bitmap scan.
  *
- * @return Active layer number (0-7)
+ * @return Active layer number (0–4)
  *
  * @note Main loop only.
  */

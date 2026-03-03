@@ -117,8 +117,8 @@
  * required for the simple XT unidirectional protocol:
  *
  * Hardware Setup:
- * - Finds available PIO instance (PIO0 or PIO1) with program space
- * - Claims unused state machine and loads XT protocol program
+ * - Atomically claims PIO resources using claim_pio_and_sm(&keyboard_interface_program)
+ * - Uses returned pio_engine_t for program init and runtime access
  * - Configures GPIO pins for DATA and CLOCK lines (2-wire interface)
  * - Keyboard generates clock signal on dedicated CLOCK line
  *
@@ -164,7 +164,7 @@
  * - Graceful failure if insufficient PIO resources available
  * - Logs successful initialisation with configuration details
  *
- * @param data_pin GPIO pin number for DATA line (2-wire interface)
+ * @param data_pin GPIO pin number for DATA line; CLOCK is expected on (data_pin + 1)
  *
  * @note Main loop only.
  */

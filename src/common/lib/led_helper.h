@@ -153,7 +153,8 @@ void update_converter_status(void);
  *
  * @note Inline function provides zero-overhead abstraction.
  * @note Compiled to nothing when CONVERTER_LEDS is not defined.
- * @note Main loop only.
+ * @note IRQ-safe and non-blocking.
+ * @note Used from both main-loop protocol tasks and selected ISR event paths.
  */
 static inline void update_keyboard_ready_led(bool ready) {
 #ifdef CONVERTER_LEDS

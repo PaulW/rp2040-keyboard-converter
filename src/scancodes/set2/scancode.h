@@ -62,7 +62,8 @@
  *       ├──[84]──> INIT (SysReq/Alt+PrtScn)
  *       └──[code]──> INIT (process normal make code)
  *
- * @param code The keycode to process.
+ * @param code The Set 2 scancode byte to process.
+ * @return void
  *
  * @note Main loop only.
  * @note Non-blocking.

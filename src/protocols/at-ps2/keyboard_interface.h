@@ -91,8 +91,8 @@
  * software components required for reliable keyboard communication:
  *
  * Hardware Setup:
- * - Finds available PIO instance (PIO0 or PIO1) with sufficient program space
- * - Claims unused state machine and loads AT/PS2 protocol program
+ * - Atomically claims PIO instance and state machine via claim_pio_and_sm()
+ * - Loads the AT/PS2 protocol program as part of the atomic allocation flow
  * - Configures GPIO pins: DATA line and CLOCK line (DATA + 1)
  * - Sets up pull-up resistors for open-drain signaling
  *

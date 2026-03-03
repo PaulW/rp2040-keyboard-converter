@@ -36,9 +36,6 @@
 
 #include "log.h"
 
-// Compile-time validation of PIO helper constants
-_Static_assert(1, "PIO helper basic sanity check");  // Always true, validates _Static_assert works
-
 // PIO IRQ Dispatcher State
 #define MAX_PIO_IRQ_CALLBACKS 4 /**< Maximum callbacks per PIO (supports multiple devices) */
 

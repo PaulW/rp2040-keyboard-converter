@@ -310,9 +310,9 @@ If a key doesn't work as expected, the UART debug output is your friend. Enable 
 
 The converter supports multi-layer keymaps (similar to QMK firmware), but if you're only remapping a few keys a single-layer keymap may be enough for that goal. If you're just remapping keys, you can skip this section entirely.
 
-Layers are useful for things like media controls, alternative key functions, or special modes that you access via a function key. The converter supports up to 8 layers (0-7, defined by `KEYMAP_MAX_LAYERS = 8` in [`src/common/lib/keymaps.h`](../../src/common/lib/keymaps.h)), with Layer 0 being the base layer that's always active.
+Layers are useful for things like media controls, alternative key functions, or special modes that you access via a function key. The converter supports 4 switchable layers plus base Layer 0 (`KEYMAP_MAX_LAYERS = 5` in [`src/common/lib/keymaps.h`](../../src/common/lib/keymaps.h)). Layer 0 is the base layer and is always active.
 
-**Layer switching limitation:** Layer-switching keycodes (MO, TG, TO, OSL) are currently only defined for layers 1-3 in [`src/common/lib/hid_keycodes.h`](../../src/common/lib/hid_keycodes.h). Whilst you can define up to 8 layers in your keymap, you can only directly switch to layers 1-3 using the keycode macros described below. If you need layers 4-7, extend the keycode definitions in `hid_keycodes.h`. The default keycode set only covers layers 1-3 plus the base layer 0.
+**Layer switching:** Layer-switching keycodes (MO, TG, TO, OSL) are defined for layers 1–4 in [`src/common/lib/hid_keycodes.h`](../../src/common/lib/hid_keycodes.h). That is the architectural maximum — the internal 0xF0–0xFF keycode encoding is fully occupied by 4 operations × 4 layer slots.
 
 ### How Layers Work
 
@@ -362,18 +362,18 @@ Notice the `MO_1` key in the base layer—that's a momentary layer switch. When 
 There are four types of layer operations, each with a different behaviour:
 
 **Momentary (MO)** - Layer active only whilst held  
-`MO_1`, `MO_2`, `MO_3` activate Layers 1-3 temporarily. Release the key and the layer deactivates. This is well-suited for Function layers or media control layers where the alternative mapping is only needed whilst holding the key.
+`MO_1`–`MO_4` activate Layers 1–4 temporarily. Release the key and the layer deactivates. This is well-suited for Function layers or media control layers where the alternative mapping is only needed whilst holding the key.
 
 **Toggle (TG)** - Layer stays active until toggled again  
-`TG_1`, `TG_2`, `TG_3` toggle Layers 1-3 on or off. Press once to activate, press again to deactivate. Useful for modes you want to stay in without holding a key (like a gaming layer or alternative layout).
+`TG_1`–`TG_4` toggle Layers 1–4 on or off. Press once to activate, press again to deactivate. Useful for modes you want to stay in without holding a key (like a gaming layer or alternative layout).
 
 **Switch To (TO)** - Permanently switch to layer  
-`TO_1`, `TO_2`, `TO_3` permanently switch to that layer, deactivating all others except Layer 0. Layer 0 always remains active underneath as the base layer. You'll need another `TO_x` key in the target layer to switch back.
+`TO_1`–`TO_4` permanently switch to that layer, deactivating all others except Layer 0. Layer 0 always remains active underneath as the base layer. You'll need another `TO_x` key in the target layer to switch back.
 
 **One-Shot (OSL)** - Layer activates for next keypress only  
-`OSL_1`, `OSL_2`, `OSL_3` activate the layer for a single keypress, then automatically deactivate. Press the one-shot key, then press another key—that key uses the upper layer, then you're back to the base layer. Useful for accessing symbols or special characters without holding a modifier.
+`OSL_1`–`OSL_4` activate the layer for a single keypress, then automatically deactivate. Press the one-shot key, then press another key—that key uses the upper layer, then you're back to the base layer. Useful for accessing symbols or special characters without holding a modifier.
 
-These keycodes follow a pattern: the operation type (MO, TG, TO, OSL) followed by an underscore and the layer number. The current implementation only defines keycodes for layers 1-3 (stored in the 0xF0-0xFF keycode range in `hid_keycodes.h`). Accessing layers 4-7 requires extending these definitions by adding `KC_MO_4` through `KC_MO_7` and corresponding macros. The default keycode set only covers layers 1-3 plus the base layer.
+These keycodes follow a pattern: the operation type (MO, TG, TO, OSL) followed by an underscore and the layer number. Keycodes are defined for layers 1–4 (stored in the 0xF0–0xFF keycode range in `hid_keycodes.h`); that range is fully occupied and layer 4 is the maximum.
 
 ### Practical Example: Media Control Layer
 

@@ -56,10 +56,10 @@
  *
  * 2. Our Implementation:
  *    - Detect CAPS LOCK by key code (0x62)
- *    - Generate press+release pair for EVERY CAPS LOCK event
- *    - Ignore bit 7 (LED state is informational only)
- *    - USB HID CAPS LOCK toggles on each press+release cycle
- *    - Each Amiga press (0x62 or 0xE2) generates one USB toggle
+ *    - Use bit 7 to infer the keyboard LED state after toggle
+ *    - Compare keyboard LED state with current USB HID CAPS state
+ *    - Generate a press+release pair only when states are out of sync
+ *    - If states are already synchronised, no HID event is emitted
  *
  * 3. Why This Works:
  *    - USB HID CAPS LOCK is a toggle key (not a state key)

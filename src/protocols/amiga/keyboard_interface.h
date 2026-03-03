@@ -140,8 +140,7 @@
  * for Amiga keyboard protocol:
  *
  * PIO Configuration:
- * - Finds available PIO block (pio0 or pio1)
- * - Claims unused state machine
+ * - Atomically claims a PIO block + state machine via claim_pio_and_sm()
  * - Loads keyboard interface program into PIO instruction memory
  * - Configures clock divider for ~20µs timing detection
  *
@@ -187,7 +186,8 @@ void keyboard_interface_setup(uint data_pin);
  * - Handles CAPS LOCK special behaviour (press only, LED state tracking)
  *
  * Protocol Features:
- * - No initialisation sequence needed (unlike AT/PS2)
+ * - No host-driven initialisation sequence (unlike AT/PS2) — the keyboard performs its own power-up
+ * startup stream (0xFD … 0xFE); the host simply waits and receives
  * - No LED control capability from computer (keyboard maintains state)
  * - Bidirectional handshake handled entirely in PIO hardware
  * - Special codes (0x78, 0xF9-0xFE) filtered by event processor

@@ -22,12 +22,12 @@
  * @file mouse_interface.c
  * @brief AT/PS2 mouse interface implementation.
  *
- * Handles PS/2 mouse initialisation, IRQ-driven packet reception via ring buffer,
+ * Handles PS/2 mouse initialisation, IRQ-driven packet reception,
  * and USB HID mouse report generation.
  *
  * @see mouse_interface.h for the public API documentation.
  *
- * @note IRQ handler writes ring buffer; main loop task reads and processes packets.
+ * @note IRQ handler parses mouse bytes and emits reports directly; no ring buffer is used.
  */
 
 #include "mouse_interface.h"
@@ -568,7 +568,7 @@ void mouse_interface_task(void) {
             if (gpio_get(mouse_data_pin + 1) == 1) {
                 // Only perform checks if the clock is HIGH
                 detect_stall_count++;
-                if (detect_stall_count > ATPS2_MOUSE_STALL_LIMIT) {
+                if (detect_stall_count >= ATPS2_MOUSE_STALL_LIMIT) {
                     // Reset Mouse as we have not received any data for 1 second.
                     LOG_ERROR("Mouse Interface Timeout.  Resetting Mouse...\n");
                     mouse_id    = ATPS2_MOUSE_ID_UNKNOWN;  // Reset Mouse ID

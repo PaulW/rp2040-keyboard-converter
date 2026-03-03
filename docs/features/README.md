@@ -125,7 +125,7 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
 
 Keyboard layers provide a way to access multiple sets of key functions from the same physical keys. Think of them as transparent overlays—activate a layer and the keys do different things. Use cases include compact keyboards or adding media controls to hardware that lacks dedicated keys.
 
-The converter supports up to 8 layers (numbered 0-7). Layer 0 is always active as the base layer, and upper layers overlay on top. Keys can be transparent in upper layers, falling through to lower active layers until a keycode is found, so you only need to define the keys that actually change.
+The converter supports 4 switchable layers plus base Layer 0 (layers 0–4). Layer 0 is always active as the base layer, and upper layers overlay on top. Keys can be transparent in upper layers, falling through to lower active layers until a keycode is found, so you only need to define the keys that actually change.
 
 **Layer activation methods:**
 - **Momentary (MO)**: Active whilst held, like a traditional Fn key (does not persist)

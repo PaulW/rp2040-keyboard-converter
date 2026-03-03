@@ -73,7 +73,7 @@ const uint8_t keymap_layer_count = (uint8_t)(sizeof(keymap_map) / sizeof(keymap_
 // Special Apple keys:
 // - Option key (0x75) -> LALT (Left Alt)
 // - Mac key (0x6F) -> LGUI (Left GUI/Command)
-// - Clear key (0x0F with 0x71 prefix) -> CALC (Calculator)
+// - Clear key (0x0F with 0x71 prefix) -> NLCK (Num Lock/Clear)
 //
 // Keypad handling:
 // - Regular keypad keys send 0x79 prefix before their code
@@ -83,7 +83,7 @@ const uint8_t keymap_layer_count = (uint8_t)(sizeof(keymap_map) / sizeof(keymap_
 // Layout differences from modern keyboards:
 // - No Windows/Super key (Mac key serves this purpose)
 // - No Menu/Application key
-// - No separate numeric keypad Enter (shares main Enter)
+// - Dedicated numeric keypad Enter is mapped (PENT)
 // - Unique Clear key on keypad
 // - Different modifier key placement (Option where Alt would be)
 //

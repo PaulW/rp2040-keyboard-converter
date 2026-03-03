@@ -221,56 +221,56 @@
 #define KC_LAYER_TO_BASE  0xF8  // TO(n): Switch to layer permanently
 #define KC_LAYER_OSL_BASE 0xFC  // OSL(n): One-shot layer (next key only)
 
-// Individual layer keycodes (layers 1-3 supported for each operation)
+// Individual layer keycodes (layers 1-4 supported for each operation)
+//
+// Encoding: the 0xF0-0xFF range holds exactly 16 codes.  With 4 operations
+// at 4 slots each the range is fully occupied — no headroom exists for layers
+// beyond 4 without changing the base addresses or widening to a larger type.
+//
 // MO (Momentary) - 0xF0-0xF3
 #define KC_MO_1 (KC_LAYER_MO_BASE + 0)  // MO(1)
 #define KC_MO_2 (KC_LAYER_MO_BASE + 1)  // MO(2)
 #define KC_MO_3 (KC_LAYER_MO_BASE + 2)  // MO(3)
-// 0xF3 reserved for future MO(4)
+#define KC_MO_4 (KC_LAYER_MO_BASE + 3)  // MO(4)
 
 // TG (Toggle) - 0xF4-0xF7
 #define KC_TG_1 (KC_LAYER_TG_BASE + 0)  // TG(1)
 #define KC_TG_2 (KC_LAYER_TG_BASE + 1)  // TG(2)
 #define KC_TG_3 (KC_LAYER_TG_BASE + 2)  // TG(3)
-// 0xF7 reserved for future TG(4)
+#define KC_TG_4 (KC_LAYER_TG_BASE + 3)  // TG(4)
 
 // TO (Switch to) - 0xF8-0xFB
 #define KC_TO_1 (KC_LAYER_TO_BASE + 0)  // TO(1)
 #define KC_TO_2 (KC_LAYER_TO_BASE + 1)  // TO(2)
 #define KC_TO_3 (KC_LAYER_TO_BASE + 2)  // TO(3)
-// 0xFB reserved for future TO(4)
+#define KC_TO_4 (KC_LAYER_TO_BASE + 3)  // TO(4)
 
 // OSL (One-shot) - 0xFC-0xFF
 #define KC_OSL_1 (KC_LAYER_OSL_BASE + 0)  // OSL(1)
 #define KC_OSL_2 (KC_LAYER_OSL_BASE + 1)  // OSL(2)
 #define KC_OSL_3 (KC_LAYER_OSL_BASE + 2)  // OSL(3)
-// 0xFF reserved for future OSL(4)
+#define KC_OSL_4 (KC_LAYER_OSL_BASE + 3)  // OSL(4)
 
-// Convenience macros for keymaps (layers 1-3)
-// Note: No compile-time validation.
-// MO(0) produces 0xEF (below IS_LAYER_KEY threshold) — silently ignored as an
-// unrecognised IS_SPECIAL code; never reaches keylayers_process_key().
-// MO(4) produces 0xF3 (GET_LAYER_TARGET=4) — rejected at runtime by keylayers_process_key().
-// MO(5+) wraps into TG/TO/OSL/MO space (e.g. MO(5)=TG(1), MO(9)=TO(1)) and
-// silently executes as a DIFFERENT layer operation; not rejected at runtime.
-// Stick to n: 1-3.
-#define MO(n)  (KC_LAYER_MO_BASE + ((n) - 1))   // n: 1-3 (Momentary)
-#define TG(n)  (KC_LAYER_TG_BASE + ((n) - 1))   // n: 1-3 (Toggle)
-#define TO(n)  (KC_LAYER_TO_BASE + ((n) - 1))   // n: 1-3 (Switch to)
-#define OSL(n) (KC_LAYER_OSL_BASE + ((n) - 1))  // n: 1-3 (One-shot)
+// Convenience macros for keymaps (layers 1-4)
+// Note: No compile-time validation. Layer argument must be 1-4.
+// MO(0) produces 0xEF (below IS_LAYER_KEY threshold) — silently ignored.
+// The 0xF0-0xFF encoding is fully occupied; layer 4 is the maximum.
+#define MO(n)  (KC_LAYER_MO_BASE + ((n) - 1))   // n: 1-4 (Momentary)
+#define TG(n)  (KC_LAYER_TG_BASE + ((n) - 1))   // n: 1-4 (Toggle)
+#define TO(n)  (KC_LAYER_TO_BASE + ((n) - 1))   // n: 1-4 (Switch to)
+#define OSL(n) (KC_LAYER_OSL_BASE + ((n) - 1))  // n: 1-4 (One-shot)
 
 // Compile-time validation: Ensure layer macros produce correct keycodes for valid range
-_Static_assert(MO(1) == KC_MO_1 && MO(3) == KC_MO_3, "MO(n) macro range validation failed");
-_Static_assert(TG(1) == KC_TG_1 && TG(3) == KC_TG_3, "TG(n) macro range validation failed");
-_Static_assert(TO(1) == KC_TO_1 && TO(3) == KC_TO_3, "TO(n) macro range validation failed");
-_Static_assert(OSL(1) == KC_OSL_1 && OSL(3) == KC_OSL_3, "OSL(n) macro range validation failed");
+_Static_assert(MO(1) == KC_MO_1 && MO(4) == KC_MO_4, "MO(n) macro range validation failed");
+_Static_assert(TG(1) == KC_TG_1 && TG(4) == KC_TG_4, "TG(n) macro range validation failed");
+_Static_assert(TO(1) == KC_TO_1 && TO(4) == KC_TO_4, "TO(n) macro range validation failed");
+_Static_assert(OSL(1) == KC_OSL_1 && OSL(4) == KC_OSL_4, "OSL(n) macro range validation failed");
 
 // Helper macros for layer key detection and parsing
 #define IS_LAYER_KEY(code)        ((code) >= KC_LAYER_MO_BASE)        // 0xF0-0xFF range
 #define GET_LAYER_OPERATION(code) (((code) - KC_LAYER_MO_BASE) >> 2)  // 0=MO, 1=TG, 2=TO, 3=OSL
-// GET_LAYER_TARGET: Returns 1-4 where 1-3 are usable via MO/TG/TO/OSL macros,
-// and 4 represents reserved slots (0xF3, 0xF7, 0xFB, 0xFF) for future expansion.
-// Runtime validation occurs in keylayers_process_key().
+// GET_LAYER_TARGET: Returns 1-4 (layers 1-4 are all usable via MO/TG/TO/OSL macros).
+// Layer 4 requires keymap_layer_count >= 5; runtime validation in keylayers_process_key().
 #define GET_LAYER_TARGET(code) ((((code) - KC_LAYER_MO_BASE) & 0x03) + 1)
 
 // Migration note: If future HID spec uses 0xF0-0xFF, simply change the

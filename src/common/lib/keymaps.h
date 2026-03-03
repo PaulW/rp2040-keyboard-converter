@@ -29,7 +29,8 @@
  * Keymap Layout:
  * - Grid: KEYMAP_ROWS (8) × KEYMAP_COLS (16) = 128 addressable key positions
  * - Position byte encoding: upper nibble = row (0–7), lower nibble = column (0–15)
- * - Up to KEYMAP_MAX_LAYERS (8) independent layers per keyboard
+ * - Up to KEYMAP_MAX_LAYERS (5) independent layers per keyboard: base Layer 0
+ *   plus 4 switchable layers (1–4)
  * - Layer 0 is always active; higher layers overlay lower ones
  *
  * Layer System:
@@ -60,7 +61,7 @@
 
 #define KEYMAP_ROWS       8
 #define KEYMAP_COLS       16
-#define KEYMAP_MAX_LAYERS 8
+#define KEYMAP_MAX_LAYERS 5  // Layer 0 (base) + 4 switchable layers (1–4)
 
 // Shift-Override array size: Each layer's shift-override array must be exactly this size
 #define SHIFT_OVERRIDE_ARRAY_SIZE 256
