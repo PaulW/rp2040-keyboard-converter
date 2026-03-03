@@ -54,10 +54,10 @@ There are several ways to activate layers, each suited to different use cases. Y
 
 | Keycode | Type | Behaviour | Use Case |
 |---------|------|-----------|----------|
-| MO_1, MO_2, MO_3 | Momentary | Active whilst held | Fn key for media controls or navigation |
-| TG_1, TG_2, TG_3 | Toggle | Stays on until pressed again | Gaming layer, alternative layout |
-| TO_1, TO_2, TO_3 | Permanent | Switches to layer, deactivates others | Force specific layout mode |
-| OSL_1, OSL_2, OSL_3 | One-shot | Active for next keypress only | Symbols or special characters |
+| MO_1, MO_2, MO_3, MO_4 | Momentary | Active whilst held | Fn key for media controls or navigation |
+| TG_1, TG_2, TG_3, TG_4 | Toggle | Stays on until pressed again | Gaming layer, alternative layout |
+| TO_1, TO_2, TO_3, TO_4 | Permanent | Switches to layer, deactivates others | Force specific layout mode |
+| OSL_1, OSL_2, OSL_3, OSL_4 | One-shot | Active for next keypress only | Symbols or special characters |
 
 **Momentary layers** activate whilst you hold a specific key and deactivate when you release it. Hold the Fn key, press another key to access its upper-layer function, release Fn and you're back to normal typing. The IBM Model M Enhanced uses this pattern with MO_1 positioned where Right Alt normally sits.
 

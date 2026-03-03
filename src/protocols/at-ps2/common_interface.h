@@ -152,7 +152,6 @@ static inline atps2_frame_t atps2_parse_frame(const pio_engine_t* engine) {
  * @param   engine      Pointer to the @c pio_engine_t that owns the PIO state machine.
  * @param   data_byte   Command byte to transmit; parity is appended automatically
  *                      using @c interface_parity_table[data_byte].
- * @return  void
  * @note    Main loop only — must not be called from an ISR.  No locking is
  *          performed; callers must ensure single-threaded access to the PIO TX FIFO.
  */

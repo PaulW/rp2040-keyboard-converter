@@ -115,8 +115,8 @@
 static pio_engine_t pio_engine = {.pio = NULL, .sm = -1, .offset = -1};
 
 // Pin Configuration
-static uint keyboard_data_pin;  /**< GPIO pin for DATA (bidirectional) */
-static uint keyboard_clock_pin; /**< GPIO pin for CLOCK (input only) */
+static uint keyboard_data_pin; /**< GPIO pin for DATA (bidirectional) */
+// Note: CLOCK pin is always DATA + 1 (PIO program requirement); no need to store separately
 
 /**
  * @brief Amiga Protocol State Machine
@@ -353,9 +353,8 @@ void keyboard_interface_setup(uint data_pin) {
         return;
     }
 
-    // Store pin assignments - CLOCK must be DATA + 1 (PIO program requirement)
-    keyboard_data_pin  = data_pin;
-    keyboard_clock_pin = data_pin + 1;
+    // Store pin assignment - CLOCK is always DATA + 1 (PIO program requirement)
+    keyboard_data_pin = data_pin;
 
     // Calculate clock divider for 20µs minimum pulse detection
     float clock_div = calculate_clock_divider(AMIGA_TIMING_CLOCK_MIN_US);

@@ -129,7 +129,8 @@
  * @param data_pin GPIO pin number for DATA line (CLOCK automatically assigned as data_pin + 1)
  *
  * @note CLOCK pin must be DATA pin + 1 for hardware compatibility
- * @note Function blocks until hardware initialisation complete
+ * @note Performs synchronous initialisation and returns when setup attempt completes.
+ * @note No intentional blocking waits are used.
  * @note Call before any other keyboard interface operations
  * @note Main loop only.
  */

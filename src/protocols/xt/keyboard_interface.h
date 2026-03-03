@@ -167,6 +167,7 @@
  * @param data_pin GPIO pin number for DATA line; CLOCK is expected on (data_pin + 1)
  *
  * @note Main loop only.
+ * @note Non-blocking.
  */
 void keyboard_interface_setup(uint data_pin);
 
@@ -225,6 +226,7 @@ void keyboard_interface_setup(uint data_pin);
  * - Plug-and-play operation (no configuration required)
  *
  * @note Main loop only.
+ * @note Non-blocking.
  */
 void keyboard_interface_task(void);
 

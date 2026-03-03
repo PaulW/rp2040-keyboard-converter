@@ -28,7 +28,8 @@
  *
  * Key Features:
  * - Layer priority: One-shot > Momentary (MO) > Toggle (TG) > Base (Layer 0)
- * - Configurable layer count via KEYMAP_MAX_LAYERS (default: 5: base Layer 0 + 4 switchable)
+ * - Layer count cap via KEYMAP_MAX_LAYERS (5 total: base Layer 0 + 4 switchable;
+ *   max by keycode encoding)
  * - Persistent layer state across reboots (toggle/switch-to layers)
  * - One-shot layer support with automatic deactivation
  */

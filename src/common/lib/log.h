@@ -74,7 +74,9 @@
  * - Respects configured UART_DMA_POLICY (DROP/WAIT_FIXED/WAIT_EXP)
  * - No additional queue or buffering overhead
  *
- * @note All LOG_* macros are non-blocking (backed by DMA UART)
+ * @note LOG_* macros use DMA-backed UART output; blocking behaviour depends on
+ *       UART_DMA_POLICY (e.g. WAIT_* policies may block)
+ * @note Do not use LOG_* from IRQ context when a blocking UART_DMA_POLICY is configured
  * @note All levels are runtime-selectable via log_set_level()
  * @note log_set_level() is main-loop only; if used in IRQ, issue __dmb() afterwards
  *
@@ -109,7 +111,8 @@ typedef uint8_t log_level_t;
  *
  * Implementation:
  * - Single volatile uint8_t write (atomic on Cortex-M0+)
- * - No locking or synchronisation needed
+ * - No locking needed (single-byte atomic store)
+ * - Cross-context IRQ callers require a __dmb() after the write
  * - Effect is immediate for subsequent log calls
  *
  * Thread Safety:

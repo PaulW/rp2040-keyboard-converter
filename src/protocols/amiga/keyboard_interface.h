@@ -107,12 +107,8 @@
  *
  * These timing values are critical for proper Amiga keyboard operation.
  */
-#define AMIGA_TIMING_BIT_PERIOD_US 60 /**< Typical bit period (20µs × 3 phases) */
-#define AMIGA_TIMING_CLOCK_MIN_US  20 /**< Minimum CLOCK pulse width for PIO detection */
-#define AMIGA_TIMING_HANDSHAKE_US \
-    85 /**< Intended handshake pulse target (85µs); actual ~15.5ms with current PIO divider */
-#define AMIGA_TIMING_HANDSHAKE_MAX_US 1   /**< Maximum delay before handshake starts */
-#define AMIGA_TIMING_TIMEOUT_MS       143 /**< Handshake timeout before keyboard resyncs */
+#define AMIGA_TIMING_CLOCK_MIN_US 20  /**< Minimum CLOCK pulse width for PIO detection */
+#define AMIGA_TIMING_TIMEOUT_MS   143 /**< Handshake timeout before keyboard resyncs */
 
 /**
  * @brief Bit Rotation Masks
@@ -230,7 +226,7 @@ static inline uint8_t amiga_derotate_byte(uint8_t rotated) {
     // Received: [6 5 4 3 2 1 0 7]
     // Target:   [7 6 5 4 3 2 1 0]
     uint8_t original = 0;
-    original |= (rotated & 0x01) << 7;                     // Bit 0 → Bit 7
+    original |= (rotated & AMIGA_BIT_ROTATION_BIT7) << 7;  // Bit 0 → Bit 7
     original |= (rotated & AMIGA_BIT_ROTATION_REST) >> 1;  // Bits 7-1 → Bits 6-0
     return original;
 }
