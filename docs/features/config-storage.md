@@ -42,7 +42,7 @@ Configuration storage lives at the very end of flash memory, in the last 4KB. Th
 
 Here's the layout:
 
-```
+```text
 0x10000000 ──┬─── Firmware start
              │
              │    Firmware code and data
@@ -114,8 +114,6 @@ The dual-copy design provides natural wear leveling by alternating writes betwee
 
 If you change settings 10,000 times, each copy gets written 5,000 times instead of one copy getting all 10,000 writes. This doubles the effective lifetime of the configuration storage.
 
-The alternation strategy distributes wear across multiple sectors, extending the practical lifetime of the configuration storage.
-
 ---
 
 ## CRC Validation
@@ -156,6 +154,7 @@ Here's the complete boot sequence:
 **Step 5**: Validate Copy B the same way.
 
 **Step 6**: Determine which copy to use:
+
 - If both valid: Use the copy with the higher sequence number (more recent)
 - If only one valid: Use that one
 - If neither valid: Use factory defaults
@@ -224,6 +223,7 @@ The alternative—a non-blocking async save—would add significant complexity f
 As firmware evolves, the configuration structure might gain new fields. For example, a future version might add a `key_debounce_ms` setting. How do we handle this without breaking existing installations?
 
 The configuration structure includes a version number field. The current version is 3:
+
 - **v1**: Initial version with log_level only
 - **v2**: Added led_brightness, keyboard_id (for smart persistence), and shift_override_enabled flag
 - **v3**: Added layer_state and layers_hash (for layer persistence with validation)
@@ -239,6 +239,7 @@ When the firmware boots, it checks the configuration version:
 The current implementation uses a simple migration strategy: if the configuration size in flash is smaller than the current configuration structure size, it's from an older version.
 
 When migrating:
+
 1. Read the old configuration into a temporary buffer
 2. Create a new configuration structure initialised to defaults
 3. Copy all fields that exist in both old and new versions
@@ -277,8 +278,6 @@ The Command Mode 'F' command (implemented in [`command_mode.c`](../../src/common
 
 After factory reset, both copies contain identical factory-default configuration with sequence 0. The next save will increment sequence to 1 and alternate between copies as normal.
 
-Factory reset is useful when you've experimented with settings and want a clean start, or when handing the converter to someone else and want to clear your customisations.
-
 ---
 
 ## Implementation Details
@@ -287,16 +286,16 @@ The configuration storage code lives in [`config_storage.c`](../../src/common/li
 
 ```c
 // Boot: Load configuration from flash to RAM
-void config_init(void);
+bool config_init(void);
+
+// Runtime: Access settings
+const config_data_t *cfg = config_get();
 
 // Runtime: Save RAM configuration to flash
 bool config_save(void);
 
 // Runtime: Reset to factory defaults and save
-bool config_factory_reset(void);
-
-// Runtime: Access settings
-extern config_t g_config;
+void config_factory_reset(void);
 ```
 
 The implementation uses the Pico SDK's flash APIs ([`flash_range_erase`](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_flash) and [`flash_range_program`](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_flash)) which are wrappers around the RP2040's boot ROM flash functions. These boot ROM functions are thoroughly tested and reliable.
@@ -321,7 +320,7 @@ The SDK provides [`flash_safe_execute()`](https://www.raspberrypi.com/documentat
 
 **Flash wear**: Each setting change alternates between Copy A and Copy B. With 10,000 cycle endurance, you could save configuration 20,000 times before wearing out flash. At one save per day, that's 54 years.
 
-**Corruption resistance**: Dual-copy with CRC validation protects against power loss during write. Configuration protection remains robust even with frequent power cycling.
+**Corruption resistance**: Dual-copy with CRC validation protects against power loss during write.
 
 ---
 
@@ -360,18 +359,21 @@ If settings reset to defaults after flashing new firmware:
 ## Related Documentation
 
 **Features that use configuration storage**:
+
 - [Command Mode](command-mode.md) - User interface for changing settings
 - [Logging](logging.md) - Log level setting stored in configuration
 - [LED Support](led-support.md) - LED brightness setting stored in configuration
 
 **Implementation**:
+
 - [`config_storage.c`](../../src/common/lib/config_storage.c) - Storage implementation
 - [`config_storage.h`](../../src/common/lib/config_storage.h) - API and data structures
 
 **Background reading**:
+
 - [Pico SDK Flash Documentation](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_flash) - Low-level flash APIs
 
 ---
 
-**Questions or stuck on something?**  
+**Questions or stuck on something?**
 Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.

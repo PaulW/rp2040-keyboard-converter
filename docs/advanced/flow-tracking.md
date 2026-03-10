@@ -67,7 +67,7 @@ Each keypress produces a block of `LOG_DEBUG` lines:
 
 The end-to-end latency in this example is `1234575 − 1234567 = 8µs`. The Command Mode evaluation path is a bit longer—around 24µs (at the time of testing)—because `evaluate_command_mode()` calls `to_ms_since_boot()` (a 64-bit division) and emits a `LOG_INFO` message. That's expected behaviour, not a problem; 24µs is still well within the 8ms USB polling budget.
 
-Break codes—the byte the keyboard sends when you *release* a key—don't always produce a HID report, so some keypresses won't have a complete trace. That's normal.
+Break codes—the byte the keyboard sends when you _release_ a key—don't always produce a HID report, so some keypresses won't have a complete trace. That's normal.
 
 ---
 

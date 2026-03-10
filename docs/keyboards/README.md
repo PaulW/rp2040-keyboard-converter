@@ -22,6 +22,7 @@ Maps physical key positions to HID keycodes—what each key actually does when y
 ### How the Build System Uses These Files
 
 When you build firmware with `KEYBOARD="modelm/enhanced"`, the build system:
+
 1. Reads `keyboard.config` to determine protocol and scancode set
 2. Includes the correct protocol implementation (AT/PS2, XT, etc.)
 3. Links in the scancode processor for that codeset
@@ -38,6 +39,7 @@ Working through an IBM Model M configuration shows how the system works—it dem
 ### Step 1: Gather Information About Your Keyboard
 
 You'll need to know:
+
 - **Protocol**: What communication protocol does it use? Check [`src/protocols/`](../../src/protocols/) for available implementations (AT/PS2, XT, Amiga, Apple M0110)
 - **Scancode Set**: Which scancode set does it send? The scancode set varies by keyboard and sometimes by configuration—check the [Scancode Sets documentation](../scancodes/README.md) for details
 - **Physical Layout**: How many keys has it got? Standard 101/102-key, or something different like a 122-key terminal layout?
@@ -69,12 +71,14 @@ CODESET=set123
 ```
 
 Available protocols:
+
 - `at-ps2` - IBM PC/AT and PS/2 keyboards and mice
-- `xt` - IBM PC/XT keyboards  
+- `xt` - IBM PC/XT keyboards
 - `amiga` - Commodore Amiga keyboards
 - `apple-m0110` - Apple M0110 and M0110A keyboards
 
 Scancode sets you can use:
+
 - `set123` - Auto-detects between Scancode Set 1, 2, or 3 (handy if you're not sure)
 - `set1` - Scancode Set 1 only
 - `amiga` - Amiga scancode set
@@ -122,6 +126,7 @@ Here's a simplified example showing how it's structured:
 ```
 
 The KEYMAP macro's doing a few things here:
+
 1. Takes scancode position parameters (K76, K05, etc.) that match the physical layout
 2. Uses `KC_##` token concatenation to build the actual keycode references
 3. Arranges them into a matrix organised by scancode value (0x00-0x7F in groups of 8)
@@ -164,12 +169,13 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     TAB,          Q,     W,     E,     R,     T,     Y,     U,     I,     O,     P,     LBRC,  RBRC,  BSLS,     DEL,   END,   PGDN,     P7,    P8,    P9,    PPLS, \
     CAPS,         A,     S,     D,     F,     G,     H,     J,     K,     L,     SCLN,  QUOT,         ENT,                              P4,    P5,    P6,          \
     LSFT,  NUBS,  Z,     X,     C,     V,     B,     N,     M,     COMM,  DOT,   SLSH,                RSFT,            UP,              P1,    P2,    P3,    PENT, \
-    LCTL,         LALT,                     SPC,                                 FN,                  LGUI,     LEFT,  DOWN,  RIGHT,           P0,    PDOT \
+    LCTL,         LALT,                     SPC,                                 MO_1,                LGUI,     LEFT,  DOWN,  RIGHT,           P0,    PDOT \
   ),
 };
 ```
 
 The keycodes come from `hid_keycodes.h` and are passed **without** the `KC_` prefix (the KEYMAP macro adds it):
+
 - Letters: `A`, `B`, `C`, etc.
 - Numbers: `1`, `2`, `3`, etc.
 - Modifiers: `LSFT`, `LCTL`, `LALT`, `LGUI`
@@ -185,7 +191,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     KEYMAP(
         ESC,  F1,   F2,   /* ... */, MO_1,  /* momentary layer 1 when held */
     ),
-    
+
     // Layer 1: Function layer
     KEYMAP(
         TRNS, F13,  F14,  /* ... */, TRNS,  /* ... rest of layout ... */
@@ -214,35 +220,35 @@ I've included configurations for the keyboards I own and have tested. These are 
 
 ### IBM Keyboards (AT/PS2 Protocol)
 
-| Make | Model | Path | Protocol | Codeset | Details |
-|------|-------|------|----------|---------|---------|
-| **IBM** | Model M Enhanced PC Keyboard | `modelm/enhanced` | AT/PS2 | Set 1/2/3 | [View](ibm/model-m-enhanced.md) |
-| **IBM** | Model M M122 Terminal Keyboard | `modelm/m122` | AT/PS2 | Set 1/2/3 | [View](ibm/model-m-m122.md) |
-| **IBM** | Model F/AT PC Keyboard | `modelf/pcat` | AT/PS2 | Set 1/2/3 | [View](ibm/model-f-pcat.md) |
+| Make    | Model                          | Path              | Protocol | Codeset   | Details                         |
+| ------- | ------------------------------ | ----------------- | -------- | --------- | ------------------------------- |
+| **IBM** | Model M Enhanced PC Keyboard   | `modelm/enhanced` | AT/PS2   | Set 1/2/3 | [View](ibm/model-m-enhanced.md) |
+| **IBM** | Model M M122 Terminal Keyboard | `modelm/m122`     | AT/PS2   | Set 1/2/3 | [View](ibm/model-m-m122.md)     |
+| **IBM** | Model F/AT PC Keyboard         | `modelf/pcat`     | AT/PS2   | Set 1/2/3 | [View](ibm/model-f-pcat.md)     |
 
 ### Cherry Keyboards (XT Protocol)
 
-| Make | Model | Path | Protocol | Codeset | Details |
-|------|-------|------|----------|---------|---------|
-| **Cherry** | G80-0614H (Merlin Cheetah Terminal) | `cherry/G80-0614H` | XT | Set 1/2/3 | [View](cherry/g80-0614h.md) |
-| **Cherry** | G80-1104H (Merlin Cheetah Terminal) | `cherry/G80-1104H` | XT | Set 1/2/3 | [View](cherry/g80-1104h.md) |
+| Make       | Model                               | Path               | Protocol | Codeset   | Details                     |
+| ---------- | ----------------------------------- | ------------------ | -------- | --------- | --------------------------- |
+| **Cherry** | G80-0614H (Merlin Cheetah Terminal) | `cherry/G80-0614H` | XT       | Set 1/2/3 | [View](cherry/g80-0614h.md) |
+| **Cherry** | G80-1104H (Merlin Cheetah Terminal) | `cherry/G80-1104H` | XT       | Set 1/2/3 | [View](cherry/g80-1104h.md) |
 
 ### MicroSwitch Keyboards (AT/PS2 Protocol)
 
-| Make | Model | Path | Protocol | Codeset | Details |
-|------|-------|------|----------|---------|---------|
-| **MicroSwitch** | 122ST13 (PC122 Terminal) | `microswitch/122st13` | AT/PS2 | Set 1/2/3 | [View](microswitch/122st13.md) |
+| Make            | Model                    | Path                  | Protocol | Codeset   | Details                        |
+| --------------- | ------------------------ | --------------------- | -------- | --------- | ------------------------------ |
+| **MicroSwitch** | 122ST13 (PC122 Terminal) | `microswitch/122st13` | AT/PS2   | Set 1/2/3 | [View](microswitch/122st13.md) |
 
 ### Amiga Keyboards (Amiga Protocol)
 
-| Make | Model | Path | Protocol | Codeset | Details |
-|------|-------|------|----------|---------|---------|
-| **Commodore** | Amiga 500/2000 Keyboard | `amiga/a500` | Amiga | Amiga Set | [View](commodore/amiga-a500.md) |
+| Make          | Model                   | Path         | Protocol | Codeset   | Details                         |
+| ------------- | ----------------------- | ------------ | -------- | --------- | ------------------------------- |
+| **Commodore** | Amiga 500/2000 Keyboard | `amiga/a500` | Amiga    | Amiga Set | [View](commodore/amiga-a500.md) |
 
 ### Apple Keyboards (Apple M0110 Protocol)
 
-| Make | Model | Path | Protocol | Codeset | Details |
-|------|-------|------|----------|---------|---------|
+| Make      | Model           | Path           | Protocol    | Codeset         | Details                 |
+| --------- | --------------- | -------------- | ----------- | --------------- | ----------------------- |
 | **Apple** | M0110A Keyboard | `apple/m0110a` | Apple M0110 | Apple M0110 Set | [View](apple/m0110a.md) |
 
 ### Building an Example Configuration
@@ -303,16 +309,16 @@ Add these defines **at the top** of `keyboard.h`, **before** any `#include` stat
 
 The modifier keys you can use:
 
-| Constant | Key |
-|----------|-----|
-| `KC_LCTRL` | Left Control |
-| `KC_LSHIFT` | Left Shift |
-| `KC_LALT` | Left Alt |
-| `KC_LGUI` | Left GUI/Windows/Command |
-| `KC_RCTRL` | Right Control |
-| `KC_RSHIFT` | Right Shift |
-| `KC_RALT` | Right Alt |
-| `KC_RGUI` | Right GUI/Windows/Command |
+| Constant    | Key                       |
+| ----------- | ------------------------- |
+| `KC_LCTRL`  | Left Control              |
+| `KC_LSHIFT` | Left Shift                |
+| `KC_LALT`   | Left Alt                  |
+| `KC_LGUI`   | Left GUI/Windows/Command  |
+| `KC_RCTRL`  | Right Control             |
+| `KC_RSHIFT` | Right Shift               |
+| `KC_RALT`   | Right Alt                 |
+| `KC_RGUI`   | Right GUI/Windows/Command |
 
 The build system validates these at compile time. If you try to use a non-modifier key, you'll get an error.
 
@@ -337,18 +343,21 @@ More information about Command Mode features is in the [Features Guide](../featu
 ## Related Documentation
 
 ### Getting Started
+
 - [Quick Start Guide](../getting-started/README.md) - Initial setup
 - [Hardware Setup](../getting-started/hardware-setup.md) - Wiring and connections
 - [Building Firmware](../getting-started/building-firmware.md) - Build process details
 - [Flashing Firmware](../getting-started/flashing-firmware.md) - Installing firmware
 
 ### Technical Details
+
 - [Protocols](../protocols/README.md) - Protocol specifications
 - [Hardware](../hardware/README.md) - Connection diagrams
 - [Features](../features/README.md) - Command Mode, Keytest, and more
 - [Advanced Topics](../advanced/README.md) - Architecture and troubleshooting
 
 ### Source Code
+
 - All keyboard configurations: [`src/keyboards/`](../../src/keyboards/)
 - Config files: [`src/keyboards/*/keyboard.config`](../../src/keyboards/)
 - Layout definitions: [`src/keyboards/*/keyboard.h`](../../src/keyboards/)
@@ -358,6 +367,5 @@ More information about Command Mode features is in the [Features Guide](../featu
 
 ---
 
-**Questions or stuck on something?**  
+**Questions or stuck on something?**
 Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.
-

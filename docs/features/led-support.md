@@ -22,8 +22,6 @@ The status LED shows different colours and patterns depending on what's happenin
 
 **Rainbow Cycling** - You've pressed 'L' in Command Mode and the converter is displaying a rainbow cycling pattern whilst you adjust LED brightness using +/- keys. The LED cycles through all colours of the rainbow (red → yellow → green → cyan → blue → magenta → red...) to help you judge the brightness setting. See [Command Mode - 'L' Command](command-mode.md#l---adjust-led-brightness) for complete details.
 
-Understanding these patterns helps you diagnose issues quickly. Solid green means everything is working. Solid orange means the converter is still initialising. Solid magenta means bootloader mode is active (this is normal when flashing firmware). The alternating patterns indicate Command Mode is active and waiting for input.
-
 ---
 
 ## Adding WS2812 RGB LEDs
@@ -35,6 +33,7 @@ The basic status LED provides essential feedback, but you can enhance the conver
 WS2812 LEDs are "smart" RGB LEDs—each LED contains a tiny controller chip that understands a simple data protocol. You can chain multiple WS2812 LEDs together and control each one independently using a single data line.
 
 Common WS2812 products:
+
 - Individual 5mm or 8mm through-hole LEDs
 - LED strips with flexible PCB backing
 - LED rings in various sizes
@@ -50,7 +49,7 @@ WS2812 LEDs (also called NeoPixels) are addressable RGB LEDs that need just thre
 
 A typical WS2812 LED has four pins (or pads on a breakout board):
 
-```
+```text
      ┌───────────┐
      │  WS2812B  │
      │    LED    │
@@ -63,6 +62,7 @@ DIN ─┤     X     ├─ DOUT
 ```
 
 **Pin functions:**
+
 - **VCC (or 5V)**: Power supply input
 - **GND**: Ground connection
 - **DIN**: Data Input - receives the control signal
@@ -74,11 +74,11 @@ The important distinction: **DIN** is where you connect the control signal from 
 
 For a single status LED, make these three connections:
 
-| WS2812 Pin | Connect To | Wire Suggestion | Notes |
-|------------|------------|-----------------|-------|
-| **VCC** | 3.3V power rail | Red wire | Use 3.3V, not 5V (safer for mixed voltage setups) |
-| **GND** | Ground rail | Black wire | Common ground with RP2040 |
-| **DIN** | RP2040 GPIO 29 | Yellow/data wire | Default data pin (configurable in [`config.h`](../../src/config.h)) |
+| WS2812 Pin | Connect To      | Wire Suggestion  | Notes                                                               |
+| ---------- | --------------- | ---------------- | ------------------------------------------------------------------- |
+| **VCC**    | 3.3V power rail | Red wire         | Use 3.3V, not 5V (safer for mixed voltage setups)                   |
+| **GND**    | Ground rail     | Black wire       | Common ground with RP2040                                           |
+| **DIN**    | RP2040 GPIO 29  | Yellow/data wire | Default data pin (configurable in [`config.h`](../../src/config.h)) |
 
 **Power notes**: WS2812 LEDs are specified for 5V operation but work reliably at 3.3V with reduced maximum brightness. Since the converter uses gamma-corrected brightness control, 3.3V provides plenty of light whilst simplifying the wiring. If you need maximum brightness, connect VCC to VSYS (5V from USB) instead—just ensure your USB power supply can handle it, and also ensure that you connect your DATA line to an available Level Shifter to correctly handle the 3.3V to 5V transition.
 
@@ -92,10 +92,10 @@ To enable lock indicator LEDs, you need exactly 4 LEDs total and must enable `CO
 
 1. **First LED (Status)**: Connect as shown in the single LED table above
    - RP2040 GPIO 29 → LED1 DIN
-   
+
 2. **Chain the remaining LEDs**:
    - LED1 DOUT → LED2 DIN
-   - LED2 DOUT → LED3 DIN  
+   - LED2 DOUT → LED3 DIN
    - LED3 DOUT → LED4 DIN
 
 3. **Power and ground**: All LEDs share power and ground
@@ -104,9 +104,10 @@ To enable lock indicator LEDs, you need exactly 4 LEDs total and must enable `CO
    - Use parallel connections, not daisy-chained
 
 **LED assignment** (from [`led_helper.c`](../../src/common/lib/led_helper.c)):
+
 - **LED 1**: Status LED (ready/not ready/bootloader/command mode)
 - **LED 2**: Num Lock indicator
-- **LED 3**: Caps Lock indicator  
+- **LED 3**: Caps Lock indicator
 - **LED 4**: Scroll Lock indicator
 
 **Current draw considerations**: Each WS2812 LED can draw up to 60mA at full white brightness (all three RGB elements at maximum). With gamma correction and typical brightness levels (10-50%), actual current is 3-15mA per LED at moderate brightness. For the single LED configuration, draw is 3-15mA typical. For four LEDs at moderate brightness, draw is 12-60mA total—well within USB's 500mA budget. Only at maximum brightness (rarely needed) would you approach the theoretical 240mA maximum.
@@ -118,6 +119,7 @@ To enable lock indicator LEDs, you need exactly 4 LEDs total and must enable `CO
 WS2812 LED strips (sold as "NeoPixel strips" or "addressable RGB strips") work perfectly for this project. You only need the first LED (status only) or first 4 LEDs (status + lock indicators), but the strip format makes mounting easier.
 
 **Connections:**
+
 - Find the strip's input end (usually marked with arrows showing data direction, or labeled "DIN" / "5V" / "GND")
 - Connect the input end's three wires: 5V (or 3.3V), GND, and DIN
 - Ignore DOUT—you don't need to connect anything to the rest of the strip
@@ -132,8 +134,9 @@ The WS2812 data signal is sensitive to noise and timing. For best reliability:
 **Keep data wires short**: Under 30cm (12 inches) ideally. The signal degrades over distance and becomes more susceptible to electromagnetic interference. If your layout requires longer runs (like mounting LEDs in a keyboard case), use shielded wire or add a resistor.
 
 **Signal protection resistor**: Adding a 220-470Ω resistor in series with the data line (between GPIO 29 and LED DIN) protects against voltage spikes and reflections. This is especially helpful with:
+
 - Long wire runs (over 30cm)
-- LED strips (higher capacitance)  
+- LED strips (higher capacitance)
 - Electrically noisy environments
 - Intermittent colour glitching
 
@@ -142,22 +145,26 @@ The WS2812 data signal is sensitive to noise and timing. For best reliability:
 #### Troubleshooting Wiring Issues
 
 **LED doesn't light up**:
+
 - Check power connections (VCC and GND must both be connected)
 - Verify you're using DIN, not DOUT (easy mistake!)
 - Confirm GPIO 29 is set correctly in [`config.h`](../../src/config.h) (or your custom pin)
 - Try 5V power instead of 3.3V (some LEDs need higher voltage)
 
 **Wrong colours displayed** (red appears green, etc.):
+
 - Change `CONVERTER_LEDS_TYPE` in [`config.h`](../../src/config.h) to different colour order (see Configuration section below)
 - Most WS2812B are `LED_GRB`, but variants exist with different orders
 
 **Intermittent behaviour or flickering**:
+
 - Shorten data wire length
 - Add 220-470Ω resistor in series with data line
 - Add 100µF capacitor across power rails near LED
 - Check for loose connections or poor solder joints
 
 **First LED works, but chained LEDs don't**:
+
 - Verify DOUT from LED1 connects to DIN of LED2 (not DOUT to DOUT)
 - Check that all LEDs share power and ground
 - Test each LED individually to isolate faulty units
@@ -174,8 +181,9 @@ The firmware needs to know which GPIO pin connects to your WS2812 LEDs and what 
 ```
 
 **LED Type Selection**: Different WS2812 variants use different colour orders. The converter supports 6 types (defined in [`src/common/lib/types.h`](../../src/common/lib/types.h)):
+
 - `LED_GRB` - WS2812/WS2812B chips use Green-Red-Blue order
-- `LED_RGB` - Alternative chips (Red-Green-Blue order)  
+- `LED_RGB` - Alternative chips (Red-Green-Blue order)
 - `LED_BGR` - Blue-Green-Red order
 - `LED_RBG` - Red-Blue-Green order
 - `LED_GBR` - Green-Blue-Red order
@@ -195,7 +203,7 @@ Understanding the basics of how WS2812 LEDs communicate helps explain why the co
 
 WS2812 LEDs are "addressable" RGB LEDs—each LED contains a tiny controller chip. Unlike regular LEDs that simply turn on when powered, WS2812 LEDs receive digital data that tells them what colour to display.
 
-The clever part: they use timing to encode data. A single data wire carries both 0s and 1s by varying how long the signal stays HIGH versus LOW:
+They use timing to encode data. A single data wire carries both 0s and 1s by varying how long the signal stays HIGH versus LOW:
 
 - **'0' bit**: HIGH for 0.4µs, then LOW for 0.85µs
 - **'1' bit**: HIGH for 0.8µs, then LOW for 0.45µs
@@ -205,6 +213,7 @@ Each LED needs 24 bits (8 for green, 8 for red, 8 for blue). After receiving 24 
 A special "reset" signal (holding the line LOW for at least 50µs) tells all LEDs to simultaneously latch their received colours and display them. This is why you can update 4 LEDs almost instantly—you send the data in sequence, then the reset pulse makes them all change at once.
 
 **Timing breakdown**:
+
 - Transmitting 24 bits at 1.25µs per bit = 30µs per LED
 - For 4 LEDs: 4 × 30µs = 120µs data transmission
 - Plus 50µs minimum reset pulse (converter uses 60µs for safety)
@@ -218,13 +227,13 @@ The RP2040's PIO (Programmable I/O) is a specialised processor designed for exac
 
 **Why PIO matters**:
 
-The PIO runs independently at 125MHz with 8-nanosecond resolution. Once you load a program into it and feed it data, it generates the WS2812 signal without any CPU involvement. Your main code continues processing keyboard events whilst the PIO handles LED timing in parallel.
+The PIO is clocked from the RP2040's 125MHz system clock via a configurable divider. Once you load a program into it and feed it data, it generates the WS2812 signal without any CPU involvement. Your main code continues processing keyboard events whilst the PIO handles LED timing in parallel.
 
 This is critical for keyboard operation. If updating LEDs required the CPU to carefully time every microsecond for 180µs, that would be 18 main loop iterations where no keyboard processing happens. You'd lose keystrokes. With PIO, LED updates happen "in the background" whilst the CPU keeps working.
 
 **The PIO program** (from [`ws2812.pio`](../../src/common/lib/ws2812/ws2812.pio)):
 
-The actual program is only 6 assembly instructions. It runs at 2.5MHz (125MHz divided by 50), where each cycle takes 0.4µs. The program reads bits from a FIFO buffer and generates HIGH/LOW pulses with exact WS2812 timing.
+The actual program is only 4 assembly instructions. It runs at approximately 7.8MHz (125MHz divided by 16), where each PIO cycle takes approximately 128ns. The program reads bits from a FIFO buffer and generates HIGH/LOW pulses with exact WS2812 timing.
 
 The CPU's job is simple: compute the RGB colour (with brightness and colour order), check if the PIO's buffer has space, and write the 24-bit value. The PIO does all the microsecond-precise timing.
 
@@ -233,6 +242,7 @@ The CPU's job is simple: compute the RGB colour (with brightness and colour orde
 Chaining WS2812 LEDs is simple: wire the output of one LED to the input of the next. Data flows through the chain automatically.
 
 When you send 96 bits (4 × 24) down the wire:
+
 1. First LED grabs the first 24 bits and displays that colour
 2. Second LED grabs the next 24 bits
 3. Third LED grabs the next 24 bits
@@ -260,7 +270,7 @@ The actual CPU cost of preparing an LED update is tiny: about 300 nanoseconds pe
 
 The preparation cost remains negligible compared to main-loop time, and the PIO handles the actual transmission (30µs per LED) in parallel whilst the CPU processes keyboard data.
 
-The converter's non-blocking LED design ensures status indicators never interfere with keyboard operation, even when updating 4 LEDs simultaneously. You get visual feedback without sacrificing responsiveness.
+The converter's non-blocking LED design ensures status indicators never interfere with keyboard operation, even when updating 4 LEDs simultaneously.
 
 ---
 
@@ -278,18 +288,18 @@ The human eye perceives brightness logarithmically—doubling the electrical pow
 
 **Brightness levels** (from [`ws2812.c`](../../src/common/lib/ws2812/ws2812.c)):
 
-| Level | Electrical | Perceived | Use Case |
-|-------|------------|-----------|----------|
-| 1 | 0.8% | ~10% | Very dim (night mode, dark rooms) |
-| 2 | 2.0% | ~20% | Quite dim |
-| 3 | 3.9% | ~30% | Dim (default for many users) |
-| 4 | 7.8% | ~40% | Low brightness |
-| 5 | 13.7% | ~50% | Medium-low (balanced) |
-| 6 | 23.5% | ~60% | Medium |
-| 7 | 35.3% | ~70% | Medium-high |
-| 8 | 52.9% | ~80% | Bright |
-| 9 | 74.5% | ~90% | Very bright |
-| 10 | 100.0% | ~100% | Maximum (full LED capability) |
+| Level | Electrical | Perceived | Use Case                          |
+| ----- | ---------- | --------- | --------------------------------- |
+| 1     | 0.8%       | ~10%      | Very dim (night mode, dark rooms) |
+| 2     | 2.0%       | ~20%      | Quite dim                         |
+| 3     | 3.9%       | ~30%      | Dim (default for many users)      |
+| 4     | 7.8%       | ~40%      | Low brightness                    |
+| 5     | 13.7%      | ~50%      | Medium-low (balanced)             |
+| 6     | 23.5%      | ~60%      | Medium                            |
+| 7     | 35.3%      | ~70%      | Medium-high                       |
+| 8     | 52.9%      | ~80%      | Bright                            |
+| 9     | 74.5%      | ~90%      | Very bright                       |
+| 10    | 100.0%     | ~100%     | Maximum (full LED capability)     |
 
 The practical result: each brightness increment from 1 to 10 produces an approximately equal perceived change in brightness. Without gamma correction, levels 1-5 would barely be visible whilst 9-10 would be a massive jump. The lookup table makes adjustment intuitive—each step feels like the same increase in brightness.
 
@@ -306,14 +316,15 @@ Some keyboards don't have lock indicator LEDs (like XT keyboards or early Macint
 ### Implementation
 
 When `CONVERTER_LOCK_LEDS` is defined:
-- LED 0: Status LED (shows converter state - green/orange/magenta/alternating patterns)
-- LED 1: Num Lock indicator (lights up green when Num Lock is on)
-- LED 2: Caps Lock indicator (lights up green when Caps Lock is on)  
-- LED 3: Scroll Lock indicator (lights up green when Scroll Lock is on)
+
+- LED 1: Status LED (shows converter state - green/orange/magenta/alternating patterns)
+- LED 2: Num Lock indicator (lights up green when Num Lock is on)
+- LED 3: Caps Lock indicator (lights up green when Caps Lock is on)
+- LED 4: Scroll Lock indicator (lights up green when Scroll Lock is on)
 
 The converter listens for USB HID LED state reports from the host computer and updates these indicators accordingly. This works independently of your keyboard's protocol or hardware capabilities.
 
-### Configuration
+### Lock LED Configuration
 
 Enable in [`src/config.h`](../../src/config.h):
 
@@ -376,6 +387,7 @@ For alternating patterns (like green/blue in Command Mode), the system uses time
 WS2812 LEDs use 24-bit RGB colour: 8 bits each for red, green, and blue. Different WS2812 variants expect different byte orders (GRB is most common, but RGB, BGR, RBG, GBR, and BRG are also supported). The converter handles this via `CONVERTER_LEDS_TYPE` in [`src/config.h`](../../src/config.h), and [`ws2812_set_colour()`](../../src/common/lib/ws2812/ws2812.c) converts RGB values to the correct byte order.
 
 Colours are defined in [`src/config.h`](../../src/config.h) as RGB hex values:
+
 - Green: 0x00FF00 (ready state, command mode alternation)
 - Orange: 0xFF2800 (not ready/initialising)
 - Magenta: 0xFF00FF (bootloader mode)
@@ -391,6 +403,7 @@ When brightness adjustment is applied via [`ws2812_set_brightness()`](../../src/
 WS2812 LEDs can consume significant power, especially when using multiple LEDs or showing bright white colours.
 
 Each WS2812 LED draws:
+
 - ~1mA when off or showing dim colours
 - ~20mA per primary colour at full brightness (20mA red, 20mA green, or 20mA blue)
 - ~60mA when showing full white (all three colours at maximum)
@@ -402,11 +415,13 @@ If you're powering everything from USB:
 With 4 WS2812 LEDs (1 status + 3 lock indicators) showing white at full brightness, that's 240mA—well within USB limits.
 
 For reference, the converter's maximum 4 LEDs at various brightness levels:
+
 - Brightness 10 (maximum) showing white: ~240mA for LEDs
-- Brightness 5 (mid-level) showing white: ~120mA for LEDs  
+- Brightness 5 (mid-level) showing white: ~120mA for LEDs
 - Brightness 2 (low) showing typical colours: ~30-50mA for LEDs
 
 To reduce power consumption:
+
 - Lower brightness (level 5 instead of 10 uses approximately half the power after gamma correction)
 - Avoid full white on all LEDs simultaneously (single-colour status indicators use ~1/3 the power)
 - Disable lock indicator LEDs if not needed (comment out `CONVERTER_LOCK_LEDS` in [`src/config.h`](../../src/config.h))
@@ -444,13 +459,14 @@ If WS2812 LEDs don't light up or show incorrect colours:
 ### Lock State LEDs Don't Update
 
 **Converter Lock LEDs** (when `CONVERTER_LOCK_LEDS` enabled):
+
 - Verify all 4 WS2812 LEDs are wired in series: status → Num Lock → Caps Lock → Scroll Lock
 - Check that LEDs 1-3 light up when you toggle lock keys
 - See UART logs for USB HID LED state reports from host
 
 **Keyboard Lock LEDs** (built into keyboard):
 
-- **Check protocol support** - Not all protocols support host-controlled LEDs. See the protocol limitations section above.
+- **Check protocol support** - Not all protocols support host-controlled LEDs. Refer to the [Keyboard Lock LEDs (Protocol-Dependent)](#keyboard-lock-leds-protocol-dependent) section above for details.
 - **Verify keyboard works** - Test the keyboard on its original hardware if possible. Some keyboards have faulty LED circuits.
 - **Check UART logs** - Connect via UART and watch for LED command messages when you press lock keys. If you see commands being sent but the LEDs don't respond, the keyboard might not be receiving them properly.
 
@@ -469,10 +485,12 @@ If WS2812 LEDs display unexpected colours:
 ## Related Documentation
 
 **Features that control LEDs**:
+
 - [Command Mode](command-mode.md) - Adjust LED brightness through Command Mode 'L' command
 - [Configuration Storage](config-storage.md) - How brightness settings persist in flash
 
 **Implementation details**:
+
 - [`led_helper.c`](../../src/common/lib/led_helper.c) - LED state management and colour control
 - [`led_helper.h`](../../src/common/lib/led_helper.h) - LED API and configuration
 - [`ws2812.c`](../../src/common/lib/ws2812/ws2812.c) - WS2812 driver with gamma correction and colour order conversion
@@ -482,12 +500,14 @@ If WS2812 LEDs display unexpected colours:
 - [`config.h`](../../src/config.h) - LED configuration constants and colour definitions
 
 **Hardware setup**:
+
 - [Hardware Setup Guide](../getting-started/hardware-setup.md) - Physical wiring instructions
 
 **External references**:
+
 - [WS2812B Datasheet](https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf) - Official WS2812B specifications (timing, electrical characteristics)
 
 ---
 
-**Questions or stuck on something?**  
+**Questions or stuck on something?**
 Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.

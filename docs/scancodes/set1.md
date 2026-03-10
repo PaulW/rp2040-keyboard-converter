@@ -9,6 +9,7 @@ The encoding scheme: each key generates a make code when pressed and a break cod
 ### Basic Encoding
 
 Set 1 uses an 8-bit encoding where:
+
 - **Bit 7 (0x80)**: Release flag
   - `0` = Key press (make code)
   - `1` = Key release (break code)
@@ -16,12 +17,13 @@ Set 1 uses an 8-bit encoding where:
 
 ### Make and Break Codes
 
-| Event | Encoding | Example (ESC key = 0x01) |
-|-------|----------|--------------------------|
-| **Key Press (Make)** | `code` | `0x01` |
-| **Key Release (Break)** | `code \| 0x80` | `0x81` |
+| Event                   | Encoding       | Example (ESC key = 0x01) |
+| ----------------------- | -------------- | ------------------------ |
+| **Key Press (Make)**    | `code`         | `0x01`                   |
+| **Key Release (Break)** | `code \| 0x80` | `0x81`                   |
 
 This simple scheme means:
+
 - Make code: `0x1C` (Return key pressed)
 - Break code: `0x9C` (Return key released)
 
@@ -31,16 +33,18 @@ The IBM Enhanced Keyboard (introduced with the IBM AT) added keys not present on
 
 Extended keys use a two-byte sequence:
 
-| Sequence | Description |
-|----------|-------------|
-| `E0 xx` | Extended key press |
+| Sequence          | Description          |
+| ----------------- | -------------------- |
+| `E0 xx`           | Extended key press   |
 | `E0 (xx \| 0x80)` | Extended key release |
 
 **Example: Right Control**
+
 - Press: `E0 1D`
 - Release: `E0 9D`
 
 Extended keys include:
+
 - Right Alt, Right Control
 - Arrow keys (Up, Down, Left, Right)
 - Navigation cluster (Home, End, Page Up, Page Down, Insert, Delete)
@@ -52,22 +56,28 @@ Extended keys include:
 
 The Pause/Break key uses a special 6-byte sequence:
 
-| Event | Sequence |
-|-------|----------|
-| **Pause** | `E1 1D 45 E1 9D C5` |
-| **Break** (Ctrl+Pause) | `E0 46 E0 C6` |
-| **Alternate Pause** | `E0 45` (some keyboards) |
+| Event                          | Sequence                           |
+| ------------------------------ | ---------------------------------- |
+| **Pause make**                 | `E1 1D 45`                         |
+| **Pause release**              | `E1 9D C5`                         |
+| **Break make** (Ctrl+Pause)    | `E0 46`                            |
+| **Break release** (Ctrl+Pause) | `E0 C6`                            |
+| **Alternate Pause**            | `E0 45` / `E0 C5` (some keyboards) |
 
 **Important**:
-- Pause sends the entire sequence on press only, with no separate release event
-- Break (Ctrl+Pause) uses E0 46 sequence
-- Some keyboards may send E0 45 as an alternate Pause encoding
+
+- Pause sends both make (`E1 1D 45`) and release (`E1 9D C5`) sub-sequences together on a single physical keypress—there is no second sequence sent when the key is physically released
+- Break (Ctrl+Pause) uses standard E0-prefixed make (`E0 46`) and release (`E0 C6`) sequences
+- Some keyboards may send `E0 45` / `E0 C5` as an alternate Pause encoding
 
 **USB HID Mapping:**
+
 - All Pause variants map to **interface code 0x48** (USB HID Pause/Break key)
-- E1 sequences (regular Pause): `E1 1D 45` → 0x48
-- E0 46 (Ctrl+Pause): `E0 46` → 0x48 (with Ctrl modifier)
-- E0 45 (alternate): `E0 45` → 0x48
+- E1 Pause make: `E1 1D 45` → 0x48 (make)
+- E1 Pause release: `E1 9D C5` → 0x48 (release)
+- E0 46 (Ctrl+Pause make): `E0 46` → 0x48 (make)
+- E0 C6 (Ctrl+Pause release): `E0 C6` → 0x48 (release)
+- E0 45 / E0 C5 (alternate): → 0x48 (make / release)
 - See Issue #21 for historical context on E0 mapping fixes
 - Note: Some very old or non-compliant keyboards may not emit the E1 prefix for Pause
   (they instead send a bare sequence that looks like Ctrl+NumLock). Such keyboards cannot
@@ -84,12 +94,13 @@ Implementations must filter these fake shift codes to prevent unintended Shift k
 
 Set 1 Print Screen sequences include "fake shift" codes:
 
-| Sequence | Description |
-|----------|-------------|
-| `E0 2A E0 37` | Print Screen press (fake left shift + actual code) |
+| Sequence      | Description                                                     |
+| ------------- | --------------------------------------------------------------- |
+| `E0 2A E0 37` | Print Screen press (fake left shift + actual code)              |
 | `E0 B7 E0 AA` | Print Screen release (actual release + fake left shift release) |
 
 **Fake shift bytes to ignore:**
+
 - `E0 2A` - Fake Left Shift press
 - `E0 AA` - Fake Left Shift release
 - `E0 36` - Fake Right Shift press
@@ -113,7 +124,7 @@ The collision is mitigated by protocol-layer filtering during keyboard initialis
 
 The Set 1 scancode processor ([`src/scancodes/set1/scancode.c`](../../src/scancodes/set1/scancode.c)) does **not** filter self-test codes. It performs a range check (`if (code <= 0xD8)`) that processes all valid scancodes, including `0xAA`:
 
-Since `0xAA` (170 decimal) is less than `0xD8` (216 decimal), it would be processed as a normal Left Shift break code if received post-initialisation. The scancode processor comment explicitly notes: *"Self-test codes (0xAA) are handled by protocol layer during initialisation"* (line 117).
+Since `0xAA` (170 decimal) is less than `0xD8` (216 decimal), it would be processed as a normal Left Shift break code if received post-initialisation. The scancode processor comment explicitly notes: _"Self-test codes (0xAA) are handled by protocol layer during initialisation"_ (line 117).
 
 The only special handling of `0xAA` in the scancode layer occurs in the E0-prefixed state, where it's filtered as a "fake shift" sequence for Print Screen (not because it's a self-test code):
 
@@ -137,29 +148,30 @@ Protocol-layer filtering during initialisation is the sole mitigation for self-t
 
 Set 1 requires a **5-state** state machine to handle all sequences:
 
-```
+```text
 ┌─────────────┐
 │    INIT     │ ◄─────────────────┐
 └─────┬───────┘                   │
       │                           │
       ├─[E0]──► E0 ──[code]───────┤
       │                           │
-      ├─[E1]──► E1 ──[1D]──► E1_1D ──[45]──► E1_1D_45 ──[E1]──► E1_PAUSE ──[9D]──► E1_PAUSE_9D ──[C5]───┐
-      │                                                                                                 │
-      └─[code]──────────────────────────────────────────────────────────────────────────────────────────┘
+      ├─[E1]──► E1 ──[1D]──► E1_1D ──[45]──────────────────────────────────┐
+      │          └───[9D]──► E1_9D ──[C5]────────────────────────────────┐ │
+      │                                                                  │ │
+      └─[code]───────────────────────────────────────────────────────────┘ │
+                                                                           │
+      ◄────────────────────────────────────────────────────────────────────┘
 ```
 
 ### State Descriptions
 
-| State | Description | Next Action |
-|-------|-------------|-------------|
-| **INIT** | Waiting for scancode | Process code or enter prefix state |
-| **E0** | E0 prefix received | Process extended key, filter fake shifts |
-| **E1** | E1 prefix received | Begin Pause sequence parsing |
-| **E1_1D** | E1 1D received | Expect 45 |
-| **E1_1D_45** | E1 1D 45 received | Expect E1 |
-| **E1_PAUSE** | E1 1D 45 E1 received | Expect 9D |
-| **E1_PAUSE_9D** | E1 1D 45 E1 9D received | Expect C5, complete Pause |
+| State     | Description          | Next Action                                    |
+| --------- | -------------------- | ---------------------------------------------- |
+| **INIT**  | Waiting for scancode | Process code or enter prefix state             |
+| **E0**    | E0 prefix received   | Process extended key, filter fake shifts       |
+| **E1**    | E1 prefix received   | Begin Pause sequence parsing                   |
+| **E1_1D** | E1 1D received       | Expect 45 (Pause make), then return to INIT    |
+| **E1_9D** | E1 9D received       | Expect C5 (Pause release), then return to INIT |
 
 ## Key Characteristics
 
@@ -169,59 +181,65 @@ The encoding is quite simple—release codes are just make codes with 0x80 added
 
 **Where it gets awkward:**
 
-The keyspace is limited to 128 make codes (7-bit), which becomes a problem for modern keyboards with extra keys. Print Screen requires filtering out "fake shift" codes that were added for compatibility. The Pause/Break key uses an irregular sequence—6 bytes for Pause, and the break code doesn't follow the usual pattern. If you're using the XT protocol, there's no way for the host to talk back to the keyboard—it's strictly one-way communication.  
+The keyspace is limited to 128 make codes (7-bit), which becomes a problem for modern keyboards with extra keys. Print Screen requires filtering out "fake shift" codes that were added for compatibility. The Pause/Break key uses an irregular sequence—6 bytes for Pause, and the break code doesn't follow the usual pattern. If you're using the XT protocol, there's no way for the host to talk back to the keyboard—it's strictly one-way communication.
 
 ## Code Range
 
-| Range | Usage |
-|-------|-------|
-| `0x01-0x53` | Standard key make codes (83-key XT) |
-| `0x54-0x56` | Reserved/extended make codes |
-| `0x57-0x58` | F11/F12 make codes (101-key extension) |
-| `0x59-0x7F` | Reserved/extended |
-| `0x81-0xD3` | Standard key break codes (83-key XT, make + 0x80) |
-| `0xD4-0xD6` | Reserved/extended break codes |
+| Range       | Usage                                                |
+| ----------- | ---------------------------------------------------- |
+| `0x01-0x53` | Standard key make codes (83-key XT)                  |
+| `0x54-0x56` | Reserved/extended make codes                         |
+| `0x57-0x58` | F11/F12 make codes (101-key extension)               |
+| `0x59-0x7F` | Reserved/extended                                    |
+| `0x81-0xD3` | Standard key break codes (83-key XT, make + 0x80)    |
+| `0xD4-0xD6` | Reserved/extended break codes                        |
 | `0xD7-0xD8` | F11/F12 break codes (101-key extension, make + 0x80) |
-| `0xD9-0xFF` | Reserved/extended break codes |
+| `0xD9-0xFF` | Reserved/extended break codes                        |
 
 ## Special Codes
 
-| Code | Description |
-|------|-------------|
+| Code   | Description                                                                             |
+| ------ | --------------------------------------------------------------------------------------- |
 | `0xAA` | Self-test passed (BAT - Basic Assurance Test) [⚠️ Collision](#self-test-code-collision) |
-| `0xE0` | Extended key prefix |
-| `0xE1` | Pause/Break prefix |
-| `0xEE` | Echo response (not used in XT) |
-| `0xF0` | Reserved |
-| `0xFA` | ACK (not used in XT) |
-| `0xFC` | Self-test failed [⚠️ Collision](#self-test-code-collision) |
-| `0xFE` | Resend (not used in XT) |
-| `0xFF` | Error/Buffer overflow |
+| `0xE0` | Extended key prefix                                                                     |
+| `0xE1` | Pause/Break prefix                                                                      |
+| `0xEE` | Echo response (not used in XT)                                                          |
+| `0xF0` | Reserved                                                                                |
+| `0xFA` | ACK (not used in XT)                                                                    |
+| `0xFC` | Self-test failed [⚠️ Collision](#self-test-code-collision)                              |
+| `0xFE` | Resend (not used in XT)                                                                 |
+| `0xFF` | Error/Buffer overflow                                                                   |
 
 ## Example Sequences
 
 ### Regular Key (ESC)
-```
-Press:   01
+
+```yaml
+Press: 01
 Release: 81
 ```
 
 ### Extended Key (Right Arrow)
-```
-Press:   E0 4D
+
+```yaml
+Press: E0 4D
 Release: E0 CD
 ```
 
 ### Print Screen (with fake shifts)
-```
+
+```text
 Press:   E0 2A E0 37  (filter E0 2A, process E0 37)
 Release: E0 B7 E0 AA  (process E0 B7, filter E0 AA)
 ```
 
 ### Pause/Break
-```
-Pause:   E1 1D 45 E1 9D C5  (press only, no release)
-Break:   E0 46 E0 C6        (Ctrl+Pause, separate sequence)
+
+```text
+Pause (make):    E1 1D 45  (fires on keypress)
+Pause (release): E1 9D C5  (fires immediately after, same physical press)
+Break (make):    E0 46     (Ctrl+Pause down)
+Break (release): E0 C6     (Ctrl+Pause up)
 ```
 
 ## Implementation Notes
@@ -242,7 +260,7 @@ switch (state) {
             handle_key(key, !is_release);
         }
         break;
-    
+
     case E0:
         // Filter fake shifts: 2A, AA, 36, B6
         if (code != 0x2A && code != 0xAA &&
@@ -253,7 +271,7 @@ switch (state) {
         }
         state = INIT;
         break;
-    
+
     case E1:
         // Pause sequence handling...
         break;
@@ -263,6 +281,7 @@ switch (state) {
 ### Translation Requirements
 
 E0-prefixed keys require translation to their logical key codes:
+
 - Map extended scancodes to appropriate HID usage codes
 - Handle duplicate keys (e.g., both Left and Right Control)
 - Distinguish between main keyboard and numeric keypad keys
@@ -303,6 +322,7 @@ E0-prefixed keys require translation to their logical key codes:
 - [IBM Personal Computer AT Technical Reference (1984)](http://bitsavers.org/pdf/ibm/pc/at/1502494_PC_AT_Technical_Reference_Mar84.pdf)
 - [tmk Keyboard Wiki - XT Keyboard Protocol](https://github.com/tmk/tmk_keyboard/wiki/IBM-PC-XT-Keyboard-Protocol)
 - [IBM Model F XT - VintagePC](https://www.seasip.info/VintagePC/ibm_1501105.html)
+
 ---
 
 ## Related Documentation
@@ -313,5 +333,5 @@ E0-prefixed keys require translation to their logical key codes:
 
 ---
 
-**Questions or stuck on something?**  
+**Questions or stuck on something?**
 Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.

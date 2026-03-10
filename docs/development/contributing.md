@@ -87,6 +87,7 @@ Use lowercase with hyphens, and start with `feature/`, `fix/`, `docs/`, `refacto
 The project has some coding standards—mostly around non-blocking operation, memory barriers, and comment style. Have a read through [Code Standards](code-standards.md) before making changes.
 
 **Critical rules:**
+
 - No `sleep_ms()`, `sleep_us()`, `busy_wait_ms()`, or `busy_wait_us()` in the main processing path
 - No multicore APIs (Core 1 is unused, everything runs on Core 0)
 - No `printf()` in interrupt handlers (use `LOG_*` macros instead)
@@ -134,7 +135,7 @@ The project uses conventional commit message format—it helps with automatic ch
 
 The format looks like this:
 
-```
+```text
 <type>(<scope>): <subject>
 
 <body>
@@ -148,7 +149,7 @@ The scope's optional but helpful—it indicates what area's affected. So you mig
 
 **Examples:**
 
-```
+```text
 feat(amiga): add Amiga 1000 keyboard support
 
 Implements Amiga protocol handler with proper handshake timing
@@ -157,7 +158,7 @@ and Caps Lock LED control via pulse duration.
 Fixes #42
 ```
 
-```
+```text
 fix(at-ps2): correct parity calculation for host-to-device
 
 The parity bit wasn't being calculated correctly for the 0xED
@@ -165,7 +166,7 @@ LED command, causing some keyboards to NAK. Now using the
 interface_parity_table lookup for consistency.
 ```
 
-```
+```text
 docs(hardware): clarify level shifter requirements
 
 Added notes about voltage requirements and bidirectional operation.
@@ -260,7 +261,7 @@ Hardware testing really matters with timing-sensitive embedded firmware. It's ge
 
 Documentation is part of the code, not an afterthought. Good documentation makes the project accessible to others who want to understand how things work or add their own keyboard. If you're adding a feature, document it. If you're fixing a bug, explain why it happened—that helps prevent the same bug creeping back in later.
 
-Finally, the converter's single-core and non-blocking. Core 1 stays unused, and nothing in the critical path blocks. This isn't negotiable—it's fundamental to how the converter achieves its latency characteristics. If you're tempted to add a `sleep_ms()` or use Core 1, there's probably a better approach that maintains the non-blocking architecture.
+Finally, the converter's single-core and non-blocking. Core 1 stays unused, and nothing in the critical path blocks. It's fundamental to how the converter achieves its latency characteristics. If you're tempted to add a `sleep_ms()` or use Core 1, there's probably a better approach that maintains the non-blocking architecture.
 
 ---
 
@@ -279,5 +280,5 @@ Thanks for considering contributing! Even if you're just fixing a typo in docume
 
 ---
 
-**Questions or stuck on something?**  
+**Questions or stuck on something?**
 Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.

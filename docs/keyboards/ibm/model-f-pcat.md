@@ -16,18 +16,18 @@ The IBM Model F PC/AT keyboard uses buckling spring over capacitive switch techn
 
 ## Specifications
 
-| Specification | Details |
-|---------------|---------|
-| **Make** | IBM |
-| **Model** | Model F PC/AT Keyboard |
-| **Keys** | 84 (compact layout) |
-| **Protocol** | AT/PS2 |
-| **Codeset** | Set 2 |
-| **Connector** | 5-pin DIN (180° arrangement) |
-| **Voltage** | 5V |
-| **Switch Type** | Buckling spring over capacitive |
-| **Key Rollover** | Full NKRO |
-| **Layout** | UK layout (pre-ISO/ANSI standardisation) |
+| Specification    | Details                                  |
+| ---------------- | ---------------------------------------- |
+| **Make**         | IBM                                      |
+| **Model**        | Model F PC/AT Keyboard                   |
+| **Keys**         | 84 (compact layout)                      |
+| **Protocol**     | AT/PS2                                   |
+| **Codeset**      | Set 2                                    |
+| **Connector**    | 5-pin DIN (180° arrangement)             |
+| **Voltage**      | 5V                                       |
+| **Switch Type**  | Buckling spring over capacitive          |
+| **Key Rollover** | Full NKRO                                |
+| **Layout**       | UK layout (pre-ISO/ANSI standardisation) |
 
 ---
 
@@ -57,7 +57,7 @@ The default keymap preserves the original IBM 5170 keyboard layout whilst adding
 
 From [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c):
 
-```
+```text
 IBM Model F AT UK 84-key (UK Standard Layout - 6450225)
 ,-------. ,-----------------------------------------------------------. ,---------------.
 | F1| F2| |  \|  1|  2|  3|  4|  5|  6|  7|  8|  9|  0|  -|  =|  #| BS| |Esc|NmL|ScL|SyR|
@@ -74,13 +74,13 @@ IBM Model F AT UK 84-key (UK Standard Layout - 6450225)
 
 ![Available Keys](../../images/keyboards/ibm/mapped-keys-model-f-pcat.png)
 
-*(Key test performed using [QMK Configurator](https://config.qmk.fm/#/test))*
+_(Key test performed using [QMK Configurator](https://config.qmk.fm/#/test))_
 
 ### Raw Scancode Map
 
 From [`keyboard.h`](../../../src/keyboards/modelf/pcat/keyboard.h):
 
-```
+```text
 IBM 5170 (Model F-AT) - Scancode Set 2 Subset of Set 3
 ,-------. ,-----------------------------------------------------------. ,---------------.
 | 05| 06| | 0E| 16| 1E| 26| 25| 2E| 36| 3D| 3E| 46| 45| 4E| 55| 5D| 66| | 76| 77| 7E|~84|
@@ -104,39 +104,39 @@ IBM 5170 (Model F-AT) - Scancode Set 2 Subset of Set 3
 
 ### Key Assignments
 
-| Physical Key | Default Function | With Fn Modifier | Notes |
-|--------------|------------------|------------------|-------|
-| **Pipe / Back Slash** | Pipe / Back Slash | Grave / Negation | Mac layout specific * |
-| **Caps Lock** | Menu | — | Remapped to Menu key |
-| **F10** | LGUI (GUI modifier) | — | Windows Key / Command Key |
-| **F1** | F1 | F9 | Fn + F1 = F9 |
-| **F2** | F2 | F10 | Fn + F2 = F10 |
-| **F3** | F3 | F11 | Fn + F3 = F11 ** |
-| **F4** | F4 | F12 | Fn + F4 = F12 |
-| **F5** | F5 | Volume Down | Fn + F5 = Vol Down |
-| **F6** | F6 | Volume Up | Fn + F6 = Vol Up |
-| **F7** | F7 | Brightness Down | Fn + F7 = Brightness Down |
-| **F8** | F8 | Brightness Up | Fn + F8 = Brightness Up |
+| Physical Key          | Default Function    | With Fn Modifier | Notes                                       |
+| --------------------- | ------------------- | ---------------- | ------------------------------------------- |
+| **Pipe / Back Slash** | Pipe / Back Slash   | Grave / Negation | Mac layout specific \*                      |
+| **Caps Lock**         | Caps Lock           | App              | Layer 1 (Fn held) maps Caps Lock to App key |
+| **F10**               | LGUI (GUI modifier) | —                | Windows Key / Command Key                   |
+| **F1**                | F1                  | F9               | Fn + F1 = F9                                |
+| **F2**                | F2                  | F10              | Fn + F2 = F10                               |
+| **F3**                | F3                  | F11              | Fn + F3 = F11 \*\*                          |
+| **F4**                | F4                  | F12              | Fn + F4 = F12                               |
+| **F5**                | F5                  | Volume Down      | Fn + F5 = Vol Down                          |
+| **F6**                | F6                  | Volume Up        | Fn + F6 = Vol Up                            |
+| **F7**                | F7                  | Brightness Down  | Fn + F7 = Brightness Down                   |
+| **F8**                | F8                  | Brightness Up    | Fn + F8 = Brightness Up                     |
 
-_* Mapping may differ on Windows PC (not tested)_  
-_** F11 works correctly, but may not display in Chrome on QMK Configurator test page_
+**Mapping may differ on Windows PC (not tested)**
+**F11 works correctly, but may not display in Chrome on QMK Configurator test page**
 
 ### Numpad Navigation Layer
 
 The numpad doubles as a navigation cluster when using the Fn modifier:
 
-| Numpad Key | With Fn Modifier |
-|------------|------------------|
-| **Numpad 0** | Insert |
-| **Numpad .** | Delete |
-| **Numpad 1** | End |
-| **Numpad 2** | Down Arrow |
-| **Numpad 3** | Page Down |
-| **Numpad 4** | Left Arrow |
-| **Numpad 6** | Right Arrow |
-| **Numpad 7** | Home |
-| **Numpad 8** | Up Arrow |
-| **Numpad 9** | Page Up |
+| Numpad Key   | With Fn Modifier |
+| ------------ | ---------------- |
+| **Numpad 0** | Insert           |
+| **Numpad .** | Delete           |
+| **Numpad 1** | End              |
+| **Numpad 2** | Down Arrow       |
+| **Numpad 3** | Page Down        |
+| **Numpad 4** | Left Arrow       |
+| **Numpad 6** | Right Arrow      |
+| **Numpad 7** | Home             |
+| **Numpad 8** | Up Arrow         |
+| **Numpad 9** | Page Up          |
 
 ### Fn Modifier Key
 
@@ -154,7 +154,7 @@ To customise the key layout, edit the keymap in [`keyboard.c`](../../../src/keyb
 
 This keyboard uses the default command mode keys: **Left Shift + Right Shift**
 
-Hold for 3 seconds to enter command mode (bootloader entry).
+Hold for 3 seconds to enter command mode.
 
 ---
 
@@ -170,12 +170,12 @@ Model F PC/AT uses a **5-pin DIN connector** with **180° arrangement** (standar
 
 Connect the keyboard to your Raspberry Pi Pico:
 
-| DIN Pin | Function | RP2040 GPIO | Notes |
-|---------|----------|-------------|-------|
-| 1 | CLOCK | GPIO 3 (DATA+1) | Must be DATA pin + 1 |
-| 2 | DATA | GPIO 2 (default) | Configurable in [`config.h`](../../../src/config.h) |
-| 4 | GND | GND | Any ground pin |
-| 5 | VCC | VBUS (5V) | External 5V recommended for reliability |
+| DIN Pin | Function | RP2040 GPIO      | Notes                                               |
+| ------- | -------- | ---------------- | --------------------------------------------------- |
+| 1       | CLOCK    | GPIO 3 (DATA+1)  | Must be DATA pin + 1                                |
+| 2       | DATA     | GPIO 2 (default) | Configurable in [`config.h`](../../../src/config.h) |
+| 4       | GND      | GND              | Any ground pin                                      |
+| 5       | VCC      | VBUS (5V)        | External 5V recommended for reliability             |
 
 **⚠️ Important**: CLOCK pin must be DATA pin + 1 (hardware constraint). If you change DATA to GPIO 10, CLOCK becomes GPIO 11.
 
@@ -205,10 +205,10 @@ The F/AT introduced a few significant changes to IBM's keyboard lineup. It was t
 
 Example part numbers:
 
-| Part Number | Region | Notes |
-|-------------|--------|-------|
-| **6450225** | UK | Featured configuration, pre-ISO layout |
-| **6450200** | US | ANSI-predecessor layout |
+| Part Number | Region | Notes                                  |
+| ----------- | ------ | -------------------------------------- |
+| **6450225** | UK     | Featured configuration, pre-ISO layout |
+| **6450200** | US     | ANSI-predecessor layout                |
 
 **Note**: Many regional variants exist. See [Admiral Shark's Keyboards](https://sharktastica.co.uk/keyboard-directory/Ink3GUEA) for comprehensive part number directory.
 
@@ -230,7 +230,7 @@ Verify the Fn modifier's mapped to F9 in [`keyboard.c`](../../../src/keyboards/m
 
 ### LEDs Not Working
 
-The LEDs should respond to Caps Lock and Num Lock. If they're not working, individual LEDs can fail over time. LED control comes from the keyboard controller, not the converter.
+Caps Lock, Num Lock, and Scroll Lock LEDs are controlled by the converter via AT/PS2 LED commands (0xED). If they're not responding, check the keyboard is fully initialised—there's a short init sequence on power-up before LED commands are sent. Individual LEDs can also fail on older hardware.
 
 ### Some Keys Produce Wrong Characters
 
@@ -273,4 +273,3 @@ Verify your OS keyboard layout settings match what you're expecting. You can cus
 ### Historical Context
 
 - [IBM PC/AT Documentation](https://en.wikipedia.org/wiki/IBM_Personal_Computer/AT) - Wikipedia article on the IBM 5170 PC/AT
-

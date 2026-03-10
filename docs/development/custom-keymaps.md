@@ -23,6 +23,7 @@ The beauty of this is that the keymap is just an array. Want the 'A' key to send
 Each keyboard configuration has its own keymap file. It's in [`src/keyboards/`](../../src/keyboards/)`<brand>/<model>/keyboard.c`.
 
 For example:
+
 - **IBM Model M Enhanced:** [`src/keyboards/modelm/enhanced/keyboard.c`](../../src/keyboards/modelm/enhanced/keyboard.c)
 - **Apple M0110A:** [`src/keyboards/apple/m0110a/keyboard.c`](../../src/keyboards/apple/m0110a/keyboard.c)
 - **Amiga 500:** [`src/keyboards/amiga/a500/keyboard.c`](../../src/keyboards/amiga/a500/keyboard.c)
@@ -198,7 +199,7 @@ Here's a quick reference of available HID keycodes. For the complete list, see [
 
 ### Letters and Numbers
 
-```
+```text
 A through Z       - Letters
 1 through 0       - Number row
 ENT               - Enter/Return
@@ -210,14 +211,14 @@ SPC               - Spacebar
 
 ### Function Keys
 
-```
+```text
 F1 through F12    - Standard function keys
 F13 through F24   - Extended function keys
 ```
 
 ### Modifiers
 
-```
+```text
 LCTL, RCTL        - Left/Right Control
 LSFT, RSFT        - Left/Right Shift
 LALT, RALT        - Left/Right Alt
@@ -226,7 +227,7 @@ LGUI, RGUI        - Left/Right GUI (Windows/Command key)
 
 ### Navigation and Editing
 
-```
+```text
 UP, DOWN, LEFT, RIGHT   - Arrow keys
 HOME, END               - Home/End
 PGUP, PGDN              - Page Up/Down
@@ -235,7 +236,7 @@ INS, DEL                - Insert/Delete
 
 ### Lock Keys
 
-```
+```text
 CAPS                - Caps Lock
 NLCK                - Num Lock
 SLCK                - Scroll Lock
@@ -243,7 +244,7 @@ SLCK                - Scroll Lock
 
 ### Punctuation and Symbols
 
-```
+```text
 MINS                - Minus/Underscore (-)
 EQL                 - Equal/Plus (=)
 LBRC                - Left Bracket ([)
@@ -259,7 +260,7 @@ SLSH                - Slash/Question (/)
 
 ### Numpad
 
-```
+```text
 P0 through P9           - Numpad numbers
 PSLS                    - Numpad /
 PAST                    - Numpad *
@@ -271,7 +272,7 @@ PDOT                    - Numpad . (decimal point)
 
 ### Media and System Keys
 
-```
+```text
 PSCR                - Print Screen
 PAUS                - Pause/Break
 APP                 - Application/Menu key
@@ -287,7 +288,7 @@ MSTP                - Stop
 
 ### Special
 
-```
+```text
 NO                  - No action (key disabled)
 TRNS                - Transparent (pass through to lower layer)
 ```
@@ -296,7 +297,7 @@ TRNS                - Transparent (pass through to lower layer)
 
 ## Testing Your Keymap
 
-Right, after rebuilding and flashing, you'll want to test things systematically. Go through row by row and verify each key sends what you expect. A key tester website like `keyboardchecker.com` or `keyboard-test.space` can be useful here—they'll visualise which keys are being detected, making it easier to spot any issues.
+After rebuilding and flashing, you'll want to test things systematically. Go through row by row and verify each key sends what you expect. A key tester website like `keyboardchecker.com` or `keyboard-test.space` can be useful here—they'll visualise which keys are being detected, making it easier to spot any issues.
 
 Don't forget to test modifier combinations too. Make sure Shift+letter, Ctrl+letter, and all that work as expected. Test the lock keys—Caps Lock, Num Lock, Scroll Lock should toggle correctly, and if your protocol supports LEDs, they should update accordingly.
 
@@ -326,7 +327,7 @@ This is similar to QMK-style behaviour.
 
 ### Defining Multiple Layers
 
-First up, you need to define the additional layers in your keymap. Each layer gets its own `KEYMAP()` definition in the `keymap_map` array:
+You need to define the additional layers in your keymap. Each layer gets its own `KEYMAP()` definition in the `keymap_map` array:
 
 ```c
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
@@ -338,7 +339,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
         LSFT, Z,    X,    C,    V,    B,    /* ... */
         LCTL, LGUI, LALT, SPC,  MO_1, /* ... hold for Layer 1 */
     ),
-    
+
     // Layer 1: Function/media layer
     KEYMAP(
         GRV,  F1,   F2,   F3,   F4,   F5,   /* Changed: numbers become function keys */
@@ -350,7 +351,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
 };
 
 /* Layer count - automatically calculated from keymap_map array size */
-const uint8_t keymap_layer_count = sizeof(keymap_map) / sizeof(keymap_map[0]);
+const uint8_t keymap_layer_count = (uint8_t)(sizeof(keymap_map) / sizeof(keymap_map[0]));
 ```
 
 The layer count is automatically calculated using `sizeof` to determine how many layers you've defined. You don't need to manually update a separate count variable—the system calculates it from the `keymap_map` array. This calculation must appear after the keymap definition.
@@ -377,7 +378,7 @@ These keycodes follow a pattern: the operation type (MO, TG, TO, OSL) followed b
 
 ### Practical Example: Media Control Layer
 
-Right, let's say you want to add media controls to your keyboard. You'll create Layer 1 with volume and playback controls, accessed by holding a designated function key:
+Let's say you want to add media controls to your keyboard. You'll create Layer 1 with volume and playback controls, accessed by holding a designated function key:
 
 ```c
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
@@ -389,7 +390,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
         LSFT, Z,    X,    C,    V,    B,    N,    M,    COMM, DOT,  SLSH, RSFT,
         LCTL, LGUI, LALT, SPC,  MO_1, RALT, RGUI, RCTL  /* MO_1 = hold for media layer */
     ),
-    
+
     // Layer 1: Media controls (activated by holding MO_1 key)
     KEYMAP(
         TRNS, F1,   F2,   F3,   F4,   F5,   F6,   F7,   F8,   F9,   F10,  F11,  F12,  DEL,   /* Numbers → Function keys */
@@ -455,7 +456,7 @@ If you decide it's not for you and want to bail out, just revert your changes an
 
 ---
 
-That should cover most keymap customisation scenarios. Whether you're just swapping Caps Lock with Control or creating a completely custom layout, the process is the same: edit the keymap, rebuild, flash, test.
+Whether you're just swapping Caps Lock with Control or creating a completely custom layout, the process is the same: edit the keymap, rebuild, flash, test.
 
 And remember, you can always undo your changes and rebuild if something doesn't work out. The original keymap's in git history, so you're never stuck with a broken configuration.
 
@@ -472,5 +473,5 @@ And remember, you can always undo your changes and rebuild if something doesn't 
 
 ---
 
-**Questions or stuck on something?**  
+**Questions or stuck on something?**
 Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.

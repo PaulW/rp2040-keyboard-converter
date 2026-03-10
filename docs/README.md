@@ -14,7 +14,7 @@ If you're new to the project, or just want to get up and running quickly, the [Q
 
 ## 🔧 Hardware
 
-I've used a Waveshare RP2040-Zero for this project, as that's what I already had to hand, but any RP2040-based board should work just fine (I think the newer Pico 2 with the RP2350 should work too, though I've not tested that yet!). The Raspberry Pi Foundation's done some great work getting people into electronics and programming over the years, and with the release of the RP2040, I felt this would be a good learning experience. The RP2040's PIO (Programmable I/O) hardware is particularly well-suited for implementing the precise timing requirements of the protocols—that abstraction of how it works is really quite nice.
+I've used a Waveshare RP2040-Zero for this project, as that's what I already had to hand, but any RP2040-based board should work just fine (I think the newer Pico 2 with the RP2350 should work too, though I've not tested that yet!). I chose the RP2040 mainly for its PIO (Programmable I/O) hardware—it's particularly well-suited for implementing the precise timing requirements of these protocols, and it was also a good excuse to learn something new.
 
 - **[Hardware Overview](hardware/README.md)** - In-depth hardware guide with wiring diagrams
 - **[Custom PCB](hardware/custom-pcb.md)** - Custom PCB design for IBM Model F
@@ -25,7 +25,7 @@ I've been working on adding support for a variety of protocols used by different
 
 ### ⌨️ Keyboards
 
-I've documented details about specific devices I currently own and have used to develop this project. This isn't just a list of what's supported—it should give you an idea of what's possible and help you create your own configurations for your specific device. Check out [Supported Keyboards](keyboards/README.md) for more information.
+I've documented details about specific devices I currently own and have used to develop this project—hopefully enough detail that you can work out a configuration for your own device too. Check out [Supported Keyboards](keyboards/README.md) for more information.
 
 ### ✨ Features
 
@@ -53,17 +53,17 @@ If you're interested in contributing to the project, or want to understand the c
 
 ### Common Tasks
 
-| I want to... | Go to... |
-|--------------|----------|
-| **Get started quickly** | [Quick Start Guide](getting-started/README.md) |
-| **Build the firmware** | [Building Firmware](getting-started/building-firmware.md) |
-| **Connect my keyboard** | [Hardware Setup](getting-started/hardware-setup.md) |
-| **See what keyboards are already supported** | [Supported Keyboards](keyboards/README.md) |
-| **Check supported Protocols** | [Protocol Overview](protocols/README.md) |
-| **Understand scancode translation** | [Scancode Sets](scancodes/README.md) |
-| **Understand architecture** | [Advanced Topics](advanced/README.md) |
-| **Add a new keyboard** | [Development Guide](development/README.md) |
-| **Contribute code** | [Development Guide](development/README.md) |
+| I want to...                                 | Go to...                                                  |
+| -------------------------------------------- | --------------------------------------------------------- |
+| **Get started quickly**                      | [Quick Start Guide](getting-started/README.md)            |
+| **Build the firmware**                       | [Building Firmware](getting-started/building-firmware.md) |
+| **Connect my keyboard**                      | [Hardware Setup](getting-started/hardware-setup.md)       |
+| **See what keyboards are already supported** | [Supported Keyboards](keyboards/README.md)                |
+| **Check supported Protocols**                | [Protocol Overview](protocols/README.md)                  |
+| **Understand scancode translation**          | [Scancode Sets](scancodes/README.md)                      |
+| **Understand architecture**                  | [Advanced Topics](advanced/README.md)                     |
+| **Add a new keyboard**                       | [Development Guide](development/README.md)                |
+| **Contribute code**                          | [Development Guide](development/README.md)                |
 
 ---
 

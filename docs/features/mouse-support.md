@@ -1,6 +1,6 @@
 # Mouse Support
 
-The converter supports connecting a mouse alongside your keyboard, giving you complete period-accurate input hardware on modern computers. This page explains how to physically connect mouse hardware and enable mouse support in your firmware build.
+The converter supports connecting a mouse alongside your keyboard. This page explains how to physically connect mouse hardware and enable mouse support in your firmware build.
 
 ---
 
@@ -61,7 +61,7 @@ docker compose run --rm -e MOUSE="at-ps2" builder
 docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
 ```
 
-**Note**: The `MOUSE` variable currently only accepts `at-ps2`. If you don't specify `MOUSE`, mouse support is excluded to save flash space (~3-4KB).
+**Note**: The `MOUSE` variable currently only accepts `at-ps2`. If you don't specify `MOUSE`, mouse support is excluded from the build.
 
 See [Building Firmware](../getting-started/building-firmware.md) for complete build instructions.
 
@@ -78,8 +78,6 @@ The RP2040's PIO (Programmable I/O) hardware handles the precise protocol timing
 When mouse data arrives, the PIO hardware triggers an interrupt. The interrupt handler (see [`mouse_interface.c`](../../src/protocols/at-ps2/mouse_interface.c)) processes incoming data, assembling complete packets before sending reports directly to the USB HID interface. This direct processing architecture prevents any cross-contamination with keyboard data.
 
 Mouse initialisation happens separately from keyboard initialisation on dedicated GPIO pins, so adding mouse support doesn't affect keyboard operation. Both keyboard and mouse reports travel over the same USB connection, with the host operating system automatically distinguishing report types based on format.
-
-The practical result: you can type and move the mouse simultaneously without coordination or timing concerns. Press keys whilst moving the cursor, scroll whilst holding modifier keys, click whilst typing—everything works as expected.
 
 For protocol-specific technical details about packet formats, initialisation sequences, and timing specifications, see [AT/PS2 Protocol Documentation](../protocols/at-ps2.md#mouse-implementation).
 
@@ -141,17 +139,20 @@ Mouse GPIO pins are defined in [`config.h`](../../src/config.h):
 ```
 
 **To use different pins**:
+
 1. Edit `MOUSE_DATA_PIN` in config.h to your desired GPIO number
 2. The clock pin automatically becomes DATA + 1
 3. Rebuild firmware with your changes
 
 **Requirements when selecting pins**:
+
 - Avoid conflicts with keyboard pins, LEDs, or UART TX
 - CLOCK and DATA must be consecutive (CLOCK = DATA + 1)
 - Must be routable to an available PIO block
 - Consider physical board layout for easier wiring
 
 **Example configurations**:
+
 ```c
 #define MOUSE_DATA_PIN 6    // Mouse DATA on GPIO 6, CLOCK on GPIO 7
 #define MOUSE_DATA_PIN 10   // Mouse DATA on GPIO 10, CLOCK on GPIO 11
@@ -171,5 +172,5 @@ See [`config.h`](../../src/config.h) for complete hardware configuration options
 
 ---
 
-**Questions or stuck on something?**  
+**Questions or stuck on something?**
 Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.

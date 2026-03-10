@@ -6,7 +6,7 @@ Command Mode provides a keyboard-driven interface for managing the converter's f
 
 ## What Command Mode Does
 
-Once you have the converter up and running, you might need to update firmware, troubleshoot issues, or adjust settings. Normally, this would require physical access to the RP2040 board—holding down the BOOTSEL button whilst plugging it in, or accessing configuration files. Command Mode eliminates this hassle by letting you trigger these actions directly from your keyboard.
+Once you have the converter up and running, you might need to update firmware, troubleshoot issues, or adjust settings. Normally, this would require physical access to the RP2040 board—holding down the BOOTSEL button whilst plugging it in, or accessing configuration files. Command Mode lets you trigger these actions directly from your keyboard instead.
 
 The converter supports six commands through Command Mode:
 
@@ -21,10 +21,6 @@ The converter supports six commands through Command Mode:
 **Shift-Override Toggle** - Enable or disable shift-override for keyboards with non-standard shift legends. Only affects keyboards that define custom shift mappings (like terminal keyboards with unusual number row legends).
 
 **Flow Tracking Toggle** - Enable or disable microsecond-resolution pipeline latency tracing. Only available in developer builds compiled with `FLOW_TRACKING_ENABLED 1` in `config.h`; compiled out entirely in normal production firmware. See ['T' - Toggle Flow Tracking](#t---toggle-flow-tracking) below.
-
-All these operations complete without interrupting your work—you trigger them through key combinations, wait a moment for confirmation, and continue typing.
-
----
 
 ## Activating Command Mode
 
@@ -109,7 +105,7 @@ This is exactly the same state you'd enter by holding the physical BOOTSEL butto
 4. Open the drive in your file manager and drag a new `.uf2` firmware file onto it
 5. The RP2040 automatically flashes the new firmware and reboots as a converter again
 
-This makes firmware updates much handier. Instead of unplugging the converter, holding BOOTSEL, plugging it back in, releasing BOOTSEL, you just activate Command Mode and press B. Done.
+Instead of unplugging the converter, holding BOOTSEL, plugging it back in, releasing BOOTSEL, you just activate Command Mode and press B.
 
 The bootloader entry command doesn't ask for confirmation—pressing B immediately triggers the reset. This is intentional: you've already gone through the deliberate activation process (hold both shifts for 3 seconds), so a second confirmation would be redundant.
 
@@ -184,7 +180,7 @@ The brightness setting persists across reboots—you only need to set it once.
 
 Brightness adjustment uses [gamma correction](../../src/common/lib/ws2812/ws2812.c) to make the perceived brightness change linearly as you step through the levels. Without gamma correction, LED brightness appears to jump from very dim to blindingly bright in just a couple steps. With correction, each level increment produces an approximately equal perceived brightness change. The gamma-corrected brightness lookup table compensates for the non-linear response of human vision, using a power curve (γ ≈ 2.5) to ensure each brightness step appears visually equal.
 
-The rainbow cycling during adjustment serves two purposes: it provides engaging visual feedback that you're in adjustment mode, and it lets you see how the current brightness level affects LED visibility across different colours.
+The rainbow cycling during adjustment serves two purposes: it provides visual feedback that you're in adjustment mode, and it lets you see how the current brightness level affects LED visibility across different colours.
 
 For more about WS2812 LED hardware and configuration, see the [LED Support documentation](led-support.md).
 
@@ -211,6 +207,7 @@ When shift-override is **enabled**, the converter remaps shifted keys to match t
 Shift-Override only works if the keyboard's firmware defines shifted character mappings. Check your keyboard's documentation in `src/keyboards/` to see if it supports shift-override. If the keyboard doesn't define custom shift mappings, pressing 'S' displays a warning message and the setting is not changed.
 
 The shift-override state persists across reboots and is stored in flash memory. However:
+
 - If you flash firmware for a different keyboard (different make/model/protocol), the state automatically resets to the disabled state.
 - If you modify the keyboard firmware to remove the shift-override array but keep the same keyboard ID, the converter detects this on boot and automatically disables shift-override.
 
@@ -268,6 +265,7 @@ Understanding the implementation helps explain why Command Mode behaves the way 
 Command Mode is implemented as a non-blocking state machine that runs in the main loop alongside keystroke processing. This means it never prevents the converter from receiving keyboard input or sending USB reports.
 
 The state machine tracks several things:
+
 - Which modifier keys are currently held
 - How long they've been held
 - Whether Command Mode is active
@@ -281,6 +279,7 @@ Every time through the main loop, the state machine checks if conditions have ch
 The converter can't use functions like `sleep_ms()` or `busy_wait_us()` because those would block the main loop and cause the converter to miss keyboard scancodes or USB polls. Instead, Command Mode tracks time using `get_absolute_time()` and compares elapsed time on each main loop iteration.
 
 For example, to implement the 3-second hold requirement:
+
 1. When both activation keys are first pressed simultaneously, record the current time
 2. On each main loop iteration, check if the keys are still held
 3. Calculate elapsed time: current time minus recorded time
@@ -301,6 +300,7 @@ Modifier keys used for activation (like the shifts) are treated specially. Whils
 Throughout Command Mode operations, the LED provides visual feedback about what's happening. These patterns are generated by the LED subsystem based on the current Command Mode state.
 
 The LED update functions run in the main loop and check Command Mode state to decide which pattern to show. For example:
+
 - If Command Mode is active but no command selected: alternate green/blue
 - If 'D' command active awaiting log level: alternate green/pink
 - If 'L' command active awaiting brightness: rainbow cycling through all colours
@@ -452,19 +452,22 @@ If unintended key combinations trigger Command Mode:
 ## Related Documentation
 
 **Features using Command Mode**:
+
 - [Configuration Storage](config-storage.md) - How settings persist in flash memory
 - [Logging](logging.md) - UART debug output controlled by log level setting
 - [LED Support](led-support.md) - Status indicators and brightness control
 
 **Implementation details**:
+
 - [`command_mode.c`](../../src/common/lib/command_mode.c) - State machine implementation
 - [`command_mode.h`](../../src/common/lib/command_mode.h) - API and configuration
 
 **Keyboard customisation**:
+
 - [Building Firmware](../getting-started/building-firmware.md) - How to compile with custom configurations
 - Protocol-specific documentation for your keyboard's activation key requirements
 
 ---
 
-**Questions or stuck on something?**  
+**Questions or stuck on something?**
 Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.

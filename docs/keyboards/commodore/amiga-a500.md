@@ -16,17 +16,17 @@ This configuration targets the A500/A500+ layout, which is what I've had access 
 
 ## Specifications
 
-| Specification | Details |
-|---------------|---------|
-| **Make** | Commodore |
-| **Model** | Amiga Keyboard (A500/A500+/A2000/A3000) |
-| **Keys** | 94-101 keys depending on region |
-| **Protocol** | Amiga bidirectional serial with handshake |
-| **Codeset** | Amiga scancode set |
-| **Connector** | Varies by model—see Hardware Connection below |
-| **Voltage** | 5V |
-| **Switch Type** | Mitsumi or Samsung (A500/A500+) |
-| **Layout** | Amiga-specific with Amiga keys, BAE or ISO variants |
+| Specification   | Details                                             |
+| --------------- | --------------------------------------------------- |
+| **Make**        | Commodore                                           |
+| **Model**       | Amiga Keyboard (A500/A500+/A2000/A3000)             |
+| **Keys**        | 94-101 keys depending on region                     |
+| **Protocol**    | Amiga bidirectional serial with handshake           |
+| **Codeset**     | Amiga scancode set                                  |
+| **Connector**   | Varies by model—see Hardware Connection below       |
+| **Voltage**     | 5V                                                  |
+| **Switch Type** | Mitsumi or Samsung (A500/A500+)                     |
+| **Layout**      | Amiga-specific with Amiga keys, BAE or ISO variants |
 
 ---
 
@@ -57,7 +57,8 @@ The default keymap preserves the Amiga keyboard layout whilst mapping Amiga-spec
 ### Layout Overview
 
 **Base Layer - Physical Layout** (from [`keyboard.h`](../../../src/keyboards/amiga/a500/keyboard.h)):
-```
+
+```text
 Commodore Amiga 500/2000 Keyboard Layout
 
 ,---. ,------------------------. ,------------------------.
@@ -77,7 +78,8 @@ Commodore Amiga 500/2000 Keyboard Layout
 ```
 
 **Raw Scancode Map (in hex)** (from [`keyboard.h`](../../../src/keyboards/amiga/a500/keyboard.h)):
-```
+
+```text
 ,---. ,------------------------. ,------------------------.
 | 45| | 50 | 51 | 52 | 53 | 54 | | 55 | 56 | 57 | 58 | 59 |
 `---' `------------------------' `------------------------'
@@ -95,22 +97,23 @@ Commodore Amiga 500/2000 Keyboard Layout
 ```
 
 **Special Keys** (from [`keyboard.h`](../../../src/keyboards/amiga/a500/keyboard.h)):
+
 - **Left Amiga**: `0x66` - Mapped to Left GUI (Windows/Command key)
 - **Right Amiga**: `0x67` - Mapped to Right GUI (Windows/Command key)
-- **Help**: `0x5F` - Acts like a function key, can be mapped to Insert/Help
+- **Help**: `0x5F` - Mapped to Insert
 - **Keypad ()**: `0x5A`, `0x5B` - Unique to Amiga keyboards
 - **UK # key**: `0x2B` - Used on UK/ISO layout (backslash on US layout)
 - **European <> key**: `0x30` - Between Left Shift and Z on European keyboards
 
 ### Amiga-Specific Keys
 
-| Amiga Key | Modern Mapping | Notes |
-|-----------|----------------|-------|
-| **Left Amiga (⌘)** | Left GUI | Windows Key / Command |
-| **Right Amiga (⌘)** | Right GUI | Windows Key / Command |
-| **Help** | Help / Insert | Can be mapped to Help or Insert |
-| **Caps Lock** | Caps Lock | LED controlled by keyboard itself |
-| **Keypad ()** | Keypad ( / ) | Unique to Amiga keyboards |
+| Amiga Key           | Modern Mapping  | Notes                                                                    |
+| ------------------- | --------------- | ------------------------------------------------------------------------ |
+| **Left Amiga (⌘)**  | Left GUI        | Windows Key / Command                                                    |
+| **Right Amiga (⌘)** | Right GUI       | Windows Key / Command                                                    |
+| **Help**            | Insert          | Mapped to Insert (`INS`)                                                 |
+| **Caps Lock**       | Caps Lock       | LED controlled by keyboard itself                                        |
+| **Keypad ()**       | Multiply / Plus | Amiga `(` maps to Multiply, `)` maps to Plus—no direct modern equivalent |
 
 ---
 
@@ -124,7 +127,7 @@ To customise the key layout, edit the keymap in [`keyboard.c`](../../../src/keyb
 
 This keyboard uses the default command mode keys: **Left Shift + Right Shift**
 
-Hold for 3 seconds to enter command mode (bootloader entry).
+Hold for 3 seconds to enter command mode.
 
 ---
 
@@ -140,12 +143,12 @@ Amiga keyboards use different physical connectors depending on the model—A500/
 
 Connect the keyboard to your Raspberry Pi Pico (signal mapping is the same for all connector types):
 
-| Amiga Signal | Function | RP2040 GPIO | Notes |
-|--------------|----------|-------------|-------|
-| **DATA** | Data | GPIO 2 (default) | Configurable in [`config.h`](../../../src/config.h) |
-| **CLOCK** | Clock | GPIO 3 (DATA+1) | Must be DATA pin + 1 |
-| **VCC** | +5V | VBUS 5V | External 5V recommended |
-| **GND** | Ground | GND | Any ground pin |
+| Amiga Signal | Function | RP2040 GPIO      | Notes                                               |
+| ------------ | -------- | ---------------- | --------------------------------------------------- |
+| **DATA**     | Data     | GPIO 2 (default) | Configurable in [`config.h`](../../../src/config.h) |
+| **CLOCK**    | Clock    | GPIO 3 (DATA+1)  | Must be DATA pin + 1                                |
+| **VCC**      | +5V      | VBUS 5V          | External 5V recommended                             |
+| **GND**      | Ground   | GND              | Any ground pin                                      |
 
 **Important**: CLOCK pin must be DATA pin + 1—that's a hardware constraint. If you change DATA to GPIO 10, CLOCK becomes GPIO 11.
 
@@ -171,13 +174,13 @@ See: [Amiga Protocol Documentation](../../protocols/amiga.md)
 
 The Amiga keyboards were produced for the A500, A500+, A2000, and A3000 models. These keyboards came in both US BAE (Big Ass Enter) and European ISO layouts with regional variants for UK, German, French, and other markets.
 
-| Amiga Model | Keyboard Type | Connector | Switch Type | Layout | Compatibility |
-|-------------|---------------|-----------|-------------|--------|---------------|
-| **A500** | Integrated | 8-pin internal | Mitsumi or Samsung | US BAE | ✅ Tested |
-| **A500+** | Integrated | 8-pin internal | Mitsumi | ISO | ✅ Tested |
-| **A1000** | External | RJ10 4P4C | Unknown | Different | ❌ Not Compatible |
-| **A2000** | External | DIN-5 180° | Unknown | US BAE | ⚠️ Not Tested |
-| **A3000** | External | DIN-5 180° | Unknown | US BAE | ⚠️ Not Tested |
+| Amiga Model | Keyboard Type | Connector      | Switch Type        | Layout    | Compatibility     |
+| ----------- | ------------- | -------------- | ------------------ | --------- | ----------------- |
+| **A500**    | Integrated    | 8-pin internal | Mitsumi or Samsung | US BAE    | ✅ Tested         |
+| **A500+**   | Integrated    | 8-pin internal | Mitsumi            | ISO       | ✅ Tested         |
+| **A1000**   | External      | RJ10 4P4C      | Unknown            | Different | ❌ Not Compatible |
+| **A2000**   | External      | DIN-5 180°     | Unknown            | US BAE    | ⚠️ Not Tested     |
+| **A3000**   | External      | DIN-5 180°     | Unknown            | US BAE    | ⚠️ Not Tested     |
 
 ---
 
@@ -236,4 +239,3 @@ Amiga scancodes are different from XT/AT scancodes, so verify the protocol's bee
 
 - [Deskthority Wiki: Amiga Keyboards](https://deskthority.net/wiki/Commodore_Amiga_keyboard) - Keyboard variants and technical information
 - [English Amiga Board](https://eab.abime.net/) - Active Amiga community
-

@@ -16,18 +16,17 @@ The IBM Model M M122 is a 122-key terminal keyboard with membrane-based buckling
 
 ## Specifications
 
-| Specification | Details |
-|---------------|---------|
-| **Make** | IBM |
-| **Model** | Model M M122 Terminal Keyboard |
-| **Keys** | 122 |
-| **Protocol** | AT/PS2 |
-| **Codeset** | Scancode Set 3 |
-| **Connector** | 5-pin DIN (240° arrangement) |
-| **Voltage** | 5V |
-| **Switch Type** | Buckling spring (membrane-based) |
-| **Key Rollover** | 2-key rollover (2KRO) |
-
+| Specification    | Details                          |
+| ---------------- | -------------------------------- |
+| **Make**         | IBM                              |
+| **Model**        | Model M M122 Terminal Keyboard   |
+| **Keys**         | 122                              |
+| **Protocol**     | AT/PS2                           |
+| **Codeset**      | Scancode Set 3                   |
+| **Connector**    | 5-pin DIN (240° arrangement)     |
+| **Voltage**      | 5V                               |
+| **Switch Type**  | Buckling spring (membrane-based) |
+| **Key Rollover** | 2-key rollover (2KRO)            |
 
 ---
 
@@ -67,7 +66,7 @@ The default keymap preserves the terminal keyboard layout whilst adapting it for
 
 From [`keyboard.c`](../../../src/keyboards/modelm/m122/keyboard.c):
 
-```
+```text
 IBM Model M M122 Terminal Keyboard:
               ,-----------------------------------------------.
               |F13|F14|F15|F16|F17|F18|F19|F20|F21|F22|F23|F24|
@@ -88,6 +87,7 @@ IBM Model M M122 Terminal Keyboard:
 ```
 
 **Notes**:
+
 - **VDn/VUp**: Volume Down/Up (mapped to left side keys)
 - **BDn/BUp**: Brightness Down/Up (mapped to left side keys)
 - **App/Gui**: Application and GUI keys (mapped to left side keys)
@@ -97,7 +97,7 @@ IBM Model M M122 Terminal Keyboard:
 
 From [`keyboard.h`](../../../src/keyboards/modelm/m122/keyboard.h):
 
-```
+```text
 IBM Model M M122 Terminal Keyboard (Scancode Set 3):
               ,-----------------------------------------------.
               | 08| 10| 18| 20| 28| 30| 38| 40| 48| 50| 57| 5F|
@@ -120,17 +120,18 @@ IBM Model M M122 Terminal Keyboard (Scancode Set 3):
 ```
 
 **Notes**:
+
 - Scancode Set 3 values transmitted by the keyboard
 - Scancodes 0x83 and 0x84 are remapped to 0x02 and 0x7F in the KEYMAP_PC122 macro
 - These scancodes serve as indices into the keymap array for direct mapping
 
 ### Key Assignments
 
-| Physical Key | Function | Notes |
-|--------------|----------|-------|
-| **F1-F12** | Standard function keys | Top row function keys |
-| **F13-F24** | Extended function keys | Row above standard F-keys, fully mapped and functional |
-| **Left Side Keys** | Various modern functions | Volume, brightness, App, GUI keys |
+| Physical Key       | Function                 | Notes                                  |
+| ------------------ | ------------------------ | -------------------------------------- |
+| **F1-F12**         | Standard function keys   | Second function key row, below F13-F24 |
+| **F13-F24**        | Extended function keys   | Top function key row, above F1-F12     |
+| **Left Side Keys** | Various modern functions | Volume, brightness, App, GUI keys      |
 
 ### Layer System
 
@@ -161,6 +162,7 @@ Model M M122 uses a **5-pin DIN connector** with **240° arrangement** (non-stan
 **Pinout details**: See [AT/PS2 Protocol - Physical Interface](../../protocols/at-ps2.md#physical-interface) for DIN-5 connector diagrams. Note the M122 uses the **240° pin arrangement**, not the standard 180° arrangement.
 
 **Important differences**:
+
 - **240° orientation**: Unique to terminal keyboards (pin 2 at bottom, not at side)
 - **Fixed cable**: Non-removable, hardwired cable (unlike SDL models)
 - **Terminal variants**: Some later variants used RJ45 connectors (not PS/2)
@@ -169,13 +171,13 @@ Model M M122 uses a **5-pin DIN connector** with **240° arrangement** (non-stan
 
 Connect the keyboard to your Raspberry Pi Pico:
 
-| DIN Pin | Function | RP2040 GPIO | Notes |
-|---------|----------|-------------|-------|
-| 1 | CLOCK | GPIO 3 (DATA+1) | Must be DATA pin + 1 |
-| 2 | DATA | GPIO 2 (default) | Configurable in [`config.h`](../../../src/config.h) |
-| 3 | NC | - | Not connected |
-| 4 | GND | GND | Any ground pin |
-| 5 | VCC | VBUS (5V) | External 5V recommended for reliability |
+| DIN Pin | Function | RP2040 GPIO      | Notes                                               |
+| ------- | -------- | ---------------- | --------------------------------------------------- |
+| 1       | CLOCK    | GPIO 3 (DATA+1)  | Must be DATA pin + 1                                |
+| 2       | DATA     | GPIO 2 (default) | Configurable in [`config.h`](../../../src/config.h) |
+| 3       | NC       | -                | Not connected                                       |
+| 4       | GND      | GND              | Any ground pin                                      |
+| 5       | VCC      | VBUS (5V)        | External 5V recommended for reliability             |
 
 **⚠️ Important**: CLOCK pin must be DATA pin + 1 (hardware constraint). If you change DATA to GPIO 10, CLOCK becomes GPIO 11.
 
@@ -192,6 +194,7 @@ The Model M M122 uses the AT/PS2 protocol with bidirectional communication. The 
 Terminal keyboards using Set 3 aren't in make/break mode by default. During initialisation, the converter sends command **0xF8** (Set All Keys to Make/Break) to configure the keyboard to send both key press (make) and key release (break) events for all keys. This is essential for proper operation with modern USB HID.
 
 **Initialisation sequence** (from [`keyboard_interface.c`](../../../src/protocols/at-ps2/keyboard_interface.c)):
+
 1. Keyboard reset (0xFF) and self-test (waits for 0xAA response)
 2. Read keyboard ID (0xF2) - detects Set 3 terminal keyboard
 3. Set all keys to make/break mode (0xF8) - enables key release events
@@ -225,12 +228,12 @@ This specific keyboard is Type 2. Type 4 was the Host Connected Keyboard for PC 
 
 Example Type 2 part numbers:
 
-| Part Number | Description |
-|-------------|-------------|
-| **1390876** | Type 2 variant |
-| **1390881** | Type 2 variant |
+| Part Number | Description               |
+| ----------- | ------------------------- |
+| **1390876** | Type 2 variant            |
+| **1390881** | Type 2 variant            |
 | **1390886** | Type 2 variant (featured) |
-| **1390888** | Type 2 variant |
+| **1390888** | Type 2 variant            |
 
 **Note**: This is not a comprehensive list. See [Admiral Shark's Keyboards](https://sharktastica.co.uk/keyboard-directory/iSNpxnhm) for complete Model M M122 directory.
 
@@ -241,6 +244,7 @@ Example Type 2 part numbers:
 ### Keyboard Not Detected
 
 **Check the basics first:**
+
 - Verify DATA/CLOCK pins match [`config.h`](../../../src/config.h)
 - Check 5V is stable—use external power rather than Pico VBUS if possible
 - DIN connector can oxidise over time—clean the pins with contact cleaner
@@ -249,6 +253,7 @@ Example Type 2 part numbers:
 ### Keys Not Registering
 
 **Possible causes:**
+
 - Buckling springs accumulate dirt—disassemble and clean the keyboard
 - Keyboard membrane may be torn or deteriorated
 - Individual buckling springs might be deformed or missing
@@ -258,6 +263,7 @@ Example Type 2 part numbers:
 ### Function Keys F13-F24 Not Working
 
 **Check these:**
+
 - Verify F13-F24 are properly mapped in [`keyboard.c`](../../../src/keyboards/modelm/m122/keyboard.c)
 - Some applications don't support F13-F24—test with a key tester first
 - All function keys should work in standard HID mode
@@ -285,11 +291,12 @@ Example Type 2 part numbers:
 ## External Resources
 
 ### Technical Documentation
+
 - [sharktastica - IBM 3197 Display Station (1390886)](https://sharktastica.co.uk/keyboard-directory/iSNpxnhm)
 - [Scancode Set 3 Documentation](../../scancodes/set3.md)
 - [AT/PS2 Protocol Documentation](../../protocols/at-ps2.md)
 
 ### Community Resources
+
 - [Deskthority Wiki - IBM Model M](https://deskthority.net/wiki/IBM_Model_M)
 - [sharktastica Keyboard Directory](https://sharktastica.co.uk/keyboard-directory)
-

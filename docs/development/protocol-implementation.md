@@ -11,6 +11,7 @@ This guide covers the setup sequence for protocol implementations. If you're add
 Each protocol has its own `keyboard_interface_setup()` function in `src/protocols/<protocol>/keyboard_interface.c`. If the protocol supports mice, there will also be a `mouse_interface_setup()` function in `mouse_interface.c`. Whilst the specific details vary according to what each protocol needs, they all follow the same basic pattern. This isn't by accident—the pattern ensures each protocol initialises its resources in the correct order and handles errors consistently.
 
 The pattern matters because:
+
 - PIO resources are limited (2 PIOs, 4 state machines each)
 - Ring buffer must be clean before use
 - IRQ handlers need proper priority configuration
@@ -27,7 +28,7 @@ Here's the standard pattern all protocols follow, in order:
 
 ### 1. LED Initialisation
 
-First up, set the converter's keyboard ready state to false and update the status LED. This happens before anything else because you want the LED to show the actual state—the keyboard isn't ready yet, so don't indicate that it is.
+Set the converter's keyboard ready state to false and update the status LED. This happens before anything else because you want the LED to show the actual state—the keyboard isn't ready yet, so don't indicate that it is.
 
 ```c
 #ifdef CONVERTER_LEDS
@@ -107,6 +108,7 @@ if (pio_engine.pio == NULL) return;  // Single error check
 ```
 
 Benefits:
+
 - Single error check instead of three
 - No partial allocation state
 - Automatic fallback from PIO0 to PIO1
@@ -182,30 +184,9 @@ if (!pio_irq_register_callback(&keyboard_input_event_handler)) {
 
 `release_pio_and_sm()` is the complement to `claim_pio_and_sm()`. It disables the state machine, clears both FIFOs, unclaims the SM, removes the program from instruction memory, and resets all engine fields to the failure sentinel (`NULL`/`-1`/`-1`). It is safe to call when `engine->pio` is `NULL` (no-op), which means it can be used unconditionally in error paths.
 
-### 11. IRQ Enable
+**Note:** `pio_irq_register_callback()` also enables the PIO IRQ internally on first callback registration, after a `__dmb()` memory barrier ensures the callback is visible to the IRQ handler. There is no separate `irq_set_enabled()` call in protocol setup code — it happens inside the helper.
 
-Enable the interrupt so your handler will actually be called. Without this, the PIO can raise interrupts all day and nothing will happen.
-
-```c
-irq_set_enabled(pio_irq, true);
-```
-
-Enable the IRQ *after* setting the handler and priority, never before. Otherwise you might get interrupts before the handler is configured (hard fault) or at the wrong priority (timing issues).
-
-### 12. Setup Complete - Update LED State
-
-After everything is initialised successfully, update the keyboard ready state and refresh the LED status.
-
-```c
-#ifdef CONVERTER_LEDS
-  converter.state.kb_ready = 1;
-  update_keyboard_ready_led();
-#endif
-```
-
-This provides visual feedback that the protocol setup completed successfully. The LED now accurately reflects the hardware state.
-
-### 13. Logging
+### 11. Logging
 
 Finally, log confirmation that setup completed. Include relevant details like which PIO instance and state machine were allocated, and any protocol-specific parameters.
 
@@ -249,6 +230,7 @@ void mouse_interface_setup(uint data_pin) {
 ```
 
 **Why this difference?**
+
 - Keyboard: Multibyte scancode sequences need buffering (E0 prefixes, Pause key sequences)
 - Mouse: Fixed packet format (3-4 bytes), processed as complete packets in IRQ handler
 - Mouse: HID reports sent immediately after packet validation
@@ -280,6 +262,7 @@ if (!pio_irq_register_callback(&handler)) {
 `release_pio_and_sm()` is the complement to `claim_pio_and_sm()` — it disables the state machine, clears both FIFOs, unclaims the SM, removes the program from instruction memory, and resets all engine fields to the failure sentinel. It is safe to call when `engine->pio` is `NULL` (no-op).
 
 The `pio_engine_t` struct always exists; `pio_engine.pio == NULL` (with `sm`/`offset` set to -1) indicates complete failure. Together, the pair of helpers provides:
+
 - Handles PIO selection (pio0 vs pio1) automatically with fallback
 - Eliminates partial allocation failures (no allocated SM without program space)
 - Provides clean single-point error handling (one NULL check covers all failure cases)
@@ -317,14 +300,8 @@ float clock_div = calculate_clock_divider(XT_TIMING_SAMPLE_US);
 float clock_div = calculate_clock_divider(10);
 ```
 
-Define timing constants in your protocol's header file with clear names that keyboard protocols follow key aspects of this pattern:
-- LED initialisation present
-- Ring buffer reset before IRQ setup (keyboard only)
-- IRQ priority configured (not left at SDK default)
+Define timing constants in your protocol's header file with clear names that describe what the value represents and include the unit suffix (`_US` for microseconds). All existing protocol timing constants follow this convention: `ATPS2_TIMING_CLOCK_MIN_US`, `XT_TIMING_SAMPLE_US`, `AMIGA_TIMING_CLOCK_MIN_US`, `M0110_TIMING_KEYBOARD_LOW_US`.
 
-The lint checks specifically target `keyboard_interface.c` files and run automatically in CI. Run locally before committing: `./tools/lint.sh`
-
-**Note:** Mouse implementations are intentionally excluded from the ring buffer check as they use direct event processing instead
 After setup completes, the protocol's task function (`keyboard_interface_task()`) handles the runtime state machine. This varies significantly between protocols depending on their complexity:
 
 - **Unidirectional protocols** (XT): Just process incoming scancodes
@@ -337,7 +314,8 @@ The setup function only deals with initialisation. The complexity of your protoc
 ## Using This Pattern
 
 When implementing a new protocol, use the existing implementations as reference:
-- **AT/PS2 Keyboard** ([src/protocols/at-ps2/keyboard_interface.c](../../src/protocols/at-ps2/keyboard_interface.c)): Most complex, full bidirectional with error recovery
+
+- **AT/PS2 Keyboard** ([src/protocols/at-ps2/keyboard_interface.c](../../src/protocols/at-ps2/keyboard_interface.c)): Most complex, full bidirectional with error recovery. Steps 3–10 are wrapped in `atps2_setup_pio_engine()` in [src/protocols/at-ps2/common_interface.c](../../src/protocols/at-ps2/common_interface.c), shared between keyboard and mouse to avoid duplication.
 - **AT/PS2 Mouse** ([src/protocols/at-ps2/mouse_interface.c](../../src/protocols/at-ps2/mouse_interface.c)): Mouse protocol example, direct event processing without ring buffer
 - **XT** ([src/protocols/xt/keyboard_interface.c](../../src/protocols/xt/keyboard_interface.c)): Simplest, unidirectional only
 - **Amiga** ([src/protocols/amiga/keyboard_interface.c](../../src/protocols/amiga/keyboard_interface.c)): Bidirectional with adjacent pin requirement
@@ -352,6 +330,7 @@ Each protocol's README in `src/protocols/<protocol>/` contains timing diagrams a
 ## Validation
 
 The automated lint script ([tools/lint.sh](../../tools/lint.sh)) checks that protocols follow key aspects of this pattern:
+
 - LED initialisation present
 - Ring buffer reset before IRQ setup
 - IRQ priority configured (not left at SDK default)
@@ -360,51 +339,35 @@ The lint checks run automatically in CI and should be run locally before committ
 
 ---
 
-## Why This Pattern Matters
+## Common Mistakes
 
-This pattern isn't arbitrary—each step builds on the previous ones:
+### Missing ring buffer reset (Keyboard only)
 
-1. LEDs first → visual feedback of actual state
-2. Ring buffer reset → clean slate for new data
-3. PIO allocation → get hardware resources needed
-4. SM claim → reserve state machine before loading program
-5. Program load → install code into instruction memory
-6. Pin assignment → define hardware interface
-7. Clock divider → configure timing
-8. PIO init → set up state machine with all parameters
-9. IRQ handler → define what happens on keyboard events
-10. IRQ enable → start receiving events
-11. IRQ priority → ensure minimal latency
-12. LED update → show successful initialisation
-13. Logging → confirm setup completed
-
-If you skip steps or reorder them, you risk initialisation failures, race conditions, or undefined behaviour. The pattern exists because these steps have dependencies on each other and must happen in this specific order for reliable operation.
-
----
-
-## Common Mistakes (Keyboard)
 **Problem:** Stale data from previous session gets processed  
-**Solution:** Always `ringbuf_reset()` before `irq_set_enabled()` in keyboard setup  
+**Solution:** Always `ringbuf_reset()` before `pio_irq_register_callback()` in keyboard setup  
 **Note:** Mice don't use ring buffer, so this doesn't apply to mouse implementations
 
-### Forgetting LED initialisation (Keyboard/Mouse)et()` before `irq_set_enabled()`
-
 ### Forgetting LED initialisation
+
 **Problem:** LED shows ready state before protocol is actually ready  
-**Solution:** Set `kb_ready = 0` at start, `kb_ready = 1` at end
+**Solution:** Set `kb_ready = 0` at the start of setup. The ready state is updated by the task function once the keyboard has completed its power-on self-test — not at the end of setup.
 
 ### Hardcoded timing values
+
 **Problem:** Unclear what the value represents, hard to tune  
 **Solution:** Use named constants defined in protocol header
 
 ### Missing PIO IRQ dispatcher initialisation
+
 **Problem:** Protocol uses deprecated direct IRQ setup (`irq_set_exclusive_handler()` + `irq_set_priority()`), causing conflicts when multiple devices share a PIO instance  
 **Solution:** Always use centralised PIO IRQ dispatcher:
-  1. Call `pio_irq_dispatcher_init(pio_engine.pio)` before registering handlers
-  2. Call `pio_irq_register_callback(&handler)` to register protocol handler
-  3. Never call `irq_set_priority()` directly in protocol code (managed centrally)
+
+1. Call `pio_irq_dispatcher_init(pio_engine.pio)` before registering handlers
+2. Call `pio_irq_register_callback(&handler)` to register protocol handler
+3. Never call `irq_set_priority()` directly in protocol code (managed centrally)
 
 ### Wrong error message protocol name
+
 **Problem:** Confusing error messages when debugging  
 **Solution:** Error messages should clearly identify which protocol failed
 

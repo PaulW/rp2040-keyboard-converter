@@ -52,12 +52,12 @@ The practical takeaway: layer stacking via `TG` gives you composable behaviour�
 
 There are several ways to activate layers, each suited to different use cases. You might want a layer that's only active whilst you hold a key (like a traditional Fn key), or one that toggles on and stays on until you toggle it off again. The converter supports four different activation methods to cover these scenarios.
 
-| Keycode | Type | Behaviour | Use Case |
-|---------|------|-----------|----------|
-| MO_1, MO_2, MO_3, MO_4 | Momentary | Active whilst held | Fn key for media controls or navigation |
-| TG_1, TG_2, TG_3, TG_4 | Toggle | Stays on until pressed again | Gaming layer, alternative layout |
-| TO_1, TO_2, TO_3, TO_4 | Permanent | Switches to layer, deactivates others | Force-specific layout mode |
-| OSL_1, OSL_2, OSL_3, OSL_4 | One-shot | Active for next keypress only | Symbols or special characters |
+| Keycode                    | Type      | Behaviour                             | Use Case                                |
+| -------------------------- | --------- | ------------------------------------- | --------------------------------------- |
+| MO_1, MO_2, MO_3, MO_4     | Momentary | Active whilst held                    | Fn key for media controls or navigation |
+| TG_1, TG_2, TG_3, TG_4     | Toggle    | Stays on until pressed again          | Gaming layer, alternative layout        |
+| TO_1, TO_2, TO_3, TO_4     | Permanent | Switches to layer, deactivates others | Force-specific layout mode              |
+| OSL_1, OSL_2, OSL_3, OSL_4 | One-shot  | Active for next keypress only         | Symbols or special characters           |
 
 **Momentary layers** activate whilst you hold a specific key and deactivate when you release it. Hold the Fn key, press another key to access its upper-layer function, release Fn and you're back to normal typing. The IBM Model M Enhanced uses this pattern with MO_1 positioned where Right Alt normally sits.
 
@@ -80,7 +80,7 @@ Each method has trade-offs. Momentary layers require holding a key, which might 
 
 ## Practical Examples
 
-Right, enough theory. What does this look like in practice?
+What does this look like in practice?
 
 ### Adding Media Controls
 
@@ -161,6 +161,7 @@ The converter stores active layer state in flash memory alongside other configur
 3. Restores the state if valid, resets to Layer 0 if invalid
 
 **Validation ensures safety.** If you flash firmware with:
+
 - A different keyboard configuration
 - Modified layer definitions (added/removed layers)
 - Changed keymap dimensions
@@ -171,7 +172,7 @@ The converter stores active layer state in flash memory alongside other configur
 
 Momentary and one-shot layers are designed for temporary access—you hold a key or press it once. Persisting these would be confusing: keyboard boots with "Fn" layer active even though you're not holding the Fn key. Toggle and TO layers are explicit state changes that make sense to preserve.
 
-**Flash wear:** The config storage uses wear-leveling and dual-copy redundancy. Layer state changes write to flash, but typical usage patterns (toggling Dvorak once per session, occasional layout switches) generate minimal wear. Flash wear is mitigated by the dual‑copy scheme; avoid excessive toggling if you are concerned about endurance.
+**Flash wear:** The config storage uses wear-leveling and dual-copy redundancy. Layer state changes write to flash, but typical usage patterns (toggling Dvorak once per session, occasional layout switches) generate minimal wear.
 
 ---
 
@@ -202,5 +203,5 @@ The keyboard-specific documentation in [`docs/keyboards/`](../keyboards/) shows 
 
 ---
 
-**Questions or stuck on something?**  
+**Questions or stuck on something?**
 Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.

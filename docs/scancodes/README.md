@@ -10,20 +10,19 @@ The converter handles all the scancode translation automatically, but if you're 
 
 ### PC/AT Scancode Sets
 
-| Scancode Set | Used By | Documentation |
-|--------------|---------|---------------|
-| **Set 1** | IBM XT keyboards, Some AT keyboards | **[→ Full Guide](set1.md)** |
-| **Set 2** | AT/PS2 keyboards (default) | **[→ Full Guide](set2.md)** |
-| **Set 3** | Terminal keyboards (122-key), Some programmable keyboards | **[→ Full Guide](set3.md)** |
-| **Set 1/2/3** | Auto-detecting processor (recommended) | **[→ Full Guide](set123.md)** |
+| Scancode Set  | Used By                                                   | Documentation                 |
+| ------------- | --------------------------------------------------------- | ----------------------------- |
+| **Set 1**     | IBM XT keyboards, Some AT keyboards                       | **[→ Full Guide](set1.md)**   |
+| **Set 2**     | AT/PS2 keyboards (default)                                | **[→ Full Guide](set2.md)**   |
+| **Set 3**     | Terminal keyboards (122-key), Some programmable keyboards | **[→ Full Guide](set3.md)**   |
+| **Set 1/2/3** | Auto-detecting processor (recommended)                    | **[→ Full Guide](set123.md)** |
 
 ### Other Scancode Sets
 
-| Scancode Set | Used By | Documentation |
-|--------------|---------|---------------|
-| **Amiga** | Commodore Amiga keyboards | **[→ Full Guide](amiga.md)** |
-
-**Note**: Apple M0110 keyboards use a unique scancode set that's integrated directly into the [M0110 protocol implementation](../protocols/m0110.md)—there's no separate scancode processor for it.
+| Scancode Set    | Used By                      | Documentation                                   |
+| --------------- | ---------------------------- | ----------------------------------------------- |
+| **Amiga**       | Commodore Amiga keyboards    | **[→ Full Guide](amiga.md)**                    |
+| **Apple M0110** | Apple M0110/M0110A keyboards | See **[M0110 Protocol](../protocols/m0110.md)** |
 
 ## Source Code Organisation
 
@@ -33,7 +32,8 @@ Scancode processors are located in [`src/scancodes/`](../../src/scancodes/):
 - **[`set2/`](../../src/scancodes/set2/)** - AT/PS2 scancode set processor
 - **[`set3/`](../../src/scancodes/set3/)** - Terminal scancode set processor
 - **[`set123/`](../../src/scancodes/set123/)** - Unified multi-set processor
-- **Amiga** - Integrated with [Amiga protocol](../protocols/amiga.md) (documentation only)
+- **[`amiga/`](../../src/scancodes/amiga/)** - Amiga scancode set processor
+- **[`apple-m0110/`](../../src/scancodes/apple-m0110/)** - Apple M0110 scancode set processor
 
 ---
 
@@ -41,15 +41,15 @@ Scancode processors are located in [`src/scancodes/`](../../src/scancodes/):
 
 If you're not sure which scancode set your keyboard uses, this should help:
 
-| Your Keyboard | Scancode Set | Processor |
-|---------------|--------------|-----------|
-| IBM Model M (any variant) | Set 2 | `set123` |
-| IBM Model F PC/AT | Set 2 | `set123` |
-| IBM Model F XT | Set 1 | `set1` |
-| IBM Terminal keyboards (122-key) | Set 3 | `set123` |
-| PS/2 keyboards | Set 2 | `set123` |
-| Commodore Amiga keyboards | Amiga | `amiga` |
-| Apple M0110/M0110A | M0110-specific | Built into protocol |
+| Your Keyboard                    | Scancode Set   | Processor     |
+| -------------------------------- | -------------- | ------------- |
+| IBM Model M (any variant)        | Set 2          | `set123`      |
+| IBM Model F PC/AT                | Set 2          | `set123`      |
+| IBM Model F XT                   | Set 1          | `set1`        |
+| IBM Terminal keyboards (122-key) | Set 3          | `set123`      |
+| PS/2 keyboards                   | Set 2          | `set123`      |
+| Commodore Amiga keyboards        | Amiga          | `amiga`       |
+| Apple M0110/M0110A               | M0110-specific | `apple-m0110` |
 
 **Recommended approach:** Use `set123` for any PC/AT-compatible keyboard—it auto-detects which set the keyboard is sending and handles the translation automatically. You don't need to know which set your keyboard uses; the processor works it out for you.
 
@@ -59,14 +59,14 @@ If you're not sure which scancode set your keyboard uses, this should help:
 
 The three PC scancode sets evolved over time as keyboards got more sophisticated. Here's how they compare:
 
-| Feature | Set 1 | Set 2 | Set 3 |
-|---------|-------|-------|-------|
-| **Era** | 1981 (XT) | 1984 (AT) | 1987 (Terminal) |
-| **Break Encoding** | High bit set | F0 prefix | F0 prefix |
-| **Extended Keys** | E0 prefix | E0 prefix | None (clean design) |
-| **Special Cases** | 6-byte Pause | 8-byte Pause | No Pause key |
-| **Complexity** | Medium | High | Low |
-| **Usage** | XT keyboards | AT/PS2 default | Terminal keyboards |
+| Feature            | Set 1        | Set 2          | Set 3               |
+| ------------------ | ------------ | -------------- | ------------------- |
+| **Era**            | 1981 (XT)    | 1984 (AT)      | 1987 (Terminal)     |
+| **Break Encoding** | High bit set | F0 prefix      | F0 prefix           |
+| **Extended Keys**  | E0 prefix    | E0 prefix      | None (clean design) |
+| **Special Cases**  | 6-byte Pause | 8-byte Pause   | No Pause key        |
+| **Complexity**     | Medium       | High           | Low                 |
+| **Usage**          | XT keyboards | AT/PS2 default | Terminal keyboards  |
 
 **Set 1** uses the high bit to indicate key release—when you press 'A' it sends `0x1E`, when you release it sends `0x9E` (0x1E with bit 7 set). Extended keys like the arrow keys send an `E0` prefix first. The Pause key is particularly odd—it sends a 6-byte sequence that includes both make and break codes in one go.
 
@@ -93,16 +93,19 @@ See the [Set 1/2/3 processor documentation](set123.md) for technical details on 
 Whilst `set123` handles the general case, there are times when you might want to use a specific scancode set processor:
 
 **Use `set1` when:**
+
 - You're working with an XT keyboard that only supports Set 1
 - You want to avoid the auto-detection overhead (minimal, but it exists)
 - You're debugging Set 1-specific timing or encoding issues
 
 **Use `set2` when:**
+
 - You have a keyboard that only sends Set 2 (AT/PS2 keyboards)
 - You're optimising for code size and know you'll never encounter other sets
 - You're debugging Set 2-specific sequences like the `E1` Pause key
 
 **Use `amiga` when:**
+
 - You're connecting an Amiga keyboard (obviously)
 - You need the Amiga-specific Caps Lock handling
 
@@ -125,19 +128,22 @@ These documents are quite detailed—they're reference material for when you nee
 ## Related Documentation
 
 **Protocol Specifications:**
+
 - [AT/PS2 Protocol](../protocols/at-ps2.md) - Uses Scancode Set 2 (can support Set 1/3)
 - [XT Protocol](../protocols/xt.md) - Uses Scancode Set 1
 - [Amiga Protocol](../protocols/amiga.md) - Uses Amiga scancode set
 - [Apple M0110 Protocol](../protocols/m0110.md) - M0110-specific scancodes
 
 **Implementation:**
+
 - [Architecture](../advanced/README.md) - How scancode processing fits into the system
 - [Adding Keyboards](../development/adding-keyboards.md) - Which scancode set to specify in keyboard.config
 
 **Hardware:**
+
 - [Keyboards](../keyboards/README.md) - Supported keyboard models and their scancode sets
 
 ---
 
-**Questions or stuck on something?**  
+**Questions or stuck on something?**
 Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.

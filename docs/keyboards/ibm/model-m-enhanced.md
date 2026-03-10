@@ -16,17 +16,17 @@ The IBM Model M Enhanced Keyboard uses membrane-based buckling spring switches. 
 
 ## Specifications
 
-| Specification | Details |
-|---------------|---------|
-| **Make** | IBM |
-| **Model** | Model M Enhanced PC Keyboard |
-| **Keys** | 101 (ANSI) / 102 (ISO) |
-| **Protocol** | AT/PS2 |
-| **Codeset** | Scancode Set 2 |
-| **Connector** | 6-pin mini-DIN (SDL) or 5-pin DIN (180° arrangement, SDL models) |
-| **Voltage** | 5V |
-| **Switch Type** | Buckling spring (membrane-based) |
-| **Key Rollover** | 2-key rollover (2KRO) |
+| Specification    | Details                                                          |
+| ---------------- | ---------------------------------------------------------------- |
+| **Make**         | IBM                                                              |
+| **Model**        | Model M Enhanced PC Keyboard                                     |
+| **Keys**         | 101 (ANSI) / 102 (ISO)                                           |
+| **Protocol**     | AT/PS2                                                           |
+| **Codeset**      | Scancode Set 2                                                   |
+| **Connector**    | 6-pin mini-DIN (SDL) or 5-pin DIN (180° arrangement, SDL models) |
+| **Voltage**      | 5V                                                               |
+| **Switch Type**  | Buckling spring (membrane-based)                                 |
+| **Key Rollover** | 2-key rollover (2KRO)                                            |
 
 ---
 
@@ -70,7 +70,7 @@ The default keymap matches the standard IBM Model M layout with the following cu
 
 From [`keyboard.c`](../../../src/keyboards/modelm/enhanced/keyboard.c):
 
-```
+```text
 IBM Model M Enhanced Keyboard
 ,---.   ,---------------. ,---------------. ,---------------. ,-----------.
 |Esc|   |F1 |F2 |F3 |F4 | |F5 |F6 |F7 |F8 | |F9 |F10|F11|F12| |PrS|ScL|Pau|
@@ -94,7 +94,7 @@ IBM Model M Enhanced Keyboard
 
 From [`keyboard.h`](../../../src/keyboards/modelm/enhanced/keyboard.h):
 
-```
+```text
 IBM Model M Enhanced Keyboard - Scancode Set 2
 ,---.   ,---------------. ,---------------. ,---------------. ,-----------.
 | 76|   | 05| 06| 04| 0C| | 03| 0B|~83| 0A| | 01| 09| 78| 07| |+7C| 7E|+77|
@@ -121,23 +121,23 @@ IBM Model M Enhanced Keyboard - Scancode Set 2
 
 ### Key Assignments
 
-| Physical Key | Function | Notes |
-|--------------|----------|-------|
-| **Caps Lock** | Menu key | Remapped for modern OS compatibility |
-| **Right Ctrl** | Left GUI (Windows/Command key) | Adds GUI key to standard layout |
-| **Right Alt** | Fn modifier | Enables function layer access |
+| Physical Key   | Function                       | Notes                                                                |
+| -------------- | ------------------------------ | -------------------------------------------------------------------- |
+| **Caps Lock**  | Caps Lock                      | Standard Caps Lock; Application key when holding Right Alt (Layer 1) |
+| **Right Ctrl** | Left GUI (Windows/Command key) | Adds GUI key to standard layout                                      |
+| **Right Alt**  | Fn modifier                    | Enables function layer access                                        |
 
 ### Function Layer
 
 When holding Right Alt (Fn modifier), additional functions are available for media control and navigation:
 
-| Key Combination | Function | Notes |
-|----------------|----------|-------|
-| **Fn + F1** | Volume Down | Media control |
-| **Fn + F2** | Volume Up | Media control |
-| **Fn + F3** | Brightness Down | Display control |
-| **Fn + F4** | Brightness Up | Display control |
-| **Fn + Caps Lock** | Menu (App) key | Alternative access |
+| Key Combination    | Function         | Notes                  |
+| ------------------ | ---------------- | ---------------------- |
+| **Fn + F1**        | Volume Down      | Media control          |
+| **Fn + F2**        | Volume Up        | Media control          |
+| **Fn + F3**        | Brightness Down  | Display control        |
+| **Fn + F4**        | Brightness Up    | Display control        |
+| **Fn + Caps Lock** | Application key  | App key access         |
 | **Fn + ` (Grave)** | Non-US Backslash | Additional key mapping |
 
 ### Fn Modifier Key
@@ -154,7 +154,7 @@ To customise the key layout, edit the keymap in [`keyboard.c`](../../../src/keyb
 
 ```c
 // Example: Remap Caps Lock to Control
-// Find the CAPS_LOCK entry and change KC_MENU to KC_LCTRL
+// Find the CAPS entry in Layer 0 and change KC_CAPS to KC_LCTRL
 ```
 
 Available keycodes are defined in [`hid_keycodes.h`](../../../src/common/lib/hid_keycodes.h).
@@ -181,6 +181,7 @@ Model M Enhanced uses either a **6-pin mini-DIN (SDL)** connector or **5-pin DIN
 **Pinout details and diagrams**: See [AT/PS2 Protocol - Physical Interface](../../protocols/at-ps2.md#physical-interface) for complete connector pinout diagrams and specifications.
 
 **Notes**:
+
 - SDL models support removable/interchangeable cables with either connector type
 - Later non-SDL models have hardwired 6-pin mini-DIN cables
 - Both connector types use the same electrical pinout (CLOCK, DATA, GND, +5V)
@@ -191,21 +192,21 @@ Connect the keyboard to your Raspberry Pi Pico:
 
 **For 6-pin mini-DIN:**
 
-| Mini-DIN Pin | Function | RP2040 GPIO | Notes |
-|--------------|----------|-------------|-------|
-| 1 | DATA | GPIO 2 (default) | Configurable in [`config.h`](../../../src/config.h) |
-| 3 | GND | GND | Any ground pin |
-| 4 | VCC | VBUS (5V) | External 5V recommended for reliability |
-| 5 | CLOCK | GPIO 3 (DATA+1) | Must be DATA pin + 1 |
+| Mini-DIN Pin | Function | RP2040 GPIO      | Notes                                               |
+| ------------ | -------- | ---------------- | --------------------------------------------------- |
+| 1            | DATA     | GPIO 2 (default) | Configurable in [`config.h`](../../../src/config.h) |
+| 3            | GND      | GND              | Any ground pin                                      |
+| 4            | VCC      | VBUS (5V)        | External 5V recommended for reliability             |
+| 5            | CLOCK    | GPIO 3 (DATA+1)  | Must be DATA pin + 1                                |
 
 **For 5-pin DIN (SDL models):**
 
-| DIN Pin | Function | RP2040 GPIO | Notes |
-|---------|----------|-------------|-------|
-| 1 | CLOCK | GPIO 3 (DATA+1) | Must be DATA pin + 1 |
-| 2 | DATA | GPIO 2 (default) | Configurable in [`config.h`](../../../src/config.h) |
-| 4 | GND | GND | Any ground pin |
-| 5 | VCC | VBUS (5V) | External 5V recommended for reliability |
+| DIN Pin | Function | RP2040 GPIO      | Notes                                               |
+| ------- | -------- | ---------------- | --------------------------------------------------- |
+| 1       | CLOCK    | GPIO 3 (DATA+1)  | Must be DATA pin + 1                                |
+| 2       | DATA     | GPIO 2 (default) | Configurable in [`config.h`](../../../src/config.h) |
+| 4       | GND      | GND              | Any ground pin                                      |
+| 5       | VCC      | VBUS (5V)        | External 5V recommended for reliability             |
 
 **⚠️ Important**: CLOCK pin must be DATA pin + 1 (hardware constraint). If you change DATA to GPIO 10, CLOCK becomes GPIO 11.
 
@@ -233,11 +234,11 @@ The keyboards came in either 101-key ANSI or 102-key ISO layouts.
 
 Example part numbers for this keyboard:
 
-| Part Number | Description | Keys | Layout |
-|-------------|-------------|------|--------|
-| **1390131** | PC/AT Enhanced (US) | 101 | ANSI |
-| **1391401** | PS/2 Enhanced (ANSI) | 101 | ANSI |
-| **1391403** | PS/2 Enhanced (ISO) | 102 | ISO |
+| Part Number | Description          | Keys | Layout |
+| ----------- | -------------------- | ---- | ------ |
+| **1390131** | PC/AT Enhanced (US)  | 101  | ANSI   |
+| **1391401** | PS/2 Enhanced (ANSI) | 101  | ANSI   |
+| **1391403** | PS/2 Enhanced (ISO)  | 102  | ISO    |
 
 **Note**: This is not a comprehensive list. See [Admiral Shark's Keyboards Model M Enhanced](https://sharktastica.co.uk/wiki/model-m-enhanced) for complete part number directory.
 
@@ -264,7 +265,7 @@ Example part numbers for this keyboard:
 
 1. **Normal behaviour**: LEDs should respond to Caps/Num/Scroll Lock
 2. **LED failure**: Individual LEDs can fail over time
-3. **Controller issue**: LED control comes from keyboard controller, not converter
+3. **Controller issue**: The converter sends LED state commands (0xED) to the keyboard over the AT/PS2 bidirectional link — if LEDs are unresponsive, check the DATA and CLOCK wiring
 
 ---
 
@@ -289,15 +290,17 @@ Example part numbers for this keyboard:
 ## External Resources
 
 ### Technical Documentation
+
 - **[Admiral Shark's Keyboards - IBM Model M Enhanced](https://sharktastica.co.uk/wiki/model-m-enhanced)** - Complete Model M Enhanced documentation with part number directory
 - **[Admiral Shark's Keyboards - IBM Personal System/2 Enhanced Keyboard](https://sharktastica.co.uk/keyboard-directory/riGuZHSw)** - PS/2 Enhanced variant with comprehensive part number directory
 - **[Admiral Shark's Keyboards - IBM Model M Wiki](https://sharktastica.co.uk/wiki/ibm-model-m)** - Model M family history, design details, and variants
 - [Deskthority Wiki: IBM Model M](https://deskthority.net/wiki/IBM_Model_M) - Community-maintained technical information
 
 ### Historical Context
+
 - [Wikipedia: Model M Keyboard](https://en.wikipedia.org/wiki/Model_M_keyboard) - Production timeline and manufacturer transitions
 
 ### Community Resources
+
 - [ClickyKeyboards.com Model M Guide](https://clickykeyboards.com/) - Restoration and maintenance guides
 - [Unicomp](https://www.pckeyboard.com/) - Current manufacturer continuing Model M production
-
