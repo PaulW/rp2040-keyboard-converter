@@ -299,7 +299,8 @@ Custom checks ensure architectural compliance: no blocking operations anywhere i
 
 **Implementation:**
 
-- [Protocol Implementation](../protocols/README.md) - AT/PS2, XT, Amiga, M0110 protocol specifications
+- [Protocol Implementation](protocol-implementation.md) - Guide to implementing a new keyboard protocol
+- [Protocol Overview](../protocols/README.md) - Protocol specifications and signal details
 - [Keyboard Configuration](../keyboards/README.md) - Supported keyboards and configuration format
 - [Features](../features/README.md) - Command Mode, Config Storage, LED Support, Logging, Mouse Support, USB HID
 

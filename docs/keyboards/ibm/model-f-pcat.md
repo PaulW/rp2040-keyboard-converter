@@ -118,9 +118,6 @@ IBM 5170 (Model F-AT) - Scancode Set 2 Subset of Set 3
 | **F7**                | F7                  | Brightness Down  | Fn + F7 = Brightness Down                   |
 | **F8**                | F8                  | Brightness Up    | Fn + F8 = Brightness Up                     |
 
-**Mapping may differ on Windows PC (not tested)**
-**F11 works correctly, but may not display in Chrome on QMK Configurator test page**
-
 ### Numpad Navigation Layer
 
 The numpad doubles as a navigation cluster when using the Fn modifier:

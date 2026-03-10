@@ -207,7 +207,7 @@ void process_scancode(uint8_t code) {
 }
 ```
 
-The state machine itself is simple. The `try_remap_scancode()` helper handles three out-of-range scancodes above `0x80` (Keypad Comma `0x7C`, F7 `0x83`, and Keypad Plus `0x84`) that would otherwise be discarded by the range check.
+The state machine itself is simple. The `try_remap_scancode()` helper handles three special-case scancodes (`0x7C`, `0x83`, `0x84`) before the standard range check. `0x7C` (Keypad Comma) falls within the normal `code < 0x80` range but needs remapping to a specific interface code, so it is handled via the remap table rather than the standard path. `0x83` (F7) and `0x84` (Keypad Plus) are above the 0x80 threshold and would otherwise be discarded, so they are also handled via the remap table.
 
 ### Translation Requirements
 

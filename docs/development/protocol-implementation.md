@@ -350,7 +350,7 @@ The lint checks run automatically in CI and should be run locally before committ
 ### Forgetting LED initialisation
 
 **Problem:** LED shows ready state before protocol is actually ready  
-**Solution:** Set `kb_ready = 0` at the start of setup. The ready state is updated by the task function once the keyboard has completed its power-on self-test — not at the end of setup.
+**Solution:** Set `kb_ready = 0` at the start of setup. After successful protocol initialisation, implementations should set `kb_ready = 1` and call `update_keyboard_ready_led()`. Where this happens is protocol-specific — some protocols call `update_keyboard_ready_led()` from the task function once initialisation completes, whilst others call it directly from `keyboard_event_processor()` in ISR context. Choose the location that matches your protocol's initialisation flow.
 
 ### Hardcoded timing values
 

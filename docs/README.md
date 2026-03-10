@@ -14,7 +14,7 @@ If you're new to the project, or just want to get up and running quickly, the [Q
 
 ## 🔧 Hardware
 
-I've used a Waveshare RP2040-Zero for this project, as that's what I already had to hand, but any RP2040-based board should work just fine (I think the newer Pico 2 with the RP2350 should work too, though I've not tested that yet!). I chose the RP2040 mainly for its PIO (Programmable I/O) hardware—it's particularly well-suited for implementing the precise timing requirements of these protocols, and it was also a good excuse to learn something new.
+I've used a Waveshare RP2040-Zero for this project, as that's what I already had to hand, but any RP2040-based board should work just fine. I chose the RP2040 mainly for its PIO (Programmable I/O) hardware—it's particularly well-suited for implementing the precise timing requirements of these protocols, and it was also a good excuse to learn something new.
 
 - **[Hardware Overview](hardware/README.md)** - In-depth hardware guide with wiring diagrams
 - **[Custom PCB](hardware/custom-pcb.md)** - Custom PCB design for IBM Model F

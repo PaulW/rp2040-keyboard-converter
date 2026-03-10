@@ -4,7 +4,7 @@ This guide will focus on getting you up and running quickly with a standard PS/2
 
 ## Why Convert Peripherals?
 
-These days, peripherals like keyboards and mice tend to be more of a throw-away item than something people keep for a long time. The overall quality and build of newer devices can feel cheap and flimsy compared to older hardware. I mean, yes, you can still get pretty high quality mechanical keyboards and mice today, but these come at a bit of a premium price, or might not be to everyone's taste.
+I've always preferred older keyboards and mice. Modern replacements are readily available, but older hardware was built to different standards — the materials are denser, the construction more substantial, and they were clearly made with longevity in mind.
 
 I've always felt that old school keyboards and mice have a certain charm and quality about them. The way they feel to use—even older membrane keyboards feel much more robust and solid compared to a lot of modern equivalents (I weirdly like the feel of my Alps CL18821). The plastics are denser and thicker, and overall they just feel like they were built to last.
 

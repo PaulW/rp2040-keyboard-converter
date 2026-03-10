@@ -27,10 +27,10 @@ A breadboard build is where I'd recommend starting. There's no soldering involve
 
 **What makes breadboards great:**
 
-- **Quick to set up**: 30-60 minutes and you're done
+- **Quick to set up**: You can have it up and running in a single sitting
 - **No soldering needed**: Just jumper wires and pre-made modules
 - **Easy to modify**: Want to try different pins? Just pull it out and move it
-- **Low cost**: About £15-25 for everything
+- **Low cost**: Just the cost of a microcontroller, some jumper wires, and a connector
 - **Reusable**: Take it apart and use the bits for something else
 - **Great for learning**: You can actually see all the connections
 

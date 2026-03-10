@@ -19,7 +19,7 @@ This is implementation documentation for adding new keyboard support. If you're 
 
 Before you start creating files, you'll want to gather some information about your keyboard. Some of this might be in documentation, some you might need to work out yourself.
 
-You'll need to know what protocol your keyboard uses. Check [`src/protocols/`](../../src/protocols/) to see which ones are implemented—there's AT/PS2, XT, Amiga, and Apple M0110 at the moment. The [Protocol Documentation](../protocols/README.md) describes each protocol's characteristics and how to identify them. If your keyboard uses one of these, you're in luck. If not, you'll need to implement the protocol first, which is rather more involved.
+You'll need to know what protocol your keyboard uses. Check [`src/protocols/`](../../src/protocols/) to see which implementations are available. The [Protocol Documentation](../protocols/README.md) describes each protocol's characteristics and how to identify them. If your keyboard uses one of the supported protocols, you're in luck. If not, you'll need to implement the protocol first, which is rather more involved.
 
 Next, work out which scancode set your keyboard sends. Check the [Scancode Sets documentation](../scancodes/README.md) to see the available processors. The `set123` processor handles multiple scancode sets dynamically, so if you're not certain which set your keyboard uses, that processor can detect the set automatically.
 
@@ -224,11 +224,13 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
     [1] = KEYMAP(  // Fn layer for macOS navigation
         TRNS, TRNS, /* ... */
         HOME, UP,   PGUP,   // Fn+7/8/9 → HOME/UP/PGUP
-        LEFT, TRNS, RIGHT,  // Fn+4/5/6 → LEFT/nochange/RIGHT
+        LEFT, TRNS, RIGHT,  // Fn+4/5/6 → LEFT/falls through to Layer 0 (transparent TRNS)/RIGHT
         END,  DOWN, PGDN,   // Fn+1/2/3 → END/DOWN/PGDN
     ),
 };
 ```
+
+`TRNS` (transparent) means the key falls through to the next lower active layer—in this example, Layer 0. It does not suppress the key entirely. If you want a position to produce no keypress at all on a given layer, use `KC_NO` instead.
 
 ### Shift-Override (Non-Standard Shift Legends)
 

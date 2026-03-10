@@ -52,7 +52,7 @@ The Amiga CAPS LOCK key (scancode 0x62) has unique behaviour that differs from a
 
 The Amiga keyboard maintains its own CAPS LOCK LED state internally. The computer cannot control Amiga keyboard LEDs (unlike PC keyboards with LED control commands). By sending the LED state instead of press/release, the keyboard ensures the computer knows the current LED state after each toggle.
 
-USB HID CAPS LOCK is a **toggle key**: each press+release cycle toggles the state. The protocol layer implements smart synchronisation that only sends toggle events when keyboard LED and USB HID states differ, handling scenarios like:
+USB HID CAPS LOCK is a **toggle key**: each press+release cycle toggles the state. The scancode processor implements smart synchronisation that only sends toggle events when keyboard LED and USB HID states differ, handling scenarios like:
 
 - Normal operation (both states match)
 - Desync after converter reboot (keyboard powered, USB reset)
@@ -65,14 +65,12 @@ Initial state: LED OFF, USB CAPS OFF
 
 User presses CAPS LOCK (first time):
   Keyboard: Toggles LED OFF→ON, sends 0x62 (bit 7=0, "LED now ON")
-  Protocol: Check states - LED=ON, USB=OFF → Different, send toggle
-  Scancode: Receives 0x62 (press) and 0xE2 (release after hold time)
+  Scancode: Check states - LED=ON, USB=OFF → Different, send toggle
   Result: Both keyboard LED and USB CAPS are ON ✓
 
 User presses CAPS LOCK (second time):
   Keyboard: Toggles LED ON→OFF, sends 0xE2 (bit 7=1, "LED now OFF")
-  Protocol: Check states - LED=OFF, USB=ON → Different, send toggle
-  Scancode: Receives 0x62 (press) and 0xE2 (release after hold time)
+  Scancode: Check states - LED=OFF, USB=ON → Different, send toggle
   Result: Both keyboard LED and USB CAPS are OFF ✓
 
 Reboot scenario (keyboard stays powered):
@@ -80,7 +78,7 @@ Reboot scenario (keyboard stays powered):
   After reboot: LED ON (unchanged), USB OFF (reset)
   User presses CAPS LOCK:
     Keyboard: Toggles LED ON→OFF, sends 0xE2 (bit 7=1, "LED now OFF")
-    Protocol: Check states - LED=OFF, USB=OFF → Same, skip toggle!
+    Scancode: Check states - LED=OFF, USB=OFF → Same, skip toggle!
     Result: Both OFF, automatically resynchronised ✓
 ```
 

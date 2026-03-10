@@ -446,7 +446,7 @@ If the status LED never illuminates:
 
 If WS2812 LEDs don't light up or show incorrect colours:
 
-**Check power** - WS2812s need 5V. Verify your power connections are solid and providing proper voltage.
+**Check power** - WS2812s operate at 3.3V by default in this project (connected to the 3.3V power rail). If you're using the 5V VSYS supply for additional brightness, verify that supply is active and that a level shifter is in place on the data line. See the [Power notes](#wiring-overview) above for wiring guidance.
 
 **Verify data pin** - The data wire must connect to the GPIO pin specified in [`src/config.h`](../../src/config.h) as `LED_PIN` (default GPIO 29).
 
@@ -461,7 +461,7 @@ If WS2812 LEDs don't light up or show incorrect colours:
 **Converter Lock LEDs** (when `CONVERTER_LOCK_LEDS` enabled):
 
 - Verify all 4 WS2812 LEDs are wired in series: status → Num Lock → Caps Lock → Scroll Lock
-- Check that LEDs 1-3 light up when you toggle lock keys
+- Check that LEDs 2–4 light up when you toggle lock keys (LED 1 is the status LED)
 - See UART logs for USB HID LED state reports from host
 
 **Keyboard Lock LEDs** (built into keyboard):

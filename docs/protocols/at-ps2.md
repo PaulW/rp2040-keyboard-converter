@@ -805,12 +805,16 @@ Keyboard                    Mouse
 PIO SM (RX)              PIO SM (RX)
 PIO SM (TX)              PIO SM (TX)
      ↓                        ↓
-Ring Buffer (32B)        Ring Buffer (32B)
+Hardware IRQ             Hardware IRQ
      ↓                        ↓
-Protocol Handler         Protocol Handler
-     ↓                        ↓
-Scancode Processor       Packet Processor
-     ↓                        ↓
+Ring Buffer (32B)        Direct processing in IRQ
+(producer: IRQ,          (mouse_interface.c — no ring buffer)
+ consumer: main loop)         ↓
+     ↓                   Packet Processor
+Protocol Handler              ↓
+     ↓                   USB HID Mouse Report
+Scancode Processor
+     ↓
          USB HID Interface
 ```
 
@@ -818,7 +822,7 @@ Scancode Processor       Packet Processor
 
 - **Independent State Machines**: Keyboard and mouse operate completely independently
 - **Non-Blocking**: PIO handles timing, main loop processes data without waiting
-- **Hardware IRQ**: PIO fires interrupt when frame received, queues to ring buffer
+- **Hardware IRQ**: PIO fires interrupt when frame received; keyboard queues to ring buffer, mouse processes directly in IRQ
 - **Separate GPIO**: Keyboard and mouse operate on different pins (no conflicts)
 
 **Clock Divider Calculation:**

@@ -318,7 +318,7 @@ The SDK provides [`flash_safe_execute()`](https://www.raspberrypi.com/documentat
 
 **Save time**: Brief blocking flash write. Ring buffer protects against data loss during save.
 
-**Flash wear**: Each setting change alternates between Copy A and Copy B. With 10,000 cycle endurance, you could save configuration 20,000 times before wearing out flash. At one save per day, that's 54 years.
+**Flash wear**: Each setting change alternates between Copy A and Copy B. With typical flash endurance of ~10,000 cycles (conservative estimate), you could save configuration 20,000 times before wearing out flash. At one save per day, that's 54 years.
 
 **Corruption resistance**: Dual-copy with CRC validation protects against power loss during write.
 

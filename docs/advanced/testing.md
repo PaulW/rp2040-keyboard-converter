@@ -104,7 +104,7 @@ Type rapidly at 30 or more characters per second. Try burst typing—hold a key 
 
 All keypresses should register correctly. You shouldn't see any `[ERR]` messages about ring buffer overflow in the UART logs, and the converter should maintain pace with human typing speeds.
 
-**Why 30 CPS?** This represents fast typing that tests the system under load without being unrealistic. Professional typists rarely exceed 20 CPS sustained, but burst typing can briefly reach 30+ CPS.
+**Why 30 CPS?** This represents fast typing that tests the system under load without being unrealistic.
 
 ### Command Mode Test
 

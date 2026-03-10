@@ -307,7 +307,7 @@ For protocol handlers, document critical timing characteristics:
 
 ## Critical Architecture Rules
 
-Violating these will cause the lint script to fail and block your PR.
+`./tools/lint.sh` checks for many of the violations listed below. Blocking operations, multicore usage, and tab characters produce lint errors; `printf` in IRQ context, `ringbuf_reset()` without annotation, and related concerns produce warnings (which are treated as errors in CI's `--strict` mode). SRAM execution is enforced by the build system rather than by the lint script. Run `./tools/lint.sh` before every commit.
 
 ### No Blocking Operations
 

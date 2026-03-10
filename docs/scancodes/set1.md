@@ -56,25 +56,23 @@ Extended keys include:
 
 The Pause/Break key uses a special 6-byte sequence:
 
-| Event                          | Sequence                           |
-| ------------------------------ | ---------------------------------- |
-| **Pause make**                 | `E1 1D 45`                         |
-| **Pause release**              | `E1 9D C5`                         |
-| **Break make** (Ctrl+Pause)    | `E0 46`                            |
-| **Break release** (Ctrl+Pause) | `E0 C6`                            |
-| **Alternate Pause**            | `E0 45` / `E0 C5` (some keyboards) |
+| Event                          | Sequence                                                          |
+| ------------------------------ | ----------------------------------------------------------------- |
+| **Pause** (single keypress)    | `E1 1D 45` then `E1 9D C5` (both emitted on one physical press)  |
+| **Break make** (Ctrl+Pause)    | `E0 46`                                                           |
+| **Break release** (Ctrl+Pause) | `E0 C6`                                                           |
+| **Alternate Pause**            | `E0 45` / `E0 C5` (some keyboards)                               |
 
 **Important**:
 
-- Pause sends both make (`E1 1D 45`) and release (`E1 9D C5`) sub-sequences together on a single physical keypress—there is no second sequence sent when the key is physically released
+- The Pause key has no separate key-release event. Both sub-sequences (`E1 1D 45` and `E1 9D C5`) are streamed immediately on key-down. The firmware synthesises a USB HID press from `E1 1D 45` and a USB HID release from `E1 9D C5` to complete the USB key cycle.
 - Break (Ctrl+Pause) uses standard E0-prefixed make (`E0 46`) and release (`E0 C6`) sequences
 - Some keyboards may send `E0 45` / `E0 C5` as an alternate Pause encoding
 
 **USB HID Mapping:**
 
 - All Pause variants map to **interface code 0x48** (USB HID Pause/Break key)
-- E1 Pause make: `E1 1D 45` → 0x48 (make)
-- E1 Pause release: `E1 9D C5` → 0x48 (release)
+- E1 Pause: `E1 1D 45 E1 9D C5` → 0x48 (firmware synthesises press then release from the two sub-sequences)
 - E0 46 (Ctrl+Pause make): `E0 46` → 0x48 (make)
 - E0 C6 (Ctrl+Pause release): `E0 C6` → 0x48 (release)
 - E0 45 / E0 C5 (alternate): → 0x48 (make / release)

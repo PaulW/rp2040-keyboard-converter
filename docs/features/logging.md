@@ -151,6 +151,7 @@ Each log message follows a consistent format:
 **LEVEL** indicates message importance:
 
 - `[INFO]` - Informational messages about normal operation
+- `[WARN]` - Warning conditions that indicate a potential problem but do not stop operation
 - `[DBG]` - Debug details useful for development and troubleshooting
 - `[ERR]` - Error conditions that prevent proper operation
 
@@ -242,7 +243,7 @@ The protocol expects a start bit of 0, but received 1. This indicates timing iss
 AT/PS2 protocol includes a parity bit for error detection. This means electrical noise corrupted the data or there's a timing problem. Check wiring and pull-up resistors.
 
 ```text
-[ERR] Keyboard Self-Test Failed: 0xAA
+[ERR] Keyboard Self-Test Failed: 0xAB
 ```
 
 The keyboard failed its power-on self-test. Expected 0xAA (success), but received a different value. Keyboard may be faulty or incompatible with the selected protocol.

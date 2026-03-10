@@ -211,7 +211,7 @@ Byte 3 contains signed 8-bit scroll wheel movement. Positive values scroll up (a
 
 ### Polling Rate
 
-The converter sends mouse reports at the same 125 Hz rate as keyboard reports (every 8ms USB poll). This matches or exceeds most mice, which typically sample at 40-100 Hz.
+The converter sends mouse reports at the same 125 Hz rate as keyboard reports (every 8ms USB poll).
 
 ---
 

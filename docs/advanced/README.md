@@ -139,7 +139,7 @@ Microsecond-resolution pipeline instrumentation for measuring end-to-end keypres
 **Protocol errors on power-up?**
 
 - Normal for some keyboards—they send garbage during initialisation
-- Converter should auto-recover within 1-2 seconds
+- Converter will auto-recover once initialisation completes
 - Persistent errors indicate timing or signal integrity issues
 
 ---
@@ -187,21 +187,15 @@ Violations of these principles will cause `./tools/lint.sh` to fail. See [Archit
 
 **Protocol handlers:** [`src/protocols/`](../../src/protocols/)
 
-- `at-ps2/` - AT/PS2 protocol (bidirectional, LED support)
-- `xt/` - XT protocol (unidirectional, simpler timing)
-- `amiga/` - Amiga protocol (synchronous handshake)
-- `apple-m0110/` - Apple M0110 protocol (variable timing)
+Protocol implementations are in `src/protocols/`. Each subdirectory contains the PIO program and C interface for a specific keyboard protocol.
 
 **Keyboard configurations:** [`src/keyboards/`](../../src/keyboards/)
 
-- `<brand>/<model>/keyboard.config` - Build configuration
-- `<brand>/<model>/keyboard.c` - Keymap definitions
-- `<brand>/<model>/keyboard.h` - Layout-specific overrides
+Keyboard-specific build files are in `src/keyboards/`. Each entry contains `keyboard.config` (build configuration), `keyboard.c` (keymap definitions), and `keyboard.h` (layout-specific overrides).
 
 **Scancode processors:** [`src/scancodes/`](../../src/scancodes/)
 
-- `set123/` - Universal Set 1/2/3 processor
-- Protocol-specific processors for other scancode sets
+Scancode processors are in `src/scancodes/`. Each subdirectory translates raw protocol scancodes into normalised HID keycodes.
 
 ---
 

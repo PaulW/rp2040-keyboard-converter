@@ -10,7 +10,7 @@ The converter includes several features that make it practical for daily use whi
 
 The converter uses standard USB HID Boot Protocol, which means it works everywhere without drivers—BIOS screens, UEFI setup, Windows, macOS, Linux, BSD, and other operating systems. The Boot Protocol is intentionally simple and universally supported, which is exactly what you want when converting keyboards.
 
-The interface reports up to 6 simultaneous regular keys plus all 8 modifiers (left and right Shift, Ctrl, Alt, and GUI). This is called 6-Key Rollover (6KRO), and whilst modern gaming keyboards often tout N-Key Rollover, it's not actually relevant for these keyboards. Most keyboards have hardware limitations—their key matrices can only detect 2-3 simultaneous keys before ghosting occurs anyway. The 6KRO limit never comes up in practice.
+The interface reports up to 6 simultaneous regular keys plus all 8 modifiers (left and right Shift, Ctrl, Alt, and GUI). This is called 6-Key Rollover (6KRO), and mirrors the USB HID Boot Protocol report format used by the converter.
 
 When built with mouse support, the converter can handle simultaneous keyboard and mouse conversion if you have an AT/PS2 mouse to connect. LED indicators (Caps Lock, Num Lock, Scroll Lock) synchronise properly with the host OS, so the keyboard's lock LEDs update when you press the lock keys—assuming your keyboard protocol supports LED control.
 

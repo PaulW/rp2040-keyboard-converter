@@ -53,26 +53,24 @@ Extended keys include:
 
 The Pause/Break key uses a complex sequence in Set 2:
 
-| Event                          | Sequence                                 |
-| ------------------------------ | ---------------------------------------- |
-| **Pause make**                 | `E1 14 77`                               |
-| **Pause release**              | `E1 F0 14 F0 77`                         |
-| **Break make** (Ctrl+Pause)    | `E0 7E`                                  |
-| **Break release** (Ctrl+Pause) | `E0 F0 7E`                               |
-| **Unicomp Pause make**         | `E0 77` (Unicomp New Model M variant)    |
-| **Unicomp Pause release**      | `E0 F0 77` (Unicomp New Model M variant) |
+| Event                          | Sequence                                                                                     |
+| ------------------------------ | -------------------------------------------------------------------------------------------- |
+| **Pause** (single keypress)    | `E1 14 77` then `E1 F0 14 F0 77` (both sub-sequences emitted on one physical press)         |
+| **Break make** (Ctrl+Pause)    | `E0 7E`                                                                                      |
+| **Break release** (Ctrl+Pause) | `E0 F0 7E`                                                                                   |
+| **Unicomp Pause make**         | `E0 77` (Unicomp New Model M variant)                                                        |
+| **Unicomp Pause release**      | `E0 F0 77` (Unicomp New Model M variant)                                                     |
 
 **Important**:
 
-- Pause sends both make (`E1 14 77`) and release (`E1 F0 14 F0 77`) sub-sequences together on a single physical keypress — there is no second sequence sent when the key is physically released
+- The Pause key has no separate key-release event. Both sub-sequences (`E1 14 77` and `E1 F0 14 F0 77`) are streamed immediately on key-down. The firmware synthesises a USB HID press from `E1 14 77` and a USB HID release from `E1 F0 14 F0 77` to complete the USB key cycle.
 - Break (Ctrl+Pause) uses standard E0-prefixed make (`E0 7E`) and release (`E0 F0 7E`) sequences
 - Some keyboards (Unicomp) use `E0 77` / `E0 F0 77` as an alternate Pause encoding
 
 **USB HID Mapping:**
 
 - All Pause variants map to **interface code 0x48** (USB HID Pause/Break key)
-- E1 Pause make: `E1 14 77` → 0x48 (make)
-- E1 Pause release: `E1 F0 14 F0 77` → 0x48 (release)
+- E1 Pause: `E1 14 77 E1 F0 14 F0 77` → 0x48 (firmware synthesises press then release from the two sub-sequences)
 - E0 7E (Ctrl+Pause make): `E0 7E` → 0x48 (make)
 - E0 F0 7E (Ctrl+Pause release): `E0 F0 7E` → 0x48 (release)
 - E0 77 (Unicomp make): `E0 77` → 0x48 (make)

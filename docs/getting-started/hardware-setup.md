@@ -261,7 +261,7 @@ Without the firmware, the RP2040 won't respond to your device yet. This is compl
 
 ✅ **RP2040 board LED is lit** (the power indicator)  
 ✅ **Device has power** (LEDs might light up if your keyboard has always-on indicators)  
-✅ **RP2040 shows up as a USB device** (if it's not already flashed with firmware, it might show up as a mass storage device)
+✅ **RP2040 appears as "RPI-RP2" mass-storage device only when placed into BOOTSEL mode** (hold BOOTSEL during power-on or reset). Simply powering an unflashed board does not reliably enter this state on its own.
 
 ❌ **Keyboard does nothing when you type** (no firmware loaded yet)  
 ❌ **No WS2812B LED activity** (if you're using one, firmware's needed to control it, otherwise it won't light)  

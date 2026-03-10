@@ -87,7 +87,7 @@ This is the important bit—you need to put your RP2040 into a state where it ca
 
 **Visual sequence:**
 
-```yaml
+```text
 BOOT: Press ████████████████████░░░░ Release
 RESET: ░░░░ Tap ░░░░░░░░░░░░░░░
 Time: 0s    1s         2s         3s
@@ -414,9 +414,11 @@ Running into issues? Here are troubleshooting steps and solutions:
    ```bash
    # macOS/Linux
    cp build/rp2040-converter.uf2 /Volumes/RPI-RP2/
+   ```
 
-   # Windows
-   copy build\rp2040-converter.uf2 D:\
+   ```powershell
+   # Windows (PowerShell)
+   Copy-Item build\rp2040-converter.uf2 D:\
    ```
 
 4. **Check drive permissions**:

@@ -120,9 +120,9 @@ Always verify which type your keyboard uses before ordering connectors or cables
 
 **Signal Integrity:**
 
-- **Cable Length**: Typically works well up to 1-2 meters (source: hardware testing)
-- **Noise Immunity**: Reasonable for office environments
-- **EMI**: Unshielded cables acceptable for most installations
+- **Cable Length**: Keep cables as short as practical; longer cables increase susceptibility to noise
+- **Noise Immunity**: Use shielded cables where possible to reduce interference
+- **EMI**: Avoid routing cables near high-frequency or power sources
 
 ---
 

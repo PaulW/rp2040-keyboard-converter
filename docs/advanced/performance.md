@@ -45,7 +45,7 @@ PIO state machines execute independently at the same clock rate, handling protoc
 - **AT/PS2 keyboards:** 10-16.7 kHz clock frequency (60-100 microseconds per bit)
 - **XT keyboards:** ~10 kHz clock frequency (approximately 100 microseconds per bit)
 - **Amiga keyboards:** ~16.7 kHz synchronous protocol
-- **Apple M0110:** Variable timing, adapts to signal conditions
+- **Apple M0110:** Keyboard→Host clock ~3.03 kHz, 330µs period (160µs LOW / 170µs HIGH); Host→Keyboard clock ~2.5 kHz, 400µs period (180µs LOW / 220µs HIGH)
 
 The PIO hardware samples data lines at precise clock edges, shifts bits into registers, and triggers interrupts only when complete bytes arrive. Zero CPU overhead during bit reception.
 
@@ -74,17 +74,17 @@ The RP2040 provides **264KB of SRAM** and **2MB of flash storage**. The converte
 
 These limits provide comfortable margins whilst preventing configurations that approach resource boundaries. Actual usage varies by configuration—check the memory region summary in the build output for the exact figures for your build.
 
-The 32-byte ring buffer stays in cache throughout operation. Global variables store protocol state, HID report buffers, and configuration values. The stack handles function call depth and local variables. The heap remains minimal—the code favours stack allocation to avoid fragmentation and memory leaks.
+The 32-byte ring buffer fits entirely in on-chip SRAM and constitutes a small, fixed working set that remains resident there during operation. Global variables store protocol state, HID report buffers, and configuration values. The stack handles function call depth and local variables. The heap remains minimal—the code favours stack allocation to avoid fragmentation and memory leaks.
 
 ### CPU Utilisation
 
 The non-blocking architecture keeps the CPU idle between keyboard events. PIO hardware handles protocol timing autonomously, so the CPU only wakes for complete scancodes.
 
-**Estimated CPU usage patterns:**
+**CPU usage patterns:**
 
-- Idle (waiting for scancodes): ~99% of time
-- Processing scancodes: Sub-millisecond bursts
-- USB communication: Coordinated with host polling (8ms intervals)
+- Idle (waiting for scancodes): mostly idle between keyboard events
+- Processing scancodes: brief processing bursts per received byte
+- USB communication: aligned with host polling (8ms intervals)
 
 The converter doesn't perform continuous polling or busy-waiting—everything operates on interrupts or time-based state machines that check timestamps without blocking.
 

@@ -343,7 +343,7 @@ The CI pipeline (see [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml
 
 **Build matrix:**
 
-- All keyboards in [`src/keyboards/`](../../src/keyboards/) (8+ configurations)
+- All keyboards in [`src/keyboards/`](../../src/keyboards/)
 - With and without mouse support
 - Debug and release builds
 
