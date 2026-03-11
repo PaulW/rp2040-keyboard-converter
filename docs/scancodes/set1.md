@@ -111,8 +111,8 @@ Set 1 has a collision between self-test codes and valid scancodes. The self-test
 
 The collision is mitigated by protocol-layer filtering during keyboard initialisation. The protocol layer (XT, AT/PS2) consumes self-test codes before they reach the scancode processor:
 
-- **XT Protocol**: Filters `0xAA` (BAT_PASSED) and `0xFC` (BAT_FAILED) whilst in `UNINITIALISED` state—only after receiving `0xAA` does it transition to `INITIALISED` and begin forwarding scancodes to the ring buffer (see [`src/protocols/xt/keyboard_interface.c`](../../src/protocols/xt/keyboard_interface.c) lines 176-183)
-- **AT/PS2 Protocol**: Expects `0xAA` (BAT_PASSED) in `INIT_AWAIT_SELFTEST` state—any other byte triggers a reset sequence; only after successful self-test does it transition to `INIT_READ_ID_1` and eventually `INITIALISED` (see [`src/protocols/at-ps2/keyboard_interface.c`](../../src/protocols/at-ps2/keyboard_interface.c) lines 283-303)
+- **XT Protocol**: Filters `0xAA` (BAT_PASSED) and `0xFC` (BAT_FAILED) whilst in `UNINITIALISED` state—only after receiving `0xAA` does it transition to `INITIALISED` and begin forwarding scancodes to the ring buffer (see [`src/protocols/xt/keyboard_interface.c`](../../src/protocols/xt/keyboard_interface.c))
+- **AT/PS2 Protocol**: Expects `0xAA` (BAT_PASSED) in `INIT_AWAIT_SELFTEST` state—any other byte triggers a reset sequence; only after successful self-test does it transition to `INIT_READ_ID_1` and eventually `INITIALISED` (see [`src/protocols/at-ps2/keyboard_interface.c`](../../src/protocols/at-ps2/keyboard_interface.c))
 - Once `INITIALISED`, all codes are forwarded unchanged to the scancode layer via the ring buffer—no protocol-layer filtering
 
 **Scancode Layer Behaviour:**
@@ -329,4 +329,4 @@ E0-prefixed keys require translation to their logical key codes:
 ---
 
 **Questions or stuck on something?**
-Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.
+Use [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found a problem.

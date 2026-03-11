@@ -108,7 +108,7 @@ IBM 5170 (Model F-AT) - Scancode Set 2 Subset of Set 3
 
 | Physical Key         | Default Function    | With Fn Modifier | Notes                                       |
 | -------------------- | ------------------- | ---------------- | ------------------------------------------- |
-| **Pipe / Backslash** | Pipe / Backslash    | Grave / Negation | Mac layout specific                         |
+| **Pipe / Backslash** | Grave / Negation    | Pipe / Backslash | ISO layout key                              |
 | **Caps Lock**        | Caps Lock           | App              | Layer 1 (Fn held) maps Caps Lock to App key |
 | **F10**              | LGUI (GUI modifier) | —                | Windows Key / Command Key                   |
 | **F1**               | F1                  | F9               | Fn + F1 = F9                                |
@@ -132,6 +132,7 @@ The numpad doubles as a navigation cluster when using the Fn modifier:
 | **Numpad 2** | Down Arrow       |
 | **Numpad 3** | Page Down        |
 | **Numpad 4** | Left Arrow       |
+| **Numpad 5** | — (unmapped)     |
 | **Numpad 6** | Right Arrow      |
 | **Numpad 7** | Home             |
 | **Numpad 8** | Up Arrow         |

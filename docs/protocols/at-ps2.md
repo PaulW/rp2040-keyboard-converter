@@ -170,7 +170,7 @@ Terminal keyboards may use specialised connectors with different pinouts from st
 - **Current**:
   - Keyboard: 50-150mA typical (peak may reach 275mA during startup)
   - Mouse: 10-100mA typical
-  - Combined: < 300mA total (well within USB 500mA limit)
+  - Combined: up to 375mA peak (well within USB 500mA limit)
 
 **Signal Integrity Considerations:**
 
@@ -1003,4 +1003,4 @@ The AT/PS2 protocol is pretty well-established, so most issues tend to be hardwa
 ---
 
 **Questions or stuck on something?**
-Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.
+Use [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found a problem.

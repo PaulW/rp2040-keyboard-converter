@@ -20,11 +20,7 @@ The timing-sensitive nature of keyboard protocols means issues often hide until 
 
 A logic analyzer captures the actual clock and data signals between keyboard and converter, showing precisely what's happening on the wire.
 
-**Recommended models:**
-
-- **Saleae Logic 8** - Professional-grade, excellent software, 8 channels
-- **Open-source compatible** - PulseView + compatible hardware (Sigrok)
-- **Budget options** - 8-channel USB logic analyzers (£15-30)
+I use [Scoppy](https://github.com/fhdm-dev/scoppy) — a Raspberry Pi Pico-based logic analyser and oscilloscope with 8 channels and 25MS/s logic analyser mode, using an Android device as the display. It's free to download and requires no programming to set up.
 
 **What to verify:**
 
@@ -537,4 +533,4 @@ When submitting bug reports or requesting support, include:
 ---
 
 **Questions about testing or found an issue?**
-Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues).
+Use [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found a problem.

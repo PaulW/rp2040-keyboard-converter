@@ -12,7 +12,7 @@ Instead, the converter uses UART (Universal Asynchronous Receiver/Transmitter), 
 
 UART is ideal for debugging embedded systems because it operates completely separately from the USB connection—debug output never interferes with keyboard or mouse operation. The hardware requirements are minimal: just two wires connecting TX and GND. The output format is human-readable standard text, viewable in any terminal program without special software.
 
-The converter's logging implementation uses DMA (Direct Memory Access), which means log messages transmit in the background without blocking keyboard processing. Even at the highest debug verbosity, logging adds minimal latency to your keystrokes—the CPU handles message formatting and queuing before DMA takes over, so transmission happens in the background. And because UART is independent of USB, it keeps working even if the USB connection fails or has problems—exactly when you need debug output most.
+The converter's logging implementation uses DMA (Direct Memory Access), which means log messages transmit in the background without blocking keyboard processing. Even at the highest debug verbosity, logging adds minimal latency to your keystrokes—the CPU handles message formatting and queuing before DMA takes over, so transmission happens in the background. And because UART operates independently of the USB host stack, it keeps working even if the USB HID connection fails or the host drops the device—exactly when you need debug output most. Note that the board is powered via USB, so UART output will stop if USB power is lost.
 
 ---
 
@@ -354,16 +354,16 @@ To handle multiple concurrent log messages (e.g., protocol events happening whil
 
 **Main code calls LOG_INFO()** → Message formatted and written to ring buffer → DMA reads from ring buffer → Bytes transmitted over UART
 
-The ring buffer is 16,384 bytes (16KB: 64 message slots × 256 bytes per message), implemented in [`uart.c`](../../src/common/lib/uart.c). If log messages accumulate faster than the UART can transmit them (rare, only at debug level during intense activity), new messages are dropped. This prevents keyboard processing from ever blocking on log output.
+The ring buffer is 16,384 bytes (16KB: 64 message slots × 256 bytes per message), implemented in [`uart.c`](../../src/common/lib/uart.c). If log messages accumulate faster than the UART can transmit them, new messages are dropped. This prevents keyboard processing from ever blocking on log output.
 
 ### Performance Impact
 
 Logging overhead is designed to be negligible:
 
-- **Error/Info levels**: Minimal CPU usage (messages are infrequent - typically only at startup or during error conditions)
+- **Error/Info levels**: Minimal CPU usage (messages occur at startup and during error conditions)
 - **Debug level**: Moderate CPU usage during active typing (generates many messages per keystroke)
 
-These characteristics are achieved through the non-blocking DMA design. UART transmission rate at 115200 baud limits throughput to approximately 11,520 bytes per second. Debug logging during fast typing can generate roughly 5,000–8,000 bytes per second (illustrative estimate — actual rate depends on log level, message frequency, and input intensity), well within UART capacity.
+These characteristics are achieved through the non-blocking DMA design. UART transmission rate at 115200 baud limits throughput to approximately 11,520 bytes per second. At Debug level, the volume of log output generated during active typing is bounded by this UART throughput; the ring buffer drops messages if they accumulate faster than UART can transmit them.
 
 The non-blocking DMA design ensures that even at debug level, keyboard latency remains unaffected by logging activity.
 
@@ -510,4 +510,4 @@ These are advanced configurations beyond the scope of this document, but they're
 ---
 
 **Questions or stuck on something?**
-Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.
+Use [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found a problem.

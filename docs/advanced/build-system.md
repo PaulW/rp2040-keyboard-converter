@@ -48,7 +48,7 @@ The Docker container includes:
 - Python 3 for build scripts
 - All dependencies for parallel builds
 
-Build times depend on your hardware, but parallel compilation keeps full rebuilds reasonably quick.
+Build times depend on your hardware; parallel and incremental compilation reduce the amount of work performed during full and incremental builds.
 
 ---
 
@@ -418,4 +418,4 @@ The RP2040 bootloader accepts UF2 files via drag-and-drop or command-line copy. 
 ---
 
 **Questions or build issues?**
-Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues).
+Use [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found a problem.
