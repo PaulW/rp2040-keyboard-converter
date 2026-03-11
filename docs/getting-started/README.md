@@ -4,7 +4,7 @@ This guide will focus on getting you up and running quickly with a standard PS/2
 
 ## Why Convert Peripherals?
 
-I've always preferred older keyboards and mice. Modern replacements are readily available, but I find older hardware more satisfying to use — I prefer the feel, weight, and solid construction that you just don't tend to get with most modern equivalents.
+I've always preferred older keyboards and mice. Modern replacements are readily available, but I find older hardware more satisfying to use — I prefer the feel, weight, and solid construction that I just don't get from most modern equivalents.
 
 I've always felt that old school keyboards and mice have a certain charm and quality about them. The way they feel to use—even older membrane keyboards feel much more robust and solid compared to a lot of modern equivalents (I weirdly like the feel of my Alps CL18821). The plastics are denser and thicker, and overall they just feel like they were built to last.
 

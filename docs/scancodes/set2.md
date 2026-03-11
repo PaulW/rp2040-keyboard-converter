@@ -51,30 +51,29 @@ Extended keys include:
 
 ### Pause/Break Key (E1 Prefix)
 
-The Pause/Break key uses a complex sequence in Set 2:
+The Pause/Break key sends an 8-byte sequence entirely on key-down. There is no key-up wire event.
 
-| Event                          | Sequence                                                                            |
-| ------------------------------ | ----------------------------------------------------------------------------------- |
-| **Pause** (single keypress)    | `E1 14 77` then `E1 F0 14 F0 77` (both sub-sequences emitted on one physical press) |
-| **Break make** (Ctrl+Pause)    | `E0 7E`                                                                             |
-| **Break release** (Ctrl+Pause) | `E0 F0 7E`                                                                          |
-| **Unicomp Pause make**         | `E0 77` (Unicomp New Model M variant)                                               |
-| **Unicomp Pause release**      | `E0 F0 77` (Unicomp New Model M variant)                                            |
+| Event                           | Sequence                                                  |
+| ------------------------------- | --------------------------------------------------------- |
+| **Pause key-down** (press only) | `E1 14 77 E1 F0 14 F0 77` (no separate key-up wire event) |
+| **Break make** (Ctrl+Pause)     | `E0 7E`                                                   |
+| **Break release** (Ctrl+Pause)  | `E0 F0 7E`                                                |
+| **Unicomp Pause make**          | `E0 77` (Unicomp New Model M variant)                     |
+| **Unicomp Pause release**       | `E0 F0 77` (Unicomp New Model M variant)                  |
 
 **Important**:
 
-- The Pause key has no separate key-release event. Both sub-sequences (`E1 14 77` and `E1 F0 14 F0 77`) are streamed immediately on key-down. The firmware synthesises a USB HID press from `E1 14 77` and a USB HID release from `E1 F0 14 F0 77` to complete the USB key cycle.
-- Break (Ctrl+Pause) uses standard E0-prefixed make (`E0 7E`) and release (`E0 F0 7E`) sequences
-- Some keyboards (Unicomp) use `E0 77` / `E0 F0 77` as an alternate Pause encoding
+- The Pause key has no separate key-release event on the wire. The full 8-byte sequence `E1 14 77 E1 F0 14 F0 77` arrives on key-down only. The converter uses `E1 14 77` to generate a HID press and `E1 F0 14 F0 77` to generate a HID release — both are derived from the single key-down burst, not from separate wire events.
+- Break (Ctrl+Pause) and the Unicomp variant are standard E0-prefixed make/release pairs.
 
 **USB HID Mapping:**
 
 - All Pause variants map to **interface code 0x48** (USB HID Pause/Break key)
-- E1 Pause: `E1 14 77 E1 F0 14 F0 77` → 0x48 (firmware synthesises press then release from the two sub-sequences)
-- E0 7E (Ctrl+Pause make): `E0 7E` → 0x48 (make)
-- E0 F0 7E (Ctrl+Pause release): `E0 F0 7E` → 0x48 (release)
-- E0 77 (Unicomp make): `E0 77` → 0x48 (make)
-- E0 F0 77 (Unicomp release): `E0 F0 77` → 0x48 (release)
+- E1 Pause: `E1 14 77` → 0x48 press; `E1 F0 14 F0 77` → 0x48 release (both from single key-down burst)
+- E0 7E (Ctrl+Pause make): → 0x48 (make)
+- E0 F0 7E (Ctrl+Pause release): → 0x48 (release)
+- E0 77 (Unicomp make): → 0x48 (make)
+- E0 F0 77 (Unicomp release): → 0x48 (release)
 - See Issue #21 for historical context on E0 mapping fixes
 - Note: Some very old or non-compliant keyboards may not emit the E1 prefix for Pause
   (they instead send a bare sequence that looks like Ctrl+NumLock). Such keyboards cannot

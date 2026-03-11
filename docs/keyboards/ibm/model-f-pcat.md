@@ -26,8 +26,10 @@ The IBM Model F PC/AT keyboard uses buckling spring over capacitive switch techn
 | **Connector**    | 5-pin DIN (180° arrangement)             |
 | **Voltage**      | 5V                                       |
 | **Switch Type**  | Buckling spring over capacitive          |
-| **Key Rollover** | Full NKRO                                |
+| **Key Rollover** | N-key rollover (NKRO) \*                 |
 | **Layout**       | UK layout (pre-ISO/ANSI standardisation) |
+
+\*_Note_: The keyboard hardware supports NKRO, but the converter firmware currently limits it to 6KRO when translating to USB HID boot protocol for compatibility reasons.
 
 ---
 
@@ -53,7 +55,7 @@ See: [Building Firmware Guide](../../getting-started/building-firmware.md)
 
 The default keymap preserves the original IBM 5170 keyboard layout whilst adding modern functionality through the Fn modifier.
 
-### Base Layer Mapping (from keyboard.h)
+### Base Layer Mapping (from keyboard.c)
 
 From [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c):
 
@@ -104,19 +106,19 @@ IBM 5170 (Model F-AT) - Scancode Set 2 Subset of Set 3
 
 ### Key Assignments
 
-| Physical Key          | Default Function    | With Fn Modifier | Notes                                       |
-| --------------------- | ------------------- | ---------------- | ------------------------------------------- |
-| **Pipe / Back Slash** | Pipe / Back Slash   | Grave / Negation | Mac layout specific                         |
-| **Caps Lock**         | Caps Lock           | App              | Layer 1 (Fn held) maps Caps Lock to App key |
-| **F10**               | LGUI (GUI modifier) | —                | Windows Key / Command Key                   |
-| **F1**                | F1                  | F9               | Fn + F1 = F9                                |
-| **F2**                | F2                  | F10              | Fn + F2 = F10                               |
-| **F3**                | F3                  | F11              | Fn + F3 = F11                               |
-| **F4**                | F4                  | F12              | Fn + F4 = F12                               |
-| **F5**                | F5                  | Volume Down      | Fn + F5 = Vol Down                          |
-| **F6**                | F6                  | Volume Up        | Fn + F6 = Vol Up                            |
-| **F7**                | F7                  | Brightness Down  | Fn + F7 = Brightness Down                   |
-| **F8**                | F8                  | Brightness Up    | Fn + F8 = Brightness Up                     |
+| Physical Key         | Default Function    | With Fn Modifier | Notes                                       |
+| -------------------- | ------------------- | ---------------- | ------------------------------------------- |
+| **Pipe / Backslash** | Pipe / Backslash    | Grave / Negation | Mac layout specific                         |
+| **Caps Lock**        | Caps Lock           | App              | Layer 1 (Fn held) maps Caps Lock to App key |
+| **F10**              | LGUI (GUI modifier) | —                | Windows Key / Command Key                   |
+| **F1**               | F1                  | F9               | Fn + F1 = F9                                |
+| **F2**               | F2                  | F10              | Fn + F2 = F10                               |
+| **F3**               | F3                  | F11              | Fn + F3 = F11                               |
+| **F4**               | F4                  | F12              | Fn + F4 = F12                               |
+| **F5**               | F5                  | Volume Down      | Fn + F5 = Vol Down                          |
+| **F6**               | F6                  | Volume Up        | Fn + F6 = Vol Up                            |
+| **F7**               | F7                  | Brightness Down  | Fn + F7 = Brightness Down                   |
+| **F8**               | F8                  | Brightness Up    | Fn + F8 = Brightness Up                     |
 
 ### Numpad Navigation Layer
 

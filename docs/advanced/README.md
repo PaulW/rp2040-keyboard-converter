@@ -139,7 +139,7 @@ Microsecond-resolution pipeline instrumentation for measuring end-to-end keypres
 **Protocol errors on power-up?**
 
 - Normal for some keyboards—they send garbage during initialisation
-- Converter will auto-recover once initialisation completes
+- Whether the converter auto-recovers depends on the protocol: AT/PS2 resets its state machine and retries initialisation; XT has no protocol-level error recovery
 - Persistent errors indicate timing or signal integrity issues
 
 ---
@@ -191,7 +191,7 @@ Protocol implementations are in `src/protocols/`. Each subdirectory contains the
 
 **Keyboard configurations:** [`src/keyboards/`](../../src/keyboards/)
 
-Keyboard-specific build files are in `src/keyboards/`. Each entry contains the following build-time files: `keyboard.config` (build configuration), `keyboard.c` (keymap definitions), and `keyboard.h` (layout-specific overrides). User-facing documentation for each keyboard is in `docs/keyboards/`.
+Keyboard-specific build files are in `src/keyboards/`. Each keyboard directory contains three build-time files: `keyboard.config` (build configuration), `keyboard.c` (keymap definitions), and `keyboard.h` (layout-specific overrides). User-facing documentation for each keyboard is in `docs/keyboards/`.
 
 **Scancode processors:** [`src/scancodes/`](../../src/scancodes/)
 

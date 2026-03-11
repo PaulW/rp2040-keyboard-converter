@@ -23,7 +23,7 @@ softReset:
     ; XT Soft Reset Protocol
     ; ======================
     ; Host pulls CLOCK LOW for ~20ms to request reset
-    ; Keyboard ACKs by pulling DATA HIGH
+    ; Keyboard ACKs by releasing DATA — pull-up brings DATA HIGH (open-drain)
     ; Host releases CLOCK (keyboard controls timing)
     ; 
     ; Genuine IBM XT: Strobes CLOCK with DATA HIGH (pseudo start bit = 0xFF)
@@ -38,7 +38,7 @@ softReset:
     set pindirs 2 [1]       ; Set CLOCK pin to output mode
     set pins, 0             ; Pull CLOCK LOW (soft reset request, ~20ms hold)
 
-    wait 1 pin 0 [1]        ; Wait for DATA HIGH (keyboard ACK)
+    wait 1 pin 0 [1]        ; Wait for DATA released to HIGH by pull-up (keyboard ACK)
 
     set pindirs 1  [1]      ; Set CLOCK to input (release to keyboard)
     set pindirs, 0          ; Set DATA to input (allow keyboard control)

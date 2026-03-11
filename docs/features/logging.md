@@ -346,7 +346,7 @@ DMA (Direct Memory Access) solves this, implemented in [`uart.c`](../../src/comm
 3. The DMA controller handles transmission independently, byte by byte
 4. The CPU immediately continues processing keyboard data
 
-From the CPU's perspective, logging is instantaneous—no blocking, no delays, no impact on keyboard timing.
+From the CPU's perspective, logging is non-blocking — the DMA controller handles actual byte transmission independently whilst the CPU continues processing. That said, the CPU still does work before handing off to DMA: formatting the message, copying it into the ring buffer, and initiating the transfer. This incurs a small, bounded overhead, but the CPU is never blocked waiting for UART bytes to transmit.
 
 ### Ring Buffer Architecture
 

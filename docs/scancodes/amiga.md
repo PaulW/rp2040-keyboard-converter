@@ -46,7 +46,7 @@ The Amiga CAPS LOCK key (scancode 0x62) has unique behaviour that differs from a
 - **Smart synchronisation**: Uses bit 7 to infer the keyboard LED state, then compares with the current USB HID CAPS LOCK state
 - **Only toggles if states differ**: Prevents unnecessary HID events and handles desync gracefully
 - Generates press+release pair with configurable hold time (default 125ms, set via `CAPS_LOCK_TOGGLE_TIME_MS` in `config.h`)
-- The protocol layer only filters special protocol codes (0x78, 0xF9–0xFE) before passing scancodes to this processor
+- The protocol layer performs de-rotation (received bit order `[6 5 4 3 2 1 0 7]` → standard `[7 6 5 4 3 2 1 0]`) and active-low inversion of raw keyboard bits in the ISR, then filters special protocol codes (0x78, 0xF9–0xFE) before forwarding the resulting byte to this scancode processor; CAPS LOCK (`0x62`/`0xE2`) is not filtered at the protocol layer and is handled here
 
 **Why This Design?**:
 

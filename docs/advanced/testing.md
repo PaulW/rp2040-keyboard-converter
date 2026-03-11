@@ -152,7 +152,7 @@ Verify the converter recovers gracefully from protocol errors.
 4. Verify converter reinitialises protocol automatically
 5. Test keyboard functions normally after reconnection
 
-**Expected results:** Converter detects keyboard disconnection, logs `[ERR]` messages, attempts reinitialisation, resumes normal operation when keyboard returns. No manual reset required.
+**Expected results:** Converter detects keyboard disconnection and logs `[ERR]` messages. Whether it attempts automatic reinitialisation and resumes normal operation depends on the protocol implementation — behaviour is protocol-dependent. Check the UART output and the relevant protocol documentation to understand what recovery, if any, is expected for your specific configuration.
 
 **Common scenarios:**
 

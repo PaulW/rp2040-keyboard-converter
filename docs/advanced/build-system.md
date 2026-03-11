@@ -130,9 +130,9 @@ PIO assembly files (`.pio`) contain the timing logic that runs on the RP2040's P
 
 **Example:** [`src/protocols/at-ps2/interface.pio`](../../src/protocols/at-ps2/interface.pio) compiles to `interface.pio.h`, which provides:
 
-- `interface_program` - PIO instruction array
-- `interface_program_init()` - Helper to configure state machine
-- `interface_wrap_target` / `interface_wrap` - Program loop bounds
+- `pio_interface_program` - PIO instruction array
+- `pio_interface_program_init()` - Helper to configure state machine
+- `pio_interface_wrap_target` / `pio_interface_wrap` - Program loop bounds
 - Instruction count and origin information
 
 The build system automatically discovers `.pio` files in protocol directories and compiles them. No manual configuration needed.

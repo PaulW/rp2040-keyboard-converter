@@ -564,9 +564,10 @@ LEDs: Update to reflect new state
 1. Device powers on
 2. Device performs internal self-test (~500ms)
 3. Device sends 0xAA (BAT passed) or 0xFC (BAT failed)
-4. Device sends 2-byte ID (e.g., 0xAB 0x83 for enhanced keyboard)
-5. Device enters idle state, ready to send scancodes
+4. Device enters idle state, ready to send scancodes
 ```
+
+**Note:** Device ID bytes are not sent automatically as part of POST. They are returned only in response to an explicit Identify command (0xF2) sent by the host after receiving 0xAA.
 
 **Host Initialisation (Typical):**
 

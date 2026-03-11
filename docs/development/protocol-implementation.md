@@ -28,7 +28,7 @@ Here's the standard pattern all protocols follow, in order:
 
 ### 1. LED Initialisation
 
-Set the converter's keyboard ready state to false and update the status LED. This happens before anything else because you want the LED to show the actual state—the keyboard isn't ready yet, so don't indicate that it is.
+Set the device-specific ready state to false and update the status LED. This happens before anything else because you want the LED to show the actual state — the device isn't ready yet, so don't indicate that it is. Keyboard protocols set `kb_ready`; the mouse protocol sets `mouse_ready`.
 
 ```c
 #ifdef CONVERTER_LEDS
@@ -313,13 +313,7 @@ The setup function only deals with initialisation. The complexity of your protoc
 
 ## Using This Pattern
 
-When implementing a new protocol, use the existing implementations as reference:
-
-- **AT/PS2 Keyboard** ([src/protocols/at-ps2/keyboard_interface.c](../../src/protocols/at-ps2/keyboard_interface.c)): Most complex, full bidirectional with error recovery. Steps 3–10 are wrapped in `atps2_setup_pio_engine()` in [src/protocols/at-ps2/common_interface.c](../../src/protocols/at-ps2/common_interface.c), shared between keyboard and mouse to avoid duplication.
-- **AT/PS2 Mouse** ([src/protocols/at-ps2/mouse_interface.c](../../src/protocols/at-ps2/mouse_interface.c)): Mouse protocol example, direct event processing without ring buffer
-- **XT** ([src/protocols/xt/keyboard_interface.c](../../src/protocols/xt/keyboard_interface.c)): Simplest, unidirectional only
-- **Amiga** ([src/protocols/amiga/keyboard_interface.c](../../src/protocols/amiga/keyboard_interface.c)): Bidirectional with adjacent pin requirement
-- **M0110** ([src/protocols/apple-m0110/keyboard_interface.c](../../src/protocols/apple-m0110/keyboard_interface.c)): Manual error handling example
+When implementing a new protocol, use the existing implementations in [`src/protocols/`](../../src/protocols/) as reference. Each sub-directory contains the full implementation for that protocol. AT/PS2 is a useful example of a bidirectional implementation with error recovery — Steps 3–10 of the setup sequence are wrapped in `atps2_setup_pio_engine()` in `common_interface.c`, shared between keyboard and mouse.
 
 Each protocol's README in `src/protocols/<protocol>/` contains timing diagrams and protocol-specific details. Start with those to understand the protocol requirements, then follow this setup pattern for consistency.
 

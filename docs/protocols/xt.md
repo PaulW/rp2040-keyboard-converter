@@ -373,7 +373,7 @@ XT keyboards support soft reset via the CLOCK and DATA lines. This is the **Type
 **Reset Sequence:**
 
 1. **Host Request**: Pull CLOCK LOW for ~20ms (host-initiated reset signal)
-2. **Keyboard ACK**: Keyboard responds by pulling DATA HIGH (acknowledgment)
+2. **Keyboard ACK**: Keyboard releases DATA, which returns HIGH via pull-up (open-drain acknowledgment)
 3. **Host Release**: Host releases CLOCK (returns to input mode, keyboard controls timing)
 4. **Keyboard Ready**: Keyboard pulls DATA LOW (ready for transmission)
 5. **Self-Test**: Keyboard performs BAT (Basic Assurance Test)
@@ -388,7 +388,7 @@ softReset:
     set pindirs 2 [1]       ; Set CLOCK pin to output mode
     set pins, 0             ; Pull CLOCK LOW (soft reset request, ~20ms hold)
 
-    wait 1 pin 0 [1]        ; Wait for DATA HIGH (keyboard ACK)
+    wait 1 pin 0 [1]        ; Wait for DATA released to HIGH by pull-up (keyboard ACK)
 
     set pindirs 1  [1]      ; Set CLOCK to input (release to keyboard)
     set pindirs, 0          ; Set DATA to input (allow keyboard control)
