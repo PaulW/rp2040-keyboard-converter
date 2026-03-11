@@ -70,9 +70,9 @@ The Pause/Break key sends a 6-byte sequence entirely on key-down. There is no ke
 **USB HID Mapping:**
 
 - All Pause variants map to **interface code 0x48** (USB HID Pause/Break key)
-- E1 Pause: `E1 1D 45` → 0x48 press; `E1 9D C5` → 0x48 release (both from single key-down burst)
-- E0 46 or E0 45 (Ctrl+Pause make): → 0x48 (make)
-- E0 C6 or E0 C5 (Ctrl+Pause release): → 0x48 (release)
+- E1 Pause: `E1 1D 45` → 0x48 press; `E1 9D C5` → 0x48 release (both from single key-down burst; no Ctrl modifier)
+- E0 46 or E0 45 (Ctrl+Pause make): → 0x48 make, with Ctrl asserted in the modifier byte (Ctrl is physically held when this sequence is sent)
+- E0 C6 or E0 C5 (Ctrl+Pause release): → 0x48 release, with Ctrl still in the modifier byte
 - See Issue #21 for historical context on E0 mapping fixes
 - Note: Some very old or non-compliant keyboards may not emit the E1 prefix for Pause
   (they instead send a bare sequence that looks like Ctrl+NumLock). Such keyboards cannot
@@ -119,7 +119,7 @@ The collision is mitigated by protocol-layer filtering during keyboard initialis
 
 The Set 1 scancode processor ([`src/scancodes/set1/scancode.c`](../../src/scancodes/set1/scancode.c)) does **not** filter self-test codes. It performs a range check (`if (code <= 0xD8)`) that processes all valid scancodes, including `0xAA`:
 
-Since `0xAA` (170 decimal) is less than `0xD8` (216 decimal), it would be processed as a normal Left Shift break code if received post-initialisation. The scancode processor comment explicitly notes: _"Self-test codes (0xAA) are handled by protocol layer during initialisation"_ (line 117).
+Since `0xAA` (170 decimal) is less than `0xD8` (216 decimal), it would be processed as a normal Left Shift break code if received post-initialisation. The scancode processor comment explicitly notes: _"Self-test codes (0xAA) are handled by protocol layer during initialisation"_ (see [`src/scancodes/set1/scancode.c`](../../src/scancodes/set1/scancode.c)).
 
 The only special handling of `0xAA` in the scancode layer occurs in the E0-prefixed state, where it's filtered as a "fake shift" sequence for Print Screen (not because it's a self-test code):
 

@@ -313,7 +313,7 @@ The setup function only deals with initialisation. The complexity of your protoc
 
 ## Using This Pattern
 
-When implementing a new protocol, use the existing implementations in [`src/protocols/`](../../src/protocols/) as reference. Each sub-directory contains the full implementation for that protocol. AT/PS2 is a useful example of a bidirectional implementation with error recovery — Steps 3–10 of the setup sequence are wrapped in `atps2_setup_pio_engine()` in `common_interface.c`, shared between keyboard and mouse.
+When implementing a new protocol, use the existing implementations in [`src/protocols/`](../../src/protocols/) as reference. Each subdirectory contains the full implementation for that protocol. AT/PS2 is a useful example of a bidirectional implementation with error recovery — Steps 3–10 of the setup sequence are wrapped in `atps2_setup_pio_engine()` in `common_interface.c`, shared between keyboard and mouse.
 
 Each protocol's README in `src/protocols/<protocol>/` contains timing diagrams and protocol-specific details. Start with those to understand the protocol requirements, then follow this setup pattern for consistency.
 

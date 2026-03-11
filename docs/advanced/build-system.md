@@ -197,7 +197,7 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" builder
 
 Produces firmware with:
 
-- Selected keyboard protocol (AT/PS2, XT, Amiga, or M0110)
+- Selected keyboard protocol (see [`src/protocols/`](../../src/protocols/))
 - Selected scancode processor
 - Keyboard keymap
 - Command Mode, logging, configuration storage

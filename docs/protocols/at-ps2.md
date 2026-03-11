@@ -901,7 +901,7 @@ See [`interface.pio`](../../src/protocols/at-ps2/interface.pio) for the complete
 - **Producer**: PIO IRQ handler writes received bytes
 - **Consumer**: Main loop reads bytes for processing
 - **Size**: 32 bytes (adequate for burst typing/movement)
-- **Overflow Handling**: Oldest data discarded if full (rare—only during sustained 30+ CPS typing)
+- **Overflow Handling**: Incoming byte is dropped if the buffer is full (the IRQ handler calls `ringbuf_put()` only when `!ringbuf_is_full()`)
 
 **Thread Safety:**
 

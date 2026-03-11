@@ -233,7 +233,7 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 
 **CI enforcement:** Pull requests automatically run lint checks in strict mode. Violations block merging.
 
-**Detailed documentation:** See [`tools/lint.sh`](../../tools/lint.sh) for the definitive check list and [`tools/README.md`](../../tools/README.md) for comprehensive check descriptions and fix examples.
+**Detailed documentation:** See [`tools/lint.sh`](../../tools/lint.sh) for the definitive checklist and [`tools/README.md`](../../tools/README.md) for comprehensive check descriptions and fix examples.
 
 ### Static Analysis
 
@@ -414,7 +414,7 @@ Whilst the converter hasn't been extensively benchmarked with timing equipment, 
 - Protocol transmission: 1-2ms (inherent to protocol timing, not software-controlled)
 - Processing pipeline: <100μs (PIO→IRQ→ring buffer→scancode→HID) — theoretical; based on pipeline step count, not measured
 - USB polling wait: 0–8ms (`bInterval = 8` in `usb_descriptors.c`; average 4ms assuming uniform phase distribution)
-- Total: these figures are theoretical estimates; actual end-to-end latency depends on USB polling phase at time of press
+- Total: these figures are theoretical estimates; actual end-to-end latency depends on USB polling phase (as of the time of writing, no precise measurements have been taken)
 
 ### Throughput Measurement
 

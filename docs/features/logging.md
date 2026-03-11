@@ -12,7 +12,7 @@ Instead, the converter uses UART (Universal Asynchronous Receiver/Transmitter), 
 
 UART is ideal for debugging embedded systems because it operates completely separately from the USB connection—debug output never interferes with keyboard or mouse operation. The hardware requirements are minimal: just two wires connecting TX and GND. The output format is human-readable standard text, viewable in any terminal program without special software.
 
-The converter's logging implementation uses DMA (Direct Memory Access), which means log messages transmit in the background without blocking keyboard processing. Even at the highest debug verbosity, logging never adds latency to your keystrokes. And because UART is independent of USB, it keeps working even if the USB connection fails or has problems—exactly when you need debug output most.
+The converter's logging implementation uses DMA (Direct Memory Access), which means log messages transmit in the background without blocking keyboard processing. Even at the highest debug verbosity, logging adds minimal latency to your keystrokes—the CPU handles message formatting and queuing before DMA takes over, so transmission happens in the background. And because UART is independent of USB, it keeps working even if the USB connection fails or has problems—exactly when you need debug output most.
 
 ---
 
@@ -268,7 +268,7 @@ The converter supports three log levels that control how much information appear
 
 **When to use**: Normal daily use. You don't need to see every keystroke or initialisation step—you only want to know if something breaks.
 
-**Impact on performance**: Minimal. Error logging is extremely lightweight since errors are rare.
+**Impact on performance**: Minimal. Error logging has negligible CPU impact because error messages are small and, under normal operation, infrequent.
 
 **Example output**:
 
@@ -284,7 +284,7 @@ The converter supports three log levels that control how much information appear
 
 **When to use**: Default setting. Provides enough visibility to understand what the converter is doing without overwhelming detail.
 
-**Impact on performance**: Negligible. Info messages are infrequent (mostly at startup or during configuration changes).
+**Impact on performance**: Info messages occur primarily during startup and configuration changes and generally produce minimal ongoing CPU load during normal use.
 
 **Example output**:
 

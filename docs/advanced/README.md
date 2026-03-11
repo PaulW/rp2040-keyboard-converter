@@ -152,7 +152,7 @@ The converter uses a **single-core, non-blocking architecture** running entirely
 
 **Key characteristics:**
 
-- **PIO state machines** handle protocol timing in hardware (zero CPU overhead)
+- **PIO state machines** offload protocol timing to hardware, freeing the CPU for IRQ handling, ring-buffer handoff, scancode processing, and HID report generation
 - **32-byte ring buffer** bridges interrupt context and main loop (lock-free FIFO)
 - **Non-blocking main loop** uses time-based state machines (no sleep calls)
 - **SRAM execution** ensures deterministic timing (no flash cache misses)
@@ -187,7 +187,7 @@ Violations of these principles will cause `./tools/lint.sh` to fail. See [Archit
 
 **Protocol handlers:** [`src/protocols/`](../../src/protocols/)
 
-Protocol implementations are in `src/protocols/`. Each subdirectory contains the PIO program and C interface for a specific keyboard protocol.
+Protocol implementations are in `src/protocols/`. Each subdirectory contains the PIO program and C interface for a specific protocol implementation (keyboard and/or mouse). Use existing implementations as reference examples when adding a new protocol—they demonstrate the expected setup patterns and error handling approaches.
 
 **Keyboard configurations:** [`src/keyboards/`](../../src/keyboards/)
 

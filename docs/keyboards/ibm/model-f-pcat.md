@@ -188,7 +188,7 @@ The Model F PC/AT uses the AT/PS2 protocol with bidirectional communication. The
 
 The scancode set's a bit unusual—it uses Set 2 codes (by keycap labels), but they're actually a subset borrowed from the 122-key keyboard's Set 3 layout. The scancodes aren't contiguous because this 84-key layout's missing the 24 function keys that fill in the gaps on the full 122-key boards. You can't switch to a different scancode set either—it's fixed.
 
-The keyboard supports full N-key rollover (NKRO).
+The keyboard hardware supports full N-key rollover (NKRO), but the converter firmware limits this to 6KRO when translating to USB HID boot protocol for compatibility reasons.
 
 See: [AT/PS2 Protocol Documentation](../../protocols/at-ps2.md) for complete technical details.
 

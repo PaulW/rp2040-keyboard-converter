@@ -69,11 +69,11 @@ The Pause/Break key sends an 8-byte sequence entirely on key-down. There is no k
 **USB HID Mapping:**
 
 - All Pause variants map to **interface code 0x48** (USB HID Pause/Break key)
-- E1 Pause: `E1 14 77` → 0x48 press; `E1 F0 14 F0 77` → 0x48 release (both from single key-down burst)
-- E0 7E (Ctrl+Pause make): → 0x48 (make)
-- E0 F0 7E (Ctrl+Pause release): → 0x48 (release)
-- E0 77 (Unicomp make): → 0x48 (make)
-- E0 F0 77 (Unicomp release): → 0x48 (release)
+- E1 Pause: `E1 14 77` → 0x48 press; `E1 F0 14 F0 77` → 0x48 release (both from single key-down burst; no Ctrl modifier)
+- E0 7E (Ctrl+Pause make): → 0x48 make, with Ctrl asserted in the modifier byte (Ctrl is physically held when this sequence is sent)
+- E0 F0 7E (Ctrl+Pause release): → 0x48 release, with Ctrl still in the modifier byte
+- E0 77 (Unicomp make): → 0x48 make (no Ctrl modifier)
+- E0 F0 77 (Unicomp release): → 0x48 release (no Ctrl modifier)
 - See Issue #21 for historical context on E0 mapping fixes
 - Note: Some very old or non-compliant keyboards may not emit the E1 prefix for Pause
   (they instead send a bare sequence that looks like Ctrl+NumLock). Such keyboards cannot
@@ -138,7 +138,7 @@ The keyspace is larger—full 8-bit make codes mean you can have up to 256 keys 
 
 **Where it gets complicated:**
 
-Your state machine grows to 9 states to handle all the possible sequences. Every keystroke needs at least 2 bytes (one for make, two for break), which makes it more verbose than Set 1. Print Screen still requires filtering fake shifts, which is a compatibility holdover. The Pause key uses an 8-byte sequence. The translation tables are a bit larger too, around 300 bytes versus Set 1's standard size.
+Your state machine grows to 9 states to handle all the possible sequences. Every keystroke needs at least 3 bytes for a full press/release cycle (one byte for make, two bytes for break), which makes it more verbose than Set 1. Print Screen still requires filtering fake shifts, which is a compatibility holdover. The Pause key uses an 8-byte sequence. The translation tables are a bit larger too, around 300 bytes versus Set 1's standard size.
 
 ## Code Range
 
