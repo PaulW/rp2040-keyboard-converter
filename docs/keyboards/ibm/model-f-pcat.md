@@ -106,12 +106,12 @@ IBM 5170 (Model F-AT) - Scancode Set 2 Subset of Set 3
 
 | Physical Key          | Default Function    | With Fn Modifier | Notes                                       |
 | --------------------- | ------------------- | ---------------- | ------------------------------------------- |
-| **Pipe / Back Slash** | Pipe / Back Slash   | Grave / Negation | Mac layout specific \*                      |
+| **Pipe / Back Slash** | Pipe / Back Slash   | Grave / Negation | Mac layout specific                         |
 | **Caps Lock**         | Caps Lock           | App              | Layer 1 (Fn held) maps Caps Lock to App key |
 | **F10**               | LGUI (GUI modifier) | —                | Windows Key / Command Key                   |
 | **F1**                | F1                  | F9               | Fn + F1 = F9                                |
 | **F2**                | F2                  | F10              | Fn + F2 = F10                               |
-| **F3**                | F3                  | F11              | Fn + F3 = F11 \*\*                          |
+| **F3**                | F3                  | F11              | Fn + F3 = F11                               |
 | **F4**                | F4                  | F12              | Fn + F4 = F12                               |
 | **F5**                | F5                  | Volume Down      | Fn + F5 = Vol Down                          |
 | **F6**                | F6                  | Volume Up        | Fn + F6 = Vol Up                            |

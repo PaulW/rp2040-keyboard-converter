@@ -74,8 +74,8 @@ CODESET=set123
 - **MAKE:** Manufacturer name (appears in boot messages)
 - **MODEL:** Keyboard model designation
 - **DESCRIPTION:** Full description (appears in boot messages)
-- **PROTOCOL:** Protocol handler to include (at-ps2, xt, amiga, apple-m0110)
-- **CODESET:** Scancode processor to use (set123, set1, set2, etc.)
+- **PROTOCOL:** Protocol handler to include — see [`src/protocols/`](../../src/protocols/) for available implementations
+- **CODESET:** Scancode processor to use — see [`src/scancodes/`](../../src/scancodes/) for available options
 
 The build system reads these values and automatically includes the appropriate components.
 
@@ -178,7 +178,7 @@ The `.elf.map` file shows detailed memory layout:
 
 Use this file to:
 
-- Verify code executes from SRAM addresses (0x20000000-0x20041000)
+- Verify code executes from SRAM addresses (0x20000000-0x20042000)
 - Identify large functions or data structures
 - Analyze stack usage and placement
 - Debug linker errors about overlapping sections

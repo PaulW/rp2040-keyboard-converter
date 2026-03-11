@@ -484,6 +484,8 @@ Device responds: 0xFA (ACK), then current set number (0x01/0x02/0x03)
 
 **Note**: Not all keyboards support the query command (0xF0 0x00). Some keyboards may return incorrect values or fail to respond. It's often more reliable to explicitly set the desired scancode set rather than relying on the query function.
 
+**This converter's approach**: The sections above describe the generic AT/PS2 protocol. This converter does not use the 0xF0/0x00 query or auto-send set-switch commands like `F0 03`. Instead, it sends the Identify command (0xF2) during initialisation and uses the returned keyboard ID to auto-detect the scancode set. For keyboards identified as Set 3, it then sends `0xF8` to configure make/break mode only — no scancode-set switch is performed.
+
 ### LED Control
 
 AT/PS2 keyboards typically have three LED indicators that the host controls via commands. These show lock key states (Caps Lock, Num Lock, Scroll Lock).

@@ -53,13 +53,13 @@ Extended keys include:
 
 The Pause/Break key uses a complex sequence in Set 2:
 
-| Event                          | Sequence                                                                                     |
-| ------------------------------ | -------------------------------------------------------------------------------------------- |
-| **Pause** (single keypress)    | `E1 14 77` then `E1 F0 14 F0 77` (both sub-sequences emitted on one physical press)         |
-| **Break make** (Ctrl+Pause)    | `E0 7E`                                                                                      |
-| **Break release** (Ctrl+Pause) | `E0 F0 7E`                                                                                   |
-| **Unicomp Pause make**         | `E0 77` (Unicomp New Model M variant)                                                        |
-| **Unicomp Pause release**      | `E0 F0 77` (Unicomp New Model M variant)                                                     |
+| Event                          | Sequence                                                                            |
+| ------------------------------ | ----------------------------------------------------------------------------------- |
+| **Pause** (single keypress)    | `E1 14 77` then `E1 F0 14 F0 77` (both sub-sequences emitted on one physical press) |
+| **Break make** (Ctrl+Pause)    | `E0 7E`                                                                             |
+| **Break release** (Ctrl+Pause) | `E0 F0 7E`                                                                          |
+| **Unicomp Pause make**         | `E0 77` (Unicomp New Model M variant)                                               |
+| **Unicomp Pause release**      | `E0 F0 77` (Unicomp New Model M variant)                                            |
 
 **Important**:
 

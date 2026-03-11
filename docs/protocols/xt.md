@@ -160,7 +160,7 @@ The transmission method differs between genuine IBM keyboards and clone keyboard
 
 #### Genuine IBM XT Keyboards (Two Start Conditions)
 
-Authentic IBM keyboards use a two-start-bit sequence (RTS/CTS):
+Authentic IBM keyboards use a two-start-bit framing sequence:
 
 ```text
 Timing Diagram:
@@ -169,22 +169,24 @@ CLOCK     \_____/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
                _____ ___ ___ ___ ___ ___ ___ ___ ___
 DATA  ________/     \___X___X___X___X___X___X___X___\_______
           ^   ^  S    0   1   2   3   4   5   6   7
-          RTS CTS
+         ST1 ST2
 
 Legend:
-RTS = Request-to-Send (first start condition, CLOCK LOW + DATA LOW)
-CTS = Clear-to-Send (second start condition, CLOCK transitions)
+ST1 = First start bit (keyboard pulls CLOCK and DATA LOW, ~40µs)
+ST2 = Second start bit (keyboard releases CLOCK HIGH, DATA remains LOW)
 S   = Start bit (DATA goes HIGH momentarily)
 0-7 = Data bits transmitted LSB-first
 ```
 
 **Transmission Sequence:**
 
-1. **Request-to-Send (RTS)**: Keyboard pulls both CLOCK and DATA LOW (~40µs) to confirm the host is ready
-2. **Clear-to-Send (CTS)**: Keyboard releases CLOCK (goes HIGH), synchronising timing domains
+1. **First Start Bit**: Keyboard pulls both CLOCK and DATA LOW (~40µs)
+2. **Second Start Bit**: Keyboard releases CLOCK (goes HIGH), synchronising timing domains
 3. **Start Bit**: DATA briefly goes HIGH then LOW
 4. **Data Bits**: 8 bits transmitted with CLOCK pulses, DATA sampled on falling CLOCK edge
 5. **Return to Idle**: Both CLOCK and DATA return HIGH
+
+**Note:** XT is strictly unidirectional (keyboard → host only). Do not implement any host-to-keyboard commands — there is no host-side handshake in this protocol.
 
 #### Clone XT Keyboards (Single Start Condition)
 
@@ -274,10 +276,10 @@ On CLOCK falling edge:
 
   If DATA = LOW:
     → Genuine IBM XT detected (two start bits)
-    → Discard first start bit (RTS)
+    → Discard first start bit
     → Wait for CLOCK rising edge
     → Wait for CLOCK falling edge again
-    → Read second start bit (CTS)
+    → Read second start bit
     → Proceed with 8 data bits
 
   If DATA = HIGH:
@@ -438,14 +440,14 @@ Without this fast sampling, both genuine and clone keyboards would look identica
 
 **At 100µs sampling (bit period rate)**:
 
-- First sample: Misses the ~40µs RTS pulse entirely
-- Second sample: Sees DATA HIGH (after RTS ends)
+- First sample: Misses the ~40µs first start bit pulse entirely
+- Second sample: Sees DATA HIGH (after first start bit ends)
 - Result: Genuine and clone keyboards look identical
 
 **At 10µs sampling (this implementation)**:
 
-- First sample (at ~10µs): Catches DATA LOW on genuine XT (RTS pulse)
-- First sample (at ~10µs): Sees DATA HIGH on clone XT (no RTS pulse)
+- First sample (at ~10µs): Catches DATA LOW on genuine XT (first start bit present)
+- First sample (at ~10µs): Sees DATA HIGH on clone XT (no first start bit)
 - Result: Can distinguish keyboard types and align frame correctly
 
 ### Host-Side Implementation

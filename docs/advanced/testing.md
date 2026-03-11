@@ -216,7 +216,7 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 11. **Naming conventions:** Detects camelCase (expects snake_case)
 12. **Include order:** Validates include directive organisation
 13. **IRQ handler attributes:** Missing `__isr` attribute on interrupt handlers
-14. **Compile-time validation:** Advisory check for `_Static_assert` and `#error`
+14. **Compile-time validation:** Advisory only (does not affect pass/fail) — counts `_Static_assert` and `#error` directives; reports if none are found, but does not fail the check
 15. **Protocol ring buffer setup:** Missing `ringbuf_reset()` in keyboard protocol initialisation
 16. **Protocol PIO IRQ dispatcher:** Missing centralised `pio_irq_dispatcher_init()` or deprecated direct `irq_set_priority()` usage
 17. **Indentation consistency:** Enforces 4-space indentation width; detects files using 2-space base indentation
@@ -233,7 +233,7 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 
 **CI enforcement:** Pull requests automatically run lint checks in strict mode. Violations block merging.
 
-**Detailed documentation:** See [`tools/README.md`](../../tools/README.md) for comprehensive check descriptions and fix examples.
+**Detailed documentation:** See [`tools/lint.sh`](../../tools/lint.sh) for the definitive check list and [`tools/README.md`](../../tools/README.md) for comprehensive check descriptions and fix examples.
 
 ### Static Analysis
 
@@ -411,10 +411,10 @@ Whilst the converter hasn't been extensively benchmarked with timing equipment, 
 
 **Expected latency:**
 
-- Protocol transmission: 1-2ms (inherent to protocol)
-- Processing pipeline: <100μs (PIO→IRQ→ring buffer→scancode→HID)
-- USB polling wait: 0-8ms (average 4ms)
-- Total: 1-10ms depending on USB timing
+- Protocol transmission: 1-2ms (inherent to protocol timing, not software-controlled)
+- Processing pipeline: <100μs (PIO→IRQ→ring buffer→scancode→HID) — theoretical; based on pipeline step count, not measured
+- USB polling wait: 0–8ms (`bInterval = 8` in `usb_descriptors.c`; average 4ms assuming uniform phase distribution)
+- Total: these figures are theoretical estimates; actual end-to-end latency depends on USB polling phase at time of press
 
 ### Throughput Measurement
 
@@ -427,8 +427,6 @@ Whilst the converter hasn't been extensively benchmarked with timing equipment, 
 **Expected throughput:**
 
 - Theoretical max: 125 reports/second (8ms USB polling)
-- Human typing: 10-15 CPS typical, 20-30 CPS fast
-- Gaming inputs: 20-30 inputs/second
 
 ### Resource Monitoring
 

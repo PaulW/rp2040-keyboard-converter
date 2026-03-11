@@ -292,7 +292,7 @@ The human eye perceives brightness logarithmically—doubling the electrical pow
 | ----- | ---------- | --------- | --------------------------------- |
 | 1     | 0.8%       | ~10%      | Very dim (night mode, dark rooms) |
 | 2     | 2.0%       | ~20%      | Quite dim                         |
-| 3     | 3.9%       | ~30%      | Dim (default for many users)      |
+| 3     | 3.9%       | ~30%      | Dim (low brightness)              |
 | 4     | 7.8%       | ~40%      | Low brightness                    |
 | 5     | 13.7%      | ~50%      | Medium-low (balanced)             |
 | 6     | 23.5%      | ~60%      | Medium                            |
@@ -446,7 +446,7 @@ If the status LED never illuminates:
 
 If WS2812 LEDs don't light up or show incorrect colours:
 
-**Check power** - WS2812s operate at 3.3V by default in this project (connected to the 3.3V power rail). If you're using the 5V VSYS supply for additional brightness, verify that supply is active and that a level shifter is in place on the data line. See the [Power notes](#wiring-overview) above for wiring guidance.
+**Check power** - WS2812s operate at 3.3V by default in this project (connected to the 3.3V power rail). If you're using the 5V VSYS supply for additional brightness, verify that supply is active and that a level shifter is in place on the data line. See the [Wiring WS2812 LEDs](#wiring-ws2812-leds) section above for wiring guidance.
 
 **Verify data pin** - The data wire must connect to the GPIO pin specified in [`src/config.h`](../../src/config.h) as `LED_PIN` (default GPIO 29).
 
@@ -510,4 +510,4 @@ If WS2812 LEDs display unexpected colours:
 ---
 
 **Questions or stuck on something?**
-Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.
+Use [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found a problem.

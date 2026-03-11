@@ -56,12 +56,12 @@ Extended keys include:
 
 The Pause/Break key uses a special 6-byte sequence:
 
-| Event                          | Sequence                                                          |
-| ------------------------------ | ----------------------------------------------------------------- |
-| **Pause** (single keypress)    | `E1 1D 45` then `E1 9D C5` (both emitted on one physical press)  |
-| **Break make** (Ctrl+Pause)    | `E0 46`                                                           |
-| **Break release** (Ctrl+Pause) | `E0 C6`                                                           |
-| **Alternate Pause**            | `E0 45` / `E0 C5` (some keyboards)                               |
+| Event                          | Sequence                                                        |
+| ------------------------------ | --------------------------------------------------------------- |
+| **Pause** (single keypress)    | `E1 1D 45` then `E1 9D C5` (both emitted on one physical press) |
+| **Break make** (Ctrl+Pause)    | `E0 46`                                                         |
+| **Break release** (Ctrl+Pause) | `E0 C6`                                                         |
+| **Alternate Pause**            | `E0 45` / `E0 C5` (some keyboards)                              |
 
 **Important**:
 

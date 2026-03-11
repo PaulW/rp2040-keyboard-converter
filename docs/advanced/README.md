@@ -191,7 +191,7 @@ Protocol implementations are in `src/protocols/`. Each subdirectory contains the
 
 **Keyboard configurations:** [`src/keyboards/`](../../src/keyboards/)
 
-Keyboard-specific build files are in `src/keyboards/`. Each entry contains `keyboard.config` (build configuration), `keyboard.c` (keymap definitions), and `keyboard.h` (layout-specific overrides).
+Keyboard-specific build files are in `src/keyboards/`. Each entry contains the following build-time files: `keyboard.config` (build configuration), `keyboard.c` (keymap definitions), and `keyboard.h` (layout-specific overrides). User-facing documentation for each keyboard is in `docs/keyboards/`.
 
 **Scancode processors:** [`src/scancodes/`](../../src/scancodes/)
 

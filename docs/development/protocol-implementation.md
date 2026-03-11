@@ -350,7 +350,7 @@ The lint checks run automatically in CI and should be run locally before committ
 ### Forgetting LED initialisation
 
 **Problem:** LED shows ready state before protocol is actually ready  
-**Solution:** Set `kb_ready = 0` at the start of setup. After successful protocol initialisation, implementations should set `kb_ready = 1` and call `update_keyboard_ready_led()`. Where this happens is protocol-specific — some protocols call `update_keyboard_ready_led()` from the task function once initialisation completes, whilst others call it directly from `keyboard_event_processor()` in ISR context. Choose the location that matches your protocol's initialisation flow.
+**Solution:** Set `kb_ready = 0` at the start of setup. After successful protocol initialisation, implementations should set `kb_ready = 1` and call `update_keyboard_ready_led()`. Where this happens is protocol-specific — some protocols call `update_keyboard_ready_led()` from the task function once initialisation completes, whilst others call it directly from `keyboard_event_processor()` in ISR context. Calling from ISR context provides immediate LED feedback as soon as the protocol is ready, but requires the implementation to be ISR-safe and non-blocking; `update_keyboard_ready_led()` meets this requirement as it only updates the `kb_ready` bitfield and defers WS2812 transmission via PIO FIFO availability checks and the `led_update_pending` retry flag. Task-context updates are the safer choice for any LED logic that involves complex state evaluation or could block. Choose the location that matches your protocol's initialisation flow.
 
 ### Hardcoded timing values
 

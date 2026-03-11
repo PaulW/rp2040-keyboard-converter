@@ -379,20 +379,9 @@ If your protocol should support LEDs but they don't work, check the UART debug l
 
 This page focused on the USB side of the converter. For a complete understanding, explore these related topics:
 
-**Protocol implementations** explain how the converter receives data from specific keyboard types:
+**Protocol implementations** explain how the converter receives data from specific keyboard types. Have a look at the [protocols documentation](../protocols/) for a full overview of available protocol implementations.
 
-- [AT/PS2 Protocol](../protocols/at-ps2.md) - Most common protocol
-- [XT Protocol](../protocols/xt.md) - Original IBM PC keyboards
-- [Amiga Protocol](../protocols/amiga.md) - Commodore Amiga keyboards
-- [M0110 Protocol](../protocols/m0110.md) - Early Macintosh keyboards
-
-**Other features** extend the converter's functionality:
-
-- [Command Mode](command-mode.md) - Access bootloader and runtime configuration via keyboard
-- [Mouse Support](mouse-support.md) - Detailed explanation of simultaneous mouse conversion
-- [LED Support](led-support.md) - Status indicators and RGB lighting options
-- [Configuration Storage](config-storage.md) - How settings persist across reboots
-- [Logging](logging.md) - UART debug output for troubleshooting
+**Other features** extend the converter's functionality. Have a look at the [features documentation](../features/) for a full overview.
 
 **Implementation details** for developers interested in the code:
 

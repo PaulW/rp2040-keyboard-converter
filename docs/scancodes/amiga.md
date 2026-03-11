@@ -223,8 +223,8 @@ Amiga keyboards have independent matrix positions for all modifiers:
 
 - **Scancode Processor**: [`src/scancodes/amiga/scancode.c`](../../src/scancodes/amiga/scancode.c)
 - **Scancode Header**: [`src/scancodes/amiga/scancode.h`](../../src/scancodes/amiga/scancode.h)
-- **Protocol Implementation**: [`src/protocols/amiga/keyboard_interface.c`](../../src/protocols/amiga/keyboard_interface.c)
-- **Protocol Header**: [`src/protocols/amiga/keyboard_interface.h`](../../src/protocols/amiga/keyboard_interface.h)
+- **Keyboard Protocol Implementation**: [`src/protocols/amiga/keyboard_interface.c`](../../src/protocols/amiga/keyboard_interface.c)
+- **Keyboard Protocol Header**: [`src/protocols/amiga/keyboard_interface.h`](../../src/protocols/amiga/keyboard_interface.h)
 - **Keyboard Layout**: [`src/keyboards/amiga/a500/keyboard.c`](../../src/keyboards/amiga/a500/keyboard.c)
 - **HID Interface**: [`src/common/lib/hid_interface.c`](../../src/common/lib/hid_interface.c)
 - **HID Keycodes**: [`src/common/lib/hid_keycodes.h`](../../src/common/lib/hid_keycodes.h)

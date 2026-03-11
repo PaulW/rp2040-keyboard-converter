@@ -363,7 +363,7 @@ Logging overhead is designed to be negligible:
 - **Error/Info levels**: Minimal CPU usage (messages are infrequent - typically only at startup or during error conditions)
 - **Debug level**: Moderate CPU usage during active typing (generates many messages per keystroke)
 
-These characteristics are achieved through the non-blocking DMA design. UART transmission rate at 115200 baud limits throughput to approximately 11,520 bytes per second. Debug logging during fast typing can generate 5000-8000 bytes per second, well within UART capacity.
+These characteristics are achieved through the non-blocking DMA design. UART transmission rate at 115200 baud limits throughput to approximately 11,520 bytes per second. Debug logging during fast typing can generate roughly 5,000–8,000 bytes per second (illustrative estimate — actual rate depends on log level, message frequency, and input intensity), well within UART capacity.
 
 The non-blocking DMA design ensures that even at debug level, keyboard latency remains unaffected by logging activity.
 

@@ -829,14 +829,21 @@ void pio_restart(PIO pio, uint sm, uint offset) {
 
 ### PIO Resource Management
 
-Always check before allocating PIO resources. There's limited space—only 32 instructions per PIO instance, and only 4 state machines per instance. If you just assume space is available, you'll hit problems when running configurations that use multiple protocols:
+Always allocate PIO resources atomically using the `claim_pio_and_sm()` helper. There's limited space—only 32 instructions per PIO instance, and only 4 state machines per instance. If you just assume space is available, you'll hit problems when running configurations that use multiple protocols:
 
 ```c
-if (!pio_can_add_program(pio0, &program)) {
-    LOG_WARN("PIO0 full, trying PIO1\n");
-    pio = pio1;  // Fall back to PIO1
+// Atomically claims a PIO instance and state machine for the given program
+pio_engine_t pio_engine = claim_pio_and_sm(&keyboard_interface_program);
+if (pio_engine.pio == NULL) {
+    LOG_ERROR("No PIO resources available\n");
+    return false;
 }
+// pio_engine.pio    — the PIO instance (pio0 or pio1)
+// pio_engine.sm     — the claimed state machine index
+// pio_engine.offset — the program load offset
 ```
+
+> ⚠️ **Do not call `pio_can_add_program()`, `pio_claim_unused_sm()`, or `pio_add_program()` directly for allocation.** These functions are not atomic when used together; use `claim_pio_and_sm()` instead to avoid race conditions and resource mismatches.
 
 Document PIO resource usage in your protocol handler so others know what space they're consuming:
 

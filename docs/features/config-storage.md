@@ -288,10 +288,10 @@ The configuration storage code lives in [`config_storage.c`](../../src/common/li
 // Boot: Load configuration from flash to RAM
 bool config_init(void);
 
-// Runtime: Access settings
-const config_data_t *cfg = config_get();
+// Runtime: Access settings (returns const pointer to RAM configuration)
+const config_data_t *config_get(void);
 
-// Runtime: Save RAM configuration to flash
+// Runtime: Save RAM configuration to flash (blocking)
 bool config_save(void);
 
 // Runtime: Reset to factory defaults and save

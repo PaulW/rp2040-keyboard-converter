@@ -286,7 +286,7 @@ Automated pull request reviews through CodeRabbit provide AI-assisted analysis f
 
 CodeRabbit configuration defines path-specific instructions (different rules for protocols vs keyboards vs common libraries), custom pre-merge checks (must pass lint, must compile all configurations, must respect memory limits), and knowledge base integration ensuring reviews align with project architecture.
 
-Custom checks ensure architectural compliance: no blocking operations anywhere in the code, no multicore usage attempts, interrupt safety for all shared data structures, RAM execution requirements met, and protocol timing specifications followed precisely.
+Custom checks flag potential architectural issues for review: no blocking operations anywhere in the code, no multicore usage attempts, interrupt safety for all shared data structures, RAM execution requirements met, and checks for patterns or anti-patterns related to protocol timing that warrant manual verification. These checks are heuristic; they raise issues for further testing and review rather than proving timing correctness.
 
 ---
 

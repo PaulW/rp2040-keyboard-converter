@@ -191,7 +191,9 @@ if (to_ms_since_boot(get_absolute_time()) - state_start > 100) {
 }
 ```
 
-This pattern appears throughout the codebase—protocol handlers, Command Mode, LED updates, configuration storage. The main loop runs continuously without blocking, checking state machines and processing events as they occur. It's a bit more code than just calling `sleep()`, but it's what keeps the converter working reliably.
+This pattern appears throughout the codebase—protocol handlers, Command Mode, LED updates. The main loop runs continuously without blocking, checking state machines and processing events as they occur. It's a bit more code than just calling `sleep()`, but it's what keeps the converter working reliably.
+
+**Note:** `config_save()` is an intentional exception. Calling it during layer Toggle (TG) or Switch-To (TO) operations does block — it issues `flash_range_erase()` and `flash_range_program()` to persist the new layer state to flash, which briefly halts HID events and USB reports during the erase/write cycle. This is by design, as flash writes require interrupts to be disabled.
 
 **See:** [Architecture Guide](../advanced/architecture.md) for complete details about the non-blocking design
 

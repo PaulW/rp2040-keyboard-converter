@@ -230,7 +230,7 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
 };
 ```
 
-`TRNS` (transparent) means the key falls through to the next lower active layer—in this example, Layer 0. It does not suppress the key entirely. If you want a position to produce no keypress at all on a given layer, use `KC_NO` instead.
+`TRNS` (transparent) means the key falls through to the next lower active layer—in this example, Layer 0. It does not suppress the key entirely. If you want a position to produce no keypress at all on a given layer, use `NO` instead (the KEYMAP macro expands shorthands like `TRNS` and `NO` to `KC_TRNS` and `KC_NO` via token concatenation).
 
 ### Shift-Override (Non-Standard Shift Legends)
 
