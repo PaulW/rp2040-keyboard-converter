@@ -115,14 +115,14 @@ Traditional microcontrollers either bit-bang protocols in software (struggles wi
 
 **Which board should you get?**
 
-They're all based on the same RP2040 chip, so they're functionally identical. It comes down to size, USB connector, and what you're planning to do with it.
+They're all based on the same RP2040 chip, so they're functionally identical. It comes down to size and USB connector.
 
-| Board                       | Size      | USB     | Price | When to choose it                                                      |
-| --------------------------- | --------- | ------- | ----- | ---------------------------------------------------------------------- |
-| **Raspberry Pi Pico**       | 51×21mm   | Micro-B | ~£4   | Best starting point—cheap, widely available, tons of documentation     |
-| **WaveShare RP2040-Zero**   | 23.5×18mm | USB-C   | ~£6   | Great for internal installs, tiny, has built-in RGB LED                |
-| **Pimoroni Tiny 2040**      | 22×18mm   | USB-C   | ~£8   | Similar to WaveShare but premium components, nice if you value quality |
-| **Adafruit Feather RP2040** | 51×23mm   | USB-C   | ~£12  | Premium option with battery power and expansion capabilities           |
+| Board                       | Size      | USB     |
+| --------------------------- | --------- | ------- |
+| **Raspberry Pi Pico**       | 51×21mm   | Micro-B |
+| **WaveShare RP2040-Zero**   | 23.5×18mm | USB-C   |
+| **Pimoroni Tiny 2040**      | 22×18mm   | USB-C   |
+| **Adafruit Feather RP2040** | 51×23mm   | USB-C   |
 
 **My recommendation**: Start with a Raspberry Pi Pico if you're breadboarding. It's the cheapest, you can get them anywhere, and there's loads of help available if you get stuck. If you're planning an internal installation, the Waveshare RP2040-Zero is what I use—it's tiny, has USB-C, and even comes with an RGB LED built in.
 

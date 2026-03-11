@@ -155,7 +155,7 @@ Here's the complete boot sequence:
 
 **Step 6**: Determine which copy to use:
 
-- If both valid: Use the copy with the higher sequence number (more recent)
+- If both valid: Use the copy with the higher sequence number (more recent). If both sequence numbers are equal (for example, both are 0 immediately after factory reset), copy B is selected.
 - If only one valid: Use that one
 - If neither valid: Use factory defaults
 
@@ -320,7 +320,7 @@ The SDK provides [`flash_safe_execute()`](https://www.raspberrypi.com/documentat
 
 **Flash wear**: Each setting change alternates between Copy A and Copy B. With typical flash endurance of ~10,000 cycles (conservative estimate), you could save configuration 20,000 times before wearing out flash. At one save per day, that's 54 years.
 
-**Corruption resistance**: Dual-copy with CRC validation protects against power loss during write.
+**Corruption resistance**: Dual-copy with CRC validation improves recovery from interrupted writes, though if power is lost during the 4KB sector erase or before both copies have been rewritten, both copies could be invalidated.
 
 ---
 

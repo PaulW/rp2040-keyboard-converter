@@ -290,7 +290,7 @@ NumLock: 76   /: 77    *: 7E    ,: 84
 
 ## Performance Characteristics
 
-- **Average bytes per keystroke**: 2.0 (1 make + 1 break, consistent)
+- **Average bytes per keystroke**: 3 (1 make + 2 break: F0 + code, consistent)
 - **State machine complexity**: Lowest (2 states)
 - **Processing overhead**: Minimal (simple state machine)
 - **Memory requirements**: ~256 bytes for translation table (no E0 table)
@@ -327,11 +327,11 @@ Terminal keyboards identify with specific ID ranges (based on tmk reference):
 0xAB85: Mixed models (some Set 2, some Set 3)
 ```
 
-Keyboards with terminal IDs should:
+When the converter identifies a terminal keyboard by its ID, it:
 
-1. Be configured for Set 3
-2. Receive `0xF8` command (Set All Keys Make/Break)
-3. Process single-byte scancodes without E0/E1 logic
+1. Auto-detects the scancode set from the `0xF2` (Identify) response — the converter does not send `F0 03` to force-switch scancode sets
+2. Sends `0xF8` (Set All Keys Make/Break) and waits for ACK (`0xFA`) to ensure press and release events are reported
+3. Processes single-byte scancodes without E0/E1 prefix logic
 
 ## Keyboard Identification
 

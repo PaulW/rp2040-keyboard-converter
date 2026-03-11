@@ -61,7 +61,7 @@ The USB polling interval represents the primary throughput bottleneck—not the 
 
 ## Resource Utilisation
 
-The converter's resource usage is kept well within the RP2040's limits:
+The converter's resource usage is tracked against CI-enforced build limits:
 
 ### Memory
 
@@ -72,7 +72,7 @@ The RP2040 provides **264KB of SRAM** and **2MB of flash storage**. The converte
 - **Flash usage:** < 230KB (11.5% of 2MB capacity)
 - **SRAM usage:** < 150KB (56.8% of 264KB capacity)
 
-These limits provide comfortable margins whilst preventing configurations that approach resource boundaries. Actual usage varies by configuration—check the memory region summary in the build output for the exact figures for your build.
+Actual usage varies by configuration—check the memory region summary in the build output for the exact figures for your build.
 
 The 32-byte ring buffer fits entirely in on-chip SRAM and constitutes a small, fixed working set that remains resident there during operation. Global variables store protocol state, HID report buffers, and configuration values. The stack handles function call depth and local variables. The heap remains minimal—the code favours stack allocation to avoid fragmentation and memory leaks.
 
@@ -188,7 +188,7 @@ The current implementation prioritises correctness and determinism over raw perf
 
 5. **Ring buffer size tuning:** Could reduce to 16 bytes (still ample for burst handling) to improve cache utilisation. Requires testing with worst-case multibyte sequences.
 
-These optimisations aren't currently implemented because the converter already meets performance requirements with comfortable margins.
+These optimisations are not currently implemented. No hardware timing measurements have been performed to establish whether they would be beneficial.
 
 ---
 

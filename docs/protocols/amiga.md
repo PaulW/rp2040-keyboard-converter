@@ -841,7 +841,6 @@ This converter implementation is based entirely on the official Commodore specif
 
 2. **[`keyboard_interface.c`](../../src/protocols/amiga/keyboard_interface.c)** - Protocol implementation:
    - Bit de-rotation (received 6-5-4-3-2-1-0-7 → standard 7-6-5-4-3-2-1-0)
-   - CAPS LOCK synchronisation logic (handles keyboard LED encoding)
    - Special code processing (0xF9 resync, 0x78 reset warning, etc.)
    - State machine for keyboard initialisation sequence
 
@@ -849,6 +848,9 @@ This converter implementation is based entirely on the official Commodore specif
    - Timing constants (85µs handshake, 143ms timeout)
    - Special code definitions
    - Inline bit de-rotation helper function
+
+4. **[`src/scancodes/amiga/scancode.c`](../../src/scancodes/amiga/scancode.c)** - Scancode processing:
+   - CAPS LOCK synchronisation logic (compares keyboard LED state with USB HID state)
 
 ### Implementation Validation
 

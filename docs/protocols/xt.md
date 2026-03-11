@@ -58,11 +58,12 @@ The protocol is synchronous—it uses a dedicated clock signal for data transmis
 
 **Frame Structure**
 
-Each transmission consists of:
+Frame length depends on keyboard type:
 
-- **Start bit(s)**: 1 bit (clones) or 2 bits (genuine IBM XT)
-- **Data bits**: 8 bits containing the actual scan code
-- **Total**: 9 bits per frame (8 data + 1 start bit in the interrupt handler)
+- **Genuine IBM XT**: ST1 + ST2 + 8 data bits = 10 bits total. The PIO discards ST1 and produces a normalised 9-bit frame (ST2 + 8 data bits) delivered to the interrupt handler.
+- **Clone XT**: 1 start bit + 8 data bits = 9 bits total. The PIO passes these through as the normalised 9-bit frame.
+
+In either case, the interrupt handler receives a normalised 9-bit PIO frame: 1 start bit followed by 8 data bits.
 
 **Timing Characteristics**
 
@@ -540,15 +541,15 @@ If you're running into issues with your XT keyboard, the problems usually fall i
 
 ### Common Issues
 
-| Symptom                | Likely Cause                   | What to Check                                           |
-| ---------------------- | ------------------------------ | ------------------------------------------------------- |
-| No response            | Power issue, bad connections   | Check VCC, GND, verify pull-up resistor on DATA         |
-| Initialisation fails   | Missing soft reset, too early  | Execute CLOCK LOW soft reset, wait 500ms after power-on |
-| Garbled scancodes      | Wrong bit order, sampling edge | Verify LSB-first, sample on CLOCK falling edge          |
-| Missing key events     | Buffer overflow, timing        | Check ring buffer size, verify interrupt latency        |
-| Intermittent operation | Cable issues, signal quality   | Use shorter cable (<2m), check connector pins           |
-| No BAT (0xAA)          | Failed self-test, timing       | Wait longer (1000ms), verify soft reset sequence        |
-| Clone detection issues | Start bit mismatch             | Implementation auto-detects 1 or 2 start bits           |
+| Symptom                | Likely Cause                   | What to Check                                                |
+| ---------------------- | ------------------------------ | ------------------------------------------------------------ |
+| No response            | Power issue, bad connections   | Check VCC, GND, verify pull-up resistor on DATA              |
+| Initialisation fails   | Missing soft reset, too early  | Execute CLOCK LOW soft reset, wait 500ms after power-on      |
+| Garbled scancodes      | Wrong bit order, sampling edge | Verify LSB-first, sample on CLOCK falling edge               |
+| Missing key events     | Buffer overflow, timing        | Check ring buffer size, verify interrupt latency             |
+| Intermittent operation | Cable issues, signal quality   | Use a shorter cable, check for cable integrity and shielding |
+| No BAT (0xAA)          | Failed self-test, timing       | Wait longer (1000ms), verify soft reset sequence             |
+| Clone detection issues | Start bit mismatch             | Implementation auto-detects 1 or 2 start bits                |
 
 ---
 

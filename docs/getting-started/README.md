@@ -36,7 +36,7 @@ This guide walks you through the basics of wiring your device to a RP2040 board 
 
 ### Compiling Firmware for Your Device
 
-This guide explains the Docker-based build process I use, which gives you a consistent environment no matter what operating system you're using. You'll learn how to specify your device configuration, enable optional features like simultaneous keyboard and mouse support, and understand what the build produces. The Docker approach means you don't have to mess around with ARM compilers, CMake, or SDK versions—it's all handled for you.
+This guide explains the Docker-based build process I use, which gives you a consistent environment no matter what operating system you're using. You'll learn how to specify your device configuration, enable optional features like simultaneous keyboard and mouse support, and understand what the build produces. The Docker approach means you don't need to install ARM compilers, CMake, or SDK versions locally — it handles all of that for you.
 
 **You'll need:**
 

@@ -70,18 +70,9 @@ PROTOCOL=at-ps2
 CODESET=set123
 ```
 
-Available protocols:
+`PROTOCOL` must match a subdirectory name in [`src/protocols/`](../../src/protocols/). Have a look at [`docs/protocols/`](../protocols/) for documentation on each protocol.
 
-- `at-ps2` - IBM PC/AT and PS/2 keyboards and mice
-- `xt` - IBM PC/XT keyboards
-- `amiga` - Commodore Amiga keyboards
-- `apple-m0110` - Apple M0110 and M0110A keyboards
-
-Scancode sets you can use:
-
-- `set123` - Auto-detects between Scancode Set 1, 2, or 3 (handy if you're not sure)
-- `set1` - Scancode Set 1 only
-- `amiga` - Amiga scancode set
+`CODESET` must match a subdirectory name in [`src/scancodes/`](../../src/scancodes/). Have a look at [`docs/scancodes/`](../scancodes/) for documentation on each scancode processor.
 
 The `MAKE`, `MODEL`, and `DESCRIPTION` fields are just for your reference—they don't actually affect how the firmware works, but they're useful for keeping track of what you're building.
 

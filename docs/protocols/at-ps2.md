@@ -527,7 +527,7 @@ LEDs: Update to reflect new state
 - LED updates should be non-blocking (don't wait for ACK in main loop)
 - Queue LED commands to avoid interfering with scancode reception
 - Some keyboards may take 10-20ms to update LEDs—don't flood with rapid changes
-- If ACK not received within 20ms, retry once then skip (degraded mode)
+- If ACK is not received within the timeout, the state machine transitions directly to INITIALISED and continues without LED synchronisation (degraded mode) — no retry is attempted (see `SET_LOCK_LEDS` timeout handling in `keyboard_interface.c`)
 
 ### Keyboard Commands
 

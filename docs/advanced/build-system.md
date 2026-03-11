@@ -280,7 +280,7 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" builder
 docker compose run --rm -e KEYBOARD="modelm/enhanced" -e CMAKE_BUILD_PARALLEL_LEVEL=4 builder
 ```
 
-Incremental builds only recompile changed files, so day-to-day iteration is fast.
+Incremental builds only recompile changed files.
 
 ---
 

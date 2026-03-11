@@ -10,10 +10,10 @@ Below you'll find details on each protocol, plus quick reference tables if you'r
 
 ### Keyboard Protocols
 
-| Protocol        | Typical Keyboards                      | Documentation                 |
+| Protocol        | Example Keyboards                      | Documentation                 |
 | --------------- | -------------------------------------- | ----------------------------- |
-| **AT/PS2**      | IBM Model M, Most PC keyboards         | **[→ Full Guide](at-ps2.md)** |
-| **XT**          | IBM Model F (XT), Early PC keyboards   | **[→ Full Guide](xt.md)**     |
+| **AT/PS2**      | IBM Model M, IBM Model F PC/AT         | **[→ Full Guide](at-ps2.md)** |
+| **XT**          | IBM Model F XT                         | **[→ Full Guide](xt.md)**     |
 | **Amiga**       | Commodore Amiga A500/A1000/A2000/A3000 | **[→ Full Guide](amiga.md)**  |
 | **Apple M0110** | Macintosh M0110, M0110A, M0110B        | **[→ Full Guide](m0110.md)**  |
 
@@ -31,16 +31,16 @@ Below you'll find details on each protocol, plus quick reference tables if you'r
 
 If you're not sure which protocol your keyboard uses, this table should help:
 
-| Your Keyboard                                | Protocol     |
-| -------------------------------------------- | ------------ |
-| IBM Model M Enhanced (1391401)               | AT/PS2       |
-| IBM Model M (101/102-key)                    | AT/PS2       |
-| IBM Model F PC/AT                            | AT/PS2       |
-| IBM Model F XT                               | XT           |
-| Commodore Amiga keyboard (any model)         | Amiga        |
-| Apple Macintosh M0110/M0110A                 | M0110        |
-| Most keyboards with 5-pin DIN connector      | XT or AT/PS2 |
-| Most keyboards with 6-pin mini-DIN connector | AT/PS2       |
+| Your Keyboard                           | Protocol     |
+| --------------------------------------- | ------------ |
+| IBM Model M Enhanced (1391401)          | AT/PS2       |
+| IBM Model M (101/102-key)               | AT/PS2       |
+| IBM Model F PC/AT                       | AT/PS2       |
+| IBM Model F XT                          | XT           |
+| Commodore Amiga keyboard (any model)    | Amiga        |
+| Apple Macintosh M0110/M0110A            | M0110        |
+| Keyboards with 5-pin DIN connector      | XT or AT/PS2 |
+| Keyboards with 6-pin mini-DIN connector | AT/PS2       |
 
 **Still unsure?** See the [Keyboards Documentation](../keyboards/README.md) for detailed keyboard identification.
 

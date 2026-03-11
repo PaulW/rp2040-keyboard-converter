@@ -31,8 +31,15 @@ Here's the standard pattern all protocols follow, in order:
 Set the device-specific ready state to false and update the status LED. This happens before anything else because you want the LED to show the actual state — the device isn't ready yet, so don't indicate that it is. Keyboard protocols set `kb_ready`; the mouse protocol sets `mouse_ready`.
 
 ```c
+// Keyboard example
 #ifdef CONVERTER_LEDS
   converter.state.kb_ready = 0;
+  update_converter_status();
+#endif
+
+// Mouse example
+#ifdef CONVERTER_LEDS
+  converter.state.mouse_ready = 0;
   update_converter_status();
 #endif
 ```
@@ -191,9 +198,16 @@ if (!pio_irq_register_callback(&keyboard_input_event_handler)) {
 Finally, set the ready flag, update the LED/status, and log confirmation that setup completed. Include relevant details like which PIO instance and state machine were allocated, and any protocol-specific parameters.
 
 ```c
+// Keyboard example
 kb_ready = 1;
 update_keyboard_ready_led();
-LOG_INFO("PIO%d SM%d AT/PS2 Interface program loaded at offset %d with clock divider of %.2f\n",
+LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
+         (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);
+
+// Mouse example
+converter.state.mouse_ready = 1;
+update_converter_status();
+LOG_INFO("PIO%d SM%d Mouse Interface program loaded at offset %d with clock divider of %.2f\n",
          (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);
 ```
 
@@ -315,7 +329,7 @@ The setup function only deals with initialisation. The complexity of your protoc
 
 ## Using This Pattern
 
-When implementing a new protocol, use the existing implementations in [`src/protocols/`](../../src/protocols/) as reference. Each subdirectory contains the full implementation for that protocol. AT/PS2 is a useful example of a bidirectional implementation with error recovery — Steps 3–10 of the setup sequence are wrapped in `atps2_setup_pio_engine()` in `common_interface.c`, shared between keyboard and mouse.
+When implementing a new protocol, use the existing implementations in [`src/protocols/`](../../src/protocols/) as reference. Each subdirectory contains the full implementation for that protocol. AT/PS2 is a useful example of a bidirectional implementation with error recovery. `atps2_setup_pio_engine()` in `common_interface.c` is shared between keyboard and mouse; it handles PIO resource allocation, clock-divider calculation, PIO programme initialisation, dispatcher setup, callback registration, and logging. Device-specific tasks such as pin assignment and the LED/ready-flag steps remain in the individual setup functions.
 
 Each protocol's README in `src/protocols/<protocol>/` contains timing diagrams and protocol-specific details. Start with those to understand the protocol requirements, then follow this setup pattern for consistency.
 
@@ -348,7 +362,7 @@ The lint checks run automatically in CI and should be run locally before committ
 **Problem:** LED shows ready state before protocol is actually ready  
 **Solution (keyboard):** Set `kb_ready = 0` at the start of `keyboard_interface_setup()`. After successful protocol initialisation, set `kb_ready = 1` and call `update_keyboard_ready_led()`. Where this call is placed is protocol-specific — some protocols call `update_keyboard_ready_led()` from the task function once initialisation completes, whilst others call it directly from `keyboard_event_processor()` in ISR context. Calling from ISR context provides immediate LED feedback as soon as the protocol is ready, but requires the implementation to be ISR-safe and non-blocking; `update_keyboard_ready_led()` meets this requirement as it only updates the `kb_ready` bitfield and defers WS2812 transmission via PIO FIFO availability checks and the `led_update_pending` retry flag. Task-context updates are the safer choice for any LED logic that involves complex state evaluation or could block. Choose the location that matches your protocol's initialisation flow.
 
-**Solution (mouse):** Set `mouse_ready = 0` at the start of the mouse init entrypoint (e.g., `mouse_interface_setup()`). After successful initialisation, set `mouse_ready = 1` and call `update_converter_status()`. The same ISR vs task-context considerations apply: `update_converter_status()` is safe to call from IRQ context, but task-context placement is the safer default for any logic that involves complex state evaluation or could block.
+**Solution (mouse):** Set `mouse_ready = 0` at the start of the mouse init entrypoint (e.g., `mouse_interface_setup()`). After successful initialisation, set `mouse_ready = 1` and call `update_converter_status()`. `update_converter_status()` is marked `@note Main loop only` and must be called from task or main-loop context, not from an IRQ handler. Call it after setting `mouse_ready` once initialisation is confirmed.
 
 ### Hardcoded timing values
 

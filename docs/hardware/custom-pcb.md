@@ -65,7 +65,7 @@ I designed this in EasyEDA, which is free and has decent integration with JLCPCB
 - Keyboard CLOCK: GPIO 17
 - Keyboard DATA: GPIO 16
 - Status LED: GPIO 25 (built-in RP2040 LED)
-- USB: Native RP2040 USB (GPIO 20/21)
+- USB: Native RP2040 USB (uses dedicated USB D+/D− pins — not GPIO 20/21)
 
 The PCB is 1.6mm thick (standard), 1oz copper, with HASL lead-free finish. Nothing exotic—just bog-standard PCB specs that any manufacturer can handle.
 
@@ -119,7 +119,7 @@ I used JLCPCB for fabrication and assembly. They're quite affordable compared to
 6. Confirm and order
 
 **What you get:**
-Minimum order is 5 PCBs. I paid about £5 per board when ordering 5 with assembly (I had some SMT assembly vouchers at the time, so your price will vary), plus shipping. Lead time was about 2-3 weeks to the UK.
+Minimum order is 5 PCBs. Pricing and lead times vary — check the JLCPCB website for current figures.
 
 ---
 

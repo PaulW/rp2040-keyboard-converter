@@ -16,9 +16,9 @@ The timing-sensitive nature of keyboard protocols means issues often hide until 
 
 ## Essential Test Equipment
 
-### Logic Analyzer
+### Logic Analyser
 
-A logic analyzer captures the actual clock and data signals between keyboard and converter, showing precisely what's happening on the wire.
+A logic analyser captures the actual clock and data signals between keyboard and converter, showing precisely what's happening on the wire.
 
 I use [Scoppy](https://github.com/fhdm-dev/scoppy) — a Raspberry Pi Pico-based logic analyser and oscilloscope with 8 channels and 25MS/s logic analyser mode, using an Android device as the display. It's free to download and requires no programming to set up.
 
@@ -29,7 +29,7 @@ I use [Scoppy](https://github.com/fhdm-dev/scoppy) — a Raspberry Pi Pico-based
 - Setup and hold times meet protocol requirements
 - Converter's signal timing meets keyboard requirements (for bidirectional protocols)
 
-**Protocol decoders:** Logic analyzer software commonly includes AT/PS2 and UART decoders. These interpret captured waveforms automatically, showing scancodes and protocol errors without manual bit counting.
+**Protocol decoders:** Logic analyser software commonly includes AT/PS2 and UART decoders. These interpret captured waveforms automatically, showing scancodes and protocol errors without manual bit counting.
 
 ### USB-UART Adapter
 
@@ -69,7 +69,7 @@ A basic multimeter verifies voltage levels and continuity.
 
 ### Oscilloscope (Optional)
 
-An oscilloscope reveals signal quality issues that logic analyzers might miss.
+An oscilloscope reveals signal quality issues that logic analysers might miss.
 
 **What to observe:**
 
@@ -391,9 +391,9 @@ Whilst the converter hasn't been extensively benchmarked with timing equipment, 
 
 ### Latency Measurement
 
-**Method 1: Logic analyzer**
+**Method 1: Logic analyser**
 
-1. Connect logic analyzer to keyboard CLK/DATA and USB D+/D-
+1. Connect logic analyser to keyboard CLK/DATA and USB D+/D-
 2. Press a key and capture signals
 3. Measure time from keyboard clock edge to USB D+ transition
 4. Repeat 10-20 times to get average and variance
@@ -454,13 +454,13 @@ The converter provides configurable logging levels (see [Logging guide](../featu
 
 **For testing:** Use DEBUG level to see everything. For production: INFO or WARN.
 
-### Logic Analyzer Protocol Decoding
+### Logic Analyser Protocol Decoding
 
-Logic analyzer software commonly includes protocol decoders:
+Logic analyser software commonly includes protocol decoders:
 
 1. **AT/PS2 decoder:** Shows scancodes, parity errors, timing violations
 2. **UART decoder:** Displays UART output alongside protocol signals
-3. **USB decoder:** Some analyzers can decode USB HID reports
+3. **USB decoder:** Some analysers can decode USB HID reports
 
 **Debugging workflow:**
 
@@ -511,7 +511,7 @@ When submitting bug reports or requesting support, include:
 3. **Test results:**
    - Which tests passed/failed
    - UART log output (if available)
-   - Logic analyzer captures (if available)
+   - Logic analyser captures (if available)
    - Steps to reproduce issue
 
 4. **Environment:**

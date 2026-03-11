@@ -59,20 +59,20 @@ If you're not sure which scancode set your keyboard uses, this should help:
 
 The three PC scancode sets evolved over time as keyboards got more sophisticated. Here's how they compare:
 
-| Feature            | Set 1        | Set 2          | Set 3               |
-| ------------------ | ------------ | -------------- | ------------------- |
-| **Era**            | 1981 (XT)    | 1984 (AT)      | 1987 (Terminal)     |
-| **Break Encoding** | High bit set | F0 prefix      | F0 prefix           |
-| **Extended Keys**  | E0 prefix    | E0 prefix      | None (clean design) |
-| **Special Cases**  | 6-byte Pause | 8-byte Pause   | No Pause key        |
-| **Complexity**     | Medium       | High           | Low                 |
-| **Usage**          | XT keyboards | AT/PS2 default | Terminal keyboards  |
+| Feature            | Set 1        | Set 2          | Set 3                                  |
+| ------------------ | ------------ | -------------- | -------------------------------------- |
+| **Era**            | 1981 (XT)    | 1984 (AT)      | 1987 (Terminal)                        |
+| **Break Encoding** | High bit set | F0 prefix      | F0 prefix                              |
+| **Extended Keys**  | E0 prefix    | E0 prefix      | None (clean design)                    |
+| **Special Cases**  | 6-byte Pause | 8-byte Pause   | Pause/Break (0x62) standard make/break |
+| **Complexity**     | Medium       | High           | Low                                    |
+| **Usage**          | XT keyboards | AT/PS2 default | Terminal keyboards                     |
 
 **Set 1** uses the high bit to indicate key release—when you press 'A' it sends `0x1E`, when you release it sends `0x9E` (0x1E with bit 7 set). Extended keys like the arrow keys send an `E0` prefix first. The Pause key is particularly odd—it sends a 6-byte sequence that includes both make and break codes in one go.
 
 **Set 2** separates make and break codes more cleanly—pressing 'A' sends `0x1C`, releasing it sends `F0 1C`. Extended keys still use `E0` prefixes, so Right Control is `E0 14` for make and `E0 F0 14` for break. The Pause key is even more elaborate here—8 bytes with an `E1` prefix. This is the default scancode set for AT/PS2 keyboards.
 
-**Set 3** simplifies things considerably. No prefixes for extended keys, consistent two-byte break codes (`F0` + scancode), and no special Pause key handling. It's a cleaner design, used primarily on terminal keyboards.
+**Set 3** simplifies things considerably. No prefixes for extended keys, consistent two-byte break codes (`F0` + scancode), and Pause/Break (0x62) is handled as a normal key with standard make and break encoding rather than a multibyte sequence. Used primarily on terminal keyboards.
 
 **Amiga** scancodes are completely different—they're 7-bit codes with bit 7 indicating make (0) or break (1). No multibyte sequences, no prefixes, just simple single-byte scancodes with the release bit included. Much simpler than the PC scancode sets, though obviously only used on Amiga keyboards.
 

@@ -307,7 +307,6 @@ There's no per-layer validation—the firmware only checks whether the array exi
 **Example keyboards with shift-override:**
 
 - IBM Model M Type 2 (M122): `src/keyboards/modelm/m122/keyboard.c`
-- Microswitch 122ST13: `src/keyboards/microswitch/122st13/keyboard.c`
 
 **Enabling shift-override:**
 

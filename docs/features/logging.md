@@ -162,7 +162,7 @@ Examples:
 [INFO] Keyboard Make: IBM
 [INFO] Keyboard Protocol: at-ps2
 [DBG] Processing scancode: 0x1C
-[ERR] Start Bit Validation Failed: start_bit=1
+[ERR] Start Bit Validation Failed: start_bit=0
 ```
 
 ### Startup Sequence
@@ -201,7 +201,7 @@ During normal use, logs show key events at various verbosity levels:
 **Log Level 0 (Errors Only)** - Only shows problems:
 
 ```text
-[ERR] Start Bit Validation Failed: start_bit=1
+[ERR] Start Bit Validation Failed: start_bit=0
 [ERR] Parity Bit Validation Failed: expected=1, actual=0
 [ERR] Keyboard Self-Test Failed: 0xAA
 ```
@@ -231,7 +231,7 @@ When things go wrong, error messages indicate what failed:
 **Protocol Errors:**
 
 ```text
-[ERR] Start Bit Validation Failed: start_bit=1
+[ERR] Start Bit Validation Failed: start_bit=0
 ```
 
 The protocol expects a start bit of 0, but received 1. This indicates timing issues or electrical noise on the data line.
@@ -273,7 +273,7 @@ The converter supports three log levels that control how much information appear
 **Example output**:
 
 ```text
-[ERR] Start Bit Validation Failed: start_bit=1
+[ERR] Start Bit Validation Failed: start_bit=0
 [ERR] Parity Bit Validation Failed: expected=1, actual=0
 [WARN] Factory reset requested - restoring default configuration
 ```
@@ -293,7 +293,7 @@ The converter supports three log levels that control how much information appear
 [INFO] Build Time: Oct 28 2025 14:23:17
 [INFO] Keyboard Make: IBM
 [INFO] Keyboard Protocol: at-ps2
-[ERR] Start Bit Validation Failed: start_bit=1
+[ERR] Start Bit Validation Failed: start_bit=0
 ```
 
 ### Log Level 2: Debug
