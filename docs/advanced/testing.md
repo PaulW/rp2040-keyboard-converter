@@ -10,41 +10,39 @@ Verifying the converter with actual keyboards goes beyond confirming correct typ
 
 Hardware testing catches these problems during development, before they appear as intermittent failures in production use.
 
-### Why Hardware Testing Matters
-
 The timing-sensitive nature of keyboard protocols means issues often hide until you test with actual hardware. A keyboard that works perfectly on the bench might fail when connected through a longer cable, or a protocol implementation that passes all software tests might miss edge cases that only specific keyboard models trigger.
 
 ---
 
 ## Essential Test Equipment
 
-### Logic Analyzer
+### Logic Analyser
 
-A logic analyzer captures the actual clock and data signals between keyboard and converter, showing precisely what's happening on the wire.
+A logic analyser captures the actual clock and data signals between keyboard and converter, showing precisely what's happening on the wire.
 
-**Recommended models:**
-- **Saleae Logic 8** - Professional-grade, excellent software, 8 channels
-- **Open-source compatible** - PulseView + compatible hardware (Sigrok)
-- **Budget options** - 8-channel USB logic analyzers (£15-30)
+I use [Scoppy](https://github.com/fhdm-dev/scoppy) — a Raspberry Pi Pico-based logic analyser and oscilloscope with 8 channels and 25MS/s logic analyser mode, using an Android device as the display. It's free to download and requires no programming to set up.
 
 **What to verify:**
+
 - Clock frequencies match protocol specifications (10-16.7 kHz for AT/PS2, ~10 kHz for XT)
 - Data transitions occur at correct clock edges (rising vs falling)
 - Setup and hold times meet protocol requirements
 - Converter's signal timing meets keyboard requirements (for bidirectional protocols)
 
-**Protocol decoders:** Logic analyzer software commonly includes AT/PS2 and UART decoders. These interpret captured waveforms automatically, showing scancodes and protocol errors without manual bit counting.
+**Protocol decoders:** Some logic analyser software includes AT/PS2 and UART decoders. These interpret captured waveforms automatically, showing scancodes and protocol errors without manual bit counting.
 
 ### USB-UART Adapter
 
 A USB-UART adapter connects to the RP2040's UART pins (GPIO 0/1) to display diagnostic logging output.
 
 **Requirements:**
+
 - **3.3V logic levels** (5V adapters may damage RP2040)
 - **TX, RX, GND connections** (no need for power pins)
 - **115200 baud rate** (default UART configuration)
 
 **What you'll see:**
+
 - Protocol state transitions (initialisation, LED commands, etc.)
 - Error conditions (`[ERR]` messages for protocol violations)
 - Received scancodes in hexadecimal
@@ -58,20 +56,23 @@ Enable verbose logging during testing to maximise visibility. See the [Logging g
 A basic multimeter verifies voltage levels and continuity.
 
 **Signal level verification:**
+
 - Measure keyboard's CLK and DATA lines: Should be 5V (or 3.3V for some modern keyboards)
 - Measure level shifter output: Should be 3.3V when interfacing with RP2040
 - Verify clean high and low levels: No intermediate voltages indicating poor connections
 
 **Connection testing:**
+
 - Check continuity between keyboard connector and level shifter
 - Verify level shifter connections to RP2040 GPIO pins
 - Test ground connections (keyboard GND to level shifter to RP2040)
 
 ### Oscilloscope (Optional)
 
-An oscilloscope reveals signal quality issues that logic analyzers might miss.
+An oscilloscope reveals signal quality issues that logic analysers might miss.
 
 **What to observe:**
+
 - **Rise and fall times:** Should be clean transitions without excessive ringing
 - **Signal overshoot:** Excessive overshoot indicates impedance mismatches
 - **Noise:** Random voltage fluctuations on clock or data lines
@@ -99,7 +100,7 @@ Type rapidly at 30 or more characters per second. Try burst typing—hold a key 
 
 All keypresses should register correctly. You shouldn't see any `[ERR]` messages about ring buffer overflow in the UART logs, and the converter should maintain pace with human typing speeds.
 
-**Why 30 CPS?** This represents fast typing that tests the system under load without being unrealistic. Professional typists rarely exceed 20 CPS sustained, but burst typing can briefly reach 30+ CPS, making it a useful test threshold.
+**Why 30 CPS?** This represents fast typing that tests the system under load without being unrealistic.
 
 ### Command Mode Test
 
@@ -116,6 +117,7 @@ Command Mode should activate after the 3-second hold, all commands should execut
 Test Caps Lock, Num Lock, and Scroll Lock indicators (if protocol supports LEDs).
 
 **Test procedure:**
+
 1. Press Caps Lock - LED should toggle on/off
 2. Press Num Lock - LED should toggle on/off
 3. Press Scroll Lock - LED should toggle on/off
@@ -125,6 +127,7 @@ Test Caps Lock, Num Lock, and Scroll Lock indicators (if protocol supports LEDs)
 **Expected results:** LEDs update immediately when lock keys are pressed. No delay or flickering. LED state matches lock key state.
 
 **Protocol support:**
+
 - **AT/PS2:** Full LED support (Caps, Num, Scroll)
 - **XT:** No LED support (unidirectional protocol)
 - **Amiga:** Caps Lock only (pulse-duration based)
@@ -135,6 +138,7 @@ Test Caps Lock, Num Lock, and Scroll Lock indicators (if protocol supports LEDs)
 Verify the converter recovers gracefully from protocol errors.
 
 **Test procedure:**
+
 1. Start with converter operating normally
 2. Power-cycle keyboard whilst converter is running:
    - Unplug keyboard connector
@@ -144,9 +148,10 @@ Verify the converter recovers gracefully from protocol errors.
 4. Verify converter reinitialises protocol automatically
 5. Test keyboard functions normally after reconnection
 
-**Expected results:** Converter detects keyboard disconnection, logs `[ERR]` messages, attempts reinitialisation, resumes normal operation when keyboard returns. No manual reset required.
+**Expected results:** Converter detects keyboard disconnection and logs `[ERR]` messages. Whether it attempts automatic reinitialisation and resumes normal operation depends on the protocol implementation — behaviour is protocol-dependent. Check the UART output and the relevant protocol documentation to understand what recovery, if any, is expected for your specific configuration.
 
 **Common scenarios:**
+
 - Keyboard unplugged during use
 - Keyboard power-cycled (USB hub reset)
 - Protocol timing violations during initialisation
@@ -157,6 +162,7 @@ Verify the converter recovers gracefully from protocol errors.
 Test the converter with multiple host operating systems to ensure HID compatibility.
 
 **Test procedure:**
+
 1. Test on **Windows** (7, 10, 11) - Verify HID enumeration and keystrokes
 2. Test on **macOS** (10.15+) - Check modifier key mapping and special keys
 3. Test on **Linux** (Ubuntu, Fedora, etc.) - Verify keyboard works in console and X11
@@ -165,13 +171,14 @@ Test the converter with multiple host operating systems to ensure HID compatibil
    - USB hubs (some hubs have higher polling latency)
    - KVM switches (some pause USB polling during switching)
 
-**Expected results:** Converter works identically across all OS platforms. Boot protocol ensures compatibility even with BIOS/firmware.
+**Expected results:** Boot Protocol provides a consistent baseline for USB HID enumeration across major platforms, but exact behaviour (modifier key handling, special key mapping) may vary between operating systems.
 
 ### Extended Key Test
 
 Test keys that use multibyte scancode sequences.
 
 **Test procedure:**
+
 1. **Extended keys (E0 prefix):**
    - Right Control, Right Alt, Right GUI
    - Navigation cluster (arrows, Home, End, PgUp, PgDown, Insert, Delete)
@@ -191,6 +198,7 @@ Test keys that use multibyte scancode sequences.
 The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for critical rule violations.
 
 **What it detects:**
+
 1. **Blocking operations:** `sleep_ms()`, `sleep_us()`, `busy_wait_ms()`, `busy_wait_us()`
 2. **Multicore APIs:** `multicore_launch_core1`, `multicore_fifo_push_blocking`, `multicore_fifo_pop_blocking`, `multicore_fifo_drain`, `multicore_reset_core1`, `multicore_lockout` (forbidden — single-core architecture)
 3. **printf in IRQ:** `printf()` calls in files containing `__isr` (use `LOG_*` macros)
@@ -204,7 +212,7 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 11. **Naming conventions:** Detects camelCase (expects snake_case)
 12. **Include order:** Validates include directive organisation
 13. **IRQ handler attributes:** Missing `__isr` attribute on interrupt handlers
-14. **Compile-time validation:** Advisory check for `_Static_assert` and `#error`
+14. **Compile-time validation:** Advisory only (does not affect pass/fail) — counts `_Static_assert` and `#error` directives; reports if none are found, but does not fail the check
 15. **Protocol ring buffer setup:** Missing `ringbuf_reset()` in keyboard protocol initialisation
 16. **Protocol PIO IRQ dispatcher:** Missing centralised `pio_irq_dispatcher_init()` or deprecated direct `irq_set_priority()` usage
 17. **Indentation consistency:** Enforces 4-space indentation width; detects files using 2-space base indentation
@@ -212,6 +220,7 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 19. **Local const hex-literal variables:** Detects `const TYPE var = 0x...` inside function bodies — algorithm and protocol constants must be file-scope `#define`s (clang-tidy does not catch this pattern)
 
 **Run before every commit:**
+
 ```bash
 ./tools/lint.sh
 ```
@@ -220,7 +229,7 @@ The [`tools/lint.sh`](../../tools/lint.sh) script scans the entire codebase for 
 
 **CI enforcement:** Pull requests automatically run lint checks in strict mode. Violations block merging.
 
-**Detailed documentation:** See [`tools/README.md`](../../tools/README.md) for comprehensive check descriptions and fix examples.
+**Detailed documentation:** See [`tools/lint.sh`](../../tools/lint.sh) for the definitive checklist and [`tools/README.md`](../../tools/README.md) for comprehensive check descriptions and fix examples.
 
 ### Static Analysis
 
@@ -239,12 +248,14 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" analyser
 ```
 
 **What Clang-Tidy checks (`bugprone-*`, `clang-analyzer-*`, `cert-*`, `readability-*`):**
+
 - Potential logic errors and incorrect API usage
 - Null pointer dereferences, use-after-free, dead code
 - CERT C secure coding rules
 - Naming, clarity, and formatting issues
 
 **What Cppcheck checks:**
+
 - Performance and portability issues
 - Missing or unresolvable include paths
 
@@ -268,6 +279,7 @@ See [`tools/README.md`](../../tools/README.md) for full documentation of the ana
 The converter avoids dynamic allocation where possible, preferring stack-based allocation:
 
 **Memory safety patterns:**
+
 - **Stack allocation:** Local variables, function parameters, small buffers
 - **Static allocation:** Protocol state, ring buffer, HID reports
 - **No malloc/free:** Eliminates heap fragmentation and memory leaks
@@ -275,6 +287,7 @@ The converter avoids dynamic allocation where possible, preferring stack-based a
 - **Const correctness:** Read-only data marked const
 
 **Testing approach:**
+
 - Build with address sanitiser (requires native build, not ARM cross-compile)
 - Review .map file for unexpected heap usage
 - Check stack usage doesn't exceed safe limits
@@ -287,11 +300,13 @@ The converter avoids dynamic allocation where possible, preferring stack-based a
 The CI pipeline (see [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)) builds every configuration on every commit:
 
 **Build matrix:**
+
 - All keyboards in [`src/keyboards/`](../../src/keyboards/)
 - With and without mouse support
 - Debug and release builds
 
 **Automated checks:**
+
 1. **Lint enforcement:** `tools/lint.sh` must pass
 2. **Build verification:** All configurations must compile
 3. **Memory limits:** Flash < 230KB, RAM < 150KB
@@ -299,6 +314,7 @@ The CI pipeline (see [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml
 5. **Link verification:** No undefined references or multiple definitions
 
 **When CI fails:**
+
 - Check build log for specific error
 - Reproduce locally: `docker compose run --rm -e KEYBOARD="..." builder`
 - Fix issues and push updated code
@@ -311,6 +327,7 @@ The CI pipeline (see [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml
 Whilst the converter doesn't have automated unit tests (integration testing on hardware is more valuable for this project), manual regression testing catches issues:
 
 **Regression test checklist:**
+
 1. **Existing keyboards still work** - Test representative keyboards from each protocol
 2. **Command Mode still functions** - Verify all commands work
 3. **LEDs still update** - Test lock key indicators
@@ -329,6 +346,7 @@ Run this checklist before releasing new firmware or merging significant changes.
 When adding new keyboards or protocols, document your testing:
 
 **What to document:**
+
 - Which keyboard models were tested
 - Any quirks or edge cases discovered
 - Protocol timing characteristics observed
@@ -336,6 +354,7 @@ When adding new keyboards or protocols, document your testing:
 - Special configuration required
 
 **Example test documentation:**
+
 ```markdown
 # Testing Notes - IBM Model M Enhanced
 
@@ -344,16 +363,19 @@ When adding new keyboards or protocols, document your testing:
 **Connection:** 5-pin DIN → level shifter → RP2040 GPIO 2/3
 
 **Testing performed:**
+
 - Basic functionality: ✓ All keys work correctly
 - Fast typing: ✓ No dropped keys at 30+ CPS
 - LED indicators: ✓ Caps/Num/Scroll Lock all function
 - Protocol timing: ✓ Clock ~11 kHz, stable
 
 **Quirks discovered:**
+
 - Sends garbage scancode 0xAA on power-up (handled by protocol init)
 - Caps Lock LED slightly dimmer than Num Lock (cosmetic, works fine)
 
 **Signal quality:**
+
 - Clean 5V logic levels on CLK/DATA
 - No noise or ringing observed
 - Rise/fall times < 100ns
@@ -369,45 +391,49 @@ Whilst the converter hasn't been extensively benchmarked with timing equipment, 
 
 ### Latency Measurement
 
-**Method 1: Logic analyzer**
-1. Connect logic analyzer to keyboard CLK/DATA and USB D+/D-
+**Method 1: Logic analyser**
+
+1. Connect logic analyser to keyboard CLK/DATA and USB D+/D-
 2. Press a key and capture signals
 3. Measure time from keyboard clock edge to USB D+ transition
 4. Repeat 10-20 times to get average and variance
 
 **Method 2: Software timing**
+
 1. Enable DEBUG logging level
 2. Add timestamps to key pipeline stages
 3. Log time at: PIO IRQ, ring buffer read, HID report ready, USB transmission
 4. Capture UART output and analyze timing
 
 **Expected latency:**
-- Protocol transmission: 1-2ms (inherent to protocol)
-- Processing pipeline: <100μs (PIO→IRQ→ring buffer→scancode→HID)
-- USB polling wait: 0-8ms (average 4ms)
-- Total: 1-10ms depending on USB timing
+
+- Protocol transmission: varies by protocol — determined by clock rate and frame length, not software-controlled (for clock rates and frame structure, see the [protocol docs](../protocols/); for example, [docs/protocols/at-ps2.md](../protocols/at-ps2.md) covers AT/PS2 clock frequency, frame length, and bit timing; exact values are hardware- and implementation-dependent and vary between keyboards)
+- Processing pipeline: <100μs (PIO→IRQ→ring buffer→scancode→HID) — theoretical; based on pipeline step count, not measured
+- USB polling wait: 0–8ms (`bInterval = 8` in `usb_descriptors.c`; average 4ms assuming uniform phase distribution)
+- Total: these figures are theoretical estimates; actual end-to-end latency depends on USB polling phase (as of the time of writing, no precise measurements have been taken)
 
 ### Throughput Measurement
 
 **Test maximum throughput:**
+
 1. Write script to simulate rapid keypresses
 2. Monitor UART for dropped scancodes or buffer overflow warnings
 3. Measure maximum sustained keypress rate without errors
 
 **Expected throughput:**
+
 - Theoretical max: 125 reports/second (8ms USB polling)
-- Human typing: 10-15 CPS typical, 20-30 CPS fast
-- Gaming inputs: 20-30 inputs/second
-- Converter headroom: 4-6x above typical human input
 
 ### Resource Monitoring
 
 **Monitor memory usage:**
+
 1. Check build output for Flash/RAM consumption
 2. Verify usage stays well below limits (230KB Flash, 150KB RAM)
 3. Review .map file for large functions or data structures
 
 **Monitor CPU usage:**
+
 - No direct CPU monitoring in current implementation
 - PIO handles protocol timing autonomously (zero CPU during bit reception)
 - Main loop operates in non-blocking architecture
@@ -428,15 +454,16 @@ The converter provides configurable logging levels (see [Logging guide](../featu
 
 **For testing:** Use DEBUG level to see everything. For production: INFO or WARN.
 
-### Logic Analyzer Protocol Decoding
+### Logic Analyser Protocol Decoding
 
-Logic analyzer software commonly includes protocol decoders:
+Some logic analyser software includes protocol decoders:
 
 1. **AT/PS2 decoder:** Shows scancodes, parity errors, timing violations
 2. **UART decoder:** Displays UART output alongside protocol signals
-3. **USB decoder:** Some analyzers can decode USB HID reports
+3. **USB decoder:** Some analysers can decode USB HID reports
 
 **Debugging workflow:**
+
 1. Capture signals during problematic behaviour
 2. Review protocol decoder output for errors
 3. Cross-reference with UART logging
@@ -459,6 +486,7 @@ arm-none-eabi-gdb build/rp2040-converter.elf
 ```
 
 **Use GDB for:**
+
 - Setting breakpoints in protocol handlers
 - Inspecting ring buffer state
 - Stepping through scancode processing
@@ -483,15 +511,13 @@ When submitting bug reports or requesting support, include:
 3. **Test results:**
    - Which tests passed/failed
    - UART log output (if available)
-   - Logic analyzer captures (if available)
+   - Logic analyser captures (if available)
    - Steps to reproduce issue
 
 4. **Environment:**
    - Host operating system
    - USB hub/KVM switch (if used)
    - Power supply details
-
-This information helps maintainers reproduce and diagnose issues efficiently.
 
 ---
 
@@ -506,5 +532,5 @@ This information helps maintainers reproduce and diagnose issues efficiently.
 
 ---
 
-**Questions about testing or found an issue?**  
-Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues).
+**Questions about testing or found an issue?**
+Use [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found a problem.

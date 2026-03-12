@@ -2,7 +2,7 @@
 
 This project has some specific coding standards, mostly focused on keeping things readable and ensuring the non-blocking architecture stays intact. If you're contributing code, following these guidelines will make the review process smoother and help maintain consistency across the codebase.
 
-These aren't arbitrary rules—they exist because this is an embedded system with tight timing requirements. Things like blocking operations or missing memory barriers can cause subtle bugs that are genuinely difficult to track down, especially when they only show up under specific timing conditions.
+Things like blocking operations or missing memory barriers can cause subtle bugs that are genuinely difficult to track down, especially when they only show up under specific timing conditions.
 
 ---
 
@@ -32,7 +32,7 @@ The firmware runs in a constrained environment with tight timing requirements. C
 
 ### Formatting Guidelines
 
-The project defines formatting guidelines based on clang-format style (Google style with customisations) for code review consistency. This configuration is documented in `.coderabbit.yaml` and used by automated PR reviews to assess code style:
+The project defines formatting guidelines based on clang-format style (Google style with customisations). The configuration lives in `.clang-format` at the repository root and is referenced by `.coderabbit.yaml` for automated PR reviews:
 
 ```text
 { BasedOnStyle: Google, ReflowComments: true, UseTab: Never, AllowShortIfStatementsOnASingleLine: false, AllowShortFunctionsOnASingleLine: false, AlwaysBreakBeforeMultilineStrings: true, AllowAllParametersOfDeclarationOnNextLine: true, AlignConsecutiveAssignments: true, AlignConsecutiveBitFields: true, AlignConsecutiveDeclarations: true, AlignConsecutiveMacros: true, ColumnLimit: 100, IndentWidth: 4 }
@@ -41,10 +41,11 @@ The project defines formatting guidelines based on clang-format style (Google st
 **Important:** A `.clang-format` file is present in the repository root, but clang-format is not run during CI or build processes. It serves as a guideline for editor formatting only.
 
 **Key formatting guidelines:**
+
 - **IndentWidth: 4** - Four spaces per indentation level
 - **UseTab: Never** - Spaces only, no tab characters
 - **ColumnLimit: 100** - Target line length (can exceed for alignment)
-- **AlignConsecutive* options** - Align assignments, declarations, macros, and bitfields for readability
+- **AlignConsecutive\* options** - Align assignments, declarations, macros, and bitfields for readability
 - **AllowShortIfStatementsOnASingleLine: false** - Always use braces and multiple lines
 - **AllowShortFunctionsOnASingleLine: false** - Function bodies always on separate lines
 
@@ -154,11 +155,11 @@ typedef enum {
 
 There are three distinct comment styles in use, each with a specific purpose:
 
-| Style | Use |
-|-------|-----|
-| `/* ... */` | GPL licence headers only — the block at the top of every `.c` and `.h` file |
-| `/** ... */` | Doxygen documentation blocks — functions, structs, enums, and macros |
-| `// ...` | Everything else — inline notes, section labels, layout diagrams, explanations |
+| Style        | Use                                                                           |
+| ------------ | ----------------------------------------------------------------------------- |
+| `/* ... */`  | GPL licence headers only — the block at the top of every `.c` and `.h` file   |
+| `/** ... */` | Doxygen documentation blocks — functions, structs, enums, and macros          |
+| `// ...`     | Everything else — inline notes, section labels, layout diagrams, explanations |
 
 Never use `/* ... */` for code comments or explanatory notes. If it isn't a licence header or a Doxygen block, use `//`.
 
@@ -190,6 +191,7 @@ Every source file should have a header comment with license information:
 Private (static) functions that never appear in a header are the one exception — document those where they are defined, in the `.c` file.
 
 In practice this means:
+
 - `.h` file → Doxygen for every public function, struct, enum, and macro
 - `.c` file → `// --- Private Functions ---` section with Doxygen only on static helpers; public function bodies have no Doxygen block above them
 
@@ -305,7 +307,7 @@ For protocol handlers, document critical timing characteristics:
 
 ## Critical Architecture Rules
 
-These are the non-negotiable rules that keep the converter working reliably. Violating these will cause the lint script to fail and block your PR.
+`./tools/lint.sh` checks for many of the violations listed below. Blocking operations, multicore usage, and tab characters produce lint errors; `printf` in IRQ context, `ringbuf_reset()` without annotation, and related concerns produce warnings (which are treated as errors in CI's `--strict` mode). SRAM execution is enforced by the build system rather than by the lint script. Run `./tools/lint.sh` before every commit.
 
 ### No Blocking Operations
 
@@ -324,19 +326,19 @@ static enum { IDLE, WAITING, READY } state = IDLE;
 
 void my_task(void) {
     uint32_t now = to_ms_since_boot(get_absolute_time());
-    
+
     switch (state) {
         case IDLE:
             start_time = now;
             state = WAITING;
             break;
-            
+
         case WAITING:
             if (now - start_time >= 100) {
                 state = READY;
             }
             break;
-            
+
         case READY:
             do_something();
             state = IDLE;
@@ -468,7 +470,7 @@ bool keyboard_interface_setup(uint data_pin) {
         LOG_ERROR("Invalid GPIO pin: %u\n", data_pin);
         return false;
     }
-    
+
     // Setup keyboard interface...
 }
 ```
@@ -485,7 +487,7 @@ Helper functions that return NULL or error codes typically perform validation in
 // Helper centralises atomic allocation with validation
 pio_engine_t claim_pio_and_sm(const pio_program_t* program) {
     pio_engine_t result = {NULL, -1, -1};
-    
+
     // Try PIO0 first: check program space AND SM availability
     if (pio_can_add_program(pio0, program)) {
         int sm = pio_claim_unused_sm(pio0, false);
@@ -496,7 +498,7 @@ pio_engine_t claim_pio_and_sm(const pio_program_t* program) {
             return result;
         }
     }
-    
+
     // PIO0 failed, try PIO1: check program space AND SM availability
     if (pio_can_add_program(pio1, program)) {
         int sm = pio_claim_unused_sm(pio1, false);
@@ -507,7 +509,7 @@ pio_engine_t claim_pio_and_sm(const pio_program_t* program) {
             return result;
         }
     }
-    
+
     // Both PIOs exhausted
     return result;
 }
@@ -533,12 +535,12 @@ When a public function validates inputs before calling private helpers, the help
 // Public function validates once
 void keylayers_process_key(uint8_t code, bool make) {
     const uint8_t target_layer = GET_LAYER_TARGET(code);
-    
+
     // Single validation point for all downstream helpers
     if (target_layer >= max_layers) {
         return;
     }
-    
+
     // Helpers rely on caller's validation
     keylayers_handle_mo(target_layer, code, make);
 }
@@ -551,11 +553,13 @@ static void keylayers_handle_mo(uint8_t target_layer, uint8_t code, bool make) {
 ```
 
 **When to add guards:**
+
 - ✅ Public API entry points (callers may not validate)
 - ✅ Genuinely missing from entire call chain
 - ✅ Race conditions between check and use
 
 **When NOT to add guards:**
+
 - ❌ Helper already validates and returns NULL/error
 - ❌ Caller validates before calling helper function
 - ❌ Would duplicate established pattern across codebase
@@ -638,7 +642,7 @@ Use include guards in all header files:
 
 ### Include Order
 
-Include headers in a specific order with blank lines between groups. This isn't arbitrary—it serves a purpose.
+Include headers in a specific order with blank lines between groups.
 
 First comes your own header if you're in a `.c` file. This ensures the header is self-contained and doesn't rely on implicit includes from other files—if the header's missing an include, you'll find out immediately rather than discovering it later when someone includes it in a different order.
 
@@ -650,13 +654,15 @@ Within each group, sort alphabetically unless there are specific dependencies th
 // Example from src/protocols/amiga/keyboard_interface.c
 #include "keyboard_interface.h"         // Own header first
 
-#include "hardware/gpio.h"              // Pico SDK
-#include "keyboard_interface.pio.h"     // Generated PIO headers
+#include <stdint.h>                     // Standard library
 
-#include "bsp/board.h"                  // External libraries (TinyUSB BSP)
-#include "tusb.h"                       // TinyUSB (tud_* functions)
+#include "hardware/gpio.h"              // Pico SDK
+#include "keyboard_interface.pio.h"     // Generated PIO header
+
+#include "tusb.h"                       // External libraries (TinyUSB)
 
 #include "config.h"                     // Project headers (alphabetical)
+#include "flow_tracker.h"
 #include "led_helper.h"
 #include "log.h"
 #include "pio_helper.h"
@@ -675,7 +681,7 @@ A common trap in this codebase: `bsp/board.h` transitively includes `tusb.h`, so
 
 Another common case: `PICO_FLASH_SIZE_BYTES` is a board-level constant that resolves transitively through `hardware/flash.h` → `pico.h` → `boards/<board>.h`. It is not defined by `flash.h` itself. Do not replace `hardware/flash.h` with `pico/platform.h` — that header is SDK-internal and guarded against direct inclusion.
 
-**Auditing before removing an include:** If you are considering removing an `#include`, grep the *entire* file for every symbol that header provides before concluding it is unused. Default search results can be truncated in large files, causing you to miss usages further down. Raise `maxResults` or grep in sections.
+**Auditing before removing an include:** If you are considering removing an `#include`, grep the _entire_ file for every symbol that header provides before concluding it is unused. Default search results can be truncated in large files, causing you to miss usages further down. Raise `maxResults` or grep in sections.
 
 ### Function Grouping
 
@@ -739,11 +745,13 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
 There are a few cases where exceeding the 100-character guideline is actually better than breaking the line:
 
 URLs in comments should stay intact so they're clickable in most editors:
+
 ```c
 // Reference: https://archive.org/details/bitsavers_ibmpcps284erfaceTechnicalReferenceCommonInterfaces_39004874/page/n229/mode/2up?q=keyboard
 ```
 
 LOG messages should stay on one line so you can grep for them easily. If you split them across lines, searching for the message becomes a pain:
+
 ```c
 LOG_INFO("Command mode active! Press 'B'=bootloader, 'D'=log level, 'F'=factory reset, 'L'=LED brightness\n");
 ```
@@ -772,6 +780,7 @@ The RP2040's Programmable I/O (PIO) requires special consideration:
 ### PIO Program Organisation
 
 **File structure:**
+
 - PIO assembly: `protocol_name.pio` or `interface.pio`
 - Generated header: Auto-generated during build, don't modify
 - Interface code: `keyboard_interface.c` wraps PIO interactions
@@ -808,10 +817,10 @@ Always provide a way to reset or restart PIO state machines when things go wrong
 void pio_restart(PIO pio, uint sm, uint offset) {
     // 1. Drain TX FIFO (prevents stale data)
     pio_sm_drain_tx_fifo(pio, sm);
-    
+
     // 2. Clear both FIFOs
     pio_sm_clear_fifos(pio, sm);
-    
+
     // 3. Restart state machine
     pio_sm_restart(pio, sm);
     pio_sm_exec(pio, sm, pio_encode_jmp(offset));
@@ -820,14 +829,21 @@ void pio_restart(PIO pio, uint sm, uint offset) {
 
 ### PIO Resource Management
 
-Always check before allocating PIO resources. There's limited space—only 32 instructions per PIO instance, and only 4 state machines per instance. If you just assume space is available, you'll hit problems when running configurations that use multiple protocols:
+Always allocate PIO resources atomically using the `claim_pio_and_sm()` helper. There's limited space—only 32 instructions per PIO instance, and only 4 state machines per instance. If you just assume space is available, you'll hit problems when running configurations that use multiple protocols:
 
 ```c
-if (!pio_can_add_program(pio0, &program)) {
-    LOG_WARN("PIO0 full, trying PIO1\n");
-    pio = pio1;  // Fall back to PIO1
+// Atomically claims a PIO instance and state machine for the given program
+pio_engine_t pio_engine = claim_pio_and_sm(&keyboard_interface_program);
+if (pio_engine.pio == NULL) {
+    LOG_ERROR("No PIO resources available\n");
+    return false;
 }
+// pio_engine.pio    — the PIO instance (pio0 or pio1)
+// pio_engine.sm     — the claimed state machine index
+// pio_engine.offset — the program load offset
 ```
+
+> ⚠️ **Do not call `pio_can_add_program()`, `pio_claim_unused_sm()`, or `pio_add_program()` directly for allocation.** These functions are not atomic when used together; use `claim_pio_and_sm()` instead to avoid race conditions and resource mismatches.
 
 Document PIO resource usage in your protocol handler so others know what space they're consuming:
 
@@ -901,7 +917,7 @@ Consistency matters more than personal style preferences—it makes the codebase
 
 ---
 
-That covers the main coding standards. The critical ones are the architecture rules (no blocking, no multicore, volatile + barriers) and running the lint script before committing. Everything else is mostly about keeping the code readable and consistent.
+The critical ones are the architecture rules (no blocking, no multicore, volatile + barriers) and running the lint script before committing. The remaining guidelines focus on keeping the code readable and consistent.
 
 If you're not sure about something, have a look at existing protocol implementations (AT/PS2, XT, Amiga, etc.) to see how they handle similar situations. Or ask in an issue on GitHub—I'm happy to clarify.
 
@@ -919,5 +935,5 @@ If you're not sure about something, have a look at existing protocol implementat
 
 ---
 
-**Questions or stuck on something?**  
-Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.
+**Questions or stuck on something?**
+Use [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found a problem.

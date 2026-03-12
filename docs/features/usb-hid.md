@@ -10,10 +10,10 @@ When you plug the converter into a USB port, your computer performs a process ca
 
 Depending on your build configuration, the converter presents itself with up to three separate interfaces, each handling a different type of input:
 
-**Interface 1: Keyboard**  
+**Interface 1: Keyboard**
 Sends keystroke reports using the standard Boot Protocol format. This interface handles all regular typing, including modifier keys (Shift, Ctrl, Alt, GUI/Windows) and up to 6 simultaneously pressed regular keys.
 
-**Interface 2: Consumer Control**  
+**Interface 2: Consumer Control**
 Sends media key and system control reports. This separate interface handles volume controls, play/pause, track navigation, and other multimedia functions independently from regular typing.
 
 **Interface 3: Mouse** (optional, if enabled at build time)  
@@ -35,11 +35,13 @@ The format is intentionally simple and standardised. Every USB-capable system kn
 
 ### Trade-offs
 
-Boot Protocol limits keyboards to reporting 6 simultaneously pressed regular keys plus 8 modifiers. Modern gaming keyboards often use Report Protocol instead, which allows unlimited simultaneous keys (called NKRO or N-Key Rollover).
+Boot Protocol limits keyboards to reporting 6 simultaneously pressed regular keys plus 8 modifiers. Report Protocol is an alternative that allows unlimited simultaneous keys (called NKRO or N-Key Rollover).
 
-For keyboard conversion, this limitation doesn't matter. Most keyboards have hardware constraints—their key matrix design uses diodes and multiplexing that can only detect 2-3 simultaneous regular keys before "ghosting" or "blocking" occurs. Offering NKRO would be pointless when the source keyboard can't provide that many simultaneous inputs.
+For keyboard conversion, the "Key Rollover" row in a keyboard's specifications reflects the keyboard's native hardware capability — what the keyboard itself can physically detect simultaneously. The converter's USB output is a separate consideration: when using Boot Protocol, the converter intentionally limits reported rollover to 6KRO for compatibility, regardless of the keyboard's native capability.
 
-The universal compatibility of Boot Protocol far outweighs the unused NKRO capability for this use case.
+Boot Protocol's universal compatibility is the priority for this use case, so NKRO is not currently reported even for keyboards capable of it.
+
+> **Note on rollover:** Keyboard documentation may list full NKRO or other high rollover figures reflecting native hardware. The converter translates this down to 6KRO at the USB interface when using Boot Protocol. This is a firmware and protocol limitation, not a keyboard hardware limitation.
 
 ---
 
@@ -51,7 +53,7 @@ Every time a key state changes (pressed or released), the converter sends an 8-b
 
 The 8-byte keyboard report follows the standard Boot Protocol format defined in the USB HID specification:
 
-```
+```text
 Byte 0: Modifier keys bitmask
 Byte 1: Reserved (always 0x00)
 Bytes 2-7: Keycodes for up to 6 pressed keys
@@ -61,7 +63,7 @@ Bytes 2-7: Keycodes for up to 6 pressed keys
 
 Byte 0 contains 8 bits, each representing one modifier key. When a bit is set to 1, that modifier is currently pressed. When 0, it's released.
 
-```
+```text
 Bit 0: Left Control       Bit 4: Right Control
 Bit 1: Left Shift         Bit 5: Right Shift
 Bit 2: Left Alt           Bit 6: Right Alt
@@ -75,6 +77,7 @@ The host operating system tracks left vs right modifiers separately, even though
 Bytes 2 through 7 contain USB HID keycodes for regular keys (see [`hid_keycodes.h`](../../src/common/lib/hid_keycodes.h) for complete definitions). Each keycode is a number from 0x00 to 0xFF that identifies a specific key according to the USB HID Usage Tables specification.
 
 Common examples:
+
 - `0x04` = A
 - `0x05` = B
 - `0x1C` = Y
@@ -87,7 +90,7 @@ When fewer than 6 keys are pressed, the remaining slots contain 0x00. When you p
 
 Here's what the report looks like when pressing A+B whilst holding Left Shift:
 
-```
+```text
 Byte:    0    1    2    3    4    5    6    7
 Value: 0x02 0x00 0x04 0x05 0x00 0x00 0x00 0x00
         |         |    |
@@ -110,13 +113,13 @@ This design has advantages: if a report gets lost (rare but possible), the next 
 
 The converter processes keystrokes through several stages, from receiving the original protocol signal to transmitting the USB report (implementation in [`hid_interface.c`](../../src/common/lib/hid_interface.c)):
 
-| Stage | What Happens |
-|-------|--------------|  
-| **Protocol reception** | PIO hardware captures signal, interrupt fires, byte goes into ring buffer |
-| **Main loop pickup** | Main loop polls ring buffer and retrieves byte |
-| **Scancode processing** | State machine handles multibyte sequences (E0/F0 prefixes, special keys) |
-| **Keymap translation** | Convert protocol-specific scancode to USB HID keycode |
-| **USB transmission** | Build HID report, call TinyUSB stack, transmit to host |
+| Stage                   | What Happens                                                              |
+| ----------------------- | ------------------------------------------------------------------------- |
+| **Protocol reception**  | PIO hardware captures signal, interrupt fires, byte goes into ring buffer |
+| **Main loop pickup**    | Main loop polls ring buffer and retrieves byte                            |
+| **Scancode processing** | State machine handles multibyte sequences (E0/F0 prefixes, special keys)  |
+| **Keymap translation**  | Convert protocol-specific scancode to USB HID keycode                     |
+| **USB transmission**    | Build HID report, call TinyUSB stack, transmit to host                    |
 
 The non-blocking architecture ensures low-latency processing at each stage.
 
@@ -144,15 +147,16 @@ It also prevents conflicts. If media keys shared the keyboard interface, the hos
 
 Consumer Control reports are simpler than keyboard reports—just 2 bytes:
 
-```
+```text
 Bytes 0-1: 16-bit usage code (little-endian)
 ```
 
 When a media key is pressed, the converter sends the corresponding usage code. When released, it sends 0x0000 (nothing pressed).
 
 Common usage codes include:
+
 - `0x00E9` = Volume Increment
-- `0x00EA` = Volume Decrement  
+- `0x00EA` = Volume Decrement
 - `0x00E2` = Mute
 - `0x00CD` = Play/Pause
 - `0x00B5` = Scan Next Track
@@ -168,25 +172,25 @@ For example, the IBM Model M Enhanced has a SysReq key that most people never pr
 
 ## Mouse Support
 
-When you enable mouse support at compile time and connect an AT/PS2 mouse, the converter adds Interface 3 for mouse input (see [`handle_mouse_report()`](../../src/common/lib/hid_interface.c) for implementation). This interface uses Boot Protocol like the keyboard, ensuring universal compatibility.
+When you enable mouse support at compile time and connect an AT/PS2 mouse, the converter adds Interface 3 for mouse input (see [`handle_mouse_report()`](../../src/common/lib/hid_interface.c) for implementation). The report descriptor is generated by TinyUSB's `TUD_HID_REPORT_DESC_MOUSE`, which declares a 5-byte report (buttons, X, Y, wheel, pan).
 
 ### Mouse Report Format
 
 Mouse reports are 5 bytes:
 
-```
+```text
 Byte 0: Button states (bit flags)
 Byte 1: X movement (signed, -127 to +127)
 Byte 2: Y movement (signed, -127 to +127)
 Byte 3: Wheel movement (signed, -127 to +127)
-Byte 4: Pan movement (signed, -127 to +127)
+Byte 4: Pan movement (always 0 — AT/PS2 mice don’t provide horizontal scroll data)
 ```
 
 ### Button States
 
 Byte 0 uses individual bits for each button:
 
-```
+```text
 Bit 0: Left button
 Bit 1: Right button
 Bit 2: Middle button
@@ -201,7 +205,7 @@ Standard 3-button mice only use bits 0-2. IntelliMouse-compatible mice with scro
 
 Bytes 1 and 2 contain signed 8-bit values representing relative movement since the last report. Positive X moves right, negative X moves left. Positive Y moves down (standard computer graphics coordinates), negative Y moves up.
 
-The PS/2 mouse protocol actually allows values from -255 to +255, but USB HID Boot Protocol only supports -127 to +127. The converter clamps larger values to fit this range. In practice, this rarely matters—moving the mouse fast enough to exceed ±127 in 8ms is difficult.
+The PS/2 mouse protocol uses 9-bit signed values with overflow flags for extreme movements, but the HID report descriptor defines these fields as signed 8-bit with a logical range of -127 to +127. The converter clamps values to fit this range; the PS/2 overflow flags are not forwarded to the host.
 
 ### Scroll Wheel
 
@@ -209,7 +213,7 @@ Byte 3 contains signed 8-bit scroll wheel movement. Positive values scroll up (a
 
 ### Polling Rate
 
-The converter sends mouse reports at the same 125 Hz rate as keyboard reports (every 8ms USB poll). This matches or exceeds most mice, which typically sample at 40-100 Hz. The result is smooth cursor movement without perceptible lag.
+The converter sends mouse reports at the same 125 Hz rate as keyboard reports (every 8ms USB poll).
 
 ---
 
@@ -221,14 +225,14 @@ USB HID isn't just one-way. Whilst most communication flows from the converter t
 
 When you press Caps Lock, Num Lock, or Scroll Lock, your operating system updates its internal keyboard state and sends a 1-byte LED report back to the keyboard:
 
-```
+```text
 Bit 0: Num Lock LED (1 = on, 0 = off)
 Bit 1: Caps Lock LED (1 = on, 0 = off)
 Bit 2: Scroll Lock LED (1 = on, 0 = off)
 Bits 3-7: Reserved
 ```
 
-The converter receives this report and translates it into whatever LED control commands your specific keyboard protocol supports. This all happens automatically and typically completes within 10-20 milliseconds, fast enough to feel instant.
+The converter receives this report and translates it into whatever LED control commands your specific keyboard protocol supports. This all happens automatically.
 
 ### Protocol Limitations
 
@@ -250,7 +254,7 @@ If your keyboard's protocol doesn't support a particular LED, the converter simp
 
 Here's how data flows through the entire system (implemented across multiple modules, with HID handling in [`hid_interface.c`](../../src/common/lib/hid_interface.c)), from the keyboard to your computer and back:
 
-```
+```text
 [Keyboard]
         ↓ Native protocol (AT/PS2, XT, Amiga, M0110)
    [PIO Hardware]
@@ -377,25 +381,17 @@ If your protocol should support LEDs but they don't work, check the UART debug l
 
 This page focused on the USB side of the converter. For a complete understanding, explore these related topics:
 
-**Protocol implementations** explain how the converter receives data from specific keyboard types:
-- [AT/PS2 Protocol](../protocols/at-ps2.md) - Most common protocol
-- [XT Protocol](../protocols/xt.md) - Original IBM PC keyboards
-- [Amiga Protocol](../protocols/amiga.md) - Commodore Amiga keyboards
-- [M0110 Protocol](../protocols/m0110.md) - Early Macintosh keyboards
+**Protocol implementations** explain how the converter receives data from specific keyboard types. Have a look at the [protocols documentation](../protocols/) for a full overview of available protocol implementations.
 
-**Other features** extend the converter's functionality:
-- [Command Mode](command-mode.md) - Access bootloader and runtime configuration via keyboard
-- [Mouse Support](mouse-support.md) - Detailed explanation of simultaneous mouse conversion
-- [LED Support](led-support.md) - Status indicators and RGB lighting options
-- [Configuration Storage](config-storage.md) - How settings persist across reboots
-- [Logging](logging.md) - UART debug output for troubleshooting
+**Other features** extend the converter's functionality. Have a look at the [features documentation](../features/) for a full overview.
 
 **Implementation details** for developers interested in the code:
+
 - [`hid_interface.c`](../../src/common/lib/hid_interface.c) - HID report generation and interface management
 - [`usb_descriptors.c`](../../src/common/lib/usb_descriptors.c) - USB device descriptors and configuration
 - [TinyUSB Documentation](https://docs.tinyusb.org/) - The USB stack library used by the converter
 
 ---
 
-**Questions or stuck on something?**  
-Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.
+**Questions or stuck on something?**
+Use [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found a problem.

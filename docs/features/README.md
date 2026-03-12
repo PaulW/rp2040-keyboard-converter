@@ -10,9 +10,7 @@ The converter includes several features that make it practical for daily use whi
 
 The converter uses standard USB HID Boot Protocol, which means it works everywhere without drivers—BIOS screens, UEFI setup, Windows, macOS, Linux, BSD, and other operating systems. The Boot Protocol is intentionally simple and universally supported, which is exactly what you want when converting keyboards.
 
-The interface reports up to 6 simultaneous regular keys plus all 8 modifiers (both Shift, Ctrl, Alt, and GUI keys). This is called 6-Key Rollover (6KRO), and whilst modern gaming keyboards often tout N-Key Rollover, it's not actually relevant for these keyboards. Most keyboards have hardware limitations—their key matrices can only detect 2-3 simultaneous keys before ghosting occurs anyway. The 6KRO limit never comes up in practice.
-
-The converter provides low-latency keyboard conversion with minimal processing overhead. The non-blocking architecture ensures responsive keystroke handling without dropped inputs.
+The interface reports up to 6 simultaneous regular keys plus all 8 modifiers (left and right Shift, Ctrl, Alt, and GUI). This is called 6-Key Rollover (6KRO), and mirrors the USB HID Boot Protocol report format used by the converter.
 
 When built with mouse support, the converter can handle simultaneous keyboard and mouse conversion if you have an AT/PS2 mouse to connect. LED indicators (Caps Lock, Num Lock, Scroll Lock) synchronise properly with the host OS, so the keyboard's lock LEDs update when you press the lock keys—assuming your keyboard protocol supports LED control.
 
@@ -24,28 +22,29 @@ When built with mouse support, the converter can handle simultaneous keyboard an
 
 **[Command Mode Guide](command-mode.md)**
 
-Command Mode provides access to special functions without requiring firmware reflashing or device disconnection. This allows you to adjust settings and perform system operations during normal use.
+Command Mode provides access to special functions without requiring firmware reflashing or device disconnection.
 
 **Activation:**
+
 - Hold both shift keys for 3 seconds
 - LED begins alternating between green and blue
 - Mode auto-exits after 3 seconds of inactivity or immediately after executing a command
 
 **Available Commands:**
+
 - 🔄 **'B'**: Enter bootloader (BOOTSEL mode for firmware updates)
 - 🐛 **'D'**: Change log level (then press 1/2/3 for ERROR/INFO/DEBUG)
 - ⚙️ **'F'**: Factory reset (restore default configuration and reboot)
 - 💡 **'L'**: LED brightness (then press +/- to adjust, 0=off to 10=max)
 - ↕️ **'S'**: Toggle shift-override (keyboards with non-standard shift legends only)
-- 🔬 **'T'**: Toggle flow tracking *(developer builds only — requires `FLOW_TRACKING_ENABLED 1` and DEBUG log level)*
+- 🔬 **'T'**: Toggle flow tracking _(developer builds only — requires `FLOW_TRACKING_ENABLED 1` and DEBUG log level)_
 
 **See also:** [Flow Tracking Guide](../advanced/flow-tracking.md) for enabling, reading the UART output, and how it works internally
 
 **LED Feedback:**
+
 - Alternating green/blue - Command Mode active
 - Solid green - Normal operation resumed
-
-Command Mode provides a handy method for adjusting settings during testing or troubleshooting without interrupting workflow.
 
 **See:** [Command Mode Guide](command-mode.md) for complete activation instructions and command reference
 
@@ -72,6 +71,7 @@ Currently stored settings include your log level (ERROR, INFO, or DEBUG), LED br
 LED indicators provide visual feedback about converter status, including operational state, Command Mode activation, and error conditions. Every converter requires at least one status LED, with optional WS2812 RGB LEDs available for enhanced visibility.
 
 **Converter Status Indicators:**
+
 - Status LED (RGB): Shows operational state and command mode
 - Power indication
 - Error states and protocol issues
@@ -83,6 +83,7 @@ The status LED shows different colours depending on what's happening. Solid gree
 For keyboard lock indicators (Caps Lock, Num Lock, Scroll Lock), the converter handles synchronisation automatically. When a lock key is pressed, the host OS sends LED states back through the HID protocol. The converter forwards these states to the keyboard using the appropriate LED command format for the protocol. AT/PS2 keyboards receive the standard 0xED LED command followed by a bitmap. Amiga keyboards have special handling for CAPS LOCK only (bit 7 of the CAPS LOCK scancode represents the LED state). XT and Apple M0110 keyboards do not support LED control—both use unidirectional protocols with no host-to-keyboard commands. See the protocol implementations in `src/protocols/` and respective protocol documentation for detailed behaviour.
 
 **Optional WS2812 RGB LED:**
+
 - Status indicator (Command Mode)
 - Configurable brightness
 
@@ -105,12 +106,14 @@ Mouse support is protocol-agnostic and works with any keyboard protocol. An AT/P
 To enable mouse support, add the MOUSE environment variable when building firmware:
 
 **Example:**
+
 ```bash
 # Build with keyboard + mouse
 docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
 ```
 
 **Hardware Requirements:**
+
 - Separate CLOCK and DATA lines for mouse (independent from keyboard)
 - Level shifters required (5V → 3.3V)
 - GPIO pins configured in [`config.h`](../../src/config.h)
@@ -128,7 +131,8 @@ Keyboard layers provide a way to access multiple sets of key functions from the 
 The converter supports 4 switchable layers plus base Layer 0 (layers 0–4). Layer 0 is always active as the base layer, and upper layers overlay on top. Keys can be transparent in upper layers, falling through to lower active layers until a keycode is found, so you only need to define the keys that actually change.
 
 **Layer activation methods:**
-- **Momentary (MO)**: Active whilst held, like a traditional Fn key (does not persist)
+
+- **Momentary (MO)**: Active whilst held, like a traditional layer key (does not persist)
 - **Toggle (TG)**: Stays on until toggled off again (persists across reboots via `config_set_layer_state()` and `config_save()`)
 - **Switch To (TO)**: Permanently switches to that layer (persists across reboots via `config_set_layer_state()` and `config_save()`)
 - **One-Shot (OSL)**: Activates for exactly one keypress (does not persist)
@@ -153,7 +157,7 @@ You can adjust the log level through Command Mode without reflashing firmware. P
 
 Log output looks like this:
 
-```
+```text
 [INFO] Keyboard interface initialised (AT/PS2)
 [DBG] Scancode: 0x1C (Make)
 [ERR] Parity error detected
@@ -187,7 +191,9 @@ if (to_ms_since_boot(get_absolute_time()) - state_start > 100) {
 }
 ```
 
-This pattern appears throughout the codebase—protocol handlers, Command Mode, LED updates, configuration storage. The main loop runs continuously without blocking, checking state machines and processing events as they occur. It's a bit more code than just calling `sleep()`, but it's what keeps the converter working reliably under all conditions.
+This pattern appears throughout the codebase—protocol handlers, Command Mode, LED updates. The main loop runs continuously without blocking, checking state machines and processing events as they occur, which is what keeps the converter working reliably.
+
+**Note:** `config_save()` is an intentional exception. Calling it during layer Toggle (TG) or Switch-To (TO) operations does block — it issues `flash_range_erase()` and `flash_range_program()` to persist the new layer state to flash, which briefly halts HID events and USB reports during the erase/write cycle. This is by design, as flash writes require interrupts to be disabled.
 
 **See:** [Architecture Guide](../advanced/architecture.md) for complete details about the non-blocking design
 
@@ -195,11 +201,11 @@ This pattern appears throughout the codebase—protocol handlers, Command Mode, 
 
 ### Performance Optimisation
 
-The converter runs on modest hardware—an RP2040 microcontroller with 264KB SRAM and a 125MHz ARM Cortex-M0+ core. Resource constraints matter here, so the implementation is designed for efficiency.
+The converter runs on an RP2040 microcontroller with 264KB SRAM and dual 125MHz ARM Cortex-M0+ cores — the converter uses a single core only.
 
 The 32-byte ring buffer provides adequate burst handling—it can queue up several scancodes before the main loop processes them. The non-blocking architecture ensures the converter remains responsive even under continuous input.
 
-Memory usage is about 132KB of the available 264KB SRAM, which leaves plenty of headroom for future features. Flash usage varies by configuration (which protocols and features you enable), but typically sits around 80-120KB out of 2MB available.
+Actual memory figures are reported in the build output.
 
 **See:** [Advanced Topics](../advanced/README.md) for detailed performance analysis and measurements
 
@@ -210,15 +216,18 @@ Memory usage is about 132KB of the available 264KB SRAM, which leaves plenty of 
 If you want to dive deeper into how these features work or understand the implementation details, have a look at these guides:
 
 **Getting Started:**
+
 - [Getting Started Guide](../getting-started/README.md) - Initial setup and first firmware build
 - [Hardware Setup](../getting-started/hardware-setup.md) - Wiring diagrams and connections
 
 **Technical Details:**
+
 - [Protocols Overview](../protocols/README.md) - How keyboard protocols work
 - [Advanced Topics](../advanced/README.md) - System architecture and troubleshooting
 - [Development Guide](../development/README.md) - Contributing and code standards
 
 **Source Code References:**
+
 - Command Mode: [`command_mode.c`](../../src/common/lib/command_mode.c)
 - HID Interface: [`hid_interface.c`](../../src/common/lib/hid_interface.c)
 - Config Storage: [`config_storage.c`](../../src/common/lib/config_storage.c)

@@ -12,7 +12,7 @@ Instead, the converter uses UART (Universal Asynchronous Receiver/Transmitter), 
 
 UART is ideal for debugging embedded systems because it operates completely separately from the USB connection—debug output never interferes with keyboard or mouse operation. The hardware requirements are minimal: just two wires connecting TX and GND. The output format is human-readable standard text, viewable in any terminal program without special software.
 
-The converter's logging implementation uses DMA (Direct Memory Access), which means log messages transmit in the background without blocking keyboard processing. Even at the highest debug verbosity, logging never adds latency to your keystrokes. And because UART is independent of USB, it keeps working even if the USB connection fails or has problems—exactly when you need debug output most.
+The converter's logging implementation uses DMA (Direct Memory Access), which means log messages transmit in the background without blocking keyboard processing. The CPU handles message formatting and queuing, then DMA takes over transmission — keyboard processing does not wait for UART output. Because UART operates independently of the USB host stack, it keeps working even if the USB HID connection fails or the host drops the device — exactly when you need debug output most. Note that the board is powered via USB, so UART output will stop if USB power is lost.
 
 ---
 
@@ -30,10 +30,10 @@ The key requirement is 3.3V logic level support. Many adapters have a jumper or 
 
 You only need two connections:
 
-| RP2040 Pin | USB-UART Adapter Pin | Purpose |
-|------------|----------------------|---------|
-| **GPIO 0** (UART TX) | **RX** | Transmit from RP2040 to adapter |
-| **GND** | **GND** | Ground reference |
+| RP2040 Pin           | USB-UART Adapter Pin | Purpose                         |
+| -------------------- | -------------------- | ------------------------------- |
+| **GPIO 0** (UART TX) | **RX**               | Transmit from RP2040 to adapter |
+| **GND**              | **GND**              | Ground reference                |
 
 **Important**: Connect the RP2040's TX to the adapter's RX. TX (transmit) sends data, RX (receive) accepts data. The RP2040 transmits log messages, the adapter receives them.
 
@@ -42,7 +42,8 @@ You don't need to connect the adapter's TX pin unless you're sending commands to
 The adapter's power pins (3.3V, 5V) are not needed—the RP2040 is already powered via USB. Only connect TX→RX and GND.
 
 **Visual Reference**:
-```
+
+```text
 RP2040 Board               USB-UART Adapter
 ┌──────────────┐          ┌─────────────────┐
 │              │          │                 │
@@ -75,16 +76,19 @@ Once you've wired the adapter, you need terminal software to view the log output
 ### Serial Terminal Programs
 
 **macOS:**
+
 - **screen** (built-in): `screen /dev/tty.usbserial-* 115200`
 - **minicom**: `brew install minicom`, then `minicom -D /dev/tty.usbserial-* -b 115200`
 - **CoolTerm** (GUI): Free download, user-friendly interface
 
 **Linux:**
+
 - **screen**: `screen /dev/ttyUSB0 115200`
 - **minicom**: `minicom -D /dev/ttyUSB0 -b 115200`
 - **picocom**: `picocom -b 115200 /dev/ttyUSB0`
 
 **Windows:**
+
 - **PuTTY**: Free, supports serial connections (select "Serial" and enter COM port)
 - **TeraTerm**: Free, simple serial terminal
 - **RealTerm**: Advanced features for debugging
@@ -93,13 +97,13 @@ Once you've wired the adapter, you need terminal software to view the log output
 
 All terminal programs need these settings to match the converter's UART configuration:
 
-| Parameter | Value |
-|-----------|-------|
-| **Baud Rate** | 115200 |
-| **Data Bits** | 8 |
-| **Parity** | None |
-| **Stop Bits** | 1 |
-| **Flow Control** | None |
+| Parameter        | Value  |
+| ---------------- | ------ |
+| **Baud Rate**    | 115200 |
+| **Data Bits**    | 8      |
+| **Parity**       | None   |
+| **Stop Bits**    | 1      |
+| **Flow Control** | None   |
 
 These are the default settings for most serial terminals, but verify them if you're not seeing output.
 
@@ -112,6 +116,7 @@ When you plug in your USB-UART adapter, the operating system creates a serial po
 **Windows**: `COM3`, `COM4`, etc. (check Device Manager under "Ports (COM & LPT)")
 
 To find the device name:
+
 - **macOS/Linux**: Run `ls /dev/tty.*` or `ls /dev/ttyUSB*` before and after plugging in the adapter to see which device appears
 - **Windows**: Open Device Manager, expand "Ports (COM & LPT)", and look for "USB Serial Port (COMX)"
 
@@ -139,29 +144,32 @@ The converter logs initialisation steps, protocol events, errors, and debug info
 
 Each log message follows a consistent format:
 
-```
+```text
 [LEVEL] Message text here
 ```
 
 **LEVEL** indicates message importance:
+
 - `[INFO]` - Informational messages about normal operation
+- `[WARN]` - Warning conditions that indicate a potential problem but do not stop operation
 - `[DBG]` - Debug details useful for development and troubleshooting
 - `[ERR]` - Error conditions that prevent proper operation
 
 Examples:
-```
+
+```text
 [INFO] Build Time: Oct 28 2025 14:23:17
 [INFO] Keyboard Make: IBM
 [INFO] Keyboard Protocol: at-ps2
 [DBG] Processing scancode: 0x1C
-[ERR] Start Bit Validation Failed: start_bit=1
+[ERR] Start Bit Validation Failed: start_bit=0
 ```
 
 ### Startup Sequence
 
 When the converter powers on, you'll see initialisation messages:
 
-```
+```text
 --------------------------------
 [INFO] RP2040 Device Converter
 [INFO] RP2040 Serial ID: E6605889DB6B8D2E
@@ -177,6 +185,7 @@ When the converter powers on, you'll see initialisation messages:
 ```
 
 This startup sequence confirms:
+
 1. Device serial ID (unique to your RP2040)
 2. Firmware build timestamp
 3. Keyboard support status
@@ -190,21 +199,24 @@ If something goes wrong during initialisation, you'll see `[ERR]` messages expla
 During normal use, logs show key events at various verbosity levels:
 
 **Log Level 0 (Errors Only)** - Only shows problems:
-```
-[ERR] Start Bit Validation Failed: start_bit=1
+
+```text
+[ERR] Start Bit Validation Failed: start_bit=0
 [ERR] Parity Bit Validation Failed: expected=1, actual=0
-[ERR] Keyboard Self-Test Failed: 0xAA
+[ERR] Keyboard Self-Test Failed: 0xFC
 ```
 
 **Log Level 1 (Info)** - Shows significant events without overwhelming detail:
-```
+
+```text
 [INFO] Command mode active! Press 'B'=bootloader, 'D'=log level, 'F'=factory reset, 'L'=LED brightness, or wait 3s to cancel
 [INFO] Log level set to INFO (1)
 [INFO] Factory reset complete - rebooting device...
 ```
 
 **Log Level 2 (Debug)** - Shows detailed protocol activity:
-```
+
+```text
 [DBG] Processing scancode: 0x1C
 [DBG] Invalid M0110 scancode (bit 0 not set): 0x7F
 [DBG] Log level set to DEBUG (2)
@@ -217,25 +229,31 @@ Debug level is most useful when troubleshooting specific key presses or protocol
 When things go wrong, error messages indicate what failed:
 
 **Protocol Errors:**
-```
-[ERR] Start Bit Validation Failed: start_bit=1
-```
-The protocol expects a start bit of 0, but received 1. This indicates timing issues or electrical noise on the data line.
 
+```text
+[ERR] Start Bit Validation Failed: start_bit=0
 ```
+
+The protocol expects a start bit of 1, but received 0. This indicates timing issues or electrical noise on the data line.
+
+```text
 [ERR] Parity Bit Validation Failed: expected=1, actual=0
 ```
+
 AT/PS2 protocol includes a parity bit for error detection. This means electrical noise corrupted the data or there's a timing problem. Check wiring and pull-up resistors.
 
+```text
+[ERR] Keyboard Self-Test Failed: 0xAB
 ```
-[ERR] Keyboard Self-Test Failed: 0xAA
-```
+
 The keyboard failed its power-on self-test. Expected 0xAA (success), but received a different value. Keyboard may be faulty or incompatible with the selected protocol.
 
 **Amiga Protocol Errors:**
-```
+
+```text
 [ERR] Amiga: Keyboard self-test FAILED (0xFC)
 ```
+
 Amiga keyboards send 0xFD/0xFE on successful self-test. Receiving 0xFC indicates a hardware fault.
 
 ---
@@ -250,11 +268,12 @@ The converter supports three log levels that control how much information appear
 
 **When to use**: Normal daily use. You don't need to see every keystroke or initialisation step—you only want to know if something breaks.
 
-**Impact on performance**: Minimal. Error logging is extremely lightweight since errors are rare.
+**Impact on performance**: Error and warning messages are only emitted during error conditions, so logging activity at this level is limited to those events.
 
 **Example output**:
-```
-[ERR] Start Bit Validation Failed: start_bit=1
+
+```text
+[ERR] Start Bit Validation Failed: start_bit=0
 [ERR] Parity Bit Validation Failed: expected=1, actual=0
 [WARN] Factory reset requested - restoring default configuration
 ```
@@ -265,15 +284,16 @@ The converter supports three log levels that control how much information appear
 
 **When to use**: Default setting. Provides enough visibility to understand what the converter is doing without overwhelming detail.
 
-**Impact on performance**: Negligible. Info messages are infrequent (mostly at startup or during configuration changes).
+**Impact on performance**: Info messages occur during startup and configuration changes.
 
 **Example output**:
-```
+
+```text
 [INFO] RP2040 Device Converter
 [INFO] Build Time: Oct 28 2025 14:23:17
 [INFO] Keyboard Make: IBM
 [INFO] Keyboard Protocol: at-ps2
-[ERR] Start Bit Validation Failed: start_bit=1
+[ERR] Start Bit Validation Failed: start_bit=0
 ```
 
 ### Log Level 2: Debug
@@ -285,7 +305,8 @@ The converter supports three log levels that control how much information appear
 **Impact on performance**: Moderate. Debug logging generates significant output (potentially dozens of messages per second during active typing). The DMA-driven UART ensures this doesn't block keyboard processing, but serial terminals can struggle to keep up with the output rate.
 
 **Example output**:
-```
+
+```text
 [DBG] !E0! (0x12)
 [DBG] !F0! (0x1C)
 [DBG] Keyboard Self Test OK!
@@ -306,7 +327,7 @@ You can adjust the log level through Command Mode (see [`command_mode.c`](../../
 
 The new log level persists across reboots, so you only need to set it once.
 
-**Technical Note**: The key numbers map to log levels as: Press '1' → ERROR (level 0), Press '2' → INFO (level 1), Press '3' → DEBUG (level 2). The numeric value shown in log messages (e.g., "Log level set to INFO (1)") indicates the internal level constant, not the key pressed.
+Worth noting: the key numbers map to log levels as follows — Press '1' → ERROR (level 0), Press '2' → INFO (level 1), Press '3' → DEBUG (level 2). The numeric value shown in log messages (e.g., "Log level set to INFO (1)") indicates the internal level constant, not the key pressed.
 
 ---
 
@@ -325,23 +346,20 @@ DMA (Direct Memory Access) solves this, implemented in [`uart.c`](../../src/comm
 3. The DMA controller handles transmission independently, byte by byte
 4. The CPU immediately continues processing keyboard data
 
-Result: Logging appears instantaneous from the CPU's perspective. No blocking, no delays, no impact on keyboard timing.
+From the CPU's perspective, logging is non-blocking — the DMA controller handles actual byte transmission independently whilst the CPU continues processing. That said, the CPU still does work before handing off to DMA: formatting the message, copying it into the queue, and initiating the transfer. This incurs a small, bounded overhead, but the CPU is never blocked waiting for UART bytes to transmit.
 
-### Ring Buffer Architecture
+### Queue Architecture
 
-To handle multiple concurrent log messages (e.g., protocol events happening whilst initialisation logs are still transmitting), logging uses a ring buffer:
+To handle multiple concurrent log messages (e.g., protocol events happening whilst initialisation logs are still transmitting), logging uses a queue:
 
-**Main code calls LOG_INFO()** → Message formatted and written to ring buffer → DMA reads from ring buffer → Bytes transmitted over UART
+**Main code calls LOG_INFO()** → Message formatted and written to the queue → DMA reads from the queue → Bytes transmitted over UART
 
-The ring buffer is 16,384 bytes (16KB: 64 message slots × 256 bytes per message), implemented in [`uart.c`](../../src/common/lib/uart.c). If log messages accumulate faster than the UART can transmit them (rare, only at debug level during intense activity), new messages overwrite the oldest unread messages. This prevents memory exhaustion whilst ensuring recent messages are preserved.
+The queue is 16,384 bytes (16KB: 64 message slots × 256 bytes per message), implemented in [`uart.c`](../../src/common/lib/uart.c). If log messages accumulate faster than the UART can transmit them, new messages are dropped. This prevents keyboard processing from ever blocking on log output.
 
 ### Performance Impact
 
-Logging overhead is designed to be negligible:
-- **Error/Info levels**: Minimal CPU usage (messages are infrequent - typically only at startup or during error conditions)
-- **Debug level**: Moderate CPU usage during active typing (generates many messages per keystroke)
-
-These characteristics are achieved through the non-blocking DMA design. UART transmission rate at 115200 baud limits throughput to approximately 11,520 bytes per second. Debug logging during fast typing can generate 5000-8000 bytes per second, well within UART capacity.
+- **Error/Info levels**: Messages are emitted at startup, during error conditions, and for important state changes (such as Command Mode transitions and settings changes).
+- **Debug level**: Generates many messages per keystroke during active typing. Output is bounded by UART throughput (115200 baud ≈ 11,520 bytes/sec); the queue drops messages if they accumulate faster than the UART can transmit them.
 
 The non-blocking DMA design ensures that even at debug level, keyboard latency remains unaffected by logging activity.
 
@@ -383,10 +401,11 @@ If you see random characters or missing text:
 
 If some log messages don't appear:
 
-**Ring buffer overflow** - At debug level during intense activity, messages can accumulate faster than UART transmits them. The ring buffer wraps, discarding oldest messages. This is intentional to prevent blocking. Solutions:
-  - Reduce log level to 1 (Info) to reduce message volume
-  - Increase UART baud rate in firmware (requires code change and rebuild)
-  - Slow down your typing during debug observation
+**Queue overflow** - At debug level during intense activity, messages can accumulate faster than UART transmits them. When the queue is full, new messages are dropped rather than blocking keyboard processing. Solutions:
+
+- Reduce log level to 1 (Info) to reduce message volume
+- Increase UART baud rate in firmware (requires code change and rebuild)
+- Slow down your typing during debug observation
 
 **Terminal buffer limits** - Some terminal programs have limited scrollback buffers. Increase your terminal's buffer size in settings, or log output to a file for later review.
 
@@ -411,12 +430,14 @@ If logging works initially then stops:
 For detailed analysis or bug reports, save log output to a file:
 
 **macOS/Linux with screen**:
+
 ```bash
 # Start screen with logging
 screen -L -Logfile keyboard-log.txt /dev/tty.usbserial-* 115200
 ```
 
 **macOS/Linux with picocom**:
+
 ```bash
 picocom -b 115200 /dev/ttyUSB0 | tee keyboard-log.txt
 ```
@@ -430,6 +451,7 @@ Having a log file lets you review events after they happen, share with others fo
 If debug level generates too much output, filter to specific messages:
 
 **macOS/Linux**:
+
 ```bash
 # Show only errors
 screen /dev/tty.usbserial-* 115200 | grep "\[ERR\]"
@@ -466,19 +488,22 @@ These are advanced configurations beyond the scope of this document, but they're
 ## Related Documentation
 
 **Command Mode**:
+
 - [Command Mode Guide](command-mode.md) - How to access log level adjustment (D command)
 
 **Implementation details**:
-- [`uart.c`](../../src/common/lib/uart.c) - DMA-based UART implementation with ring buffer
+
+- [`uart.c`](../../src/common/lib/uart.c) - DMA-based UART implementation with queue
 - [`uart.h`](../../src/common/lib/uart.h) - UART DMA initialisation and configuration
-- [`log.h`](../../src/common/lib/log.h) - Log level filtering and LOG_* macros (LOG_ERROR, LOG_WARN, LOG_INFO, LOG_DEBUG)
+- [`log.h`](../../src/common/lib/log.h) - Log level filtering and LOG\_\* macros (LOG_ERROR, LOG_WARN, LOG_INFO, LOG_DEBUG)
 - [`log.c`](../../src/common/lib/log.c) - Log level runtime management
 - [`config.h`](../../src/config.h) - UART configuration (GPIO pins, baud rate, buffer sizes, log level defaults)
 
 **Hardware setup**:
+
 - [Hardware Setup Guide](../getting-started/hardware-setup.md) - GPIO pinout and wiring diagrams
 
 ---
 
-**Questions or stuck on something?**  
-Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.
+**Questions or stuck on something?**
+Use [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found a problem.

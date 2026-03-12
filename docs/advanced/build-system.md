@@ -6,9 +6,10 @@ The build system transforms keyboard configuration into protocol-specific firmwa
 
 ## Overview
 
-When you specify `KEYBOARD=modelm/enhanced` during build, the system locates your keyboard configuration, pulls in the appropriate protocol handler and scancode processor, compiles the matching PIO program, and links your keyboard-specific keymap. It's all automatic—you just need to tell it which keyboard you're building for.
+When you specify `KEYBOARD=modelm/enhanced` during build, the system locates your keyboard configuration, pulls in the appropriate protocol handler and scancode processor, compiles the matching PIO program, and links your keyboard-specific keymap.
 
 The build produces three artifacts:
+
 - **rp2040-converter.uf2** - Drag-and-drop firmware file for flashing
 - **rp2040-converter.elf** - Debugger-compatible binary with symbols
 - **rp2040-converter.elf.map** - Memory layout analysis file
@@ -22,28 +23,32 @@ The build produces three artifacts:
 The Docker-based build environment ensures reproducible builds by including a pinned version of **Pico SDK 2.2.0** with all necessary toolchain components. This produces bit-identical builds on macOS, Linux, or Windows without requiring manual ARM cross-compiler installation or SDK path configuration.
 
 **Build the Docker image** (one-time setup):
+
 ```bash
 docker compose build
 ```
 
 **Build firmware for a specific keyboard:**
+
 ```bash
 docker compose run --rm -e KEYBOARD="modelm/enhanced" builder
 ```
 
 **Build with mouse support:**
+
 ```bash
 docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
 ```
 
 The Docker container includes:
+
 - ARM GCC cross-compiler toolchain
 - CMake 3.13+ with Pico SDK integration
 - Pico SDK 2.2.0 (pinned version via git submodule)
 - Python 3 for build scripts
 - All dependencies for parallel builds
 
-Builds complete in seconds even for full rebuilds due to parallel compilation support.
+Build time is influenced by CPU core count and single-core performance, disk I/O speed (SSD vs HDD), and available memory. Parallel compilation (`make -jN`) distributes independent translation units across CPU cores. Incremental compilation avoids recompiling unchanged translation units, so only modified files and their dependents are rebuilt.
 
 ---
 
@@ -54,6 +59,7 @@ Builds complete in seconds even for full rebuilds due to parallel compilation su
 Each keyboard has a [`keyboard.config`](../../src/keyboards/modelm/enhanced/keyboard.config) file in its directory: [`src/keyboards/`](../../src/keyboards/)`<brand>/<model>/keyboard.config`
 
 **Format** (simple key=value pairs):
+
 ```bash
 # src/keyboards/modelm/enhanced/keyboard.config
 MAKE=IBM
@@ -64,11 +70,12 @@ CODESET=set123
 ```
 
 **Configuration variables:**
+
 - **MAKE:** Manufacturer name (appears in boot messages)
 - **MODEL:** Keyboard model designation
 - **DESCRIPTION:** Full description (appears in boot messages)
-- **PROTOCOL:** Protocol handler to include (at-ps2, xt, amiga, apple-m0110)
-- **CODESET:** Scancode processor to use (set123, set1, set2, etc.)
+- **PROTOCOL:** Protocol handler to include — see [`src/protocols/`](../../src/protocols/) for available implementations
+- **CODESET:** Scancode processor to use — see [`src/scancodes/`](../../src/scancodes/) for available options
 
 The build system reads these values and automatically includes the appropriate components.
 
@@ -90,6 +97,7 @@ The top-level [`CMakeLists.txt`](../../src/CMakeLists.txt) orchestrates the buil
 8. **Generate outputs** - Produces UF2, ELF, and MAP files
 
 **Key CMake configuration (line 93):**
+
 ```cmake
 pico_set_binary_type(${PROJECT_NAME} copy_to_ram)
 ```
@@ -99,6 +107,7 @@ This instructs the linker to copy the entire program from flash into SRAM during
 ### Dependency Tracking
 
 CMake tracks all dependencies automatically:
+
 - Changing a protocol's `.pio` file triggers PIO recompilation and relinking
 - Modifying a keyboard's keymap triggers recompilation of that keyboard configuration
 - Updating common libraries triggers recompilation of all files that include them
@@ -113,15 +122,17 @@ This dependency tracking ensures incremental builds work correctly—you only re
 PIO assembly files (`.pio`) contain the timing logic that runs on the RP2040's PIO hardware state machines. The build system compiles these into C headers during the build process.
 
 **PIO compilation process:**
+
 1. **pioasm tool** reads `.pio` files from protocol directories
 2. Assembles PIO instructions into binary format
 3. Generates C header with program constants and helper functions
 4. Header includes `pio_program_t` structure for loading into hardware
 
 **Example:** [`src/protocols/at-ps2/interface.pio`](../../src/protocols/at-ps2/interface.pio) compiles to `interface.pio.h`, which provides:
-- `interface_program` - PIO instruction array
-- `interface_program_init()` - Helper to configure state machine
-- `interface_wrap_target` / `interface_wrap` - Program loop bounds
+
+- `pio_interface_program` - PIO instruction array
+- `pio_interface_program_init()` - Helper to configure state machine
+- `pio_interface_wrap_target` / `pio_interface_wrap` - Program loop bounds
 - Instruction count and origin information
 
 The build system automatically discovers `.pio` files in protocol directories and compiles them. No manual configuration needed.
@@ -134,7 +145,7 @@ The build system automatically discovers `.pio` files in protocol directories an
 
 The linker reports memory usage during build:
 
-```
+```text
 Memory region         Used Size  Region Size  %age Used
            FLASH:      95284 B         2 MB      4.55%
              RAM:      71432 B       264 KB     26.42%
@@ -148,6 +159,7 @@ The converter executes from RAM (copy_to_ram), so the program consumes space in 
 ### Memory Limits
 
 CI enforcement in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) fails builds exceeding:
+
 - **Flash:** 230KB (11.5% of 2MB capacity)
 - **RAM:** 150KB (56.8% of 264KB capacity)
 
@@ -157,7 +169,7 @@ These limits provide comfortable margins whilst preventing configurations that a
 
 The `.elf.map` file shows detailed memory layout:
 
-```
+```text
 .text           0x20000000    0x15abc  # Code section in SRAM
 .rodata         0x20015abc    0x2f40   # Read-only data
 .data           0x200189fc    0x1d0    # Initialised data
@@ -165,7 +177,8 @@ The `.elf.map` file shows detailed memory layout:
 ```
 
 Use this file to:
-- Verify code executes from SRAM addresses (0x20000000-0x20041000)
+
+- Verify code executes from SRAM addresses (0x20000000-0x20042000)
 - Identify large functions or data structures
 - Analyze stack usage and placement
 - Debug linker errors about overlapping sections
@@ -183,7 +196,8 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" builder
 ```
 
 Produces firmware with:
-- Selected keyboard protocol (AT/PS2, XT, Amiga, or M0110)
+
+- Selected keyboard protocol (see [`src/protocols/`](../../src/protocols/))
 - Selected scancode processor
 - Keyboard keymap
 - Command Mode, logging, configuration storage
@@ -198,6 +212,7 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
 ```
 
 Adds mouse protocol handler with:
+
 - Separate PIO state machine for mouse protocol
 - Independent CLK/DATA lines (dedicated GPIO pins)
 - 3-byte or 4-byte packet decoding (standard and scroll wheel)
@@ -224,16 +239,19 @@ Produces minimal firmware for mouse-only operation.
 The build uses optimisation flags appropriate for embedded systems:
 
 **Default optimisation:** `-O2` (optimise for speed with size consideration)
+
 - Balances performance and code size
-- Enables most optimisations without excessive code growth
+- Enables compiler optimisations including inlining, constant propagation, and dead code elimination whilst balancing code size
 - Suitable for production use
 
 **Debug builds:** `-Og` (optimise for debugging)
+
 - Preserves debug information quality
 - Minimal optimisations to keep code structure recognisable
 - Used for GDB debugging sessions
 
 **Size optimisation:** `-Os` (optimise for size)
+
 - Prioritizes small code size over speed
 - Useful for configurations approaching memory limits
 - Not currently used—plenty of headroom with `-O2`
@@ -241,6 +259,7 @@ The build uses optimisation flags appropriate for embedded systems:
 ### Link-Time Optimisation (LTO)
 
 LTO optimises across translation units during linking:
+
 - Inlines functions across file boundaries
 - Eliminates dead code more aggressively
 - Reduces binary size by eliminating unused code
@@ -261,7 +280,7 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" builder
 docker compose run --rm -e KEYBOARD="modelm/enhanced" -e CMAKE_BUILD_PARALLEL_LEVEL=4 builder
 ```
 
-Parallel builds complete in seconds even for full rebuilds. Incremental builds (only changed files) complete in under a second.
+Incremental builds only recompile changed files.
 
 ---
 
@@ -270,32 +289,37 @@ Parallel builds complete in seconds even for full rebuilds. Incremental builds (
 ### Common Build Errors
 
 **Error: keyboard.config not found**
-```
+
+```text
 CMake Error: keyboard.config missing for KEYBOARD=modelm/enhanced
 ```
 
 **Solution:** Verify the `KEYBOARD` environment variable matches a directory under [`src/keyboards/`](../../src/keyboards/). Check spelling and path structure.
 
-**Error: Undefined reference to protocol_*_init**
-```
+**Error: Undefined reference to protocol\_\*\_init**
+
+```text
 undefined reference to `at_ps2_keyboard_interface_init'
 ```
 
 **Solution:** The `PROTOCOL` value in keyboard.config doesn't match any implemented protocol. Check [`src/protocols/`](../../src/protocols/) for available options.
 
 **Error: PIO program too large**
-```
+
+```text
 PIO program exceeds available instruction memory
 ```
 
 **Solution:** PIO blocks have 32 instructions each. Some complex protocols require optimisation or splitting across multiple state machines.
 
 **Error: Region RAM overflowed**
-```
+
+```text
 region `RAM' overflowed by XXXX bytes
 ```
 
 **Solution:** Configuration exceeds 264KB SRAM. Either:
+
 - Reduce feature set (disable mouse, logging, etc.)
 - Optimise code (smaller functions, fewer globals)
 - Request CI limit increase if usage is reasonable
@@ -318,11 +342,13 @@ After building, verify the firmware:
 The CI pipeline (see [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)) builds every configuration in the keyboard matrix on every commit:
 
 **Build matrix:**
-- All keyboards in [`src/keyboards/`](../../src/keyboards/) (8+ configurations)
+
+- All keyboards in [`src/keyboards/`](../../src/keyboards/)
 - With and without mouse support
 - Debug and release builds
 
 **Automated checks:**
+
 - Lint script must pass ([`tools/lint.sh`](../../tools/lint.sh))
 - All configurations must compile successfully
 - Memory limits enforced (230KB Flash, 150KB RAM)
@@ -391,5 +417,5 @@ The RP2040 bootloader accepts UF2 files via drag-and-drop or command-line copy. 
 
 ---
 
-**Questions or build issues?**  
-Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues).
+**Questions or build issues?**
+Use [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found a problem.
