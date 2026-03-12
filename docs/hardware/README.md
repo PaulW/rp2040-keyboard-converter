@@ -147,23 +147,18 @@ Many keyboard protocols require both the keyboard and host to drive the signal l
 
 **BSS138-Based 4-Channel Level Shifter**
 
-This is what I'd recommend. It uses BSS138 N-channel MOSFETs and is simple to use:
+Uses BSS138 N-channel MOSFETs for bidirectional level shifting. Suitable for the low-frequency clock and data signals used by AT/PS2 and XT protocols:
 
-- **Price**: £2-5 from Adafruit, SparkFun, or generic suppliers on Amazon
-- **Speed**: Way faster than we need (MHz capable, we're only doing kHz)
-- **Channels**: 4 independent channels (you'll use 2 for CLOCK/DATA, leaving 2 spare)
-- **Widely available**: You can get these pretty much anywhere
-- **Well documented**: Loads of tutorials and examples online
+- **Channels**: 4 independent channels (2 used for CLOCK/DATA, 2 spare)
+- **Speed**: Capable of MHz-range signals; more than sufficient for kHz keyboard protocols
 
 **TXB0104 4-Bit Level Shifter** (Alternative)
 
-This is another good option if you can find one:
+Uses the TXB0104 with automatic direction sensing:
 
-- **Price**: £3-6
-- **Chip**: TXB0104 with automatic direction sensing
+- **Chip**: TXB0104 automatic direction sensing
+- **Channels**: 4 channels
 - **Speed**: 100 Mbps data rate
-- **Slightly more compact** than BSS138 modules
-- **Availability**: More specialised, works just as well
 
 **Important notes:**
 

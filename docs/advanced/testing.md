@@ -407,7 +407,7 @@ Whilst the converter hasn't been extensively benchmarked with timing equipment, 
 
 **Expected latency:**
 
-- Protocol transmission: 1-2ms (inherent to protocol timing, not software-controlled)
+- Protocol transmission: varies by protocol — determined by clock rate and frame length, not software-controlled (for clock rates and frame structure, see the [protocol docs](../protocols/); for example, [docs/protocols/at-ps2.md](../protocols/at-ps2.md) covers AT/PS2 clock frequency, frame length, and bit timing; exact values are hardware- and implementation-dependent and vary between keyboards)
 - Processing pipeline: <100μs (PIO→IRQ→ring buffer→scancode→HID) — theoretical; based on pipeline step count, not measured
 - USB polling wait: 0–8ms (`bInterval = 8` in `usb_descriptors.c`; average 4ms assuming uniform phase distribution)
 - Total: these figures are theoretical estimates; actual end-to-end latency depends on USB polling phase (as of the time of writing, no precise measurements have been taken)

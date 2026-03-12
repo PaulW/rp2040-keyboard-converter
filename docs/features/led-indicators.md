@@ -114,10 +114,10 @@ In addition to the keyboard's lock indicator LEDs, you can optionally configure 
 **Status colours:**
 
 - **Green:** Converter initialised and ready
-- **Yellow:** Keyboard initialising
-- **Red:** Error state (protocol error, keyboard not responding)
+- **Amber/Orange:** Converter not yet ready (initialising, or keyboard not yet detected)
 - **Alternating Green/Blue:** Command Mode active (waiting for command key)
-- **Magenta:** Firmware update or factory reset in progress
+- **Alternating Green/Pink:** Command Mode — log level selection active
+- **Magenta:** Bootloader mode active (firmware update in progress)
 
 The WS2812 LEDs are driven by a separate PIO program ([ws2812.pio](../../src/common/lib/ws2812/ws2812.pio)) and don't interfere with keyboard protocol timing. They provide status feedback and don't reflect lock indicator states.
 

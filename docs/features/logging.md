@@ -203,7 +203,7 @@ During normal use, logs show key events at various verbosity levels:
 ```text
 [ERR] Start Bit Validation Failed: start_bit=0
 [ERR] Parity Bit Validation Failed: expected=1, actual=0
-[ERR] Keyboard Self-Test Failed: 0xAA
+[ERR] Keyboard Self-Test Failed: 0xFC
 ```
 
 **Log Level 1 (Info)** - Shows significant events without overwhelming detail:
@@ -234,7 +234,7 @@ When things go wrong, error messages indicate what failed:
 [ERR] Start Bit Validation Failed: start_bit=0
 ```
 
-The protocol expects a start bit of 0, but received 1. This indicates timing issues or electrical noise on the data line.
+The protocol expects a start bit of 1, but received 0. This indicates timing issues or electrical noise on the data line.
 
 ```text
 [ERR] Parity Bit Validation Failed: expected=1, actual=0
@@ -358,7 +358,7 @@ The queue is 16,384 bytes (16KB: 64 message slots × 256 bytes per message), imp
 
 ### Performance Impact
 
-- **Error/Info levels**: Messages are emitted only at startup and during error conditions.
+- **Error/Info levels**: Messages are emitted at startup, during error conditions, and for important state changes (such as Command Mode transitions and settings changes).
 - **Debug level**: Generates many messages per keystroke during active typing. Output is bounded by UART throughput (115200 baud ≈ 11,520 bytes/sec); the queue drops messages if they accumulate faster than the UART can transmit them.
 
 The non-blocking DMA design ensures that even at debug level, keyboard latency remains unaffected by logging activity.

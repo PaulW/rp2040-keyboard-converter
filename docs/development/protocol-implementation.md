@@ -195,17 +195,21 @@ if (!pio_irq_register_callback(&keyboard_input_event_handler)) {
 
 ### 11. Logging
 
-Finally, set the ready flag, update the LED/status, and log confirmation that setup completed. Include relevant details like which PIO instance and state machine were allocated, and any protocol-specific parameters.
+Update the LED/status indicator and log confirmation that setup completed. Include relevant details like which PIO instance and state machine were allocated, and any protocol-specific parameters.
+
+The `LOG_INFO()` call and LED/status update always belong here — they confirm that hardware setup completed and provide an audit trail in the UART output.
+
+The ready-flag assignment (`kb_ready = 1` / `converter.state.mouse_ready = 1`) is protocol-dependent. Set it here only if the protocol reaches its ready state synchronously during setup. Protocols that become ready only after runtime or ISR initialisation (e.g. after receiving an acknowledgement or self-test response) should set the flag from that path instead — for example, from `keyboard_event_processor()` or the equivalent post-initialisation handler.
 
 ```c
-// Keyboard example
-kb_ready = 1;
+// Keyboard example — ready flag set here only for synchronous-init protocols
+kb_ready = 1;  // For async-init protocols, set this from keyboard_event_processor() instead
 update_keyboard_ready_led();
 LOG_INFO("PIO%d SM%d Interface program loaded at offset %d with clock divider of %.2f\n",
          (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);
 
-// Mouse example
-converter.state.mouse_ready = 1;
+// Mouse example — ready flag set here only for synchronous-init protocols
+converter.state.mouse_ready = 1;  // For async-init protocols, set this from the event processor instead
 update_converter_status();
 LOG_INFO("PIO%d SM%d Mouse Interface program loaded at offset %d with clock divider of %.2f\n",
          (pio_engine.pio == pio0 ? 0 : 1), pio_engine.sm, pio_engine.offset, clock_div);

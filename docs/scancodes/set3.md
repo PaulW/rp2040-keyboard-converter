@@ -254,14 +254,14 @@ Set 3 groups scancodes by key ranges, as shown below:
 
 ### Function Keys (0x01-0x0E)
 
-```yaml
+```text
 F1: 07    F2: 0F    F3: 17    F4: 1F    F5: 27    F6: 2F
 F7: 37    F8: 3F    F9: 47    F10: 4F   F11: 56   F12: 5E
 ```
 
 ### Main Keyboard
 
-```yaml
+```text
 Esc: 08    1: 16    2: 1E    3: 26    ...
 Tab: 0D    Q: 15    W: 1D    E: 24    ...
 Caps: 14   A: 1C    S: 1B    D: 23    ...
@@ -270,7 +270,7 @@ LShift: 12 Z: 1A    X: 22    C: 21    ...
 
 ### Navigation (No E0 prefix!)
 
-```yaml
+```text
 Insert: 67   Home: 6E   PgUp: 6F
 Delete: 64   End:  65   PgDn: 6D
 Up: 63       Down: 60   Left: 61   Right: 6A
@@ -278,15 +278,15 @@ Up: 63       Down: 60   Left: 61   Right: 6A
 
 ### Numeric Keypad
 
-```yaml
+```text
 NumLock: 76   /: 77    *: 7E    ,: 84
-7: 6C         8: 75    9: 7D    -: 7C
-4: 6B         5: 73    6: 74    +: 7B
-1: 69         2: 72    3: 7A    Enter: 79
-0: 70                  .: 71
+      7: 6C   8: 75    9: 7D    -: 7C
+      4: 6B   5: 73    6: 74    +: 7B
+      1: 69   2: 72    3: 7A  Enter: 79
+      0: 70            .: 71
 ```
 
-**Note**: Keypad layout may vary by keyboard model. The mappings above reflect terminal keyboard configurations.
+**Note**: The above is an example based on 122-key Terminal Keyboard Layouts. Actual layouts may vary between models, and some keys may be remapped (e.g. Keypad Comma `0x7C` remapped to PPLS `0x7B` on Model M 122-key).
 
 ## Performance Characteristics
 

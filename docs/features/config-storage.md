@@ -172,13 +172,13 @@ This process is fast enough to be imperceptible during boot. The converter is re
 Once configuration is loaded at boot, all settings live in a structure in RAM. Code throughout the firmware accesses configuration via the API:
 
 ```c
-// Access settings via API - Direct RAM access via inline pointer return
+// Access settings via API
 const config_data_t *cfg = config_get();
 uint8_t current_level = cfg->log_level;
 uint8_t brightness = cfg->led_brightness;
 ```
 
-The inline pointer return means there's no intermediate copy — accessing configuration reads directly from the RAM structure via the returned pointer. The compiler can inline these reads and optimise them into registers when possible.
+`config_get()` returns a pointer to the RAM-resident configuration structure. Callers read configuration directly via that pointer — there's no intermediate copy involved in the read.
 
 The tradeoff is that changes to configuration don't automatically save. When you modify a setting through Command Mode, the code updates the RAM structure and then explicitly calls the save function. This explicit save design gives you control over when the write operation happens.
 
@@ -314,11 +314,11 @@ The SDK provides [`flash_safe_execute()`](https://www.raspberrypi.com/documentat
 
 **Boot time overhead**: Negligible—reads and validates configuration from flash once at startup.
 
-**Runtime overhead**: Direct RAM access via inline pointer return, with no function-call indirection.
+**Runtime overhead**: Direct RAM access via the pointer returned by `config_get()`.
 
 **Save time**: Brief blocking flash write. Ring buffer protects against data loss during save.
 
-**Flash wear**: Each setting change alternates between Copy A and Copy B. The W25Q16JVUXIQ flash used on the custom PCB is rated for a minimum of 100,000 program/erase cycles per sector (Winbond W25Q16JV datasheet). Using a conservative estimate of 10,000 cycles per sector, you could save configuration 20,000 times before wearing out flash. At one save per day, that's 54 years.
+**Flash wear**: Each save erases the single 4 KB configuration sector and rewrites both Copy A and Copy B into it. Endurance is therefore equal to the sector's program/erase cycle rating — using a conservative estimate of 10,000 cycles per sector, you could save configuration around 10,000 times before wearing out the flash. At one save per day, that's roughly 27 years.
 
 **Corruption resistance**: Dual-copy with CRC validation improves recovery from interrupted writes, though if power is lost during the 4KB sector erase or before both copies have been rewritten, both copies could be invalidated.
 

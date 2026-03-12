@@ -70,7 +70,7 @@
  * Handshake Protocol:
  * - Computer must pulse DATA low within 1µs of byte completion
  * - PIO handles handshake automatically (no software delay)
- * - Actual pulse duration: ~110µs measured (25% above the 85µs minimum requirement)
+ * - Actual pulse duration: ~110µs measured (29% above the 85µs minimum requirement)
  * - Missing handshake triggers resync (keyboard clocks out 1-bits)
  * - After resync: keyboard sends 0xF9, then retransmits failed byte
  *

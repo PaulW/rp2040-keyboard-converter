@@ -43,7 +43,7 @@ If you're not sure which scancode set your keyboard uses, this should help:
 
 | Your Keyboard                    | Scancode Set   | Processor     |
 | -------------------------------- | -------------- | ------------- |
-| IBM Model M (any variant)        | Set 2          | `set123`      |
+| IBM Model M (PC/AT/PS2)          | Set 2          | `set123`      |
 | IBM Model F PC/AT                | Set 2          | `set123`      |
 | IBM Model F XT                   | Set 1          | `set1`        |
 | IBM Terminal keyboards (122-key) | Set 3          | `set123`      |
@@ -63,9 +63,8 @@ The three PC scancode sets evolved over time as keyboards got more sophisticated
 | ------------------ | ------------ | -------------- | -------------------------------------- |
 | **Era**            | 1981 (XT)    | 1984 (AT)      | 1987 (Terminal)                        |
 | **Break Encoding** | High bit set | F0 prefix      | F0 prefix                              |
-| **Extended Keys**  | E0 prefix    | E0 prefix      | None (clean design)                    |
+| **Extended Keys**  | E0 prefix    | E0 prefix      | None                                   |
 | **Special Cases**  | 6-byte Pause | 8-byte Pause   | Pause/Break (0x62) standard make/break |
-| **Complexity**     | Medium       | High           | Low                                    |
 | **Usage**          | XT keyboards | AT/PS2 default | Terminal keyboards                     |
 
 **Set 1** uses the high bit to indicate key release—when you press 'A' it sends `0x1E`, when you release it sends `0x9E` (0x1E with bit 7 set). Extended keys like the arrow keys send an `E0` prefix first. The Pause key is particularly odd—it sends a 6-byte sequence that includes both make and break codes in one go.
@@ -80,11 +79,11 @@ The three PC scancode sets evolved over time as keyboards got more sophisticated
 
 ## Auto-Detection (set123)
 
-The `set123` processor detects which scancode set your keyboard is sending and handles the translation automatically. It recognises Set 1 by the high-bit encoding for breaks, Set 2 by the `F0` prefix pattern, and Set 3 by the absence of extended key prefixes.
+The `set123` processor detects which scancode set your keyboard is sending and handles the translation automatically. It recognises Set 1 by the high-bit encoding for breaks, Set 2 by the `F0` prefix pattern, and Set 3 by keyboard ID — the processor reads the keyboard's `0xF2` Identify response and matches it against known ID ranges (such as 0xAB86–0xAB92, 0xBFxx, and 0x7Fxx) to determine whether Set 3 should be used.
 
-This is the recommended approach for any PC/AT-compatible keyboard—you don't need to know which set your keyboard uses, and if the keyboard supports multiple sets (which some do), the processor adapts to whichever one it's currently sending.
+This is the recommended approach for any PC/AT-compatible keyboard — you don't need to know which set your keyboard uses, and if the keyboard supports multiple sets (which some do), the processor adapts accordingly.
 
-See the [Set 1/2/3 processor documentation](set123.md) for technical details on how detection works.
+See the [Set 1/2/3 processor documentation](set123.md) for full detection logic and technical details.
 
 ---
 

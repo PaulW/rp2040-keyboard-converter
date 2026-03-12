@@ -336,7 +336,7 @@ The keyboard configuration file may be missing required fields. Try:
    - `MAKE` - Keyboard manufacturer
    - `DESCRIPTION` - Keyboard description
    - `MODEL` - Keyboard model
-   - `PROTOCOL` - Protocol handler (at-ps2, xt, amiga, m0110)
+   - `PROTOCOL` - Protocol handler (at-ps2, xt, amiga, apple-m0110)
    - `CODESET` - Scancode set to use
 
 3. Compare your config against a working example like [`src/keyboards/modelm/enhanced/keyboard.config`](../../src/keyboards/modelm/enhanced/keyboard.config)

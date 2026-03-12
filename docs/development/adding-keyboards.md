@@ -41,21 +41,20 @@ src/keyboards/
 │   ├── enhanced/
 │   │   ├── keyboard.config
 │   │   ├── keyboard.h
-│   │   ├── keyboard.c
-│   │   └── README.md
+│   │   └── keyboard.c
 │   └── m122/
 │       ├── keyboard.config
 │       ├── keyboard.h
-│       ├── keyboard.c
-│       └── README.md
+│       └── keyboard.c
 ├── apple/
 │   └── m0110a/
 │       ├── keyboard.config
 │       ├── keyboard.h
-│       ├── keyboard.c
-│       └── README.md
+│       └── keyboard.c
 └── ... other keyboards ...
 ```
+
+The user-facing README for each keyboard lives under [`docs/keyboards/`](../../docs/keyboards/)`<brand>/<model>.md`, not inside `src/keyboards/`. The source directory contains only the three build-time files.
 
 The directory name should be lowercase, use hyphens for spaces (e.g., `model-m-enhanced` rather than `ModelMEnhanced`), and be descriptive enough to identify the specific model.
 
@@ -213,7 +212,7 @@ Layer keycodes (layers 1–4):
 
 **NumLock Handling:** If you need consistent navigation on the numpad across hosts, consider adding a function layer that maps the numpad positions to HOME/UP/PGUP and similar keys rather than creating a dedicated NumLock layer.
 
-**Example—Model F PC/AT with navigation in Fn layer:**
+**Example—Model F PC/AT with navigation in Layer 1:**
 
 ```c
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
@@ -221,11 +220,11 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
         // ... ESC, numbers, letters, etc.
         // Numpad: P7, P8, P9 send as-is (host interprets)
     ),
-    [1] = KEYMAP(  // Fn layer for macOS navigation
+    [1] = KEYMAP(  // Layer 1 for macOS navigation
         TRNS, TRNS, /* ... */
-        HOME, UP,   PGUP,   // Fn+7/8/9 → HOME/UP/PGUP
-        LEFT, TRNS, RIGHT,  // Fn+4/5/6 → LEFT/falls through to Layer 0 (transparent TRNS)/RIGHT
-        END,  DOWN, PGDN,   // Fn+1/2/3 → END/DOWN/PGDN
+        HOME, UP,   PGUP,   // Layer 1: 7/8/9 → HOME/UP/PGUP
+        LEFT, TRNS, RIGHT,  // Layer 1: 4/5/6 → LEFT/falls through to Layer 0 (transparent TRNS)/RIGHT
+        END,  DOWN, PGDN,   // Layer 1: 1/2/3 → END/DOWN/PGDN
     ),
 };
 ```
@@ -329,7 +328,7 @@ Document your keyboard properly. Future you will appreciate this when you come b
 
 Start with the specifications—the full model name and number exactly as it appears on the label, manufacturer, year if you can determine it, protocol and scancode set, physical layout, and connector type. These are the basics that help identify exactly what keyboard you're dealing with.
 
-Then document the quirks and special features. This is where you note down anything unusual—non-standard scancodes that differ from typical protocol behaviour, missing keys compared to a standard layout, special function keys that required custom handling, LED support (or lack thereof), and any timing peculiarities you discovered whilst testing. These details are gold dust when troubleshooting later.
+Then document the quirks and special features in a **Notes** section. This is where you note down anything unusual—non-standard scancodes that differ from typical protocol behaviour, missing keys compared to a standard layout, special function keys that required custom handling, LED support (or lack thereof), and any timing peculiarities you discovered whilst testing. These details are gold dust when troubleshooting later.
 
 Make sure to include the build command too. Show the exact command needed to build firmware for this keyboard—saves people (including future you) having to work it out themselves.
 
@@ -353,6 +352,11 @@ Here's an example from the IBM Model F configuration to show what I mean:
 - Full 101-key layout with F1-F12 function keys
 - Buckling spring switches
 - LED indicators: Caps Lock, Num Lock, Scroll Lock
+
+**Notes:**
+
+- Standard AT/PS2 Set 2 scancodes; no non-standard sequences observed
+- No missing keys relative to 101-key ANSI layout
 
 **Build:**
 

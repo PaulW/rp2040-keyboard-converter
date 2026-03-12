@@ -63,7 +63,7 @@ See: [Building Firmware Guide](../../getting-started/building-firmware.md)
 
 ## Key Mapping
 
-The default keymap preserves the original IBM 5170 keyboard layout whilst adding modern functionality through the Fn modifier.
+The default keymap preserves the original IBM 5170 keyboard layout with a second layer (activated by holding the physical F9 key) providing additional functions.
 
 ### Base Layer Mapping (from keyboard.c)
 
@@ -116,41 +116,42 @@ IBM 5170 (Model F-AT) - Scancode Set 2 Subset of Set 3
 
 ### Key Assignments
 
-| Physical Key         | Default Function    | With Fn Modifier | Notes                                       |
-| -------------------- | ------------------- | ---------------- | ------------------------------------------- |
-| **Pipe / Backslash** | Grave / Negation    | Pipe / Backslash | ISO layout key                              |
-| **Caps Lock**        | Caps Lock           | App              | Layer 1 (Fn held) maps Caps Lock to App key |
-| **F10**              | LGUI (GUI modifier) | —                | Windows Key / Command Key                   |
-| **F1**               | F1                  | F9               | Fn + F1 = F9                                |
-| **F2**               | F2                  | F10              | Fn + F2 = F10                               |
-| **F3**               | F3                  | F11              | Fn + F3 = F11                               |
-| **F4**               | F4                  | F12              | Fn + F4 = F12                               |
-| **F5**               | F5                  | Volume Down      | Fn + F5 = Vol Down                          |
-| **F6**               | F6                  | Volume Up        | Fn + F6 = Vol Up                            |
-| **F7**               | F7                  | Brightness Down  | Fn + F7 = Brightness Down                   |
-| **F8**               | F8                  | Brightness Up    | Fn + F8 = Brightness Up                     |
+| Physical Key         | Layer 0 (Base)      | Layer 1 (F9 held) | Notes                                       |
+| -------------------- | ------------------- | ----------------- | ------------------------------------------- |
+| **Pipe / Backslash** | Grave / Negation    | Pipe / Backslash  | ISO layout key                              |
+| **Caps Lock**        | Caps Lock           | App               | Layer 1 (F9 held) maps Caps Lock to App key |
+| **F9**               | Layer 1 (MO_1)      | —                 | Hold to activate Layer 1                    |
+| **F10**              | LGUI (GUI modifier) | —                 | Windows Key / Command Key                   |
+| **F1**               | F1                  | F9                | —                                           |
+| **F2**               | F2                  | F10               | —                                           |
+| **F3**               | F3                  | F11               | —                                           |
+| **F4**               | F4                  | F12               | —                                           |
+| **F5**               | F5                  | Volume Down       | —                                           |
+| **F6**               | F6                  | Volume Up         | —                                           |
+| **F7**               | F7                  | Brightness Down   | —                                           |
+| **F8**               | F8                  | Brightness Up     | —                                           |
 
 ### Numpad Navigation Layer
 
-The numpad doubles as a navigation cluster when using the Fn modifier:
+The numpad doubles as a navigation cluster when using the layer key (F9):
 
-| Numpad Key   | With Fn Modifier |
-| ------------ | ---------------- |
-| **Numpad 0** | Insert           |
-| **Numpad .** | Delete           |
-| **Numpad 1** | End              |
-| **Numpad 2** | Down Arrow       |
-| **Numpad 3** | Page Down        |
-| **Numpad 4** | Left Arrow       |
-| **Numpad 5** | — (unmapped)     |
-| **Numpad 6** | Right Arrow      |
-| **Numpad 7** | Home             |
-| **Numpad 8** | Up Arrow         |
-| **Numpad 9** | Page Up          |
+| Numpad Key   | Layer 1 (F9 held) |
+| ------------ | ----------------- |
+| **Numpad 0** | Insert            |
+| **Numpad .** | Delete            |
+| **Numpad 1** | End               |
+| **Numpad 2** | Down Arrow        |
+| **Numpad 3** | Page Down         |
+| **Numpad 4** | Left Arrow        |
+| **Numpad 5** | — (unmapped)      |
+| **Numpad 6** | Right Arrow       |
+| **Numpad 7** | Home              |
+| **Numpad 8** | Up Arrow          |
+| **Numpad 9** | Page Up           |
 
-### Fn Modifier Key
+### Layer Key
 
-**Default Fn Key**: F9 (can be customised in [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c))
+**Default layer key**: F9, mapped to `MO_1` in [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c)
 
 ---
 
@@ -234,9 +235,9 @@ Check your wiring first—DATA should be GPIO2 and CLOCK should be GPIO3 by defa
 
 Foam deterioration is a frequent issue—there's a foam layer sandwiched between the PCB and barrel plate, and it degrades over time. Age can also bring corrosion on the steel backing plate, PCB traces, or the springs themselves. Individual buckling springs may be deformed or missing, and the small plastic flippers can break which affects the capacitive sensing. Dirt on the capacitive sensing pads can also cause issues.
 
-### Fn Modifier Not Working
+### Layer 1 Not Activating
 
-Verify the Fn modifier's mapped to F9 in [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c), and make sure the Fn layer's properly defined in the keymap. Use an online key tester to verify Fn combinations are working.
+Verify F9 is mapped to `MO_1` in Layer 0 of [`keyboard.c`](../../../src/keyboards/modelf/pcat/keyboard.c), and make sure Layer 1 is properly defined in the keymap. Use an online key tester to verify Layer 1 key combinations are working.
 
 ### LEDs Not Working
 

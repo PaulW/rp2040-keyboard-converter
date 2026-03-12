@@ -35,11 +35,13 @@ The format is intentionally simple and standardised. Every USB-capable system kn
 
 ### Trade-offs
 
-Boot Protocol limits keyboards to reporting 6 simultaneously pressed regular keys plus 8 modifiers. Modern gaming keyboards often use Report Protocol instead, which allows unlimited simultaneous keys (called NKRO or N-Key Rollover).
+Boot Protocol limits keyboards to reporting 6 simultaneously pressed regular keys plus 8 modifiers. Report Protocol is an alternative that allows unlimited simultaneous keys (called NKRO or N-Key Rollover).
 
-For keyboard conversion, this limitation doesn't matter. The keyboards being converted have physical matrix designs that limit simultaneous key detection — they cannot produce enough simultaneous key inputs to make NKRO worthwhile.
+For keyboard conversion, the "Key Rollover" row in a keyboard's specifications reflects the keyboard's native hardware capability — what the keyboard itself can physically detect simultaneously. The converter's USB output is a separate consideration: when using Boot Protocol, the converter intentionally limits reported rollover to 6KRO for compatibility, regardless of the keyboard's native capability.
 
-The universal compatibility of Boot Protocol far outweighs the unused NKRO capability for this use case.
+Boot Protocol's universal compatibility is the priority for this use case, so NKRO is not currently reported even for keyboards capable of it.
+
+> **Note on rollover:** Keyboard documentation may list full NKRO or other high rollover figures reflecting native hardware. The converter translates this down to 6KRO at the USB interface when using Boot Protocol. This is a firmware and protocol limitation, not a keyboard hardware limitation.
 
 ---
 

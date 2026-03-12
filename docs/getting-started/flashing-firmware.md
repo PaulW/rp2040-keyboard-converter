@@ -253,9 +253,10 @@ It's a special menu you can access by holding both shift keys for 3 seconds. Onc
 - Enter bootloader mode for firmware updates (no BOOT button needed!)
 - Adjust LED brightness
 - Change debug log verbosity
+- Toggle Shift-Override (press S) to modify key behaviour for keyboards with non-standard shift legends
 - Reset to factory settings
 
-After your initial flash, you won't need to touch the BOOT and RESET buttons again—all firmware updates can be done through Command Mode.
+For normal firmware updates — where the current firmware starts up successfully and Command Mode is reachable — you won't need to touch the BOOT and RESET buttons again. If the firmware is ever corrupted or the board no longer boots, you'll need to fall back to the physical BOOT button method described earlier in this guide.
 
 ### Entering Command Mode
 
@@ -266,7 +267,7 @@ After your initial flash, you won't need to touch the BOOT and RESET buttons aga
 3. **Release shift keys** - You're now in Command Mode
 4. **Press a command key** - See options below
 
-**Important**: You must hold **ONLY** the two shift keys. If you press any other key (including modifiers like Ctrl, Alt, Fn), Command Mode won't activate.
+**Important**: You must hold **ONLY** the two shift keys. If you press any other key (including modifiers like Ctrl or Alt), Command Mode won't activate.
 
 **Note**: The default key combination is Left Shift + Right Shift, but this is configurable. Some keyboards (like those with a single shift key) may define different keys in their `keyboard.h` file. Check your specific keyboard's documentation if the default combination doesn't work.
 

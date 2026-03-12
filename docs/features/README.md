@@ -132,7 +132,7 @@ The converter supports 4 switchable layers plus base Layer 0 (layers 0–4). Lay
 
 **Layer activation methods:**
 
-- **Momentary (MO)**: Active whilst held, like a traditional Fn key (does not persist)
+- **Momentary (MO)**: Active whilst held, like a traditional layer key (does not persist)
 - **Toggle (TG)**: Stays on until toggled off again (persists across reboots via `config_set_layer_state()` and `config_save()`)
 - **Switch To (TO)**: Permanently switches to that layer (persists across reboots via `config_set_layer_state()` and `config_save()`)
 - **One-Shot (OSL)**: Activates for exactly one keypress (does not persist)

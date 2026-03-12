@@ -321,7 +321,7 @@ Set 2 keyboards support configurable typematic:
 
 Set 2 keyboards respond to `0xF2` (Identify) command with 2-byte ID.
 
-**Source**: [tmk Keyboard Wiki - AT Keyboard Protocol](https://github.com/tmk/tmk_keyboard/wiki/IBM-PC-AT-Keyboard-Protocol#keyboard-id)
+**Sources**: [tmk Keyboard Wiki - AT Keyboard Protocol](https://github.com/tmk/tmk_keyboard/wiki/IBM-PC-AT-Keyboard-Protocol#keyboard-id); IBM PS/55 keyboard scancode reference ([radioc.web.fc2.com](http://radioc.web.fc2.com/column/ps55/ps55kbd_scancode.htm), based on IBM SC18-2194-1, 1990)
 
 ### Set 2 Keyboard IDs
 
@@ -344,9 +344,9 @@ These keyboards support Set 3, but many default to Set 2 or Set 1:
 |          | - IBM 1397000               |             |                                  |
 |          | - Unicomp UB40856           |             |                                  |
 |          | - Other 122-key terminals   |             |                                  |
-| `AB 90`  | IBM 5576-002 (Japanese)     | Set 2       | Set 3                            |
-| `AB 91`  | IBM 5576-003 (Japanese)     | Set 1       | Sets 2, 3                        |
-|          | Televideo 990/995 DEC style | Set 1       | Sets 2, 3                        |
+| `AB 90`  | IBM 5576-002 (Japanese)     | Set 2       | Sets 3, 82h                      |
+| `AB 91`  | IBM 5576-003 (Japanese)     | Set 2       | Sets 3, 82h                      |
+|          | Televideo 990/995 DEC style | Set 1       | Sets 1, 2, 3                     |
 | `AB 92`  | IBM 5576-001 (Japanese)     | Set 2       | Set 3, 82h                       |
 | `BF BF`  | IBM Terminal 122-key        | Set 3       | -                                |
 |          | - IBM 1390876, 6110344      |             | DIP switch configurable ID       |
@@ -355,7 +355,11 @@ These keyboards support Set 3, but many default to Set 2 or Set 1:
 | `7F 7F`  | IBM Terminal 101-key        | Set 3       | -                                |
 |          | - IBM 1394204               |             | Always Set 3, doesn't support F0 |
 
-**Important**: This converter DETECTS which scancode set these keyboards are currently using based on their ID. It does NOT send `F0 03` commands to switch scancode sets. For keyboards detected as Set 3, the converter only sends the `0xF8` command to configure make/break mode.
+**Important**: This converter detects which scancode set to use based on keyboard ID. It does NOT send `F0 03` commands to switch scancode sets. Keyboards with `BF**` and `7F**` IDs default to Set 3 and are processed as Set 3; the converter sends `0xF8` to configure make/break mode for these. Keyboards with `AB**` IDs listed in this table (AB 85, AB 86, AB 90, AB 91, AB 92) default to Set 2 and are processed as Set 2 by this converter, even though they are capable of switching to Set 3 or other code sets.
+
+**Televideo 990/995 note**: These keyboards start up in Set 1 by default but share the `AB 91` ID with the IBM 5576-003, which defaults to Set 2. This converter processes all `AB 91` keyboards as Set 2 and does not send scancode set switching commands — so the Televideo 990/995 is **not currently supported**. The TMK converter handles these keyboards by probing with `F0 82`; if the keyboard rejects it (as the Televideo does), it then switches to Set 3 via `F0 03`, which provides the most complete key coverage. Set 2 is only partially usable on this keyboard — some distinct physical keys produce identical Set 2 scancodes. See [tmk/tmk_keyboard PR #711](https://github.com/tmk/tmk_keyboard/pull/711) for details.
+
+**IBM 5576-001 (AB 92) note**: Official IBM documentation (SC18-2194-1, 1990, via [radioc.web.fc2.com](http://radioc.web.fc2.com/column/ps55/ps55kbd_scancode.htm)) lists only Sets 2, 82h, and 8Ah as officially supported for the 5576-001; Set 3 does not appear in the official documentation. Empirical testing by the community confirms Set 3 works in practice — see [tmk GitHub issue #685](https://github.com/tmk/tmk_keyboard/issues/685#issuecomment-850741943). The 82h code set is available but does not include the additional Japanese keys (e.g., Kana, Kanji, and extra IME keys) present in Set 3 (SC18-2194-1; [tmk GitHub issue #685](https://github.com/tmk/tmk_keyboard/issues/685#issuecomment-850741943)). Converters such as the TMK converter actively send `F0 03` to switch the keyboard from its default Set 2 into Set 3 in order to obtain more complete Japanese key coverage. This converter does not send `F0 03`; it detects the keyboard ID and processes the device in its detected default scancode set (Set 2 for AB 92).
 
 ## Protocol Notes
 

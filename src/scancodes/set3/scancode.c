@@ -50,7 +50,7 @@ typedef enum {
 static const scancode_remapping_entry_t scancode_remapping[] = {
     {0x7C, 0x68},  // Keypad Comma
     {0x83, 0x02},  // Left F7 Position
-    {0x84, 0x7F},  // Keypad Plus (Legend says minus)
+    {0x84, 0x7F},  // Keypad Plus (Physical Legend may say Minus)
 };
 
 /**

@@ -125,24 +125,24 @@ IBM Model M Enhanced Keyboard - Scancode Set 2
 | -------------- | ------------------------------ | -------------------------------------------------------------------- |
 | **Caps Lock**  | Caps Lock                      | Standard Caps Lock; Application key when holding Right Alt (Layer 1) |
 | **Right Ctrl** | Left GUI (Windows/Command key) | Adds GUI key to standard layout                                      |
-| **Right Alt**  | Fn modifier                    | Enables function layer access                                        |
+| **Right Alt**  | Layer 1 key (MO_1)             | Hold to activate Layer 1                                             |
 
 ### Function Layer
 
-When holding Right Alt (Fn modifier), additional functions are available for media control and navigation:
+When holding Right Alt, additional functions are available for media control and navigation:
 
-| Key Combination    | Function         | Notes                  |
-| ------------------ | ---------------- | ---------------------- |
-| **Fn + F1**        | Volume Down      | Media control          |
-| **Fn + F2**        | Volume Up        | Media control          |
-| **Fn + F3**        | Brightness Down  | Display control        |
-| **Fn + F4**        | Brightness Up    | Display control        |
-| **Fn + Caps Lock** | Application key  | App key access         |
-| **Fn + ` (Grave)** | Non-US Backslash | Additional key mapping |
+| Key Combination           | Function         | Notes                  |
+| ------------------------- | ---------------- | ---------------------- |
+| **Right Alt + F1**        | Volume Down      | Media control          |
+| **Right Alt + F2**        | Volume Up        | Media control          |
+| **Right Alt + F3**        | Brightness Down  | Display control        |
+| **Right Alt + F4**        | Brightness Up    | Display control        |
+| **Right Alt + Caps Lock** | Application key  | App key access         |
+| **Right Alt + ` (Grave)** | Non-US Backslash | Additional key mapping |
 
-### Fn Modifier Key
+### Layer Key
 
-**Default Fn Key**: Right Alt (can be customised in [`keyboard.c`](../../../src/keyboards/modelm/enhanced/keyboard.c))
+**Default layer key**: Right Alt, mapped to `MO_1` in [`keyboard.c`](../../../src/keyboards/modelm/enhanced/keyboard.c)
 
 ---
 

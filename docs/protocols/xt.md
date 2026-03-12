@@ -39,7 +39,7 @@ The XT protocol sits somewhere between the simple typewriter-style direct wiring
 
 Data flows one way only—keyboard to host. There's no mechanism for the host to send commands back to the keyboard. This means:
 
-- No LED control (Caps Lock and Num Lock indicators don't exist on XT keyboards)
+- No host LED control — Caps Lock and Num Lock indicators, if present, are locally managed by the keyboard controller and cannot be controlled by the host
 - No configuration commands (scan code set is fixed, no changing it)
 - No error recovery (no way to ask for retransmission if something goes wrong)
 - No acknowledgments (keyboard has no idea if the host actually received the data)
@@ -193,7 +193,7 @@ S   = Start bit, start(1): DATA HIGH at first clock edge; PIO captures this to b
 2. **CTS**: Keyboard immediately releases DATA; pull-up brings DATA HIGH.
 3. **Start bit**: CLOCK pulses again with DATA HIGH (start(1) = 1). PIO begins the 9-bit normalised frame here.
 4. **Data Bits**: 8 bits transmitted LSB-first, with DATA sampled on each falling CLOCK edge.
-5. **Return to Idle**: Both CLOCK and DATA return HIGH.
+5. **Return to Idle**: CLOCK returns HIGH; DATA returns to the genuine IBM XT idle level (LOW).
 
 **Note:** XT is strictly unidirectional — data flows keyboard to host only. The RTS/CTS framing sequence is entirely keyboard-initiated; the host has no mechanism to send data back.
 

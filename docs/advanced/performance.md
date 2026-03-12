@@ -143,7 +143,7 @@ Whilst the converter hasn't been measured with hardware timing equipment, the ar
 6. **HID report assembly:** Struct manipulation (nanoseconds)
 7. **USB polling wait:** Host queries device every 8ms (average 4ms wait)
 
-The protocol transmission and USB polling dominate total latency. Processing overhead (steps 2–6) is negligible compared to protocol and USB timing.
+The protocol transmission and USB polling are expected to dominate total latency; processing overhead (steps 2–6) is expected to be small relative to protocol and USB timing.
 
 ### Deterministic Timing
 

@@ -192,6 +192,7 @@ If you're ordering from JLCPCB, their website walks you through the process pret
 
 **Keyboard-specific:**
 
+- User-facing documentation: [IBM Model F PC/AT](../keyboards/ibm/model-f-pcat.md)
 - Source code configuration: [`src/keyboards/modelf/pcat/`](../../src/keyboards/modelf/pcat/)
 
 **External resources:**
