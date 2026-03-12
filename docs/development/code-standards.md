@@ -917,7 +917,7 @@ Consistency matters more than personal style preferences—it makes the codebase
 
 ---
 
-The critical ones are the architecture rules (no blocking, no multicore, volatile + barriers) and running the lint script before committing. Everything else is mostly about keeping the code readable and consistent.
+The critical ones are the architecture rules (no blocking, no multicore, volatile + barriers) and running the lint script before committing. The remaining guidelines focus on keeping the code readable and consistent.
 
 If you're not sure about something, have a look at existing protocol implementations (AT/PS2, XT, Amiga, etc.) to see how they handle similar situations. Or ask in an issue on GitHub—I'm happy to clarify.
 

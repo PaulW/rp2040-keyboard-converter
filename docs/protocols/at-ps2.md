@@ -157,7 +157,7 @@ Terminal keyboards may use specialised connectors with different pinouts from st
 
 **Timing Specifications:**
 
-- **Clock Frequency**: 10-16.7 kHz typical (most devices ~12 kHz)
+- **Clock Frequency**: 10–16.7 kHz per IBM specification
 - **Clock Period**: 60-100µs per bit
 - **Clock Pulse Width**: Minimum 30µs per IBM specification
 - **Data Setup/Hold**: Minimum 5µs before/after clock edge
@@ -168,13 +168,13 @@ Terminal keyboards may use specialised connectors with different pinouts from st
 
 - **Voltage**: +5V ±5% (4.75V to 5.25V)
 - **Current**:
-  - Keyboard: 50-150mA typical (peak may reach 275mA during startup)
-  - Mouse: 10-100mA typical
+  - Keyboard: 50–150 mA; peak up to 275 mA at startup (per IBM PS/2 Hardware Technical Reference)
+  - Mouse: 10–100 mA (per IBM PS/2 Hardware Technical Reference)
   - Combined: up to 375mA peak (well within USB 500mA limit)
 
 **Signal Integrity Considerations:**
 
-- **Cable Length**: Up to 6 meters typical (20 feet)—longer cables may require termination or buffering
+- **Cable Length**: Up to 6 metres (20 feet)—longer cables may require termination or buffering
 - **Capacitance**: Keep total CLOCK/DATA capacitance below 1000pF for reliable operation
 - **EMI Protection**: Shielded cables recommended for long runs or electrically noisy environments
 - **Connector Durability**: PS/2 connectors rated for 1,000+ insertion cycles
@@ -203,7 +203,7 @@ s  = Stop Bit (always 1)
 
 - Each bit period: 60-100µs (1 clock cycle)
 - Total frame time: ~1.1ms (11 bits × 100µs)
-- Maximum data rate: ~900 bytes/second (rarely achieved—typical rates much lower)
+- Maximum data rate: ~900 bytes/second (theoretical; 11 bits per frame at 10 kHz minimum clock)
 
 **Start Bit (0):**
 
@@ -761,12 +761,12 @@ The converter automatically detects and switches to the highest supported mouse 
 
 **Resolution Codes** (for 0xE8 Set Resolution):
 
-| Code | Resolution | Description                    |
-| ---- | ---------- | ------------------------------ |
-| 0x00 | 1 count/mm | Lowest sensitivity             |
-| 0x01 | 2 count/mm | Low sensitivity                |
-| 0x02 | 4 count/mm | Medium sensitivity             |
-| 0x03 | 8 count/mm | High sensitivity (most common) |
+| Code | Resolution | Description        |
+| ---- | ---------- | ------------------ |
+| 0x00 | 1 count/mm | Lowest sensitivity |
+| 0x01 | 2 count/mm | Low sensitivity    |
+| 0x02 | 4 count/mm | Medium sensitivity |
+| 0x03 | 8 count/mm | High sensitivity   |
 
 **Sample Rate Values** (for 0xF3 Set Sample Rate):
 

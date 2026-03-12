@@ -14,6 +14,16 @@ This configuration targets the A500/A500+ layout, which is what I've had access 
 
 ---
 
+## Features
+
+The Amiga keyboard uses Mitsumi or Samsung switches (A500/A500+) in a layout specific to the Amiga, with dedicated Amiga modifier keys (mapped to Left GUI and Right GUI) and an integrated Help key. The key count varies by region — 94 to 101 keys depending on layout variant.
+
+The Amiga protocol is bidirectional with a handshake mechanism: the keyboard sends a scancode, the host acknowledges it. This gives reliable delivery without the host needing to poll. Caps Lock is handled differently from other protocols — the keyboard sends only press events (no release), with bit 7 indicating the LED state. The Amiga protocol has no general LED control channel from the host; Caps Lock state is keyboard-managed.
+
+The keymap has a single base layer with no programmable layer switching. The Amiga modifier keys map to Left GUI and Right GUI, which work as the Command key on macOS and the Windows key on Windows.
+
+---
+
 ## Specifications
 
 | Specification   | Details                                             |
@@ -127,7 +137,7 @@ To customise the key layout, edit the keymap in [`keyboard.c`](../../../src/keyb
 
 This keyboard uses the default command mode keys: **Left Shift + Right Shift**
 
-Hold for 3 seconds to enter command mode.
+Hold for 3 seconds to enter [command mode.](../../features/command-mode.md)
 
 ---
 

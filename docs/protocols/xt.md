@@ -60,7 +60,7 @@ The protocol is synchronous—it uses a dedicated clock signal for data transmis
 
 Frame length depends on keyboard type:
 
-- **Genuine IBM XT**: ST1 + ST2 + 8 data bits = 10 bits total. The PIO discards ST1 and produces a normalised 9-bit frame (ST2 + 8 data bits) delivered to the interrupt handler.
+- **Genuine IBM XT**: start(0) + start(1) + 8 data bits = 10 bits total. The PIO discards start(0) (DATA LOW at the RTS clock edge) and produces a normalised 9-bit frame (start(1) + 8 data bits) delivered to the interrupt handler.
 - **Clone XT**: 1 start bit + 8 data bits = 9 bits total. The PIO passes these through as the normalised 9-bit frame.
 
 In either case, the interrupt handler receives a normalised 9-bit PIO frame: 1 start bit followed by 8 data bits.
@@ -111,7 +111,7 @@ Always verify which type your keyboard uses before ordering connectors or cables
 - **Open-Drain**: DATA line uses open-drain (or open-collector) output
 - **Pull-Up**: Host has pull-up resistor on DATA line (typically 1-10kΩ, 4.7kΩ typical)
 - **Pull-Up Location**: Resistor on host motherboard, not in keyboard
-- **Idle State**: DATA line HIGH when keyboard not transmitting
+- **Idle State**: DATA line LOW for genuine IBM XT keyboards (keyboard actively drives low between transmissions); DATA line HIGH via pull-up for clone keyboards
 
 **Power Requirements:**
 
@@ -131,17 +131,23 @@ Always verify which type your keyboard uses before ordering connectors or cables
 
 ### Frame Structure
 
-The XT protocol uses **9-bit frames** consisting of start bit(s) and data bits:
+Genuine IBM XT keyboards use a **10-bit** frame; clone keyboards use a **9-bit** frame. The PIO normalises both to a 9-bit frame, so the interrupt handler always receives the same format regardless of keyboard type.
+
+Throughout this document, the two genuine IBM XT start bits are named by their sampled DATA values: **start(0)** is the first bit (DATA LOW = 0, the RTS framing bit, discarded by the PIO) and **start(1)** is the second (DATA HIGH = 1, the actual start bit that opens the 9-bit normalised frame). Clone keyboards have only a single start bit, equivalent to start(1).
 
 ```text
-Frame Format (9 bits total):
-- Start bit(s): 1 bit (clone) or 2 bits (genuine IBM)
-- Data bits: 8 bits containing scancode (LSB-first)
+Frame format:
+  Genuine IBM XT:  10 bits — start(0) [discarded by PIO] + start(1) + 8 data bits
+  Clone XT:         9 bits — 1 start bit + 8 data bits
+
+Normalised PIO frame (both types, 9 bits):
+  Bit 0:   Start bit (DATA HIGH, always 1)
+  Bits 1–8: Scancode, LSB-first
 
 PIO Configuration:
-- ISR shift: 9 bits (captures start + data)
-- Autopush: Enabled at 9-bit boundary
-- Direction: Right-shift (LSB-first reception)
+  ISR shift: 9 bits (captures start + data)
+  Autopush: Enabled at 9-bit boundary
+  Direction: Right-shift (LSB-first reception)
 ```
 
 **Bit Order - LSB First**:
@@ -159,9 +165,11 @@ This is the opposite of "MSB-first" protocols and must be handled correctly in t
 
 The transmission method differs between genuine IBM keyboards and clone keyboards:
 
-#### Genuine IBM XT Keyboards (Two Start Conditions)
+#### Genuine IBM XT Keyboards (Two Start Bits)
 
-Authentic IBM keyboards use a two-start-bit framing sequence:
+Authentic IBM keyboards use a two-start-bit framing sequence described in the IBM XT Technical Reference. The terms **RTS** (request-to-send) and **CTS** (clear-to-send) are IBM's own terms for the way the keyboard signals it is about to transmit — they describe events on the CLOCK and DATA lines only. They are not RS-232 hardware flow-control signals; there is no separate RTS/CTS pin on the keyboard connector.
+
+**RTS**: The keyboard pulls CLOCK LOW to signal intent to transmit. DATA is already LOW in idle state, so this first CLOCK falling edge samples DATA LOW — this is start(0). **CTS**: The keyboard immediately releases DATA; the pull-up brings DATA HIGH, confirming the framing sequence has begun. The next CLOCK falling edge samples DATA HIGH — this is start(1), the actual start bit that opens the 9-bit normalised frame.
 
 ```text
 Timing Diagram:
@@ -169,25 +177,25 @@ Timing Diagram:
 CLOCK     \_____/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
                _____ ___ ___ ___ ___ ___ ___ ___ ___
 DATA  ________/     \___X___X___X___X___X___X___X___\_______
-          ^   ^  S    0   1   2   3   4   5   6   7
-         ST1 ST2
+          ^   ^   S    0   1   2   3   4   5   6   7
+          RTS CTS
 
 Legend:
-ST1 = First start bit (keyboard pulls CLOCK and DATA LOW, ~40µs)
-ST2 = Second start bit (keyboard releases CLOCK HIGH, DATA remains LOW)
-S   = Start bit (DATA goes HIGH momentarily)
+RTS = Request-to-send: keyboard pulls CLOCK LOW; DATA is already LOW (idle state), sample reads start(0) = 0
+CTS = Clear-to-send: keyboard releases DATA, pull-up brings DATA HIGH
+S   = Start bit, start(1): DATA HIGH at first clock edge; PIO captures this to begin the 9-bit normalised frame
 0-7 = Data bits transmitted LSB-first
 ```
 
 **Transmission Sequence:**
 
-1. **First Start Bit**: Keyboard pulls both CLOCK and DATA LOW (~40µs)
-2. **Second Start Bit**: Keyboard releases CLOCK (goes HIGH), synchronising timing domains
-3. **Start Bit**: DATA briefly goes HIGH then LOW
-4. **Data Bits**: 8 bits transmitted with CLOCK pulses, DATA sampled on falling CLOCK edge
-5. **Return to Idle**: Both CLOCK and DATA return HIGH
+1. **RTS**: Keyboard pulls CLOCK LOW. DATA is already LOW in idle state (start(0) = 0). PIO samples DATA LOW and detects genuine IBM XT framing.
+2. **CTS**: Keyboard immediately releases DATA; pull-up brings DATA HIGH.
+3. **Start bit**: CLOCK pulses again with DATA HIGH (start(1) = 1). PIO begins the 9-bit normalised frame here.
+4. **Data Bits**: 8 bits transmitted LSB-first, with DATA sampled on each falling CLOCK edge.
+5. **Return to Idle**: Both CLOCK and DATA return HIGH.
 
-**Note:** XT is strictly unidirectional (keyboard → host only). Do not implement any host-to-keyboard commands — there is no host-side handshake in this protocol.
+**Note:** XT is strictly unidirectional — data flows keyboard to host only. The RTS/CTS framing sequence is entirely keyboard-initiated; the host has no mechanism to send data back.
 
 #### Clone XT Keyboards (Single Start Condition)
 
@@ -250,46 +258,47 @@ The implementation needs to distinguish between genuine IBM keyboards (which use
 
 **The Problem**:
 
-Both types have the same start bit pulse width of roughly 40µs. The typical bit period is around 100µs. If you're sampling at the bit period rate, you'll completely miss that second start bit on genuine IBM keyboards. You need to detect whether that second start bit exists within the first 40µs window.
+The IBM XT Technical Reference documents that the genuine IBM keyboard holds DATA LOW in idle state. When the keyboard wants to transmit, it issues RTS by pulling CLOCK LOW and immediately releases DATA — the pull-up brings DATA HIGH (CTS). The constraint: the keyboard's 8048 microcontroller releases DATA in the very next instruction after pulling CLOCK LOW. At ~2.5µs per 8048 machine cycle, the DATA is only LOW for roughly **~5µs** at the first CLOCK falling edge before it goes HIGH. This is the start(0) window.
 
-**The Solution - Fast Sampling**:
+Clone keyboards hold DATA HIGH in idle, so DATA is already HIGH when CLOCK falls — no RTS/CTS, just a single start bit.
 
-This implementation samples at 10µs intervals (defined as `XT_TIMING_SAMPLE_US` constant, see [Why 10µs Sampling is Critical](#why-10µs-sampling-is-critical) below for the full technical explanation):
+The detection is therefore: read DATA as fast as possible after the first CLOCK falling edge. DATA LOW = genuine IBM XT (start(0) confirmed, RTS/CTS sequence), DATA HIGH = clone (single start bit). The difficulty is that the ~5µs window is tight enough that the IBM Technical Reference notes it requires specially written code even on a 16MHz AVR.
 
-```text
-Minimum Pulse Detection: 10µs (not the 100µs typical bit period)
-RP2040 System Clock: 125 MHz
-Target Sampling: (1000 / XT_TIMING_SAMPLE_US) × 5 samples = 500 kHz
-Clock Divider: 125,000 kHz / 500 kHz = 250
-PIO Cycle Time: 2µs per cycle
+**The Solution — Sample Immediately on the CLOCK Edge**:
 
-Detection Window:
-- Start bit width: ~40µs
-- Sampling interval: 10µs
-- Samples per start bit: 4 samples (40µs / 10µs)
-```
-
-With this fast sampling, the implementation can catch that first start bit if it's present:
+The PIO `check` loop polls CLOCK every 2µs (clock divider 250 at 125MHz = 2µs per PIO cycle). When CLOCK goes LOW, `jmp pin, check` falls through and the very next instruction — `in pins, 1` — reads DATA. Total latency from CLOCK falling edge to sample: 2–4µs (1–2 PIO cycles). This is within the ~5µs window:
 
 ```text
-On CLOCK falling edge:
-  Sample DATA immediately (within 10µs window)
+PIO setup:
+  System clock:     125 MHz
+  Clock divider:    250
+  PIO cycle time:   2µs
 
-  If DATA = LOW:
-    → Genuine IBM XT detected (two start bits)
-    → Discard first start bit
-    → Wait for CLOCK rising edge
-    → Wait for CLOCK falling edge again
-    → Read second start bit
-    → Proceed with 8 data bits
-
-  If DATA = HIGH:
-    → Clone XT detected (single start bit)
-    → Use this sample as start bit
-    → Proceed with 8 data bits
+start(0) timing (genuine IBM XT):
+  DATA LOW window:  ~5µs (one 8048 instruction cycle after CLOCK falls)
+  PIO sample delay: 2–4µs (1–2 PIO cycles from CLOCK edge to in pins, 1)
+  Margin:           ~1–3µs
 ```
 
-This solution allows a single receiver implementation to work with both genuine and clone keyboards automatically.
+Once the first sample is taken:
+
+```text
+At first CLOCK falling edge (check → in pins, 1):
+
+  DATA = LOW → genuine IBM XT
+    start(0) detected (RTS confirmed)
+    Discard this bit (clear ISR)
+    Wait for CLOCK rising edge
+    Wait for CLOCK falling edge (start(1), DATA HIGH)
+    Proceed with 8 data bits
+
+  DATA = HIGH → clone XT
+    Single start bit (no RTS/CTS)
+    Use this sample as start bit
+    Proceed with 8 data bits
+```
+
+This allows a single PIO program to handle both genuine and clone keyboards without any software intervention.
 
 ---
 
@@ -428,28 +437,30 @@ Key Points:
 
 ## Implementation Notes
 
-### Why 10µs Sampling is Critical
+### PIO Clock Divider and the ~5µs Detection Window
 
-The 10µs sampling rate isn't arbitrary—it's specifically needed to distinguish between genuine IBM XT keyboards (two start bits) and clone keyboards (single start bit):
+The `XT_TIMING_SAMPLE_US` constant (value 10) sets the PIO clock divider. The 10µs figure is the **data-bit sampling period**: the `bitLoopIn` loop takes 5 PIO cycles per iteration (wait 2 cycles + in 1 cycle + wait 1 cycle + jmp 1 cycle), and at 2µs per cycle that gives exactly 10µs per data bit — matching the ~100µs bit period at ~10kHz.
 
-- **Start bit width**: ~40µs on genuine IBM keyboards
-- **Sampling interval**: 10µs gives you 4 samples within that 40µs window
-- **Detection capability**: Fast enough to catch the DATA LOW state of the first start bit
-- **Oversampling factor**: 10× faster than the bit period (10µs vs 100µs)
+The start(0) detection is a different matter. It relies on the **2µs PIO cycle time**, not the 10µs loop period. The `check` loop detects the CLOCK falling edge within one 2µs cycle, and `in pins, 1` samples DATA in the very next cycle. Here's what happens at different PIO speeds:
 
-Without this fast sampling, both genuine and clone keyboards would look identical when sampled at the bit period rate (~100µs), making automatic detection impossible. Here's why slower sampling fails:
+**At 2µs PIO cycles (this implementation — divider 250)**:
 
-**At 100µs sampling (bit period rate)**:
+- CLOCK falls detected; DATA sampled ~2–4µs later
+- ~5µs DATA LOW window on genuine XT → caught reliably
+- Result: correct genuine vs clone framing every time
 
-- First sample: Misses the ~40µs first start bit pulse entirely
-- Second sample: Sees DATA HIGH (after first start bit ends)
-- Result: Genuine and clone keyboards look identical
+**At 10µs PIO cycles (5× slower)**:
 
-**At 10µs sampling (this implementation)**:
+- CLOCK falls; DATA sampled ~10µs later
+- DATA LOW window already expired by then (~5µs)
+- Result: genuine IBM XT looks like a clone — framing misaligned, scancodes garbled
 
-- First sample (at ~10µs): Catches DATA LOW on genuine XT (first start bit present)
-- First sample (at ~10µs): Sees DATA HIGH on clone XT (no first start bit)
-- Result: Can distinguish keyboard types and align frame correctly
+**At 100µs PIO cycles (bit period rate)**:
+
+- CLOCK falls; DATA sampled ~100µs later — mid next bit
+- Result: completely wrong framing
+
+The clock divider of 250 is therefore set to achieve two things simultaneously: 2µs PIO cycles to catch the ~5µs start(0) window, and a natural 10µs data-bit sampling period (5 cycles × 2µs) for the rest of the frame.
 
 ### Host-Side Implementation
 
@@ -525,7 +536,7 @@ float calculate_clock_divider(uint32_t target_us) {
 }
 ```
 
-See [Why 10µs Sampling is Critical](#why-10µs-sampling-is-critical) above for the technical rationale behind this timing requirement.
+See [PIO Clock Divider and the ~5µs Detection Window](#pio-clock-divider-and-the-5µs-detection-window) above for the technical rationale behind this timing requirement.
 
 ---
 
@@ -537,7 +548,8 @@ If you're running into issues with your XT keyboard, the problems usually fall i
 
 - VCC (Pin 5): 5.0V ±5%
 - GND (Pin 4): 0V
-- Idle DATA: ~5V (pulled HIGH)
+- Idle DATA (genuine IBM XT): ~0V (keyboard actively drives LOW)
+- Idle DATA (clone XT): ~5V (pulled HIGH)
 
 ### Common Issues
 

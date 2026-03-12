@@ -191,7 +191,7 @@ if (to_ms_since_boot(get_absolute_time()) - state_start > 100) {
 }
 ```
 
-This pattern appears throughout the codebase—protocol handlers, Command Mode, LED updates. The main loop runs continuously without blocking, checking state machines and processing events as they occur. It's a bit more code than just calling `sleep()`, but it's what keeps the converter working reliably.
+This pattern appears throughout the codebase—protocol handlers, Command Mode, LED updates. The main loop runs continuously without blocking, checking state machines and processing events as they occur, which is what keeps the converter working reliably.
 
 **Note:** `config_save()` is an intentional exception. Calling it during layer Toggle (TG) or Switch-To (TO) operations does block — it issues `flash_range_erase()` and `flash_range_program()` to persist the new layer state to flash, which briefly halts HID events and USB reports during the erase/write cycle. This is by design, as flash writes require interrupts to be disabled.
 
@@ -201,7 +201,7 @@ This pattern appears throughout the codebase—protocol handlers, Command Mode, 
 
 ### Performance Optimisation
 
-The converter runs on modest hardware—an RP2040 microcontroller with 264KB SRAM and a 125MHz ARM Cortex-M0+ core.
+The converter runs on an RP2040 microcontroller with 264KB SRAM and dual 125MHz ARM Cortex-M0+ cores — the converter uses a single core only.
 
 The 32-byte ring buffer provides adequate burst handling—it can queue up several scancodes before the main loop processes them. The non-blocking architecture ensures the converter remains responsive even under continuous input.
 

@@ -211,36 +211,36 @@ I've included configurations for the keyboards I own and have tested. These are 
 
 ### IBM Keyboards (AT/PS2 Protocol)
 
-| Make    | Model                          | Path              | Protocol | Codeset   | Details                         |
-| ------- | ------------------------------ | ----------------- | -------- | --------- | ------------------------------- |
-| **IBM** | Model M Enhanced PC Keyboard   | `modelm/enhanced` | AT/PS2   | Set 1/2/3 | [View](ibm/model-m-enhanced.md) |
-| **IBM** | Model M M122 Terminal Keyboard | `modelm/m122`     | AT/PS2   | Set 1/2/3 | [View](ibm/model-m-m122.md)     |
-| **IBM** | Model F/AT PC Keyboard         | `modelf/pcat`     | AT/PS2   | Set 1/2/3 | [View](ibm/model-f-pcat.md)     |
+| Make    | Model                          | Path              | Protocol | Codeset  | Details                         |
+| ------- | ------------------------------ | ----------------- | -------- | -------- | ------------------------------- |
+| **IBM** | Model M Enhanced PC Keyboard   | `modelm/enhanced` | `at-ps2` | `set123` | [View](ibm/model-m-enhanced.md) |
+| **IBM** | Model M M122 Terminal Keyboard | `modelm/m122`     | `at-ps2` | `set123` | [View](ibm/model-m-m122.md)     |
+| **IBM** | Model F/AT PC Keyboard         | `modelf/pcat`     | `at-ps2` | `set123` | [View](ibm/model-f-pcat.md)     |
 
 ### Cherry Keyboards (XT Protocol)
 
-| Make       | Model                               | Path               | Protocol | Codeset   | Details                     |
-| ---------- | ----------------------------------- | ------------------ | -------- | --------- | --------------------------- |
-| **Cherry** | G80-0614H (Merlin Cheetah Terminal) | `cherry/G80-0614H` | XT       | Set 1/2/3 | [View](cherry/g80-0614h.md) |
-| **Cherry** | G80-1104H (Merlin Cheetah Terminal) | `cherry/G80-1104H` | XT       | Set 1/2/3 | [View](cherry/g80-1104h.md) |
+| Make       | Model                               | Path               | Protocol | Codeset  | Details                     |
+| ---------- | ----------------------------------- | ------------------ | -------- | -------- | --------------------------- |
+| **Cherry** | G80-0614H (Merlin Cheetah Terminal) | `cherry/G80-0614H` | `xt`     | `set123` | [View](cherry/g80-0614h.md) |
+| **Cherry** | G80-1104H (Merlin Cheetah Terminal) | `cherry/G80-1104H` | `xt`     | `set123` | [View](cherry/g80-1104h.md) |
 
 ### MicroSwitch Keyboards (AT/PS2 Protocol)
 
-| Make            | Model                    | Path                  | Protocol | Codeset   | Details                        |
-| --------------- | ------------------------ | --------------------- | -------- | --------- | ------------------------------ |
-| **MicroSwitch** | 122ST13 (PC122 Terminal) | `microswitch/122st13` | AT/PS2   | Set 1/2/3 | [View](microswitch/122st13.md) |
+| Make            | Model                    | Path                  | Protocol | Codeset  | Details                        |
+| --------------- | ------------------------ | --------------------- | -------- | -------- | ------------------------------ |
+| **MicroSwitch** | 122ST13 (PC122 Terminal) | `microswitch/122st13` | `at-ps2` | `set123` | [View](microswitch/122st13.md) |
 
 ### Amiga Keyboards (Amiga Protocol)
 
-| Make          | Model                   | Path         | Protocol | Codeset   | Details                         |
-| ------------- | ----------------------- | ------------ | -------- | --------- | ------------------------------- |
-| **Commodore** | Amiga 500/2000 Keyboard | `amiga/a500` | Amiga    | Amiga Set | [View](commodore/amiga-a500.md) |
+| Make          | Model                   | Path         | Protocol | Codeset | Details                         |
+| ------------- | ----------------------- | ------------ | -------- | ------- | ------------------------------- |
+| **Commodore** | Amiga 500/2000 Keyboard | `amiga/a500` | `amiga`  | `amiga` | [View](commodore/amiga-a500.md) |
 
 ### Apple Keyboards (Apple M0110 Protocol)
 
-| Make      | Model           | Path           | Protocol    | Codeset         | Details                 |
-| --------- | --------------- | -------------- | ----------- | --------------- | ----------------------- |
-| **Apple** | M0110A Keyboard | `apple/m0110a` | Apple M0110 | Apple M0110 Set | [View](apple/m0110a.md) |
+| Make      | Model           | Path           | Protocol      | Codeset | Details                 |
+| --------- | --------------- | -------------- | ------------- | ------- | ----------------------- |
+| **Apple** | M0110A Keyboard | `apple/m0110a` | `apple-m0110` | `set1`  | [View](apple/m0110a.md) |
 
 ### Building an Example Configuration
 

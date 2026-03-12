@@ -4,7 +4,7 @@
 
 This guide will walk you through building custom firmware for your specific keyboard and mouse combination. I've set things up to use Docker, which creates a consistent build environment that works the same way on Windows, macOS, and Linux—so you won't need to manually install compilers, SDKs, or development tools.
 
-**Why Docker?** It packages all the complex build tools (ARM GCC compiler, Pico SDK, CMake) into a single container. You run one command, and Docker handles everything behind the scenes—same result on Windows, macOS, and Linux.
+**Why Docker?** It packages the build tools (ARM GCC compiler, Pico SDK, CMake) into a single container. You run one command, and Docker handles everything behind the scenes—same result on Windows, macOS, and Linux.
 
 ---
 

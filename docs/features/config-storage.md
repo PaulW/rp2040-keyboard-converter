@@ -178,7 +178,7 @@ uint8_t current_level = cfg->log_level;
 uint8_t brightness = cfg->led_brightness;
 ```
 
-This design adds no function-call overhead: accessing configuration is a direct RAM read via the inline pointer, with no extra indirection beyond the struct access. The compiler can even optimise these reads into registers when possible.
+The inline pointer return means there's no intermediate copy — accessing configuration reads directly from the RAM structure via the returned pointer. The compiler can inline these reads and optimise them into registers when possible.
 
 The tradeoff is that changes to configuration don't automatically save. When you modify a setting through Command Mode, the code updates the RAM structure and then explicitly calls the save function. This explicit save design gives you control over when the write operation happens.
 
@@ -318,7 +318,7 @@ The SDK provides [`flash_safe_execute()`](https://www.raspberrypi.com/documentat
 
 **Save time**: Brief blocking flash write. Ring buffer protects against data loss during save.
 
-**Flash wear**: Each setting change alternates between Copy A and Copy B. With typical flash endurance of ~10,000 cycles (conservative estimate), you could save configuration 20,000 times before wearing out flash. At one save per day, that's 54 years.
+**Flash wear**: Each setting change alternates between Copy A and Copy B. The W25Q16JVUXIQ flash used on the custom PCB is rated for a minimum of 100,000 program/erase cycles per sector (Winbond W25Q16JV datasheet). Using a conservative estimate of 10,000 cycles per sector, you could save configuration 20,000 times before wearing out flash. At one save per day, that's 54 years.
 
 **Corruption resistance**: Dual-copy with CRC validation improves recovery from interrupted writes, though if power is lost during the 4KB sector erase or before both copies have been rewritten, both copies could be invalidated.
 

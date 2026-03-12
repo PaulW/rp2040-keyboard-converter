@@ -127,11 +127,11 @@ IBM Model M M122 Terminal Keyboard (Scancode Set 3):
 
 ### Key Assignments
 
-| Physical Key       | Function                 | Notes                                  |
-| ------------------ | ------------------------ | -------------------------------------- |
-| **F1-F12**         | Standard function keys   | Second function key row, below F13-F24 |
-| **F13-F24**        | Extended function keys   | Top function key row, above F1-F12     |
-| **Left Side Keys** | Various modern functions | Volume, brightness, App, GUI keys      |
+| Physical Key       | Function                                                                         | Notes                                                   |
+| ------------------ | -------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **F1-F12**         | Standard function keys                                                           | Second function key row, below F13-F24                  |
+| **F13-F24**        | Extended function keys                                                           | Top function key row, above F1-F12                      |
+| **Left Side Keys** | Volume Down, Volume Up, Brightness Down, Brightness Up, App, Left GUI, Right GUI | Two columns of keys to the left of the main alpha block |
 
 ### Layer System
 
@@ -165,7 +165,6 @@ Model M M122 uses a **5-pin DIN connector** with **240° arrangement** (non-stan
 
 - **240° orientation**: Unique to terminal keyboards (pin 2 at bottom, not at side)
 - **Fixed cable**: Non-removable, hardwired cable (unlike SDL models)
-- **Terminal variants**: Some later variants used RJ45 connectors (not PS/2)
 
 ### Wiring to RP2040
 
@@ -265,7 +264,7 @@ Example Type 2 part numbers:
 **Check these:**
 
 - Verify F13-F24 are properly mapped in [`keyboard.c`](../../../src/keyboards/modelm/m122/keyboard.c)
-- Some applications don't support F13-F24—test with a key tester first
+- F13–F24 are defined in the USB HID usage tables but not all host applications recognise them — test with a key tester first
 - All function keys should work in standard HID mode
 
 ---

@@ -316,7 +316,7 @@ float clock_div = calculate_clock_divider(XT_TIMING_SAMPLE_US);
 float clock_div = calculate_clock_divider(10);
 ```
 
-Define timing constants in your protocol's header file with clear names that describe what the value represents and include the unit suffix (`_US` for microseconds). All existing protocol timing constants follow this convention: `ATPS2_TIMING_CLOCK_MIN_US`, `XT_TIMING_SAMPLE_US`, `AMIGA_TIMING_CLOCK_MIN_US`, `M0110_TIMING_KEYBOARD_LOW_US`.
+Define timing constants in your protocol's header file with clear names that describe what the value represents and include the unit suffix (`_US` for microseconds). For example: `ATPS2_TIMING_CLOCK_MIN_US`, `XT_TIMING_SAMPLE_US`, `AMIGA_TIMING_CLOCK_MIN_US`, `M0110_TIMING_KEYBOARD_LOW_US`.
 
 After setup completes, the protocol's task function (`keyboard_interface_task()`) handles the runtime state machine. This varies significantly between protocols depending on their complexity:
 
@@ -343,7 +343,7 @@ The automated lint script ([tools/lint.sh](../../tools/lint.sh)) checks that pro
 
 - LED initialisation present
 - Ring buffer reset before IRQ setup
-- IRQ priority configured (not left at SDK default)
+- IRQ priority managed centrally by the PIO IRQ dispatcher — lint ensures protocols do not call `irq_set_priority()` directly (the dispatcher is responsible for priority configuration)
 
 The lint checks run automatically in CI and should be run locally before committing (`./tools/lint.sh`).
 

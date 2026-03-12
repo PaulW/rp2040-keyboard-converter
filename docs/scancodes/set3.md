@@ -312,26 +312,35 @@ NumLock: 76   /: 77    *: 7E    ,: 84
 
 ### Detection Method
 
-Terminal keyboards identify with specific ID ranges (based on tmk reference):
+The converter uses the keyboard ID (from the `0xF2` Identify response) to determine the scancode set. Two distinct groups exist (based on tmk reference):
+
+**Set 3 terminal keyboards** (default to Set 3 at power-up):
 
 ```text
-0xAB86-0xAB92: Known terminal keyboards (Cherry G80-2551, IBM 1397000, IBM 5576)
-0xBF00-0xBFFF: Type 2 terminal keyboards (IBM 1390876, 6110344, RT keyboards)
-0x7F00-0x7FFF: Type 1 terminal keyboards (IBM 1394204)
+0xBF00-0xBFFF: IBM 1390876, 6110344, RT keyboards
+0x7F00-0x7FFF: IBM 1394204
 ```
 
-**Not terminal keyboards:**
+When the converter identifies one of these, it:
+
+1. Treats the keyboard as Set 3
+2. Sends `0xF8` (Set All Keys Make/Break) and waits for ACK (`0xFA`)
+3. Processes single-byte scancodes without E0/E1 prefix logic
+
+**0xAB86–0xAB92 keyboards** (boot in Set 2 by default):
 
 ```text
-0xAB84: Short keyboards (ThinkPad, Spacesaver) - use Set 2
+0xAB86-0xAB92: Cherry G80-2551, IBM 1397000, IBM 5576 series
+```
+
+These keyboards support switching to Set 3 via `F0 03`, but this converter does not send that command. They boot in Set 2 and are treated as Set 2 throughout. No `0xF8` is sent.
+
+**Not Set 3 keyboards:**
+
+```text
+0xAB84: Short keyboards (ThinkPad, Spacesaver) - Set 2
 0xAB85: Mixed models (some Set 2, some Set 3)
 ```
-
-When the converter identifies a terminal keyboard by its ID, it:
-
-1. Auto-detects the scancode set from the `0xF2` (Identify) response — the converter does not send `F0 03` to force-switch scancode sets
-2. Sends `0xF8` (Set All Keys Make/Break) and waits for ACK (`0xFA`) to ensure press and release events are reported
-3. Processes single-byte scancodes without E0/E1 prefix logic
 
 ## Keyboard Identification
 
@@ -341,35 +350,35 @@ Set 3 keyboards respond to `0xF2` (Identify) command with 2-byte ID.
 
 ### Keyboards That Support Set 3
 
-| ID (hex) | Description                  | Default Set | Notes                                    |
-| -------- | ---------------------------- | ----------- | ---------------------------------------- |
-| `AB 86`  | Terminal keyboards           | **Set 2**   | Supports switching to Set 3 via F0 03    |
-|          | - Cherry G80-2551 126-key    |             | Starts in Set 2, switchable to Set 3     |
-|          | - IBM 1397000                |             |                                          |
-|          | - Affirmative 1227T          |             |                                          |
-|          | - Unicomp UB40856            |             |                                          |
-|          | - Other 122-key terminals    |             |                                          |
-| `AB 90`  | IBM 5576-002 KEYBOARD-2      | **Set 2**   | Supports switching to Set 3              |
-|          | - Part number 94X1110        |             | Japanese keyboard                        |
-| `AB 91`  | IBM 5576-003                 | **Set 1**   | Supports switching to Set 3              |
-|          | Televideo 990/995 DEC style  | **Set 1**   | Supports Sets 1, 2, 3                    |
-| `AB 92`  | IBM 5576-001                 | **Set 2**   | Supports switching to Set 3              |
-|          |                              |             | Supports Set 3 and Code Set 82h          |
-| `BF BF`  | IBM Terminal 122-key         | **Set 3**   | Default is Set 3                         |
-|          | - IBM 1390876, 6110344       |             | ID configurable via DIP switches/jumpers |
-| `BF B0`  | IBM RT keyboard (US layout)  | **Set 3**   | Default is Set 3                         |
-|          |                              |             | Num Lock and Caps Lock LEDs swapped      |
-| `BF B1`  | IBM RT keyboard (ISO layout) | **Set 3**   | Default is Set 3                         |
-| `7F 7F`  | IBM Terminal 101-key         | **Set 3**   | Always Set 3                             |
-|          | - IBM 1394204                |             | ID not configurable                      |
-|          |                              |             | Doesn't support F0 command               |
+| ID (hex) | Description                  | Default Set | Notes                                             |
+| -------- | ---------------------------- | ----------- | ------------------------------------------------- |
+| `AB 86`  | Terminal keyboards           | **Set 2**   | Supports switching to Set 3 via F0 03             |
+|          | - Cherry G80-2551 126-key    |             | Starts in Set 2, switchable to Set 3              |
+|          | - IBM 1397000                |             |                                                   |
+|          | - Affirmative 1227T          |             |                                                   |
+|          | - Unicomp UB40856            |             |                                                   |
+|          | - Other 122-key terminals    |             |                                                   |
+| `AB 90`  | IBM 5576-002 KEYBOARD-2      | **Set 2**   | Supports switching to Set 3                       |
+|          | - Part number 94X1110        |             | Japanese keyboard                                 |
+| `AB 91`  | IBM 5576-003                 | **Set 2**   | Hardware default Set 1; converter treats as Set 2 |
+|          | Televideo 990/995 DEC style  | **Set 2**   | Supports Sets 1, 2, 3; converter treats as Set 2  |
+| `AB 92`  | IBM 5576-001                 | **Set 2**   | Supports switching to Set 3                       |
+|          |                              |             | Supports Set 3 and Code Set 82h                   |
+| `BF BF`  | IBM Terminal 122-key         | **Set 3**   | Default is Set 3                                  |
+|          | - IBM 1390876, 6110344       |             | ID configurable via DIP switches/jumpers          |
+| `BF B0`  | IBM RT keyboard (US layout)  | **Set 3**   | Default is Set 3                                  |
+|          |                              |             | Num Lock and Caps Lock LEDs swapped               |
+| `BF B1`  | IBM RT keyboard (ISO layout) | **Set 3**   | Default is Set 3                                  |
+| `7F 7F`  | IBM Terminal 101-key         | **Set 3**   | Always Set 3                                      |
+|          | - IBM 1394204                |             | ID not configurable                               |
+|          |                              |             | Doesn't support F0 command                        |
 
 ### Important Notes
 
-- **Keyboards starting with 0xAB8x**: Default to Set 2, but support switching to Set 3
-- **Keyboards starting with 0xBFxx or 0x7Fxx**: Default to Set 3
-- **This converter**: DETECTS the current scancode set based on keyboard ID. It does NOT send `F0 03` commands to switch scancode sets.
-- **Make/Break Mode**: For keyboards detected as Set 3, the converter sends `0xF8` (Set All Keys Make/Break) command
+- **Keyboards `0xAB86`–`0xAB92`**: Boot in Set 2 and are treated as Set 2 by this converter. They can be switched to Set 3 via `F0 03`, but this converter does not send that command. Note: `AB 91` hardware defaults to Set 1, but falls into the 0xAB\* range and is treated as Set 2.
+- **Keyboards starting with 0xBFxx or 0x7Fxx**: Default to Set 3; treated as Set 3 by this converter.
+- **This converter**: Does NOT send `F0 03` to switch scancode sets. The set is determined solely by the keyboard ID returned by `0xF2`.
+- **Make/Break Mode**: `0xF8` (Set All Keys Make/Break) is sent only for keyboards with IDs in the 0xBFxx or 0x7Fxx ranges.
 
 ### Non-Set 3 Keyboards (For Reference)
 
@@ -389,15 +398,17 @@ Generic Set 3 initialisation procedure:
 1. Wait for self-test (0xAA)
 2. Send 0xF2 (Identify)
 3. Read 2-byte ID
-4. If ID is terminal (0xAB86-0xAB92, 0xBFxx, or 0x7Fxx):
+4. If ID is 0xBFxx or 0x7Fxx (Set 3 terminal keyboards):
    - [Optional] Send 0xF0 0x03 (switch to Set 3)
    - [Optional] Wait for ACK (0xFA)
    - Send 0xF8 (Set All Keys Make/Break)
    - Wait for ACK (0xFA)
+   If ID is 0xAB86-0xAB92 (boots Set 2, switchable but not switched):
+   - No set-switching command sent; treat as Set 2
 5. Keyboard is ready
 ```
 
-**Note about this converter**: This implementation **auto-detects** the keyboard's current scancode set based on its ID and does NOT send the `F0 03` command to force-switch scancode sets. Keyboards with IDs 0xBFxx and 0x7Fxx default to Set 3 at power-up, whilst 0xAB86-0xAB92 keyboards boot in Set 2. The converter configures itself to match the keyboard's native set, eliminating the need for set-switching commands.
+**Note about this converter**: This implementation does NOT send `F0 03` to switch scancode sets. Keyboards with IDs 0xBFxx and 0x7Fxx default to Set 3 at power-up and are treated as Set 3; `0xF8` is sent for these. Keyboards with IDs 0xAB86–0xAB92 boot in Set 2 and are treated as Set 2 — even though they support switching to Set 3, this converter does not send F0 03.
 
 ### Typematic Control
 

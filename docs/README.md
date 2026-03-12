@@ -14,7 +14,7 @@ If you're new to the project, or just want to get up and running quickly, the [Q
 
 ## 🔧 Hardware
 
-I've used a Waveshare RP2040-Zero for this project, as that's what I already had to hand, but any RP2040-based board should work just fine. I chose the RP2040 mainly for its PIO (Programmable I/O) hardware—it's particularly well-suited for implementing the precise timing requirements of these protocols, and it was also a good excuse to learn something new.
+I've used a Waveshare RP2040-Zero for this project, as that's what I already had to hand. The RP2040's PIO (Programmable I/O) hardware provides dedicated state machines that can handle the microsecond-level timing requirements of vintage keyboard protocols without CPU intervention, which is why I chose it for this converter—and it was also a good excuse to learn something new.
 
 - **[Hardware Overview](hardware/README.md)** - In-depth hardware guide with wiring diagrams
 - **[Custom PCB](hardware/custom-pcb.md)** - Custom PCB design for IBM Model F

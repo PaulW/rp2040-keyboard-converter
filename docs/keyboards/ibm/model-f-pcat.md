@@ -14,6 +14,16 @@ The IBM Model F PC/AT keyboard uses buckling spring over capacitive switch techn
 
 ---
 
+## Features
+
+The Model F PC/AT uses buckling spring over capacitive switch technology — the actuation mechanism is capacitive sensing of the spring's collapse, rather than the membrane contact used in the later Model M. This gives full NKRO at the hardware level, though the converter outputs USB HID Boot Protocol, which limits simultaneous reporting to 6 regular keys plus 8 modifiers in practice.
+
+The layout is 84 keys in a compact arrangement designed for the IBM PC/AT (5170) before ISO and ANSI layouts were standardised. This configuration is the UK layout variant (part number 6450225). The AT/PS2 protocol is fully bidirectional — the converter sends LED control commands to the keyboard, so Caps Lock, Num Lock, and Scroll Lock indicators respond correctly.
+
+The keymap has two layers. The physical F9 key on the keyboard acts as a momentary layer key (MO_1): hold it to access Layer 1, which provides F9–F12, media controls (volume, brightness), the Application key, Non-US Backslash (NUBS), and the numpad keys remapped to navigation (Home, End, PgUp, PgDn, and arrow keys). The connector is the standard 5-pin DIN in 180° arrangement.
+
+---
+
 ## Specifications
 
 | Specification    | Details                                  |

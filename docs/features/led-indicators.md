@@ -63,12 +63,12 @@ The converter sits in the middle, receiving USB HID output reports from the OS a
 
 Different keyboard protocols have different levels of LED support. Here's what works with each protocol:
 
-| Protocol | Caps Lock | Num Lock | Scroll Lock | Implementation                        |
-| -------- | --------- | -------- | ----------- | ------------------------------------- |
-| AT/PS2   | ✓ Yes     | ✓ Yes    | ✓ Yes       | `0xED` command + state byte           |
-| XT       | ✗ No      | ✗ No     | ✗ No        | Protocol doesn't support LEDs         |
-| Amiga    | ✓ Yes     | ✗ No     | ✗ No        | Handshake timing (short=ON, long=OFF) |
-| M0110    | ✗ No      | ✗ No     | ✗ No        | Protocol doesn't support LEDs         |
+| Protocol | Caps Lock | Num Lock | Scroll Lock | Implementation                |
+| -------- | --------- | -------- | ----------- | ----------------------------- |
+| AT/PS2   | ✓ Yes     | ✓ Yes    | ✓ Yes       | `0xED` command + state byte   |
+| XT       | ✗ No      | ✗ No     | ✗ No        | Protocol doesn't support LEDs |
+| Amiga    | ✓ Yes     | ✗ No     | ✗ No        | Hardware-managed by keyboard  |
+| M0110    | ✗ No      | ✗ No     | ✗ No        | Protocol doesn't support LEDs |
 
 ### AT/PS2 LED Control
 

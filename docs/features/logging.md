@@ -12,7 +12,7 @@ Instead, the converter uses UART (Universal Asynchronous Receiver/Transmitter), 
 
 UART is ideal for debugging embedded systems because it operates completely separately from the USB connection—debug output never interferes with keyboard or mouse operation. The hardware requirements are minimal: just two wires connecting TX and GND. The output format is human-readable standard text, viewable in any terminal program without special software.
 
-The converter's logging implementation uses DMA (Direct Memory Access), which means log messages transmit in the background without blocking keyboard processing. Even at the highest debug verbosity, logging adds minimal latency to your keystrokes—the CPU handles message formatting and queuing before DMA takes over, so transmission happens in the background. And because UART operates independently of the USB host stack, it keeps working even if the USB HID connection fails or the host drops the device—exactly when you need debug output most. Note that the board is powered via USB, so UART output will stop if USB power is lost.
+The converter's logging implementation uses DMA (Direct Memory Access), which means log messages transmit in the background without blocking keyboard processing. The CPU handles message formatting and queuing, then DMA takes over transmission — keyboard processing does not wait for UART output. Because UART operates independently of the USB host stack, it keeps working even if the USB HID connection fails or the host drops the device — exactly when you need debug output most. Note that the board is powered via USB, so UART output will stop if USB power is lost.
 
 ---
 
@@ -268,7 +268,7 @@ The converter supports three log levels that control how much information appear
 
 **When to use**: Normal daily use. You don't need to see every keystroke or initialisation step—you only want to know if something breaks.
 
-**Impact on performance**: Minimal. Error logging has negligible CPU impact because error messages are small and, under normal operation, infrequent.
+**Impact on performance**: Error and warning messages are only emitted during error conditions, so logging activity at this level is limited to those events.
 
 **Example output**:
 
@@ -284,7 +284,7 @@ The converter supports three log levels that control how much information appear
 
 **When to use**: Default setting. Provides enough visibility to understand what the converter is doing without overwhelming detail.
 
-**Impact on performance**: Info messages occur primarily during startup and configuration changes and generally produce minimal ongoing CPU load during normal use.
+**Impact on performance**: Info messages occur during startup and configuration changes.
 
 **Example output**:
 
@@ -346,24 +346,20 @@ DMA (Direct Memory Access) solves this, implemented in [`uart.c`](../../src/comm
 3. The DMA controller handles transmission independently, byte by byte
 4. The CPU immediately continues processing keyboard data
 
-From the CPU's perspective, logging is non-blocking — the DMA controller handles actual byte transmission independently whilst the CPU continues processing. That said, the CPU still does work before handing off to DMA: formatting the message, copying it into the ring buffer, and initiating the transfer. This incurs a small, bounded overhead, but the CPU is never blocked waiting for UART bytes to transmit.
+From the CPU's perspective, logging is non-blocking — the DMA controller handles actual byte transmission independently whilst the CPU continues processing. That said, the CPU still does work before handing off to DMA: formatting the message, copying it into the queue, and initiating the transfer. This incurs a small, bounded overhead, but the CPU is never blocked waiting for UART bytes to transmit.
 
-### Ring Buffer Architecture
+### Queue Architecture
 
-To handle multiple concurrent log messages (e.g., protocol events happening whilst initialisation logs are still transmitting), logging uses a ring buffer:
+To handle multiple concurrent log messages (e.g., protocol events happening whilst initialisation logs are still transmitting), logging uses a queue:
 
-**Main code calls LOG_INFO()** → Message formatted and written to ring buffer → DMA reads from ring buffer → Bytes transmitted over UART
+**Main code calls LOG_INFO()** → Message formatted and written to the queue → DMA reads from the queue → Bytes transmitted over UART
 
-The ring buffer is 16,384 bytes (16KB: 64 message slots × 256 bytes per message), implemented in [`uart.c`](../../src/common/lib/uart.c). If log messages accumulate faster than the UART can transmit them, new messages are dropped. This prevents keyboard processing from ever blocking on log output.
+The queue is 16,384 bytes (16KB: 64 message slots × 256 bytes per message), implemented in [`uart.c`](../../src/common/lib/uart.c). If log messages accumulate faster than the UART can transmit them, new messages are dropped. This prevents keyboard processing from ever blocking on log output.
 
 ### Performance Impact
 
-Logging overhead is designed to be negligible:
-
-- **Error/Info levels**: Minimal CPU usage (messages occur at startup and during error conditions)
-- **Debug level**: Moderate CPU usage during active typing (generates many messages per keystroke)
-
-These characteristics are achieved through the non-blocking DMA design. UART transmission rate at 115200 baud limits throughput to approximately 11,520 bytes per second. At Debug level, the volume of log output generated during active typing is bounded by this UART throughput; the ring buffer drops messages if they accumulate faster than UART can transmit them.
+- **Error/Info levels**: Messages are emitted only at startup and during error conditions.
+- **Debug level**: Generates many messages per keystroke during active typing. Output is bounded by UART throughput (115200 baud ≈ 11,520 bytes/sec); the queue drops messages if they accumulate faster than the UART can transmit them.
 
 The non-blocking DMA design ensures that even at debug level, keyboard latency remains unaffected by logging activity.
 
@@ -497,7 +493,7 @@ These are advanced configurations beyond the scope of this document, but they're
 
 **Implementation details**:
 
-- [`uart.c`](../../src/common/lib/uart.c) - DMA-based UART implementation with ring buffer
+- [`uart.c`](../../src/common/lib/uart.c) - DMA-based UART implementation with queue
 - [`uart.h`](../../src/common/lib/uart.h) - UART DMA initialisation and configuration
 - [`log.h`](../../src/common/lib/log.h) - Log level filtering and LOG\_\* macros (LOG_ERROR, LOG_WARN, LOG_INFO, LOG_DEBUG)
 - [`log.c`](../../src/common/lib/log.c) - Log level runtime management

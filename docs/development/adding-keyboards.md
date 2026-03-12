@@ -293,8 +293,8 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
 The firmware performs a simple presence check at boot time and when toggling shift-override via Command Mode:
 
 - **Presence check**: Verifies that `keymap_shift_override_layers` is defined (not NULL)
-- **Boot-time**: If shift-override is enabled in persistent config but the array is missing, the feature is automatically disabled with log messages: `[WARN] Shift-Override enabled in config but keyboard doesn't define shift mappings` and `[INFO] Disabling shift-override`
-- **Command Mode toggle**: If user attempts to enable shift-override (via `S` key) but the array is missing, command rejected: `[WARN] Shift-Override not available`
+- **Boot-time**: If shift-override is enabled in persistent config but the array is missing, the feature is automatically disabled with log messages: `Shift-Override enabled in config but keyboard doesn't define shift mappings` (WARN) and `Disabling shift-override (keymap_shift_override_layers not defined)` (INFO)
+- **Command Mode toggle**: If user attempts to enable shift-override (via `S` key) but the array is missing, command rejected with message: `Shift-Override not available` (INFO)
 
 There's no per-layer validation—the firmware only checks whether the array exists. You're responsible for ensuring shift-override entries correspond to defined layers (layers that exist in `keymap_map`).
 

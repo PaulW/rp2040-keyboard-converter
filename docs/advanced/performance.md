@@ -1,6 +1,6 @@
 # Performance Characteristics
 
-These performance characteristics are based on the RP2040 hardware specifications and what's implemented in the source code. No estimated measurements or unverified claims—everything here comes from the datasheet or the actual implementation.
+These performance characteristics are based on the RP2040 hardware specifications and what's implemented in the source code. Where specific figures appear, they come from the RP2040 datasheet or direct inspection of the implementation.
 
 ---
 
@@ -143,7 +143,7 @@ Whilst the converter hasn't been measured with hardware timing equipment, the ar
 6. **HID report assembly:** Struct manipulation (nanoseconds)
 7. **USB polling wait:** Host queries device every 8ms (average 4ms wait)
 
-The protocol transmission and USB polling dominate total latency. Processing overhead (steps 2-6) totals well under 100 microseconds—negligible compared to protocol and USB timing.
+The protocol transmission and USB polling dominate total latency. Processing overhead (steps 2–6) is negligible compared to protocol and USB timing.
 
 ### Deterministic Timing
 

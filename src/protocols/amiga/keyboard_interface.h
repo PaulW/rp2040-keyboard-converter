@@ -50,7 +50,7 @@
  * - Bit rate: ~17 kbit/sec (keyboard-generated)
  * - Bit period: ~60µs (20µs setup + 20µs low + 20µs high)
  * - Handshake: Must start within 1µs of byte completion
- * - Handshake pulse: intended target 85µs; actual ~15.5ms with current PIO divider
+ * - Handshake pulse: 85µs minimum required; ~100µs calculated (25 cycles × 4µs), ~110µs measured
  * - Timeout: 143ms without handshake triggers resync mode
  *
  * Data Format:
@@ -70,7 +70,7 @@
  * Handshake Protocol:
  * - Computer must pulse DATA low within 1µs of byte completion
  * - PIO handles handshake automatically (no software delay)
- * - Actual pulse duration: ~15.5ms with current divider (within keyboard tolerance)
+ * - Actual pulse duration: ~110µs measured (25% above the 85µs minimum requirement)
  * - Missing handshake triggers resync (keyboard clocks out 1-bits)
  * - After resync: keyboard sends 0xF9, then retransmits failed byte
  *

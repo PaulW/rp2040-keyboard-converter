@@ -2,7 +2,7 @@
 
 **Time Required**: 5-10 minutes
 
-Now that you've built your firmware, it's time to get it onto your RP2040 board. This is the simplest part of the whole process—put the board into bootloader mode and drag-and-drop a file.
+Now that you've built your firmware, it's time to get it onto your RP2040 board. Flashing requires putting the board into bootloader mode, at which point it appears as a USB mass-storage device. Copy the built UF2 file to that drive and the board reboots automatically with the new firmware loaded.
 
 ---
 

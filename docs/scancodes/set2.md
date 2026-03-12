@@ -138,7 +138,7 @@ The keyspace is larger—full 8-bit make codes mean you can have up to 256 keys 
 
 **Where it gets complicated:**
 
-Your state machine grows to 9 states to handle all the possible sequences. Every keystroke needs at least 3 bytes for a full press/release cycle (one byte for make, two bytes for break), which makes it more verbose than Set 1. Print Screen still requires filtering fake shifts, which is a compatibility holdover. The Pause key uses an 8-byte sequence. The translation tables are a bit larger too, around 300 bytes versus Set 1's standard size.
+Your state machine grows to 9 states to handle all the possible sequences. Every regular keystroke needs at least 3 bytes for a full press/release cycle (one byte for make, two bytes for break: `F0` + code); extended keys require 5 bytes (`E0` + code for make, `E0 F0` + code for break). Print Screen still requires filtering fake shifts, which is a compatibility holdover. The Pause key uses an 8-byte sequence. The translation tables are a bit larger too, around 300 bytes versus Set 1's standard size.
 
 ## Code Range
 
@@ -295,7 +295,9 @@ Set 2 keyboards support configurable typematic:
 
 ## Performance Characteristics
 
-- **Average bytes per keystroke**: 3 (1 byte for make + 2 bytes for break (total 3 bytes))
+- **Bytes per keystroke**:
+  - Regular keys: 3 bytes per press/release cycle (1 byte make + 2 byte break: `F0` + code)
+  - Extended keys: 5 bytes per press/release cycle (2 byte make: `E0` + `code`, 3 byte break: `E0` + `F0` + `code`)
 - **State machine complexity**: High (9 states)
 - **Processing overhead**: Medium (more state transitions)
 - **Memory requirements**: ~300 bytes for E0 translation table

@@ -70,11 +70,11 @@ If you have a keyboard you really care about—maybe it's a collectible, or just
 
 **The trade-offs though:**
 
-- **Higher upfront cost**: PCB fabrication is about £20-40 for a batch of 5 boards
+- **Higher upfront cost**: PCB fabrication and components cost more upfront than a dev board solution
 - **Needs PCB skills**: You'll need to know your way around KiCad or similar, and be comfortable soldering
 - **Less flexible**: If you want to change protocols or pins, you're designing a new board
 - **Keyboard-specific**: Designs are optimised for particular keyboards
-- **Takes longer**: Design, order, wait for delivery, assemble—you're looking at 2-4 weeks
+- **Takes longer**: Design, order, wait for delivery, and assemble—longer than a breadboard build
 
 **When this makes sense:**
 
@@ -84,7 +84,7 @@ If you have a keyboard you really care about—maybe it's a collectible, or just
 - You have a specific keyboard in mind for permanent conversion
 - You're planning to convert multiple units of the same keyboard
 
-**Real example**: My custom PCB for the IBM Model F PC/AT is only 40×30mm and mounts on the keyboard's internal frame using existing screw holes. It's got the level shifter, USB-C, RP2040, everything—completely invisible from outside. Total cost works out to about £5 per board when ordering 5 from JLCPCB with their SMT assembly service.
+**Real example**: My custom PCB for the IBM Model F PC/AT is only 40×30mm and mounts on the keyboard's internal frame using existing screw holes. It's got the level shifter, USB-C, RP2040, everything—completely invisible from outside.
 
 Check out the **[Custom PCB Guide](custom-pcb.md)** for the full design, fabrication files, and installation photos.
 
@@ -124,7 +124,7 @@ They're all based on the same RP2040 chip, so they're functionally identical. It
 | **Pimoroni Tiny 2040**      | 22×18mm   | USB-C   |
 | **Adafruit Feather RP2040** | 51×23mm   | USB-C   |
 
-**My recommendation**: Start with a Raspberry Pi Pico if you're breadboarding. It's the cheapest, you can get them anywhere, and there's loads of help available if you get stuck. If you're planning an internal installation, the Waveshare RP2040-Zero is what I use—it's tiny, has USB-C, and even comes with an RGB LED built in.
+The Raspberry Pi Pico has an RP2040 dual-core microcontroller, 26 multi-function GPIO pins, and is available with or without pre-soldered headers. The Waveshare RP2040-Zero has a smaller physical footprint (23.5×18mm), a USB-C connector, and a built-in WS2812B RGB LED on GPIO 16. This LED is compatible with the converter's WS2812B status LED support — set `LED_PIN` to 16 in [`config.h`](../../src/config.h) to use it. See [Status LEDs](#status-leds) for details.
 
 ### Bi-Directional Level Shifter
 
@@ -377,7 +377,7 @@ That guide covers:
 - Bill of materials and component selection
 - Fabrication options (JLCPCB SMT assembly, DIY soldering)
 - Installation guide with photos
-- Cost breakdown (about £5 per board for quantities of 5)
+- Cost considerations and fabrication options
 
 ---
 

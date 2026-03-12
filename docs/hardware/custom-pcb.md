@@ -43,7 +43,7 @@ The breadboard prototype worked perfectly well for testing, but it's not somethi
 - RP2040 microcontroller
 - Bi-directional level shifters (5V ↔ 3.3V)
 - USB Type-C connector
-- All the supporting components (power regulation, decoupling, etc.)
+- Power regulation (3.3V LDO), decoupling capacitors, and crystal oscillator (12MHz)
 
 ---
 
@@ -103,7 +103,7 @@ Here's what the design looks like. I went through a couple of revisions before s
 
 ## Manufacturing
 
-I used JLCPCB for fabrication and assembly. They're quite affordable compared to other manufacturers, and their SMT assembly service is really handy—you upload your Gerber files, BOM, and pick-and-place file, and they'll build the boards for you.
+I used JLCPCB for fabrication and assembly. Their SMT assembly service lets you upload your Gerber files, BOM, and pick-and-place file, and they'll build the boards for you.
 
 ### Manufactured PCBs
 

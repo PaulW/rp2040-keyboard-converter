@@ -29,7 +29,7 @@ I use [Scoppy](https://github.com/fhdm-dev/scoppy) — a Raspberry Pi Pico-based
 - Setup and hold times meet protocol requirements
 - Converter's signal timing meets keyboard requirements (for bidirectional protocols)
 
-**Protocol decoders:** Logic analyser software commonly includes AT/PS2 and UART decoders. These interpret captured waveforms automatically, showing scancodes and protocol errors without manual bit counting.
+**Protocol decoders:** Some logic analyser software includes AT/PS2 and UART decoders. These interpret captured waveforms automatically, showing scancodes and protocol errors without manual bit counting.
 
 ### USB-UART Adapter
 
@@ -171,7 +171,7 @@ Test the converter with multiple host operating systems to ensure HID compatibil
    - USB hubs (some hubs have higher polling latency)
    - KVM switches (some pause USB polling during switching)
 
-**Expected results:** Converter works identically across all OS platforms. Boot protocol ensures compatibility even with BIOS/firmware.
+**Expected results:** Boot Protocol provides a consistent baseline for USB HID enumeration across major platforms, but exact behaviour (modifier key handling, special key mapping) may vary between operating systems.
 
 ### Extended Key Test
 
@@ -456,7 +456,7 @@ The converter provides configurable logging levels (see [Logging guide](../featu
 
 ### Logic Analyser Protocol Decoding
 
-Logic analyser software commonly includes protocol decoders:
+Some logic analyser software includes protocol decoders:
 
 1. **AT/PS2 decoder:** Shows scancodes, parity errors, timing violations
 2. **UART decoder:** Displays UART output alongside protocol signals

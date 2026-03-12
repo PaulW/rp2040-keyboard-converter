@@ -48,7 +48,7 @@ The Docker container includes:
 - Python 3 for build scripts
 - All dependencies for parallel builds
 
-Build times depend on your hardware; parallel and incremental compilation reduce the amount of work performed during full and incremental builds.
+Build time is influenced by CPU core count and single-core performance, disk I/O speed (SSD vs HDD), and available memory. Parallel compilation (`make -jN`) distributes independent translation units across CPU cores. Incremental compilation avoids recompiling unchanged translation units, so only modified files and their dependents are rebuilt.
 
 ---
 
@@ -241,7 +241,7 @@ The build uses optimisation flags appropriate for embedded systems:
 **Default optimisation:** `-O2` (optimise for speed with size consideration)
 
 - Balances performance and code size
-- Enables most optimisations without excessive code growth
+- Enables compiler optimisations including inlining, constant propagation, and dead code elimination whilst balancing code size
 - Suitable for production use
 
 **Debug builds:** `-Og` (optimise for debugging)

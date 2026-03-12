@@ -10,19 +10,19 @@ The converter handles all the scancode translation automatically, but if you're 
 
 ### PC/AT Scancode Sets
 
-| Scancode Set  | Used By                                                   | Documentation                 |
-| ------------- | --------------------------------------------------------- | ----------------------------- |
-| **Set 1**     | IBM XT keyboards, Some AT keyboards                       | **[→ Full Guide](set1.md)**   |
-| **Set 2**     | AT/PS2 keyboards (default)                                | **[→ Full Guide](set2.md)**   |
-| **Set 3**     | Terminal keyboards (122-key), Some programmable keyboards | **[→ Full Guide](set3.md)**   |
-| **Set 1/2/3** | Auto-detecting processor (recommended)                    | **[→ Full Guide](set123.md)** |
+| Scancode Set  | Used By                                              | Documentation                 |
+| ------------- | ---------------------------------------------------- | ----------------------------- |
+| **Set 1**     | IBM XT keyboards, Early AT keyboards                 | **[→ Full Guide](set1.md)**   |
+| **Set 2**     | AT/PS2 keyboards (default)                           | **[→ Full Guide](set2.md)**   |
+| **Set 3**     | Terminal keyboards (122-key), Programmable keyboards | **[→ Full Guide](set3.md)**   |
+| **Set 1/2/3** | Auto-detecting processor (recommended)               | **[→ Full Guide](set123.md)** |
 
 ### Other Scancode Sets
 
-| Scancode Set    | Used By                      | Documentation                                   |
-| --------------- | ---------------------------- | ----------------------------------------------- |
-| **Amiga**       | Commodore Amiga keyboards    | **[→ Full Guide](amiga.md)**                    |
-| **Apple M0110** | Apple M0110/M0110A keyboards | See **[M0110 Protocol](../protocols/m0110.md)** |
+| Scancode Set    | Used By                      | Documentation                             |
+| --------------- | ---------------------------- | ----------------------------------------- |
+| **Amiga**       | Commodore Amiga keyboards    | **[→ Full Guide](amiga.md)**              |
+| **Apple M0110** | Apple M0110/M0110A keyboards | **[→ Full Guide](../protocols/m0110.md)** |
 
 ## Source Code Organisation
 
@@ -94,9 +94,7 @@ Whilst `set123` handles the general case, there are times when you might want to
 
 **Use `set1` when:**
 
-- You're working with an XT keyboard that only supports Set 1
-- You want to avoid the auto-detection overhead (minimal, but it exists)
-- You're debugging Set 1-specific timing or encoding issues
+You're working with an XT keyboard that only supports Set 1, which means there's no ambiguity about which set to expect. Using the dedicated `set1` processor avoids the state-machine overhead of auto-detection and gives you a smaller binary if you're building a single-keyboard converter. It's also helpful when you're debugging Set 1-specific behaviour like the high-bit break encoding or the 6-byte Pause sequence, as the processor logic is simpler and easier to trace.
 
 **Use `set2` when:**
 
@@ -108,6 +106,10 @@ Whilst `set123` handles the general case, there are times when you might want to
 
 - You're connecting an Amiga keyboard (obviously)
 - You need the Amiga-specific Caps Lock handling
+
+  The Amiga Caps Lock key doesn't behave like a PC key. Rather than sending separate make and break codes, it sends a single scancode that encodes the current LED state in bit 7: `0x62` when the LED has just turned on, `0xE2` when it has just turned off. The keyboard maintains its own Caps Lock LED state internally — the host never sends a LED command for it.
+
+  The converter translates this into a USB Caps Lock press+release pair (with a brief hold, configured via `CAPS_LOCK_TOGGLE_TIME_MS` in `config.h`), comparing the keyboard's LED state against the USB HID Caps Lock state to decide whether to emit the toggle. Without this special handling, Caps Lock would either fail to register on some hosts (macOS requires a brief hold) or become out of sync between the keyboard LED and the host state.
 
 ---
 

@@ -53,10 +53,10 @@ check:
     ; Genuine IBM XT:
     ;       ____       _ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _______
     ; CLOCK     \_____/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/
-    ;              _____ ___ ___ ___ ___ ___ ___ ___ ___
+    ;                _____ ___ ___ ___ ___ ___ ___ ___ ___
     ; DATA  ________/     \___X___X___X___X___X___X___X___\_______
     ;           ^   ^  S    0   1   2   3   4   5   6   7
-    ;           ST1 ST2
+    ;           RTS CTS
     ; 
     ; Clone XT:
     ;       ____________ 1 _ 2 _ 3 _ 4 _ 5 _ 6 _ 7 _ 8 _ 9 _______
@@ -65,9 +65,10 @@ check:
     ; DATA                \___X___X___X___X___X___X___X___/
     ;                  S    0   1   2   3   4   5   6   7
     ;
-    ; Detection Strategy (10µs sampling):
-    ; - Clock divider 10µs enables detection within ~40µs pulse width
-    ; - Genuine XT: CLOCK LOW + DATA LOW = two-start-bit framing sequence (ST1 + ST2)
+    ; Detection Strategy (2µs PIO cycle, ~5µs start(0) window):
+    ; - PIO cycle time 2µs; in pins, 1 executes 1-2 cycles after CLOCK falling edge
+    ; - start(0) DATA LOW window is ~5µs (one 8048 instruction cycle); 2µs sample latency fits within it
+    ; - Genuine XT: CLOCK LOW + DATA LOW = RTS confirmed; start(0) discarded, start(1) begins frame
     ; - Clone XT: CLOCK LOW + DATA HIGH = single start bit
     ; - Differentiation required for correct frame alignment
 
@@ -79,12 +80,12 @@ check:
     jmp bitLoopInFunc       ; DATA HIGH → clone XT (single start bit)
 
 genXT:
-    ; Genuine XT Path: Discard first start bit (ST1), read second (ST2)
-    ; This ensures correct frame alignment with the actual data bits
+    ; Genuine IBM XT: discard start(0) (DATA LOW at RTS clock edge), read start(1) to begin frame
+    ; start(0) is not the actual start bit — it is the RTS/CTS handshake framing the transmission
     mov isr null            ; Clear first start bit from ISR
     wait 1 pin 1            ; Wait for CLOCK rising edge
     wait 0 pin 1 [1]        ; Wait for CLOCK falling edge (second start bit)
-    in pins, 1              ; Read actual start bit (ST2)
+    in pins, 1              ; Read actual start bit (start(1), DATA HIGH)
 
 bitLoopInFunc:
     ; Entry point after start bit detection (genuine or clone)
