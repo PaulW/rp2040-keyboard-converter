@@ -328,7 +328,9 @@ Document your keyboard properly. Future you will appreciate this when you come b
 
 Start with the specifications—the full model name and number exactly as it appears on the label, manufacturer, year if you can determine it, protocol and scancode set, physical layout, and connector type. These are the basics that help identify exactly what keyboard you're dealing with.
 
-Then document the quirks and special features in a **Notes** section. This is where you note down anything unusual—non-standard scancodes that differ from typical protocol behaviour, missing keys compared to a standard layout, special function keys that required custom handling, LED support (or lack thereof), and any timing peculiarities you discovered whilst testing. These details are gold dust when troubleshooting later.
+Then add a **Features** section listing the observable capabilities: key count and layout, switch type, and LED indicators (Caps Lock, Num Lock, Scroll Lock).
+
+Finally, add a **Notes** section for anything unusual—non-standard scancodes that differ from typical protocol behaviour, missing keys compared to a standard layout, special function keys that required custom handling, LED support limitations, and any timing peculiarities you discovered whilst testing. These details are gold dust when troubleshooting later.
 
 Make sure to include the build command too. Show the exact command needed to build firmware for this keyboard—saves people (including future you) having to work it out themselves.
 
@@ -480,7 +482,7 @@ Flash the resulting UF2 file and test every key systematically. If something's n
 
 ---
 
-If you run into issues that aren't covered here, have a look at the existing keyboard implementations in [`src/keyboards/`](../../src/keyboards/)—they're all documented with their own quirks and solutions. The Model M Enhanced and Apple M0110A configurations are particularly well-documented if you need more detailed examples.
+If you run into issues that aren't covered here, have a look at the existing keyboard documentation in [`docs/keyboards/`](../keyboards/)—each keyboard has its own page with **Specifications**, **Features**, and **Notes** sections. The Model M Enhanced and Apple M0110A pages are good examples of that structure.
 
 And if you get properly stuck, open an issue on GitHub.
 

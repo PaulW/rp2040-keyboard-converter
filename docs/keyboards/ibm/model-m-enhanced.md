@@ -154,7 +154,7 @@ To customise the key layout, edit the keymap in [`keyboard.c`](../../../src/keyb
 
 ```c
 // Example: Remap Caps Lock to Control
-// Find the CAPS entry in Layer 0 and change KC_CAPS to KC_LCTRL
+// Find the CAPS entry in Layer 0 and change it to LCTRL
 ```
 
 Available keycodes are defined in [`hid_keycodes.h`](../../../src/common/lib/hid_keycodes.h).

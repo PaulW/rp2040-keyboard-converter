@@ -40,11 +40,9 @@ If you're not sure which protocol your keyboard uses, this table should help:
 | Commodore Amiga keyboard (any model)    | Amiga      |
 | Apple Macintosh M0110/M0110A            | M0110      |
 | Keyboards with 5-pin DIN connector      | See note 1 |
-| Keyboards with 6-pin mini-DIN connector | See note 2 |
+| Keyboards with 6-pin mini-DIN connector | AT/PS2     |
 
-> **Note 1 — 5-pin DIN connector:** The 5-pin DIN connector was shared by XT, AT/PS2, and Amiga keyboards — the connector alone doesn't tell you the protocol. See [xt.md](xt.md), [at-ps2.md](at-ps2.md), [amiga.md](amiga.md) to identify yours.
->
-> **Note 2 — 6-pin mini-DIN connector:** The 6-pin mini-DIN (PS/2-style) connector indicates PS/2-era keyboards; consult [at-ps2.md](at-ps2.md) and the model-specific docs to confirm the protocol.
+> **Note 1 — 5-pin DIN connector:** The 5-pin DIN connector was shared by XT, AT/PS2, and some Amiga keyboards — the connector alone doesn't tell you the protocol. See [xt.md](xt.md), [at-ps2.md](at-ps2.md), [amiga.md](amiga.md) to identify yours.
 
 **Still unsure?** See the [Keyboards Documentation](../keyboards/README.md) for detailed keyboard identification.
 

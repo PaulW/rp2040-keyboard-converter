@@ -56,7 +56,7 @@ Command Mode provides access to special functions without requiring firmware ref
 
 Configuration settings persist across reboots using the flash storage system. LED brightness, log level, and protocol settings are saved to the last 4KB sector of internal flash memory, eliminating the need for reconfiguration after power cycling.
 
-The implementation uses a dual-copy redundancy system for data integrity. Two copies (A and B) are stored, each with CRC validation to detect corruption. Writes alternate between the copies for wear leveling, which extends flash life to about 10,000 write cycles per location before degradation. That's plenty for configuration updates that happen occasionally rather than continuously.
+The implementation uses a dual-copy redundancy system for data integrity. Two copies (A and B) are stored, each with CRC validation to detect corruption. Writes alternate between the copies for wear leveling. Flash sectors have limited program/erase cycles — check your flash chip datasheet for the rated endurance; the custom PCB uses a Winbond W25Q16JV, which is rated at 100,000 cycles per sector. That's plenty for configuration updates that happen occasionally rather than continuously.
 
 Currently stored settings include your log level (ERROR, INFO, or DEBUG), LED brightness level (0-10 scale), protocol initialisation parameters, and timing thresholds.
 

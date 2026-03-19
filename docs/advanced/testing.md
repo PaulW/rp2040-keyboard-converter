@@ -96,11 +96,9 @@ Every key should produce the correct character or action. No missed keypresses, 
 
 Stress-test the pipeline with rapid typing to see if the buffering and throughput hold up.
 
-Type rapidly at 30 or more characters per second. Try burst typing—hold a key briefly, release it, then immediately repeat with different keys. Test simultaneous keypresses by holding multiple keys down at once. Watch for any dropped keypresses during fast input, and check the UART output for buffer full warnings that would indicate the system's struggling to keep pace.
+Type continuously at 30 or more characters per second — this keeps the input pipeline under steady load. Separately, test burst patterns: hold a key briefly, release it, then immediately press a different key, and hold multiple keys down simultaneously. Watch for dropped keypresses in both cases, and check the UART output for `[ERR]` ring buffer overflow messages, which indicate the ring buffer's capacity has been exceeded.
 
 All keypresses should register correctly. You shouldn't see any `[ERR]` messages about ring buffer overflow in the UART logs, and the converter should maintain pace with human typing speeds.
-
-**Why 30 CPS?** This represents fast typing that tests the system under load without being unrealistic.
 
 ### Command Mode Test
 
@@ -396,7 +394,7 @@ Whilst the converter hasn't been extensively benchmarked with timing equipment, 
 1. Connect logic analyser to keyboard CLK/DATA and USB D+/D-
 2. Press a key and capture signals
 3. Measure time from keyboard clock edge to USB D+ transition
-4. Repeat 10-20 times to get average and variance
+4. Repeat 10–20 times to get average and variance
 
 **Method 2: Software timing**
 
@@ -407,10 +405,10 @@ Whilst the converter hasn't been extensively benchmarked with timing equipment, 
 
 **Expected latency:**
 
-- Protocol transmission: varies by protocol — determined by clock rate and frame length, not software-controlled (for clock rates and frame structure, see the [protocol docs](../protocols/); for example, [docs/protocols/at-ps2.md](../protocols/at-ps2.md) covers AT/PS2 clock frequency, frame length, and bit timing; exact values are hardware- and implementation-dependent and vary between keyboards)
+- Protocol transmission: varies by protocol — determined by clock rate and frame length, not software-controlled. For clock rates and frame structure, see the [protocol docs](../protocols/), particularly [docs/protocols/at-ps2.md](../protocols/at-ps2.md) which covers AT/PS2 clock frequency, frame length, and bit timing as one example. Exact values are hardware- and implementation-dependent and vary between keyboards.
 - Processing pipeline: <100μs (PIO→IRQ→ring buffer→scancode→HID) — theoretical; based on pipeline step count, not measured
 - USB polling wait: 0–8ms (`bInterval = 8` in `usb_descriptors.c`; average 4ms assuming uniform phase distribution)
-- Total: these figures are theoretical estimates; actual end-to-end latency depends on USB polling phase (as of the time of writing, no precise measurements have been taken)
+- Total: these figures are theoretical estimates; actual end-to-end latency depends on USB polling phase (at the time of writing, no precise measurements have been taken)
 
 ### Throughput Measurement
 

@@ -286,7 +286,7 @@ NumLock: 76   /: 77    *: 7E    ,: 84
       0: 70            .: 71
 ```
 
-**Note**: The above is an example based on 122-key Terminal Keyboard Layouts. Actual layouts may vary between models, and some keys may be remapped (e.g. Keypad Comma `0x7C` remapped to PPLS `0x7B` on Model M 122-key).
+**Note**: The above is an example based on 122-key Terminal Keyboard Layouts. Actual layouts may vary between models, and some keys may be remapped. The Model M 122-key has a different physical key layout from other 122-key terminal keyboards, meaning the same hardware scancode bytes correspond to different logical keys on that model — for instance, the key positioned at `0x7C` is Keypad Comma and the key at `0x84` is Keypad Plus, rather than the positions implied above. The project handles this via the `scancode_remapping[]` table in [`src/scancodes/set3/scancode.c`](../../src/scancodes/set3/scancode.c), which remaps `0x7C` to interface code `0x68` (Keypad Comma) and `0x84` to `0x7F` (Keypad Plus).
 
 ## Performance Characteristics
 
@@ -399,8 +399,6 @@ Generic Set 3 initialisation procedure:
 2. Send 0xF2 (Identify)
 3. Read 2-byte ID
 4. If ID is 0xBFxx or 0x7Fxx (Set 3 terminal keyboards):
-   - [Optional] Send 0xF0 0x03 (switch to Set 3)
-   - [Optional] Wait for ACK (0xFA)
    - Send 0xF8 (Set All Keys Make/Break)
    - Wait for ACK (0xFA)
    If ID is 0xAB86-0xAB92 (boots Set 2, switchable but not switched):

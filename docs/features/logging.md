@@ -354,7 +354,7 @@ To handle multiple concurrent log messages (e.g., protocol events happening whil
 
 **Main code calls LOG_INFO()** → Message formatted and written to the queue → DMA reads from the queue → Bytes transmitted over UART
 
-The queue is 16,384 bytes (16KB: 64 message slots × 256 bytes per message), implemented in [`uart.c`](../../src/common/lib/uart.c). If log messages accumulate faster than the UART can transmit them, new messages are dropped. This prevents keyboard processing from ever blocking on log output.
+The queue is 16,384 bytes (16KB: 64 message slots × 256 bytes per message), implemented in [`uart.c`](../../src/common/lib/uart.c). The behaviour when the queue is full depends on the configured policy (set in [`config.h`](../../src/config.h)): the default `UART_DMA_POLICY_DROP` drops new messages immediately, ensuring keyboard processing never blocks on log output. The alternative policies (`UART_DMA_POLICY_WAIT_FIXED` and `UART_DMA_POLICY_WAIT_EXP`) can busy-wait outside IRQ context until a slot frees or a timeout expires before dropping — so the "always drops, never blocks" guarantee applies only to the default DROP policy.
 
 ### Performance Impact
 

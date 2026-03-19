@@ -45,8 +45,8 @@
  * - Bit rate: ~17 kbit/sec (keyboard-controlled)
  * - Bit period: ~60µs (20µs setup + 20µs CLOCK low + 20µs CLOCK high)
  * - Handshake requirement: Computer must pulse DATA low within 1µs of byte completion
- * - Handshake duration: ~15.5ms with the current divider; this remains within the keyboard
- * tolerance window, but note the intended target is 85µs
+ * - Handshake duration: ~100µs calculated (25 PIO cycles × 4µs/cycle); ~110µs measured.
+ *   Within the tolerance window, but note the intended target is 85µs
  * - Timeout: 143ms without handshake triggers keyboard resync mode
  * - PIO sampling: 20µs interval for reliable signal detection
  *
@@ -61,7 +61,8 @@
  * - PIO automatically sends a handshake pulse after receiving 8 bits
  * - Handshake integrated into PIO program (no ISR delay)
  * - Hardware latch in keyboard detects pulses ≥1µs
- * - With the current divider this is ~15.5ms; the intended target remains ~85µs
+ * - With the current divider (500, yielding 4µs/cycle) the handshake loop is ~100µs
+ *   calculated; the intended minimum is 85µs
  * - Missing handshake causes keyboard to enter resync mode
  * - Resync: Keyboard clocks out 1-bits until handshake received
  *

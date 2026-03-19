@@ -107,20 +107,7 @@ The A4000T uses a 5-pin DIN connector:
 | 4   | GND    | Ground reference (0V)                 |
 | 5   | +5V    | Power supply (+5 volts)               |
 
-**A4000 - 6-Pin Mini-DIN Connector**
-
-The A4000 uses a 6-pin mini-DIN connector (similar to PS/2 style):
-
-| Pin | Signal | Description                                     |
-| --- | ------ | ----------------------------------------------- |
-| 1   | I/O    | Input/Output (function varies by configuration) |
-| 2   | NC     | Not Connected                                   |
-| 3   | GND    | Ground reference (0V)                           |
-| 4   | +5V    | Power supply (+5 volts, 100mA)                  |
-| 5   | CLOCK  | Keyboard Clock (output from keyboard)           |
-| 6   | NC     | Not Connected                                   |
-
-**Note**: The A4000 and A4000T are not covered in the official Commodore Hardware Manual specification, so protocol compatibility cannot be guaranteed.
+**Note**: The A4000T is not covered in the official Commodore Hardware Manual specification, so protocol compatibility cannot be guaranteed.
 
 **A500 - Internal 8-Pin Header**
 

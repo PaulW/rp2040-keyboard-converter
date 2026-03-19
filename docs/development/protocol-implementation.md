@@ -34,7 +34,7 @@ Set the device-specific ready state to false and update the status LED. This hap
 // Keyboard example
 #ifdef CONVERTER_LEDS
   converter.state.kb_ready = 0;
-  update_converter_status();
+  update_keyboard_ready_led(false);
 #endif
 
 // Mouse example
@@ -327,7 +327,7 @@ After setup completes, the protocol's task function (`keyboard_interface_task()`
 - **Unidirectional protocols** (XT): Just process incoming scancodes
 - **Bidirectional protocols** (AT/PS2, Amiga, M0110): Also handle sending commands, LED updates, and error recovery
 
-The setup function only deals with initialisation. The complexity of your protocol's state machine (initialisation sequences, command acknowledgements, error recovery) lives in the task function.
+The setup function only deals with initialisation. The complexity of your protocol's state machine (initialisation sequences, command acknowledgements, error recovery) does **not** live primarily in `keyboard_interface_task()`. In the existing protocol implementations (AT/PS2, XT, Amiga, M0110), initialisation state transitions, special-code handling, and `LOG_*` calls are intentionally performed in `keyboard_event_processor()` — the IRQ/event-context handler in each `keyboard_interface.c`. Only normal scancode queuing to the ring buffer flows through `keyboard_interface_task()` during steady-state runtime. When writing a new protocol, follow this pattern: handle initialisation and critical protocol transitions in `keyboard_event_processor()`, and reserve `keyboard_interface_task()` for pulling scancodes from the ring buffer and forwarding them to the HID layer.
 
 ---
 

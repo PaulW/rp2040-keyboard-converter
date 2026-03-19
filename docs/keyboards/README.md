@@ -40,7 +40,7 @@ Working through an IBM Model M configuration shows how the system works—it dem
 
 You'll need to know:
 
-- **Protocol**: What communication protocol does it use? Check [`src/protocols/`](../../src/protocols/) for available implementations (AT/PS2, XT, Amiga, Apple M0110)
+- **Protocol**: What communication protocol does it use? Check [`src/protocols/`](../../src/protocols/) for available implementations
 - **Scancode Set**: Which scancode set does it send? The scancode set varies by keyboard and sometimes by configuration—check the [Scancode Sets documentation](../scancodes/README.md) for details
 - **Physical Layout**: How many keys has it got? Standard 101/102-key, or something different like a 122-key terminal layout?
 - **Connector**: DIN-5, mini-DIN-6 (PS/2), or something else? Mainly just to make sure you have the right hardware bits sorted
@@ -149,7 +149,7 @@ Now you define what each physical key actually does. The keycodes you pass to th
  * |-----------------------------------------------------------|     ,---.     |---------------|
  * |Shft|  <|  Z|  X|  C|  V|  B|  N|  M|  ,|  .|  /|     Shift|     |Up |     |  1|  2|  3|   |
  * |-----------------------------------------------------------| ,-----------. |-----------|Ent|
- * |Ctrl|    |Alt |          Space              |Alt |    |GUI | |Lef|Dow|Rig| |      0|  .|   |
+ * |Ctrl|    |Alt |          Space              |MO_1|    |GUI | |Lef|Dow|Rig| |      0|  .|   |
  * `----'    `---------------------------------------'    `----' `-----------' `---------------'
  */
 

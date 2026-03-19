@@ -80,17 +80,14 @@ If power fails after step 1 but before step 2 completes, your configuration is l
 
 ### How Dual-Copy Solves This
 
-With two copies, the system maintains redundancy throughout the write process. The basic idea: never erase the only good copy until you've successfully written a new one.
+Both copies (A and B) live in the same 4 KB flash sector. A save erases that sector — clearing both copies at once — then rewrites both into the freshly erased space. There is no separate "safe" copy held on a different sector during the write.
 
-Here's how a configuration update works:
+Protection comes from two complementary mechanisms:
 
-1. Read both copies (A and B) from flash
-2. Determine which copy is newer based on sequence numbers
-3. Write new configuration to the **other** copy
-4. Verify the write succeeded
-5. Only now is it safe to erase the old copy (though the implementation leaves it as backup)
+1. **CRC validation on read**: every boot checks each copy's CRC independently. A corrupt or incomplete write produces a CRC mismatch, so the system knows not to use it.
+2. **Alternating writes (wear levelling)**: writes rotate between Copy A and Copy B, so only one copy changes sequence number per save. If the preceding save was clean, the older copy still holds a valid (slightly stale) configuration that can serve as a fallback.
 
-At any point in this process, at least one valid copy exists. Power failure can't corrupt both copies simultaneously.
+If power is lost during the sector erase — or the write itself is corrupted — one or both CRCs will fail on the next boot. If only one copy is bad the other is used automatically. If both fail, the system falls back to factory defaults and writes them to flash immediately so a valid copy exists for subsequent boots.
 
 ### Sequence Numbers Track Freshness
 
@@ -110,9 +107,9 @@ The dual-copy design provides natural wear leveling by alternating writes betwee
 
 - If Copy A is currently newer (higher sequence), write to Copy B
 - If Copy B is currently newer (higher sequence), write to Copy A
-- This alternation distributes writes evenly across both 2KB sectors
+- This alternation distributes writes evenly across both copies within the sector
 
-If you change settings 10,000 times, each copy gets written 5,000 times instead of one copy getting all 10,000 writes. This doubles the effective lifetime of the configuration storage.
+If you change settings 10,000 times, each copy gets written 5,000 times instead of one copy getting all 10,000 writes. This distributes wear more evenly across the two storage slots within the configuration sector.
 
 ---
 
@@ -318,7 +315,7 @@ The SDK provides [`flash_safe_execute()`](https://www.raspberrypi.com/documentat
 
 **Save time**: Brief blocking flash write. Ring buffer protects against data loss during save.
 
-**Flash wear**: Each save erases the single 4 KB configuration sector and rewrites both Copy A and Copy B into it. Endurance is therefore equal to the sector's program/erase cycle rating — using a conservative estimate of 10,000 cycles per sector, you could save configuration around 10,000 times before wearing out the flash. At one save per day, that's roughly 27 years.
+**Flash wear**: Each save erases the single 4 KB configuration sector and rewrites both Copy A and Copy B into it. Endurance is therefore equal to the sector's program/erase cycle rating. The custom PCB and the Waveshare RP2040 Zero uses the Winbond W25Q16JVUXIQ, which is rated at 100,000 cycles per sector — at one save per day, that's roughly 273 years.
 
 **Corruption resistance**: Dual-copy with CRC validation improves recovery from interrupted writes, though if power is lost during the 4KB sector erase or before both copies have been rewritten, both copies could be invalidated.
 

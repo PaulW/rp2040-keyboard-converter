@@ -210,13 +210,13 @@ DATA                \___X___X___X___X___X___X___X___/
                  S    0   1   2   3   4   5   6   7
 
 Legend:
-S   = Start condition (CLOCK falls, DATA transitions)
+S   = Start condition (DATA HIGH via pull-up in idle state; first sampled bit = 1)
 0-7 = Data bits transmitted LSB-first
 ```
 
 **Simplified Sequence:**
 
-1. **Start Condition**: CLOCK falls whilst DATA transitions
+1. **Start Condition**: CLOCK falls; the first sampled DATA bit is HIGH (value = 1, from idle pull-up state)
 2. **Data Bits**: 8 bits transmitted with CLOCK pulses
 3. **Return to Idle**: Both lines return HIGH
 
@@ -247,7 +247,8 @@ Inter-byte Gap: 1-10ms typical between consecutive scan codes
 ```text
 Soft Reset Sequence:
 - Host CLOCK Low: 20ms minimum to signal reset request
-- Keyboard DATA High Response: Within 1ms of CLOCK release (acknowledgment)
+- Keyboard DATA High Response: Keyboard releases DATA, allowing the pull-up to drive it HIGH, whilst CLOCK is still held LOW (acknowledgment)
+- Host Releases CLOCK: After seeing DATA HIGH, host sets CLOCK to input
 - BAT Duration: 200-500ms typical for Basic Assurance Test
 - BAT Response: 0xAA sent immediately after successful self-test
 ```
@@ -439,7 +440,7 @@ Key Points:
 
 ### PIO Clock Divider and the ~5µs Detection Window
 
-The `XT_TIMING_SAMPLE_US` constant (value 10) sets the PIO clock divider. The 10µs figure is the **data-bit sampling period**: the `bitLoopIn` loop takes 5 PIO cycles per iteration (wait 2 cycles + in 1 cycle + wait 1 cycle + jmp 1 cycle), and at 2µs per cycle that gives exactly 10µs per data bit — matching the ~100µs bit period at ~10kHz.
+The `XT_TIMING_SAMPLE_US` constant (value 10) is an oversampled setting passed to `calculate_clock_divider()`. It does not directly equal a 10µs sampling period. Instead, `calculate_clock_divider(XT_TIMING_SAMPLE_US)` targets 5× oversampling of a 10µs pulse, which produces a clock divider of 250 at 125 MHz — giving a **2µs PIO cycle time**. The 10µs data-bit sampling period is the _result_ of the PIO `bitLoopIn` loop, which takes 5 cycles per iteration (wait 2 cycles + in 1 cycle + wait 1 cycle + jmp 1 cycle) × 2µs/cycle = 10µs per data bit, matching the ~100µs bit period at ~10 kHz.
 
 The start(0) detection is a different matter. It relies on the **2µs PIO cycle time**, not the 10µs loop period. The `check` loop detects the CLOCK falling edge within one 2µs cycle, and `in pins, 1` samples DATA in the very next cycle. Here's what happens at different PIO speeds:
 
