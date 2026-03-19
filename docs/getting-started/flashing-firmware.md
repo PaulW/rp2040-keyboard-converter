@@ -1,17 +1,8 @@
 # Flashing Firmware
 
-**Time Required**: 5-10 minutes  
-**Difficulty**: Beginner-friendly
+**Time Required**: 5-10 minutes
 
-Now that you've built your firmware, it's time to get it onto your RP2040 board. The good news is that this is one of the easiest parts of the whole process—you just put the board into bootloader mode and drag-and-drop a file. That's it. Once it's done, you'll have a working keyboard/mouse converter!
-
-**What you'll accomplish:**
-- Put your RP2040 into bootloader mode
-- Install firmware using drag-and-drop
-- Verify your converter is working
-- Learn how to update firmware without physical button access (Command Mode)
-
-**Why this is so simple:** The RP2040 has a built-in bootloader that appears as a USB drive when you activate it. No special software or complicated tools needed—you literally just copy a file to it like you would to a USB stick.
+Now that you've built your firmware, it's time to get it onto your RP2040 board. Flashing requires putting the board into bootloader mode, at which point it appears as a USB mass-storage device. Copy the built UF2 file to that drive and the board reboots automatically with the new firmware loaded.
 
 ---
 
@@ -36,13 +27,14 @@ The RP2040 operates in two modes:
 2. **Normal Mode** - Runs your converter firmware, translating keyboard/mouse input
 
 **The flashing process is pretty simple:**
+
 - You enter bootloader mode (the board appears as a USB drive)
 - Copy the `.uf2` file to the drive
 - The RP2040 automatically writes the firmware to its flash memory
 - It reboots into normal mode
 - Your converter starts working immediately
 
-This is the same process for all RP2040 boards—it's a standard feature built into the chip.
+The RP2040 has a built-in bootloader that appears as a USB drive called `RPI-RP2` when you activate it—no special software needed, you just copy a file to it.
 
 ---
 
@@ -66,11 +58,13 @@ First, locate the buttons on your RP2040 board. Where they are depends on which 
 ### Other RP2040 Boards
 
 If you're using a different board, have a look at your board's documentation:
+
 - BOOT/BOOTSEL button (always present—it's required for the bootloader)
 - RESET button (may be absent on some boards)
 - Some boards have a single button that serves both functions
 
 **Tip**: If your board doesn't have a RESET button, you can enter bootloader mode by:
+
 1. Disconnect USB cable
 2. Hold BOOT button
 3. Reconnect USB cable whilst holding BOOT
@@ -92,10 +86,11 @@ This is the important bit—you need to put your RP2040 into a state where it ca
 4. **Verify**: A USB drive named `RPI-RP2` should appear on your computer
 
 **Visual sequence:**
-```
-BOOT:   Press ████████████████████░░░░ Release
-RESET:        ░░░░ Tap ░░░░░░░░░░░░░░░
-Time:   0s    1s         2s         3s
+
+```text
+BOOT: Press ████████████████████░░░░ Release
+RESET: ░░░░ Tap ░░░░░░░░░░░░░░░
+Time: 0s    1s         2s         3s
 ```
 
 ### Method 2: Using BOOT Button Only (No RESET Button)
@@ -111,19 +106,23 @@ Time:   0s    1s         2s         3s
 ### What You Should See
 
 **On Windows:**
+
 - File Explorer shows a new drive: `RPI-RP2 (D:)` or similar
 - The drive contains two files: `INDEX.HTM` and `INFO_UF2.TXT`
 
 **On macOS:**
+
 - A new volume appears on your desktop: `RPI-RP2`
 - It'll also show up in the Finder sidebar
 - Contains the same two files
 
 **On Linux:**
+
 - The drive auto-mounts to `/media/<username>/RPI-RP2` or similar
 - Shows the same two files
 
 **Status LED (if installed):**
+
 - **Will NOT turn magenta/purple** when using BOOT/RESET buttons
 - LED will either remain **off** (if board was powered off)
 - Or retain its **last state** (if board was already running when you pressed BOOT/RESET)
@@ -144,6 +143,7 @@ Your firmware file is sitting in your project's `build/` directory:
 **Path**: `rp2040-keyboard-converter/build/rp2040-converter.uf2`
 
 **File details:**
+
 - Name: `rp2040-converter.uf2`
 - Size: ~80-120 KB (depending on your configuration)
 - This was created when you ran the build command
@@ -176,12 +176,14 @@ Copy-Item build\rp2040-converter.uf2 D:\
 ### What Happens Next
 
 **During flashing (takes 1-2 seconds):**
+
 - The RP2040's onboard LED may blink rapidly (if there is one)
 - The `RPI-RP2` drive disappears from your computer
 - You might see a brief "drive removed" notification, or some other warning about being removed unexpectedly (that's normal)
 - Your status LED (if you've installed one) remains in its previous state (it doesn't change during the BOOT/RESET method)
 
 **After flashing:**
+
 - The RP2040 automatically reboots
 - Your new firmware starts running immediately
 - The status LED shows orange (if an LED is installed—means it's waiting for device initialisation), and should change to green if everything's OK!
@@ -197,11 +199,13 @@ Now let's test your newly flashed converter to confirm everything's working as i
 ### Initial Power-Up Checks
 
 **1. Status LED (if installed):**
+
 - **🟠 Orange**: Waiting for keyboard initialisation (normal at startup)
 - **🟢 Green**: Converter ready (keyboard initialised successfully)
 - **No light**: Either no LED installed, configuration or wiring issue
 
 **2. Computer Recognition:**
+
 - Your computer should detect a new USB keyboard (and mouse, if you built with mouse support)
 - Windows: "Device connected" sound, Device Manager shows "USB Keyboard"
 - macOS: Keyboard Setup Assistant may appear (click through to finish setup)
@@ -223,6 +227,7 @@ Now let's test your newly flashed converter to confirm everything's working as i
    - Number pad (if your keyboard has one)
 
 **Lock key indicators (if using 4 LEDs):**
+
 - Press **Num Lock** - LED 2 should light up (unless you're connecting to a Apple Mac which doesnt use Num Lock)
 - Press **Caps Lock** - LED 3 should light up
 - Press **Scroll Lock** - LED 4 should light up
@@ -239,17 +244,19 @@ Now let's test your newly flashed converter to confirm everything's working as i
 
 ## Step 5: Understanding Command Mode
 
-Command Mode is one of those features that you'll really appreciate once your keyboard's all set up and installed somewhere awkward. It lets you update firmware and adjust settings **without having physical access to the RP2040 board**. Once your keyboard's tucked away inside a case or under a desk, Command Mode means you don't have to take everything apart just to update the firmware.
+Command Mode lets you update firmware and adjust settings **without having physical access to the RP2040 board**. Once your keyboard's tucked away inside a case or under a desk, Command Mode means you don't have to take everything apart just to update the firmware.
 
 ### What is Command Mode?
 
 It's a special menu you can access by holding both shift keys for 3 seconds. Once you're in, you can:
+
 - Enter bootloader mode for firmware updates (no BOOT button needed!)
 - Adjust LED brightness
 - Change debug log verbosity
+- Toggle Shift-Override (press S) to modify key behaviour for keyboards with non-standard shift legends
 - Reset to factory settings
 
-**Why this is so useful**: After your initial flash, you'll never need to touch the BOOT and RESET buttons again. All firmware updates can be done through Command Mode.
+For normal firmware updates — where the current firmware starts up successfully and Command Mode is reachable — you won't need to touch the BOOT and RESET buttons again. If the firmware is ever corrupted or the board no longer boots, you'll need to fall back to the physical BOOT button method described earlier in this guide.
 
 ### Entering Command Mode
 
@@ -260,11 +267,12 @@ It's a special menu you can access by holding both shift keys for 3 seconds. Onc
 3. **Release shift keys** - You're now in Command Mode
 4. **Press a command key** - See options below
 
-**Important**: You must hold **ONLY** the two shift keys. If you press any other key (including modifiers like Ctrl, Alt, Fn), Command Mode won't activate.
+**Important**: You must hold **ONLY** the two shift keys. If you press any other key (including modifiers like Ctrl or Alt), Command Mode won't activate.
 
 **Note**: The default key combination is Left Shift + Right Shift, but this is configurable. Some keyboards (like those with a single shift key) may define different keys in their `keyboard.h` file. Check your specific keyboard's documentation if the default combination doesn't work.
 
 **Visual feedback:**
+
 - **Flashing Green/Blue (100ms intervals)**: Command Mode active, waiting for command
 - **Times out after 3 seconds** if no key pressed
 
@@ -272,12 +280,12 @@ It's a special menu you can access by holding both shift keys for 3 seconds. Onc
 
 Once Command Mode is active (flashing green/blue LED), press one of these keys:
 
-| Key | Command | Description |
-|-----|---------|-------------|
-| **B** | **Bootloader** | Enter bootloader mode for firmware updates |
-| **L** | **LED Brightness** | Adjust status LED brightness (0-10) |
-| **D** | **Debug Level** | Change UART log verbosity (ERROR/INFO/DEBUG) |
-| **F** | **Factory Reset** | Restore all settings to defaults and reboot |
+| Key   | Command            | Description                                          |
+| ----- | ------------------ | ---------------------------------------------------- |
+| **B** | **Bootloader**     | Enter bootloader mode for firmware updates           |
+| **L** | **LED Brightness** | Adjust status LED brightness (0-10)                  |
+| **D** | **Debug Level**    | Change UART log verbosity (ERROR/INFO/DEBUG)         |
+| **F** | **Factory Reset**  | Restore all settings to defaults and reboot          |
 | **S** | **Shift-Override** | Toggle Shift-Override for non-standard shift legends |
 
 We'll cover the Bootloader command in detail next. The other commands are explained in the [Features documentation](../features/command-mode.md).
@@ -291,12 +299,14 @@ After your initial flash, use Command Mode to update firmware without touching t
 ### When to Use This Method
 
 **Use Command Mode for updates when:**
+
 - ✅ Your converter's already installed and working
 - ✅ You've built new firmware and want to flash it
 - ✅ The BOOT/RESET buttons are hard to access
 - ✅ You want a quick, handy update process
 
 **Use the BOOT button method when:**
+
 - ❌ You're flashing for the first time (no firmware installed yet)
 - ❌ The firmware is corrupted or not booting
 - ❌ Command Mode isn't responding
@@ -331,17 +341,20 @@ After your initial flash, use Command Mode to update firmware without touching t
 ### Troubleshooting Command Mode Updates
 
 **Problem: LED doesn't flash green/blue when holding shifts**
+
 - Make sure you're holding **ONLY** the two shift keys (no other keys!)
 - Hold for full 3 seconds
 - Check that firmware supports Command Mode (all recent builds do)
 - If your keyboard uses custom Command Mode keys (not the default Left+Right Shift), check your keyboard's documentation for the correct combination
 
 **Problem: Pressed 'B' but no RPI-RP2 drive appears**
+
 - LED should turn magenta—if not, 'B' key didn't register
 - Try entering Command Mode again
 - As fallback, use BOOT button method (Step 2)
 
 **Problem: Pressed 'B', saw magenta LED, but drive didn't appear on computer**
+
 - Wait a few seconds—some systems take longer to mount USB drives
 - Try unplugging and reconnecting USB cable (will exit bootloader, then re-enter via Command Mode)
 - Check USB cable and port are working
@@ -398,12 +411,15 @@ Running into issues? Here are troubleshooting steps and solutions:
    - Case-sensitive on macOS/Linux
 
 3. **Try command line copy** instead of drag-and-drop:
+
    ```bash
    # macOS/Linux
    cp build/rp2040-converter.uf2 /Volumes/RPI-RP2/
-   
-   # Windows
-   copy build\rp2040-converter.uf2 D:\
+   ```
+
+   ```powershell
+   # Windows (PowerShell)
+   Copy-Item build\rp2040-converter.uf2 D:\
    ```
 
 4. **Check drive permissions**:
@@ -517,24 +533,26 @@ If none of these solutions work:
 
 ## What's Next?
 
-Brilliant! You've now got yourself a fully working keyboard converter. 🎉
+Your converter should now be up and running.
 
 ### Using Your Converter
 
 Your converter's ready for daily use:
+
 - Plug in your keyboard
 - Connect the RP2040 to your computer via USB
-- That's it—start typing! Your keyboard now works with modern computers
 
 ### Exploring Features
 
 Learn more about what your converter can do:
+
 - **[Command Mode](../features/command-mode.md)** - Full guide to all Command Mode features
 - **[Keyboard Layouts](../keyboards/README.md)** - Details about specific keyboard models
 
 ### Customisation and Advanced Use
 
 Ready to go deeper?
+
 - **[Custom Keymaps](../development/custom-keymaps.md)** - Remap keys to your preference
 - **[Adding New Keyboards](../development/adding-keyboards.md)** - Support your own keyboard model
 - **[Build System Details](../advanced/README.md)** - Understanding the build process
@@ -542,6 +560,7 @@ Ready to go deeper?
 ### Getting Help
 
 If you run into issues or have questions:
+
 - 💬 [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) - Community support
 - 🐛 [Report Issues](https://github.com/PaulW/rp2040-keyboard-converter/issues) - Bug reports and feature requests
 
@@ -552,7 +571,8 @@ If you run into issues or have questions:
 Once you're familiar with the process, here's the condensed version:
 
 **Initial flash (physical buttons):**
-```
+
+```text
 1. Hold BOOT button
 2. Press and release RESET
 3. Release BOOT
@@ -561,7 +581,8 @@ Once you're familiar with the process, here's the condensed version:
 ```
 
 **Update firmware (Command Mode):**
-```
+
+```text
 1. Hold both shift keys for 3 seconds
 2. Press 'B' key
 3. Copy rp2040-converter.uf2 to RPI-RP2 drive
@@ -569,6 +590,7 @@ Once you're familiar with the process, here's the condensed version:
 ```
 
 **Command Mode quick keys:**
+
 - **B** = Bootloader mode (for firmware updates)
 - **L** = LED brightness adjustment
 - **D** = Debug log level selection

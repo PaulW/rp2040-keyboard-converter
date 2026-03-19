@@ -12,13 +12,13 @@ Start by reviewing the [Code Standards](code-standards.md) documentation—this 
 
 Next, review the [Advanced Topics guide](../advanced/README.md) to understand how PIO state machines handle protocol timing, how the ring buffer coordinates interrupt and main loop contexts, and why code executes from SRAM rather than flash. This architectural overview connects the individual rules to the overall system design, helping you understand the "why" behind each constraint.
 
-Finally, familiarise yourself with the [Protocol Documentation](../protocols/README.md) and the `src/protocols/` directory to understand the supported interfaces and their timing constraints. That context helps you write code that behaves correctly across the hardware diversity that computing presents.
+Finally, familiarise yourself with the [Protocol Documentation](../protocols/README.md) and the `src/protocols/` directory to understand the supported interfaces and their timing constraints.
 
 The contribution process follows standard Git workflows with careful attention to quality. Fork the repository and clone it locally, then create a feature branch using conventional commit prefixes (`git checkout -b feat/my-feature`). Make your changes following the code standards detailed below, ensuring every function has clear comments and variable names explain their purpose. Before committing, run [`./tools/lint.sh`](../../tools/lint.sh) to catch architecture violations—the script must pass with zero errors and zero warnings, or continuous integration will reject your pull request.
 
 Commit messages follow the conventional commits format, using prefixes like `feat:` for new features, `fix:` for bug corrections, `docs:` for documentation updates, `refactor:` for code restructuring, and `test:` for testing additions. Each commit message should explain what changed and why, helping reviewers understand your reasoning without needing to decode the diff. Finally, create a pull request with a clear description of what you've changed, why the change is necessary, and how you've tested it.
 
-The CI pipeline automatically builds all keyboard configurations in the build matrix, runs lint checks, and enforces memory limits (Flash <230KB, RAM <150KB). CodeRabbit provides automated review focusing on embedded systems best practices and architecture compliance. These automated checks catch most issues before human review, but understanding the constraints yourself leads to cleaner initial submissions.
+The CI pipeline automatically builds all keyboard configurations in the build matrix, runs lint checks, and enforces memory limits (Flash <230KB, RAM <150KB). CodeRabbit provides automated review focusing on embedded systems best practices and architecture compliance.
 
 ---
 
@@ -37,6 +37,7 @@ Never call `ringbuf_reset()` with interrupts enabled. The ring buffer implements
 Use volatile qualifiers and memory barriers (`__dmb()`) when sharing data between interrupt and main contexts. The compiler and CPU both reorder operations for optimisation, which breaks interrupt communication without explicit synchronisation. Place `volatile` on variables written in IRQ and read in main, then use `__dmb()` after volatile writes and before volatile reads to enforce ordering.
 
 Here's the pattern for non-blocking timeouts:
+
 - ❌ No multicore APIs (`multicore_*`, `core1_*`)
 - ❌ No `printf` in IRQ context (use `LOG_*` macros)
 - ❌ No `ringbuf_reset()` with IRQs enabled
@@ -45,13 +46,14 @@ Here's the pattern for non-blocking timeouts:
 - ✅ Volatile + memory barriers for IRQ communication
 
 **Example (Non-blocking timeout):**
+
 ```c
 static uint32_t timer = 0;
 static enum { IDLE, WAITING, DONE } state = IDLE;
 
 void my_task(void) {
   uint32_t now = to_ms_since_boot(get_absolute_time());
-  
+
   switch (state) {
     case IDLE:
       timer = now;
@@ -69,8 +71,6 @@ void my_task(void) {
   }
 }
 ```
-
-This pattern stores the start time when entering a waiting state, then checks elapsed time on each loop iteration without blocking. The main loop continues servicing other tasks whilst the timer runs, maintaining system responsiveness. Standards enforcement happens through [`./tools/lint.sh`](../../tools/lint.sh) automated checks and comprehensive rules in [Code Standards](code-standards.md).
 
 ---
 
@@ -103,6 +103,7 @@ Detailed guides for the most common development tasks:
 How to add support for new keyboard protocols:
 
 **Steps:**
+
 1. **Research**: Understand timing, framing, communication flow
 2. **Create Directory**: `src/protocols/<name>/`
 3. **PIO Program**: Write `.pio` for bit timing and framing
@@ -178,21 +179,6 @@ Reference implementations demonstrate the patterns. The [Scancode Set 2](../scan
 The [Scancode Sets documentation](../scancodes/README.md) provides detailed documentation for each set, whilst [HID keycodes](../../src/common/lib/hid_keycodes.h) defines all available USB HID codes for mapping.
 
 ---
-
-### Build System
-
-Understanding the build system (see [Advanced Topics - Build System](../advanced/build-system.md) for details):
-
-**Docker Environment:**
-```bash
-# Build Docker image (one-time)
-docker compose build
-
-# Build firmware
-docker compose run --rm -e KEYBOARD="modelm/enhanced" builder
-```
-
-**CMake Flow:**
 
 ### Build System
 
@@ -290,7 +276,7 @@ The lint script (`./tools/lint.sh`) provides automated checking for architectura
 
 The script scans for blocking operations (`sleep_ms`, `busy_wait_us`, etc.), multicore API usage (`multicore_*`, `core1_*` functions), `printf` calls in interrupt context (which cause DMA conflicts), references to `docs-internal` in public files (which would expose local-only documentation), and ring buffer safety violations (like calling `ringbuf_reset()` without proper guards).
 
-Usage is simple: `./tools/lint.sh` checks all source files, or `./tools/lint.sh src/main.c` checks a specific file. The script returns exit code 0 on pass, 1 when errors are found, and 2 when warnings are present. CI integration ensures all pull requests pass lint checks before merge consideration.
+`./tools/lint.sh` checks all source files, or `./tools/lint.sh src/main.c` checks a specific file. The script returns exit code 0 on pass, 1 when errors are found, and 2 when warnings are present. CI integration ensures all pull requests pass lint checks before merge consideration.
 
 ---
 
@@ -300,27 +286,30 @@ Automated pull request reviews through CodeRabbit provide AI-assisted analysis f
 
 CodeRabbit configuration defines path-specific instructions (different rules for protocols vs keyboards vs common libraries), custom pre-merge checks (must pass lint, must compile all configurations, must respect memory limits), and knowledge base integration ensuring reviews align with project architecture.
 
-Custom checks ensure architectural compliance: no blocking operations anywhere in the code, no multicore usage attempts, interrupt safety for all shared data structures, RAM execution requirements met, and protocol timing specifications followed precisely. CodeRabbit combines automated analysis with project-specific knowledge to catch issues that generic linters miss.
+Custom checks flag potential architectural issues for review: no blocking operations anywhere in the code, no multicore usage attempts, interrupt safety for all shared data structures, RAM execution requirements met, and checks for patterns or anti-patterns related to protocol timing that warrant manual verification. These checks are heuristic; they raise issues for further testing and review rather than proving timing correctness.
 
 ---
 
 ## Related Documentation
 
 **Architecture:**
+
 - [Advanced Topics](../advanced/README.md) - Complete system architecture, performance analysis, PIO programming, critical design principles
 - [Code Standards](code-standards.md) - Authoritative architectural constraints and rules
 
 **Implementation:**
-- [Protocol Implementation](../protocols/README.md) - AT/PS2, XT, Amiga, M0110 protocol specifications
+
+- [Protocol Implementation](protocol-implementation.md) - Guide to implementing a new keyboard protocol
+- [Protocol Overview](../protocols/README.md) - Protocol specifications and signal details
 - [Keyboard Configuration](../keyboards/README.md) - Supported keyboards and configuration format
 - [Features](../features/README.md) - Command Mode, Config Storage, LED Support, Logging, Mouse Support, USB HID
 
 **Project:**
+
 - [Main README](../../README.md) - Project overview and quick start
 - [License](../../LICENSE) - MIT License terms
 
 ---
 
-**Questions or stuck on something?**  
-Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.
-
+**Questions or stuck on something?**
+Use [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found a problem.

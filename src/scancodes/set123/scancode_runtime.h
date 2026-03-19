@@ -54,8 +54,8 @@
  * | AB 84    | Short keyboard (no numpad)     | Set 2       | ThinkPad, Spacesaver, tenkeyless |
  * | AB 85    | NCD N-97 or IBM 122-key Model M| Set 3 / 2   | NCD N-97 speaks Set 3            |
  * | AB 86    | Cherry G80-2551, IBM 1397000   | Set 2       | Can switch to Set 3              |
- * | AB 90    | IBM 5576-002 (Japanese)        | Set 2       | Can switch to Set 3              |
- * | AB 91    | IBM 5576-003 / Televideo DEC   | Set 1       | Supports Sets 1, 2, 3            |
+ * | AB 90    | IBM 5576-002 (Japanese)        | Set 2       | Can switch to Sets 3, 82h        |
+ * | AB 91    | IBM 5576-003 / Televideo DEC   | Set 2 / 1   | Sets 1-3, 82h; Televideo: no     |
  * | AB 92    | IBM 5576-001 (Japanese)        | Set 2       | Supports Set 3, 82h              |
  * | BF BF    | IBM Terminal 122-key           | Set 3       | DIP/jumper configurable          |
  * | BF B0    | IBM RT keyboard                | Set 3       | Swapped num/caps LEDs            |
@@ -68,9 +68,14 @@
  * - 0xBF00-0xBFFF: Terminal keyboards that default to Set 3 (IBM RT, 1390876, 6110344)
  * - 0x7F00-0x7FFF: Terminal keyboards that always use Set 3 (IBM 1394204)
  *
- * Note: 0xAB86-0xAB92 keyboards (Cherry G80-2551, IBM 1397000, IBM 5576 series) boot
- * in Set 2 by default. This converter does NOT send F0 03 switching commands, so they
- * are treated as Set 2. See scancode_config_from_keyboard_id() for the full logic.
+ * Note: Most 0xAB86-0xAB92 keyboards (Cherry G80-2551, IBM 1397000, IBM 5576-002/003)
+ * boot in Set 2 by default. Exception: Televideo 990/995 DEC style (also AB 91) boots
+ * in Set 1. This converter does NOT send F0 03 switching commands and processes all
+ * AB 91 keyboards as Set 2 — the Televideo 990/995 is therefore NOT supported by this
+ * converter. Full support would require probing with F0 82 at init, falling back to F0 03
+ * on rejection, and processing in Set 3 (Set 2 is partially broken on this keyboard as
+ * some distinct keys produce identical codes). See scancode_config_from_keyboard_id() for
+ * the full logic.
  *
  * @see scancode.h for unified processor API
  * @see scancode_config.h for compile-time configuration

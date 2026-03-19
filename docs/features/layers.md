@@ -50,16 +50,16 @@ The practical takeaway: layer stacking via `TG` gives you composable behaviour�
 
 ## Layer Activation Methods
 
-There are several ways to activate layers, each suited to different use cases. You might want a layer that's only active whilst you hold a key (like a traditional Fn key), or one that toggles on and stays on until you toggle it off again. The converter supports four different activation methods to cover these scenarios.
+There are several ways to activate layers, each suited to different use cases. You might want a layer that's only active whilst you hold a key (like a traditional layer key), or one that toggles on and stays on until you toggle it off again. The converter supports four different activation methods to cover these scenarios.
 
-| Keycode | Type | Behaviour | Use Case |
-|---------|------|-----------|----------|
-| MO_1, MO_2, MO_3, MO_4 | Momentary | Active whilst held | Fn key for media controls or navigation |
-| TG_1, TG_2, TG_3, TG_4 | Toggle | Stays on until pressed again | Gaming layer, alternative layout |
-| TO_1, TO_2, TO_3, TO_4 | Permanent | Switches to layer, deactivates others | Force-specific layout mode |
-| OSL_1, OSL_2, OSL_3, OSL_4 | One-shot | Active for next keypress only | Symbols or special characters |
+| Keycode                    | Type      | Behaviour                             | Use Case                                   |
+| -------------------------- | --------- | ------------------------------------- | ------------------------------------------ |
+| MO_1, MO_2, MO_3, MO_4     | Momentary | Active whilst held                    | Layer key for media controls or navigation |
+| TG_1, TG_2, TG_3, TG_4     | Toggle    | Stays on until pressed again          | Gaming layer, alternative layout           |
+| TO_1, TO_2, TO_3, TO_4     | Permanent | Switches to layer, deactivates others | Force-specific layout mode                 |
+| OSL_1, OSL_2, OSL_3, OSL_4 | One-shot  | Active for next keypress only         | Symbols or special characters              |
 
-**Momentary layers** activate whilst you hold a specific key and deactivate when you release it. Hold the Fn key, press another key to access its upper-layer function, release Fn and you're back to normal typing. The IBM Model M Enhanced uses this pattern with MO_1 positioned where Right Alt normally sits.
+**Momentary layers** activate whilst you hold a specific key and deactivate when you release it. Hold the layer key, press another key to access its upper-layer function, release it and you're back to normal typing. The IBM Model M Enhanced uses this pattern with MO_1 positioned where Right Alt normally sits.
 
 **Toggle layers** stay active until you press the toggle key again. Press once to turn the layer on, press again to turn it off. Toggle is **additive**—you can have multiple layers toggled on simultaneously. Each toggle flips that specific layer's bit in the bitmap on or off, leaving other layers alone. This lets you stack layers: activate Layer 1 with `TG_1`, then activate Layer 3 with `TG_3`, and Layer 3 becomes the starting point (highest active) whilst Layer 1 remains underneath. Toggle Layer 3 off and you're back to starting from Layer 1. Useful for switching between different layer "modes" without explicitly selecting each one.
 
@@ -80,7 +80,7 @@ Each method has trade-offs. Momentary layers require holding a key, which might 
 
 ## Practical Examples
 
-Right, enough theory. What does this look like in practice?
+What does this look like in practice?
 
 ### Adding Media Controls
 
@@ -161,6 +161,7 @@ The converter stores active layer state in flash memory alongside other configur
 3. Restores the state if valid, resets to Layer 0 if invalid
 
 **Validation ensures safety.** If you flash firmware with:
+
 - A different keyboard configuration
 - Modified layer definitions (added/removed layers)
 - Changed keymap dimensions
@@ -169,9 +170,9 @@ The converter stores active layer state in flash memory alongside other configur
 
 **Why MO and OSL don't persist:**
 
-Momentary and one-shot layers are designed for temporary access—you hold a key or press it once. Persisting these would be confusing: keyboard boots with "Fn" layer active even though you're not holding the Fn key. Toggle and TO layers are explicit state changes that make sense to preserve.
+Momentary and one-shot layers are designed for temporary access—you hold a key or press it once. Persisting these would be confusing: keyboard boots with a momentary layer active even though you're not holding the layer key. Toggle and TO layers are explicit state changes that make sense to preserve.
 
-**Flash wear:** The config storage uses wear-leveling and dual-copy redundancy. Layer state changes write to flash, but typical usage patterns (toggling Dvorak once per session, occasional layout switches) generate minimal wear. Flash wear is mitigated by the dual‑copy scheme; avoid excessive toggling if you are concerned about endurance.
+**Flash wear:** The config storage uses wear-leveling and dual-copy redundancy. Layer state changes write to flash, but typical usage patterns (toggling Dvorak once per session, occasional layout switches) generate minimal wear.
 
 ---
 
@@ -202,5 +203,5 @@ The keyboard-specific documentation in [`docs/keyboards/`](../keyboards/) shows 
 
 ---
 
-**Questions or stuck on something?**  
-Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.
+**Questions or stuck on something?**
+Use [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found a problem.

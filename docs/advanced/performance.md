@@ -1,6 +1,6 @@
 # Performance Characteristics
 
-These performance characteristics are based on the RP2040 hardware specifications and what's implemented in the source code. No estimated measurements or unverified claims—everything here comes from the datasheet or the actual implementation.
+These performance characteristics are based on the RP2040 hardware specifications and what's implemented in the source code. Where specific figures appear, they come from the RP2040 datasheet or direct inspection of the implementation.
 
 ---
 
@@ -41,10 +41,11 @@ The RP2040 and USB host impose specific timing constraints that shape the conver
 The RP2040 runs at **125 MHz** by default (configurable, but the converter uses the default). This provides **8 nanosecond instruction cycles**—fast enough that protocol timing is never CPU-limited.
 
 PIO state machines execute independently at the same clock rate, handling protocol timing autonomously:
+
 - **AT/PS2 keyboards:** 10-16.7 kHz clock frequency (60-100 microseconds per bit)
 - **XT keyboards:** ~10 kHz clock frequency (approximately 100 microseconds per bit)
 - **Amiga keyboards:** ~16.7 kHz synchronous protocol
-- **Apple M0110:** Variable timing, adapts to signal conditions
+- **Apple M0110:** Keyboard→Host clock ~3.03 kHz, 330µs period (160µs LOW / 170µs HIGH); Host→Keyboard clock ~2.5 kHz, 400µs period (180µs LOW / 220µs HIGH)
 
 The PIO hardware samples data lines at precise clock edges, shifts bits into registers, and triggers interrupts only when complete bytes arrive. Zero CPU overhead during bit reception.
 
@@ -60,28 +61,30 @@ The USB polling interval represents the primary throughput bottleneck—not the 
 
 ## Resource Utilisation
 
-The converter's resource usage is deliberately conservative to ensure reliable operation and leave headroom for future features:
+The converter's resource usage is tracked against CI-enforced build limits:
 
 ### Memory
 
 The RP2040 provides **264KB of SRAM** and **2MB of flash storage**. The converter executes entirely from SRAM (see [SRAM Execution](architecture.md#sram-execution) for why), consuming space in both flash (for persistent storage) and SRAM (for execution).
 
 **Build limits** (enforced by CI in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)):
+
 - **Flash usage:** < 230KB (11.5% of 2MB capacity)
 - **SRAM usage:** < 150KB (56.8% of 264KB capacity)
 
-These limits provide comfortable margins whilst preventing configurations that approach resource boundaries. Actual usage varies by configuration—AT/PS2 with a standard keyboard uses roughly 80-120KB flash and 50-80KB SRAM.
+Actual usage varies by configuration—check the memory region summary in the build output for the exact figures for your build.
 
-The 32-byte ring buffer stays in cache throughout operation. Global variables store protocol state, HID report buffers, and configuration values. The stack handles function call depth and local variables. The heap remains minimal—the code favours stack allocation to avoid fragmentation and memory leaks.
+The 32-byte ring buffer fits entirely in on-chip SRAM and constitutes a small, fixed working set that remains resident there during operation. Global variables store protocol state, HID report buffers, and configuration values. The stack handles function call depth and local variables. The heap remains minimal—the code favours stack allocation to avoid fragmentation and memory leaks.
 
 ### CPU Utilisation
 
 The non-blocking architecture keeps the CPU idle between keyboard events. PIO hardware handles protocol timing autonomously, so the CPU only wakes for complete scancodes.
 
-**Estimated CPU usage patterns:**
-- Idle (waiting for scancodes): ~99% of time
-- Processing scancodes: Sub-millisecond bursts
-- USB communication: Coordinated with host polling (8ms intervals)
+**CPU usage patterns:**
+
+- Idle (waiting for scancodes): mostly idle between keyboard events
+- Processing scancodes: brief processing bursts per received byte
+- USB communication: aligned with host polling (8ms intervals)
 
 The converter doesn't perform continuous polling or busy-waiting—everything operates on interrupts or time-based state machines that check timestamps without blocking.
 
@@ -140,7 +143,7 @@ Whilst the converter hasn't been measured with hardware timing equipment, the ar
 6. **HID report assembly:** Struct manipulation (nanoseconds)
 7. **USB polling wait:** Host queries device every 8ms (average 4ms wait)
 
-The protocol transmission and USB polling dominate total latency. Processing overhead (steps 2-6) totals well under 100 microseconds—negligible compared to protocol and USB timing.
+The protocol transmission and USB polling are expected to dominate total latency; processing overhead (steps 2–6) is expected to be small relative to protocol and USB timing.
 
 ### Deterministic Timing
 
@@ -151,7 +154,7 @@ The converter's architecture ensures **deterministic timing**—latency remains 
 - **PIO hardware timing:** Protocol handling happens at fixed clock rates
 - **Single-core design:** No inter-core synchronisation overhead or race conditions
 
-This determinism makes the converter's behaviour predictable and repeatable, which is valuable for debugging and optimisation.
+This determinism makes the converter's behaviour predictable and repeatable.
 
 ---
 
@@ -185,7 +188,7 @@ The current implementation prioritises correctness and determinism over raw perf
 
 5. **Ring buffer size tuning:** Could reduce to 16 bytes (still ample for burst handling) to improve cache utilisation. Requires testing with worst-case multibyte sequences.
 
-These optimisations aren't currently implemented because the converter already meets performance requirements with comfortable margins. Premature optimisation would add complexity without practical benefit for keyboard conversion use cases.
+These optimisations are not currently implemented. No hardware timing measurements have been performed to establish whether they would be beneficial.
 
 ---
 
@@ -229,5 +232,5 @@ For those wanting to measure actual hardware performance:
 
 ---
 
-**Questions or need clarification?**  
-Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues).
+**Questions or need clarification?**
+Use [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found a problem.

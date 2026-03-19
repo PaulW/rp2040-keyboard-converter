@@ -12,7 +12,7 @@ When you press Caps Lock (or Num Lock, or Scroll Lock) on your keyboard, the OS 
 
 Here's the flow:
 
-```
+```text
 ┌──────────────────┐
 │   You Press      │  Press Caps Lock on keyboard
 │   Caps Lock      │
@@ -63,11 +63,11 @@ The converter sits in the middle, receiving USB HID output reports from the OS a
 
 Different keyboard protocols have different levels of LED support. Here's what works with each protocol:
 
-| Protocol | Caps Lock | Num Lock | Scroll Lock | Implementation |
-|----------|-----------|----------|-------------|----------------|
-| AT/PS2   | ✓ Yes     | ✓ Yes    | ✓ Yes       | `0xED` command + state byte |
+| Protocol | Caps Lock | Num Lock | Scroll Lock | Implementation                |
+| -------- | --------- | -------- | ----------- | ----------------------------- |
+| AT/PS2   | ✓ Yes     | ✓ Yes    | ✓ Yes       | `0xED` command + state byte   |
 | XT       | ✗ No      | ✗ No     | ✗ No        | Protocol doesn't support LEDs |
-| Amiga    | ✓ Yes     | ✗ No     | ✗ No        | Handshake timing (short=ON, long=OFF) |
+| Amiga    | ✓ Yes     | ✗ No     | ✗ No        | Hardware-managed by keyboard  |
 | M0110    | ✗ No      | ✗ No     | ✗ No        | Protocol doesn't support LEDs |
 
 ### AT/PS2 LED Control
@@ -76,7 +76,7 @@ AT/PS2 keyboards support full LED control through the `0xED` command. This is a 
 
 The LED state byte is structured like this:
 
-```
+```text
 Bit 0: Scroll Lock LED (1 = ON, 0 = OFF)
 Bit 1: Num Lock LED    (1 = ON, 0 = OFF)
 Bit 2: Caps Lock LED   (1 = ON, 0 = OFF)
@@ -95,16 +95,7 @@ If your XT keyboard has lock indicator LEDs, they won't update when you press th
 
 ### Amiga LED Control
 
-Amiga keyboards have a Caps Lock LED, but no Num Lock or Scroll Lock LEDs. The LED's controlled through the handshake timing rather than a dedicated command.
-
-After the converter receives a scancode from the keyboard, it sends a handshake pulse back to acknowledge receipt. The duration of this pulse controls the Caps Lock LED:
-
-- **Short pulse (85μs LOW):** Turn Caps Lock LED on
-- **Long pulse (85μs LOW + 1ms HIGH + 85μs LOW):** Turn Caps Lock LED off
-
-The handshake timing's handled in the PIO program and protocol state machine. When the OS sends a HID output report with Caps Lock state, the protocol handler updates its internal state, and the next handshake pulse uses the appropriate timing.
-
-**Why this works:** Amiga keyboards expect a handshake after every scancode. Since we're already sending handshakes, we just vary the timing based on whether Caps Lock should be on or off. It's a bit unusual compared to AT/PS2's explicit command, but it works reliably.
+Amiga keyboards have a Caps Lock LED, but no Num Lock or Scroll Lock LEDs. The keyboard manages its own Caps Lock LED in hardware — when you press Caps Lock, the keyboard toggles the LED itself and signals the new state to the converter, which then keeps the OS in sync. There's no host-to-keyboard LED command.
 
 ### M0110/M0110A LED Control
 
@@ -121,11 +112,12 @@ In addition to the keyboard's lock indicator LEDs, you can optionally configure 
 **Configuration:** Define `CONVERTER_LEDS` and `LED_PIN` in your build configuration ([`src/config.h`](../../src/config.h)) to enable WS2812 support. You can configure up to 4 LEDs.
 
 **Status colours:**
+
 - **Green:** Converter initialised and ready
-- **Yellow:** Keyboard initialising
-- **Red:** Error state (protocol error, keyboard not responding)
+- **Amber/Orange:** Converter not yet ready (initialising, or keyboard not yet detected)
 - **Alternating Green/Blue:** Command Mode active (waiting for command key)
-- **Magenta:** Firmware update or factory reset in progress
+- **Alternating Green/Pink:** Command Mode — log level selection active
+- **Magenta:** Bootloader mode active (firmware update in progress)
 
 The WS2812 LEDs are driven by a separate PIO program ([ws2812.pio](../../src/common/lib/ws2812/ws2812.pio)) and don't interfere with keyboard protocol timing. They provide status feedback and don't reflect lock indicator states.
 
@@ -163,9 +155,9 @@ If the LEDs update but there's a noticeable delay:
 
 If the Amiga keyboard's Caps Lock LED doesn't reflect the OS lock state:
 
-**Check handshake timing:** The LED's controlled by the handshake pulse duration. Use a logic analyser or oscilloscope to verify the DATA line pulse width matches the expected timing (85μs for short, ~1.2ms for long).
+**Check sync state:** The keyboard manages its own Caps Lock LED in hardware and signals the state to the converter, which keeps the OS in sync. If they've got out of sync, power-cycling the converter and keyboard should resynchronise.
 
-**Verify protocol initialisation:** The Amiga protocol's fairly sensitive to timing during initialisation. If the handshake gets out of sync during the init sequence, the LED state might not track correctly. Try unplugging and replugging the converter to re-initialise.
+**Verify protocol initialisation:** The Amiga protocol is sensitive to timing during initialisation. If the handshake gets out of sync during the init sequence, the LED state might not track correctly. Try unplugging and replugging the converter to re-initialise.
 
 **Test with known-good keyboard:** Some Amiga keyboards (particularly older ones) might have LED hardware issues. If possible, test with a different Amiga keyboard to rule out hardware problems.
 
@@ -175,14 +167,10 @@ If you've enabled WS2812 support but the LEDs don't light up:
 
 **Check `CONVERTER_LEDS` definition:** Make sure `CONVERTER_LEDS` is defined before including the WS2812 headers. It should be in [`src/config.h`](../../src/config.h) or passed as a build flag.
 
-**Verify `LED_PIN`:** The `LED_PIN` definition should match where you've connected the WS2812 data line. It defaults to GPIO 16, but you might need to change it for your board.
+**Verify `LED_PIN`:** The `LED_PIN` definition should match where you've connected the WS2812 data line. It defaults to GPIO 29, but you'll need to change it if your board uses a different pin.
 
 **Check power and data connections:** WS2812 LEDs need 5V power (VDD) and a data line (DIN) from the RP2040. The data line's 3.3V, which works with WS2812 specifications, but some variants may need a level shifter to 5V logic.
 
 **Test LED brightness:** Try adjusting brightness through Command Mode. If the LEDs are too dim (brightness set to 0 or 1), they might appear off.
 
 **Try a simple test:** Upload the WS2812 example from the Pico SDK to verify the LEDs and wiring work independently of the converter firmware.
-
----
-
-That covers LED indicators. For AT/PS2 keyboards, LED control works through the protocol. For other protocols, LED support depends on what the protocol provides. The WS2812 status LEDs are optional and purely for showing converter status, not lock states.

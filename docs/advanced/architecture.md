@@ -18,9 +18,9 @@ The whole design is focused on keeping latency as low as possible whilst making 
 
 ## How Data Flows Through the System
 
-When you press a key on your keyboard, here's an example journey it takes before it appears on your computer, obviously this might differ slightly depending on the protocol and keyboard, but this is a general flow:
+When you press a key on your keyboard, here's the journey it takes before it appears on your computer—it will differ slightly depending on the protocol and keyboard, but the general flow looks like this:
 
-```
+```text
 ┌──────────────┐
 │ Physical Key │  You press a key
 │    Press     │
@@ -106,6 +106,7 @@ The ring buffer's a 32-byte FIFO queue that sits between the interrupt handler a
 **Why 32 bytes?** It's a power of two (which makes the modulo arithmetic cheap), and it's large enough to buffer several scancodes during worst-case scenarios. In practice, the main loop processes scancodes fast enough that the buffer rarely gets more than a few bytes deep.
 
 The buffer uses a single-producer/single-consumer model:
+
 - **Producer (IRQ):** Writes new scancodes, increments `head` pointer
 - **Consumer (Main loop):** Reads scancodes, increments `tail` pointer
 
@@ -164,6 +165,7 @@ There are three main execution contexts in the converter:
 This is where the PIO interrupt handlers run when the hardware has data ready. IRQ context has the highest priority—it can preempt the main loop at any time.
 
 **Rules for IRQ context:**
+
 - Must be fast
 - No blocking operations (`sleep_ms`, `busy_wait_us`, etc.)
 - No `printf()` or other UART operations (use `LOG_*` macros which are DMA-safe)
@@ -179,6 +181,7 @@ The main loop runs continuously, processing queued scancodes, managing protocol 
 The main loop never blocks. All time-based operations use `to_ms_since_boot(get_absolute_time())` to check if enough time's passed, rather than sleeping. This keeps the loop responsive and ensures we can handle bursts of scancodes without delay.
 
 **Typical main loop iteration:**
+
 1. Check ring buffer for new scancodes
 2. Process any scancodes through the scancode processor
 3. Run protocol state machine tasks (initialisation, LED commands, etc.)
@@ -234,7 +237,7 @@ Wherever possible, we ensure only one context writes to any given variable. The 
 
 ## Critical Design Principles
 
-The converter's architecture relies on several non-negotiable principles that ensure reliability and deterministic behaviour. These aren't arbitrary choices—they're fundamental to how the converter achieves low latency without dropping scancodes.
+The converter's architecture relies on a few core design principles that keep things reliable and deterministic.
 
 ### Single-Core Architecture
 
@@ -294,25 +297,30 @@ All keyboard protocols follow a standard 13-step setup sequence that includes `r
 ## Related Documentation
 
 **Advanced Topics:**
+
 - [Performance Characteristics](performance.md) - Timing, throughput, and resource utilisation
 - [Build System](build-system.md) - CMake configuration and Docker builds
 - [Testing and Validation](testing.md) - Hardware testing and code quality
 
 **Protocol Details:**
+
 - [Protocols Overview](../protocols/README.md) - Protocol specifications and timing
 - [Scancode Sets](../scancodes/README.md) - Scancode decoding and multibyte sequences
 
 **Development:**
+
 - [Code Standards](../development/code-standards.md) - Coding conventions and architecture rules
 - [Contributing Guide](../development/contributing.md) - How to contribute changes
 - [Adding Keyboards](../development/adding-keyboards.md) - Creating new keyboard configurations
 
 **Features:**
+
 - [Command Mode](../features/command-mode.md) - Firmware management interface
 - [Logging](../features/logging.md) - Debug output configuration
 - [USB HID](../features/usb-hid.md) - USB interface details
 
 **Source Code:**
+
 - Main loop: [`src/main.c`](../../src/main.c)
 - Ring buffer: [`src/common/lib/ringbuf.c`](../../src/common/lib/ringbuf.c)
 - PIO helper: [`src/common/lib/pio_helper.c`](../../src/common/lib/pio_helper.c)
@@ -322,5 +330,5 @@ All keyboard protocols follow a standard 13-step setup sequence that includes `r
 
 ---
 
-**Questions or stuck on something?**  
-Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues).
+**Questions or stuck on something?**
+Use [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found a problem.

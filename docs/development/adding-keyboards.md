@@ -5,6 +5,7 @@ If you have a keyboard that isn't already supported, adding it is fairly simple�
 This guide walks through the process of adding a new keyboard configuration, assuming the protocol is already implemented. If you need to add a completely new protocol, that's more involved—have a look at the existing implementations in [`src/protocols/`](../../src/protocols/) to see what's required.
 
 **What you'll need to know:**
+
 - Your keyboard's protocol
 - The scancode set it sends
 - Physical layout (affects how you define the keymap matrix)
@@ -18,7 +19,7 @@ This is implementation documentation for adding new keyboard support. If you're 
 
 Before you start creating files, you'll want to gather some information about your keyboard. Some of this might be in documentation, some you might need to work out yourself.
 
-First up, you'll need to know what protocol your keyboard uses. Check [`src/protocols/`](../../src/protocols/) to see which ones are implemented—there's AT/PS2, XT, Amiga, and Apple M0110 at the moment. The [Protocol Documentation](../protocols/README.md) describes each protocol's characteristics and how to identify them. If your keyboard uses one of these, you're in luck. If not, you'll need to implement the protocol first, which is rather more involved.
+You'll need to know what protocol your keyboard uses. Check [`src/protocols/`](../../src/protocols/) to see which implementations are available. The [Protocol Documentation](../protocols/README.md) describes each protocol's characteristics and how to identify them. If your keyboard uses one of the supported protocols, you're in luck. If not, you'll need to implement the protocol first, which is rather more involved.
 
 Next, work out which scancode set your keyboard sends. Check the [Scancode Sets documentation](../scancodes/README.md) to see the available processors. The `set123` processor handles multiple scancode sets dynamically, so if you're not certain which set your keyboard uses, that processor can detect the set automatically.
 
@@ -40,21 +41,20 @@ src/keyboards/
 │   ├── enhanced/
 │   │   ├── keyboard.config
 │   │   ├── keyboard.h
-│   │   ├── keyboard.c
-│   │   └── README.md
+│   │   └── keyboard.c
 │   └── m122/
 │       ├── keyboard.config
 │       ├── keyboard.h
-│       ├── keyboard.c
-│       └── README.md
+│       └── keyboard.c
 ├── apple/
 │   └── m0110a/
 │       ├── keyboard.config
 │       ├── keyboard.h
-│       ├── keyboard.c
-│       └── README.md
+│       └── keyboard.c
 └── ... other keyboards ...
 ```
+
+The user-facing README for each keyboard lives under [`docs/keyboards/`](../../docs/keyboards/)`<brand>/<model>.md`, not inside `src/keyboards/`. The source directory contains only the three build-time files.
 
 The directory name should be lowercase, use hyphens for spaces (e.g., `model-m-enhanced` rather than `ModelMEnhanced`), and be descriptive enough to identify the specific model.
 
@@ -203,6 +203,7 @@ The `keymap_layer_count` variable is automatically calculated using `sizeof` to 
 **Layer limits:** The firmware supports 4 switchable layers plus base Layer 0 (`KEYMAP_MAX_LAYERS = 5` in [`src/common/lib/keymaps.h`](../../src/common/lib/keymaps.h)). Layer-switching keycodes (MO, TG, TO, OSL) are defined for layers 1–4 in [`src/common/lib/hid_keycodes.h`](../../src/common/lib/hid_keycodes.h) — that is the architectural maximum the 0xF0–0xFF keycode encoding can hold.
 
 Layer keycodes (layers 1–4):
+
 - **MO_1 … MO_4**: Momentary layer switch whilst held
 - **TG_1 … TG_4**: Toggle layer on/off
 - **TO_1 … TO_4**: Switch to layer permanently
@@ -211,7 +212,7 @@ Layer keycodes (layers 1–4):
 
 **NumLock Handling:** If you need consistent navigation on the numpad across hosts, consider adding a function layer that maps the numpad positions to HOME/UP/PGUP and similar keys rather than creating a dedicated NumLock layer.
 
-**Example—Model F PC/AT with navigation in Fn layer:**
+**Example—Model F PC/AT with navigation in Layer 1:**
 
 ```c
 const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
@@ -219,18 +220,21 @@ const uint8_t keymap_map[][KEYMAP_ROWS][KEYMAP_COLS] = {
         // ... ESC, numbers, letters, etc.
         // Numpad: P7, P8, P9 send as-is (host interprets)
     ),
-    [1] = KEYMAP(  // Fn layer for macOS navigation
+    [1] = KEYMAP(  // Layer 1 for macOS navigation
         TRNS, TRNS, /* ... */
-        HOME, UP,   PGUP,   // Fn+7/8/9 → HOME/UP/PGUP
-        LEFT, TRNS, RIGHT,  // Fn+4/5/6 → LEFT/nochange/RIGHT  
-        END,  DOWN, PGDN,   // Fn+1/2/3 → END/DOWN/PGDN
+        HOME, UP,   PGUP,   // Layer 1: 7/8/9 → HOME/UP/PGUP
+        LEFT, TRNS, RIGHT,  // Layer 1: 4/5/6 → LEFT/falls through to Layer 0 (transparent TRNS)/RIGHT
+        END,  DOWN, PGDN,   // Layer 1: 1/2/3 → END/DOWN/PGDN
     ),
 };
 ```
 
+`TRNS` (transparent) means the key falls through to the next lower active layer—in this example, Layer 0. It does not suppress the key entirely. If you want a position to produce no keypress at all on a given layer, use `NO` instead (the KEYMAP macro expands shorthands like `TRNS` and `NO` to `KC_TRNS` and `KC_NO` via token concatenation).
+
 ### Shift-Override (Non-Standard Shift Legends)
 
 Some keyboards have non-standard shift legends that don't match the HID keycodes sent by standard keys. This includes terminal keyboards, vintage keyboards, and some international layouts. For example, the IBM Model M Type 2 (M122) has:
+
 - Physical key labelled `2` and `"` (double quote)
 - Standard shift behaviour: Shift+2 = `@`
 - But key physically shows `"`
@@ -250,10 +254,10 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
         [KC_7] = SUPPRESS_SHIFT | KC_QUOT,   // Shift+7 → ' (apostrophe, suppress shift)
         [KC_0] = SUPPRESS_SHIFT | KC_NUHS,   // Shift+0 → # (hash/pound, suppress shift)
         [KC_MINS] = SUPPRESS_SHIFT | KC_EQL, // Shift+- → = (equals, suppress shift)
-        
+
         // Keep shift for standard behaviour
         [KC_6] = KC_7,  // Shift+6 → Shift+7 produces & (ampersand, keep shift held)
-        
+
         // Entries default to 0 unless explicitly set (use default shift behaviour)
     },
     // Other layers: NULL or define additional shift-override arrays as needed
@@ -262,12 +266,14 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
 ```
 
 **How it works:**
+
 - When shift is held and a key pressed, the system checks the shift-override array for the source layer (the layer where the key was found, accounting for KC_TRNS fallthrough)
 - If entry exists: send that keycode instead of base key
 - If entry has `SUPPRESS_SHIFT` flag (bit 7): remove shift modifier for final key
 - If entry is 0 or layer has no shift-override array (NULL): use default behaviour (send base key with shift)
 
 **SUPPRESS_SHIFT flag (0x80):**
+
 - `SUPPRESS_SHIFT | KC_QUOT`: Sends `'` (apostrophe) **without** shift modifier
 - `KC_7`: Sends `7` **with** shift modifier (produces shifted character like `&`)
 
@@ -286,19 +292,20 @@ const uint8_t * const keymap_shift_override_layers[KEYMAP_MAX_LAYERS] = {
 The firmware performs a simple presence check at boot time and when toggling shift-override via Command Mode:
 
 - **Presence check**: Verifies that `keymap_shift_override_layers` is defined (not NULL)
-- **Boot-time**: If shift-override is enabled in persistent config but the array is missing, the feature is automatically disabled with log messages: `[WARN] Shift-Override enabled in config but keyboard doesn't define shift mappings` and `[INFO] Disabling shift-override`
-- **Command Mode toggle**: If user attempts to enable shift-override (via `S` key) but the array is missing, command rejected: `[WARN] Shift-Override not available`
+- **Boot-time**: If shift-override is enabled in persistent config but the array is missing, the feature is automatically disabled with log messages: `Shift-Override enabled in config but keyboard doesn't define shift mappings` (WARN) and `Disabling shift-override (keymap_shift_override_layers not defined)` (INFO)
+- **Command Mode toggle**: If user attempts to enable shift-override (via `S` key) but the array is missing, command rejected with message: `Shift-Override not available` (INFO)
 
 There's no per-layer validation—the firmware only checks whether the array exists. You're responsible for ensuring shift-override entries correspond to defined layers (layers that exist in `keymap_map`).
 
 **When to use shift-override:**
+
 - Terminal keyboards with non-standard legends (IBM 327x, 3270, 522x series)
 - International keyboards where physical labels don't match HID standard
 - NOT for standard keyboards—adds complexity without benefit
 
 **Example keyboards with shift-override:**
+
 - IBM Model M Type 2 (M122): `src/keyboards/modelm/m122/keyboard.c`
-- Microswitch 122ST13: `src/keyboards/microswitch/122st13/keyboard.c`
 
 **Enabling shift-override:**
 
@@ -321,16 +328,19 @@ Document your keyboard properly. Future you will appreciate this when you come b
 
 Start with the specifications—the full model name and number exactly as it appears on the label, manufacturer, year if you can determine it, protocol and scancode set, physical layout, and connector type. These are the basics that help identify exactly what keyboard you're dealing with.
 
-Then document the quirks and special features. This is where you note down anything unusual—non-standard scancodes that differ from typical protocol behaviour, missing keys compared to a standard layout, special function keys that required custom handling, LED support (or lack thereof), and any timing peculiarities you discovered whilst testing. These details are gold dust when troubleshooting later.
+Then add a **Features** section listing the observable capabilities: key count and layout, switch type, and LED indicators (Caps Lock, Num Lock, Scroll Lock).
+
+Finally, add a **Notes** section for anything unusual—non-standard scancodes that differ from typical protocol behaviour, missing keys compared to a standard layout, special function keys that required custom handling, LED support limitations, and any timing peculiarities you discovered whilst testing. These details are gold dust when troubleshooting later.
 
 Make sure to include the build command too. Show the exact command needed to build firmware for this keyboard—saves people (including future you) having to work it out themselves.
 
 Here's an example from the IBM Model F configuration to show what I mean:
 
-```markdown
+````markdown
 # IBM Model F PC/AT
 
 **Specifications:**
+
 - Model: IBM Model F PC/AT (1503100, 1503104, etc.)
 - Manufacturer: IBM
 - Year: 1984-1987
@@ -340,24 +350,28 @@ Here's an example from the IBM Model F configuration to show what I mean:
 - Connector: 5-pin DIN (AT keyboard connector)
 
 **Features:**
+
 - Full 101-key layout with F1-F12 function keys
 - Buckling spring switches
 - LED indicators: Caps Lock, Num Lock, Scroll Lock
 
+**Notes:**
+
+- Standard AT/PS2 Set 2 scancodes; no non-standard sequences observed
+- No missing keys relative to 101-key ANSI layout
+
 **Build:**
+
 ```bash
 docker compose run --rm -e KEYBOARD="modelf/pcat" builder
 ```
-
-**Notes:**
-This is the "modern" IBM Model F with 101 keys.
-```
+````
 
 ---
 
 ## Testing
 
-Right, once you've created all the configuration files, it's time to build the firmware and see what happens:
+Once you've created all the configuration files, it's time to build the firmware and see what happens:
 
 ```bash
 docker compose run --rm -e KEYBOARD="your-brand/your-model" builder
@@ -389,7 +403,7 @@ Just to clarify the structure: it uses `<brand>/<model>` under [`src/keyboards/`
 
 Verify your keymap matches the physical layout. The keycodes in `keyboard.c` need to be in the same order as the physical keys on your keyboard, following the KEYMAP macro's parameter order.
 
-The best way to debug this is to connect a UART adapter to GPIO 0/1 and enable debug output. Press keys one at a time—the debug output shows which scancode was received and which HID keycode it mapped to. Compare this against what you expected to happen. It's tedious work, I'll grant you, but it'll show exactly where the mismatch is.
+The best way to debug this is to connect a UART adapter to GPIO 0/1 and enable debug output. Press keys one at a time—the debug output shows which scancode was received and which HID keycode it mapped to. Compare this against what you expected to happen. It's tedious work, but it'll show exactly where the mismatch is.
 
 ### Some Keys Don't Work at All
 
@@ -468,7 +482,7 @@ Flash the resulting UF2 file and test every key systematically. If something's n
 
 ---
 
-That covers the keyboard support process. If you run into issues that aren't covered here, have a look at the existing keyboard implementations in [`src/keyboards/`](../../src/keyboards/)—they're all documented with their own quirks and solutions. The Model M Enhanced and Apple M0110A configurations are particularly well-documented if you need more detailed examples.
+If you run into issues that aren't covered here, have a look at the existing keyboard documentation in [`docs/keyboards/`](../keyboards/)—each keyboard has its own page with **Specifications**, **Features**, and **Notes** sections. The Model M Enhanced and Apple M0110A pages are good examples of that structure.
 
 And if you get properly stuck, open an issue on GitHub.
 
@@ -485,5 +499,5 @@ And if you get properly stuck, open an issue on GitHub.
 
 ---
 
-**Questions or stuck on something?**  
-Pop into [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [report a bug](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found an issue.
+**Questions or stuck on something?**
+Use [GitHub Discussions](https://github.com/PaulW/rp2040-keyboard-converter/discussions) or [open an issue](https://github.com/PaulW/rp2040-keyboard-converter/issues) if you've found a problem.

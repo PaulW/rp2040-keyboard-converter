@@ -1,16 +1,10 @@
 # Building Firmware
 
-**Time Required**: 10-15 minutes (first build)  
-**Difficulty**: Beginner-friendly
+**Time Required**: 10-15 minutes (first build)
 
 This guide will walk you through building custom firmware for your specific keyboard and mouse combination. I've set things up to use Docker, which creates a consistent build environment that works the same way on Windows, macOS, and Linux—so you won't need to manually install compilers, SDKs, or development tools.
 
-**What you'll accomplish:**
-- Set up a complete build environment in a Docker container
-- Compile firmware tailored to your specific keyboard model
-- Generate a `.uf2` firmware file ready to flash to your RP2040 board
-
-**Why Docker?** It packages all the complex build tools (ARM GCC compiler, Pico SDK, CMake) into a single container. You run one command, and Docker handles everything behind the scenes. This eliminates the "it works on my machine" problem and ensures everyone gets the same reliable build process.
+**Why Docker?** It packages the build tools (ARM GCC compiler, Pico SDK, CMake) into a single container. You run one command, and Docker handles everything behind the scenes—same result on Windows, macOS, and Linux.
 
 ---
 
@@ -39,6 +33,7 @@ cd rp2040-keyboard-converter
 ```
 
 **What's happening here:**
+
 - `git clone` downloads the project from GitHub to your computer
 - `cd rp2040-keyboard-converter` moves you into the project directory
 
@@ -69,6 +64,7 @@ docker compose build builder
 ```
 
 **What's happening behind the scenes:**
+
 1. Docker downloads a base Ubuntu Linux image
 2. Installs the ARM GCC cross-compiler (converts code to RP2040-compatible binaries)
 3. Installs the Pico SDK version 2.2.0 (Raspberry Pi's official libraries)
@@ -84,6 +80,7 @@ docker compose build builder
 ## Step 3: Choose Your Configuration
 
 Before building, you'll need to tell the build system which keyboard model you're using. Each keyboard has its own configuration that includes:
+
 - **Protocol**: The communication method (AT/PS2, XT, Amiga, M0110)
 - **Scancode set**: How the keyboard reports keypresses
 - **Layout**: Physical key arrangement and mapping
@@ -99,7 +96,8 @@ find src/keyboards -name "keyboard.config"
 ```
 
 This shows paths like:
-```
+
+```text
 src/keyboards/modelm/enhanced/keyboard.config
 src/keyboards/amiga/a500/keyboard.config
 src/keyboards/apple/m0110a/keyboard.config
@@ -116,6 +114,7 @@ For keyboards with specific layouts or different protocols (XT, Amiga, M0110), h
 The converter can also support a mouse alongside your keyboard if you want. This is completely optional.
 
 **If you want mouse support:**
+
 - The converter supports AT/PS2 mouse protocol
 - Requires separate hardware wiring (the mouse uses its own CLOCK/DATA pins—see [Hardware Setup](hardware-setup.md))
 - Works with any keyboard protocol (so you could use an AT/PS2 mouse with an Amiga keyboard, for example)
@@ -126,7 +125,7 @@ The converter can also support a mouse alongside your keyboard if you want. This
 
 ## Step 4: Build Firmware
 
-Right, now for the fun part—actually compiling the firmware! The build process is pretty simple: you tell Docker which keyboard you're using, and it handles all the compilation details.
+Now to actually compile the firmware. You tell Docker which keyboard you're using, and it handles all the compilation details.
 
 ### The Build Command
 
@@ -137,6 +136,7 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" builder
 ```
 
 **Breaking down the command:**
+
 - `docker compose run` - Starts a Docker container from the image we built earlier
 - `--rm` - Automatically removes the container when done (keeps your system clean)
 - `-e KEYBOARD="modelm/enhanced"` - Sets an environment variable telling the build system which keyboard to configure for
@@ -146,7 +146,7 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" builder
 
 ### What Happens During the Build
 
-When you run the build command, Docker orchestrates quite a complex series of steps behind the scenes. You don't need to understand all the details, but here's what's happening:
+You don't need to understand all the details, but here's what's happening:
 
 1. **Container starts** - Docker launches the build environment with all the tools ready
 2. **Configuration loads** - CMake reads your keyboard's `keyboard.config` file
@@ -162,13 +162,13 @@ When you run the build command, Docker orchestrates quite a complex series of st
 
 **Duration**: 30-60 seconds (after the Docker image's been built)
 
-The beauty of this system is that it's completely automated—you don't need to know C programming, understand CMake syntax, or configure toolchains. Just specify your keyboard, and Docker handles the rest.
+You don't need to know C programming, understand CMake syntax, or configure toolchains manually—just specify your keyboard, and Docker handles the rest.
 
 ### Understanding Build Output
 
 When the build completes successfully, you'll see output that looks something like this:
 
-```
+```text
 -- Build files have been written to: /build
 Scanning dependencies of target rp2040-converter
 [ 12%] Building C object CMakeFiles/rp2040-converter.dir/src/main.c.obj
@@ -183,6 +183,7 @@ Scanning dependencies of target rp2040-converter
 **What those percentages mean**: Each source file gets compiled individually, and the percentages show progress through all the files. When it reaches 100%, everything's been compiled and linked together.
 
 **Output files created in `./build/` directory:**
+
 - **`rp2040-converter.uf2`** ← This is the file you'll flash to your RP2040
 - `rp2040-converter.elf` - Binary with debugging symbols (for developers)
 - `rp2040-converter.elf.map` - Memory layout map (for developers)
@@ -208,11 +209,13 @@ Get-ChildItem build\rp2040-converter.uf2
 ```
 
 **Expected output:**
-```
+
+```text
 -rw-r--r--  1 user  staff   88K Oct 30 10:30 build/rp2040-converter.uf2
 ```
 
 **What to look for:**
+
 - File exists in the `build/` directory
 - File size: 80-120 KB range (varies by configuration)
 - Size depends on keyboard configuration, enabled features, and code changes
@@ -234,12 +237,14 @@ Every build needs a keyboard configuration. This is how you tell the build syste
 ```
 
 **What this does:**
+
 - Points to the configuration file at `src/keyboards/<brand>/<model>/keyboard.config`
 - Loads the correct protocol handler (AT/PS2, XT, Amiga, etc.)
 - Includes the appropriate scancode set (how keys are numbered)
 - Loads the keyboard-specific layout and key mappings
 
 **Real-world example**: When you build with `KEYBOARD="modelm/enhanced"`, the system:
+
 - Reads [`src/keyboards/modelm/enhanced/keyboard.config`](../../src/keyboards/modelm/enhanced/keyboard.config)
 - Sees it needs the AT/PS2 protocol
 - Includes Scancode Set 1/2/3 unified processor (`set123`)
@@ -255,6 +260,7 @@ Add mouse support to your keyboard converter:
 ```
 
 **What this does:**
+
 - Includes the AT/PS2 mouse protocol handler code
 - Allocates a separate PIO state machine for mouse communication
 - Configures GPIO 6/7 for mouse CLOCK/DATA (independent from keyboard pins - see [`src/config.h`](../../src/config.h))
@@ -280,16 +286,19 @@ Running into issues? Here are some troubleshooting steps:
 You can build with any of these options:
 
 **Keyboard only:**
+
 ```bash
 docker compose run --rm -e KEYBOARD="modelm/enhanced" builder
 ```
 
 **Mouse only:**
+
 ```bash
 docker compose run --rm -e MOUSE="at-ps2" builder
 ```
 
 **Both keyboard and mouse:**
+
 ```bash
 docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
 ```
@@ -301,7 +310,9 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" -e MOUSE="at-ps2" builder
 **What this means**: The keyboard path you specified doesn't exist, or you have a typo somewhere.
 
 **How to fix it**:
+
 1. Check which keyboards are actually available:
+
    ```bash
    find src/keyboards -name "keyboard.config"
    ```
@@ -325,7 +336,7 @@ The keyboard configuration file may be missing required fields. Try:
    - `MAKE` - Keyboard manufacturer
    - `DESCRIPTION` - Keyboard description
    - `MODEL` - Keyboard model
-   - `PROTOCOL` - Protocol handler (at-ps2, xt, amiga, m0110)
+   - `PROTOCOL` - Protocol handler (at-ps2, xt, amiga, apple-m0110)
    - `CODESET` - Scancode set to use
 
 3. Compare your config against a working example like [`src/keyboards/modelm/enhanced/keyboard.config`](../../src/keyboards/modelm/enhanced/keyboard.config)
@@ -337,6 +348,7 @@ The keyboard configuration file may be missing required fields. Try:
 **What this means**: Docker isn't running on your computer.
 
 **How to fix it**:
+
 1. Open the Docker Desktop application
 2. Wait until you see "Docker Desktop is running" (you'll see a green indicator)
 3. Try your build command again
@@ -350,19 +362,24 @@ The keyboard configuration file may be missing required fields. Try:
 **What this means**: Docker's built the firmware, but it's not appearing in your `build/` folder. This may be a volume mounting issue.
 
 **How to fix it**:
+
 1. First, check if the file exists inside the Docker container:
+
    ```bash
    docker compose run --rm -e KEYBOARD="modelm/enhanced" builder ls -l /build
    ```
 
 2. If you see the file listed, but it's not in your local `build/` folder, check your [`docker-compose.yml`](../../docker-compose.yml):
+
    ```yaml
    volumes:
      - ./build:/build
    ```
+
    This line should be present in the `builder` service definition.
 
 3. Try removing the build directory and starting fresh:
+
    ```bash
    rm -rf build/
    mkdir build
@@ -377,6 +394,7 @@ The keyboard configuration file may be missing required fields. Try:
 
 **How to fix it**:
 Run this command from your project root directory:
+
 ```bash
 sudo chown -R $USER:$USER build/
 ```
@@ -392,13 +410,16 @@ This changes ownership of all the files in `build/` to your user account.
 If build issues persist:
 
 1. **Check your Docker installation**:
+
    ```bash
    docker --version
    docker compose version
    ```
+
    You should see version numbers. If you get "command not found", Docker isn't installed correctly.
 
 2. **Try a clean rebuild**:
+
    ```bash
    rm -rf build/*
    docker compose build builder --no-cache
@@ -438,8 +459,6 @@ docker compose run --rm -e KEYBOARD="amiga/a500" builder
 
 The build system automatically includes the new keyboard's protocol, scancode set, and keymap. The output file (`rp2040-converter.uf2`) is overwritten with the new configuration.
 
-**Note**: The Docker build process automatically cleans old build files before compiling, so you always get a fresh build.
-
 ### Updating Build Tools (Rare)
 
 If the project updates its build dependencies or Pico SDK version, you'll need to rebuild the Docker image:
@@ -459,6 +478,7 @@ The `--no-cache` flag forces Docker to rebuild from scratch, ignoring cached lay
 The build system automatically includes based on your configuration:
 
 **Always included:**
+
 - Core firmware ([`src/main.c`](../../src/main.c))
 - USB HID interface ([`src/common/lib/hid_interface.c`](../../src/common/lib/hid_interface.c), [`hid_interface.h`](../../src/common/lib/hid_interface.h))
 - Ring buffer implementation ([`src/common/lib/ringbuf.c`](../../src/common/lib/ringbuf.c), [`ringbuf.h`](../../src/common/lib/ringbuf.h))
@@ -466,6 +486,7 @@ The build system automatically includes based on your configuration:
 - TinyUSB stack (from Pico SDK)
 
 **Configuration-dependent:**
+
 - Protocol handler: [`src/protocols/`](../../src/protocols/)`<protocol>/` (from `keyboard.config`, see [Protocols](../protocols/README.md))
 - Scancode processor: [`src/scancodes/`](../../src/scancodes/)`<set>/` (from `keyboard.config`, see [Scancode Sets](../scancodes/README.md))
 - PIO programs: [`src/protocols/`](../../src/protocols/)`<protocol>/*.pio` (compiled to headers)
@@ -473,10 +494,10 @@ The build system automatically includes based on your configuration:
 
 ### Build Outputs Explained
 
-| File | Purpose | Size |
-|------|---------|------|
-| `rp2040-converter.uf2` | Flashable firmware (drag-and-drop) | ~80-120 KB |
-| `rp2040-converter.elf` | Binary with debug symbols | ~1-2 MB |
+| File                       | Purpose                            | Size        |
+| -------------------------- | ---------------------------------- | ----------- |
+| `rp2040-converter.uf2`     | Flashable firmware (drag-and-drop) | ~80-120 KB  |
+| `rp2040-converter.elf`     | Binary with debug symbols          | ~1-2 MB     |
 | `rp2040-converter.elf.map` | Memory layout and symbol addresses | ~400-600 KB |
 
 **For flashing**: You only need the `.uf2` file.
@@ -494,6 +515,7 @@ Now that you have compiled firmware, proceed to:
 **→ [Flashing Firmware](flashing-firmware.md)** - Install firmware on your RP2040 board
 
 **Additional Resources:**
+
 - [Hardware Setup](hardware-setup.md) - Physical wiring guide
 - [Supported Keyboards](../keyboards/README.md) - Keyboard-specific details
 - [Development Guide](../development/README.md) - Adding new keyboards or protocols
@@ -506,6 +528,7 @@ Now that you have compiled firmware, proceed to:
 Once you're familiar with the process, here's the condensed version:
 
 **First-time setup:**
+
 ```bash
 git clone https://github.com/PaulW/rp2040-keyboard-converter.git
 cd rp2040-keyboard-converter
@@ -514,16 +537,19 @@ docker compose run --rm -e KEYBOARD="modelm/enhanced" builder
 ```
 
 **Rebuild after changes:**
+
 ```bash
 docker compose run --rm -e KEYBOARD="modelm/enhanced" builder
 ```
 
 **Output location:**
-```
+
+```text
 ./build/rp2040-converter.uf2
 ```
 
 **Find available keyboards:**
+
 ```bash
 find src/keyboards -name "keyboard.config"
 ```
