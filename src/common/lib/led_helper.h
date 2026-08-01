@@ -62,10 +62,11 @@
  * Used to control status LED indicators.
  */
 typedef struct converter_state {
-    unsigned char kb_ready    : 1; /**< Keyboard initialised and ready */
-    unsigned char mouse_ready : 1; /**< Mouse initialised and ready */
-    unsigned char fw_flash    : 1; /**< Firmware flash mode (bootloader) */
-    unsigned char cmd_mode    : 1; /**< Command mode active (for LED feedback) */
+    unsigned char kb_ready      : 1; /**< Keyboard initialised and ready */
+    unsigned char mouse_ready   : 1; /**< Mouse initialised and ready */
+    unsigned char fw_flash      : 1; /**< Firmware flash mode (bootloader) */
+    unsigned char cmd_mode      : 1; /**< Command mode active (for LED feedback) */
+    unsigned char usb_suspended : 1; /**< USB bus suspended (host asleep/off, VBUS still up) */
 } converter_state;
 
 /**
@@ -126,6 +127,20 @@ extern bool log_level_selection_mode;
  * @note Main loop only.
  */
 void update_converter_status(void);
+
+/**
+ * @brief Marks the converter as USB-suspended or resumed.
+ *
+ * When suspended: forces the WS2812 status/lock LEDs off, and caches then zeroes the
+ * host lock-LED state (lock_leds) so any protocol task that syncs physical keyboard
+ * LEDs to that state (AT/PS2, Amiga Caps Lock) turns the keyboard's own lamps off too.
+ * When resumed: restores the cached lock-LED state so the real host state comes back.
+ *
+ * @param suspended true when the USB bus has entered suspend, false on resume.
+ *
+ * @note Safe to call from TinyUSB callback context (tud_suspend_cb/tud_resume_cb).
+ */
+void led_helper_set_usb_suspended(unsigned char suspended);
 
 /**
  * @brief Update keyboard ready LED status
