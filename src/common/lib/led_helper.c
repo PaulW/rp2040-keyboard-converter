@@ -46,6 +46,9 @@ converter_state_union converter = {.value = CONVERTER_STATE_INITIAL};
 
 volatile lock_keys_union lock_leds;
 
+// Cached host lock-LED state while USB is suspended, so it can be restored on resume
+static uint8_t saved_lock_leds_value = 0;
+
 #ifdef CONVERTER_LEDS
 // Track last LED update time (us since boot) for non-blocking WS2812 reset timing
 // Using uint32_t for atomic access (64-bit absolute_time_t is not atomic on RP2040)
@@ -151,6 +154,25 @@ void update_converter_status(void) {
 #else
     // No LEDs configured - this function is a no-op
 #endif
+}
+
+void led_helper_set_usb_suspended(unsigned char suspended) {
+    if (suspended != converter.state.usb_suspended) {
+        converter.state.usb_suspended = suspended;
+
+        if (suspended) {
+            // Cache the host's real lock LED state, then zero it.
+            saved_lock_leds_value = lock_leds.value;
+            lock_leds.value       = 0;
+        } else {
+            // Resume: restore whatever the host last told us. If the host also re-sends its
+            // own OUTPUT report on resume (common), it'll just overwrite this with the same
+            // value — harmless, just one extra 0xED round-trip to the keyboard.
+            lock_leds.value = saved_lock_leds_value;
+        }
+        __dmb(); // Ensure IRQ-visible write is ordered
+        update_converter_status();
+    }
 }
 
 #ifdef CONVERTER_LEDS
