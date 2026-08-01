@@ -584,6 +584,7 @@ void tud_hid_set_report_cb(
  *
  * @param remote_wakeup_en true if the host has enabled remote wakeup for this device
  *
+ * @note Non-blocking.
  * @note Called from TinyUSB USB interrupt context.
  * @note If the host cuts VBUS entirely on power-off, the RP2040 loses power and
  *       this callback never fires — LEDs go dark simply because the board is dead.
@@ -596,6 +597,7 @@ void tud_suspend_cb(bool remote_wakeup_en) {
 /**
  * @brief TinyUSB callback invoked when the USB bus resumes from suspend.
  *
+ * @note Non-blocking.
  * @note Called from TinyUSB USB interrupt context.
  */
 void tud_resume_cb(void) {

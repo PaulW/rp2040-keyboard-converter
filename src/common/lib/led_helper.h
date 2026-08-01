@@ -138,6 +138,7 @@ void update_converter_status(void);
  *
  * @param suspended true when the USB bus has entered suspend, false on resume.
  *
+ * @note Non-blocking.
  * @note Safe to call from TinyUSB callback context (tud_suspend_cb/tud_resume_cb).
  */
 void led_helper_set_usb_suspended(unsigned char suspended);
